@@ -1,0 +1,8 @@
+export default function YoutubeIcon({ className }: { className?: string }) {
+    return (
+        <svg className={className} xmlns="http://www.w3.org/2000/svg" width="43.5" height="30.586" viewBox="0 0 43.5 30.586">
+            <path id="Icon_awesome-youtube" data-name="Icon awesome-youtube" d="M43.641,9.286a5.466,5.466,0,0,0-3.846-3.871C36.4,4.5,22.8,4.5,22.8,4.5s-13.6,0-17,.915A5.466,5.466,0,0,0,1.959,9.286C1.05,12.7,1.05,19.824,1.05,19.824s0,7.124.909,10.538A5.384,5.384,0,0,0,5.8,34.171c3.392.915,17,.915,17,.915s13.6,0,17-.915a5.384,5.384,0,0,0,3.846-3.809c.909-3.414.909-10.538.909-10.538s0-7.124-.909-10.538ZM18.351,26.292V13.356L29.72,19.824Z" transform="translate(-1.05 -4.5)" fill="#5356ff" />
+        </svg>
+
+    );
+}

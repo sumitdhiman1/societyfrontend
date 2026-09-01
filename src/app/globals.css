@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --primary: #4343F0;
+  --accent: #00102E;
+  --primary-100: #1a1a40;
+  --primary-200: #20206a;
+  --primary-300: #5356ff;
+  --primary-400: #ebe9fa;
+  --primary-500: #212170;
+  --gray-400: #9CA3AF;
+  --gray-700: #374151;
+  --border-light: #C4C4C4;
+  --border-medium: #BDBDBD;
+  --bg-hover: #F7F7F7;
+  --stepper-bg: #D9D9D9;
+  --error: #dc2626;
+}
+
+@import "./theme.css";
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+@keyframes toast-slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-toast-in {
+  animation: toast-slide-in 0.3s ease-out forwards;
+}

@@ -1,0 +1,20 @@
+@theme {
+  --color-primary: var(--primary);
+  --color-accent: var(--accent);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+  --color-primary-300: var(--primary-300);
+  --color-primary-400: var(--primary-400);
+  --color-primary-500: var(--primary-500);
+  --color-gray-400: var(--gray-400);
+  --color-gray-700: var(--gray-700);
+  --color-border-light: var(--border-light);
+  --color-border-medium: var(--border-medium);
+  --color-bg-hover: var(--bg-hover);
+  --color-stepper-bg: var(--stepper-bg);
+  --color-error: var(--error);
+  --font-sans: var(--font-inter), var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
