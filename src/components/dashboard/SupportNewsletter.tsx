@@ -76,7 +76,7 @@ export default function SupportNewsletter() {
   };
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-[54px] w-full">
+    <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:px-[54px] w-full">
       <StatusPopup
         isOpen={popup.isOpen}
         onClose={() => setPopup({ ...popup, isOpen: false })}
@@ -86,11 +86,11 @@ export default function SupportNewsletter() {
       />
 
       <div
-        className="flex flex-col xl:flex-row gap-6 justify-between pb-8 md:pb-10 font-sans"
+        className="flex flex-col xl:flex-row gap-8 justify-between pb-8  md:pb-10 font-sans"
         style={{ fontFamily: "var(--font-inter), sans-serif" }}
       >
         {/* Support Card */}
-        <div className="bg-white rounded-lg shadow-[0px_10px_35px_rgba(0,0,0,0.06)] md:shadow-[0px_5px_25px_#0000000D] flex flex-col md:flex-row items-center justify-between relative overflow-hidden h-auto min-h-[251px] flex-1 pr-0 md:pr-8 py-8 md:py-0">
+        <div className="bg-white rounded-lg shadow-[0px_10px_35px_rgba(0,0,0,0.06)] md:shadow-[0px_5px_25px_#0000000D] flex flex-col md:flex-row items-center justify-between relative overflow-hidden h-auto min-h-[251px] flex-1 pr-0 md:pr-8 py-8 px-6 md:px-8 py-8 xl:py-0 md:py-0">
           <Image
             src="/images/Group 2878.svg"
             alt="Decoration"
@@ -98,7 +98,7 @@ export default function SupportNewsletter() {
             height={150}
             className="absolute bottom-0 left-0 z-0 opacity-40 md:opacity-100"
           />
-          <div className="w-full md:w-[45%] relative z-10 flex items-center justify-center mb-6 md:mb-0">
+          <div className="w-full md:w-[231px] relative z-10 flex items-center justify-center mb-6 md:mb-0">
             <Image
               src="/images/Active Support-rafiki.svg"
               alt="Support"
@@ -107,8 +107,8 @@ export default function SupportNewsletter() {
               className="object-contain"
             />
           </div>
-          <div className="w-full md:w-2/3 flex flex-col items-center md:items-start z-10 text-center md:text-left space-y-4 md:space-y-8 md:space-y-[40px] px-6 md:px-0">
-            <h3 className="text-[26px] md:text-[25px] leading-[34px] md:leading-[30px] font-semibold md:font-bold text-[#434343] capitalize font-sans">
+          <div className="w-full md:w-2/3 flex flex-col items-center md:items-start z-10 text-center md:text-left space-y-4 md:space-y-8 md:space-y-[40px] px-6">
+            <h3 className="text-[26px] mb-5 md:text-[25px] leading-[34px] md:leading-[30px] font-semibold md:font-bold text-[#434343] capitalize font-sans">
               Visit Help & Support
             </h3>
             <Link href="/help-support" className="w-full    ">

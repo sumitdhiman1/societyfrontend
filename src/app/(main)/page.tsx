@@ -16,7 +16,7 @@ function DashboardContent() {
 
   return (
     <div className="w-full flex-grow space-y-12 md:space-y-16">
-      <div className="mx-auto px-4 md:px-8 lg:px-[54px] max-w-[1600px]">
+      <div className="mx-auto px-4 md:px-8 lg:px-[54px] max-w-[1536px]">
 
         {/* Hero / Top Section */}
         <div className="flex  flex-col lg:flex-row gap-6 lg:gap-8 pt-6 lg:pt-[32px]">
