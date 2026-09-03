@@ -82,7 +82,7 @@ export default function Footer() {
 
   return (
     <footer ref={footerRef} className="w-full bg-primary-400 text-gray-700 pt-8 md:pt-10 pb-5 font-sans">
-      <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-[54px]">
+      <div className="mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] max-w-[1536px] lg:px-[54px]">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 md:gap-6 lg:gap-12 mb-10 md:mb-10 lg:mb-16">
           {/* Column 1: Services */}
           <div className="flex flex-col gap-4 md:gap-2">
