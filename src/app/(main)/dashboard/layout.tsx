@@ -17,6 +17,7 @@ export default function DashboardLayout({
       const currentPath = window.location.pathname;
       const publicRoutePrefixes = [
         "/dashboard/new-project",
+        "/dashboard/my-analyses",
       ];
       const isPublicRoute = publicRoutePrefixes.some((prefix) =>
         currentPath === prefix || currentPath.startsWith(`${prefix}/`)
