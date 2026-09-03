@@ -294,7 +294,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
 
   return (
     <nav className="w-full h-[88px] bg-[#00102E] text-white shadow-[0px_5px_20px_#0000000D] relative z-50 font-sans">
-      <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-[54px] h-full flex items-center justify-between">
+      <div className="max-w-[1536px]  mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] h-full flex items-center justify-between">
         <div className="flex items-center gap-3 shrink-0">
           {/* Mobile view - lefside menu trigger visible only if the user is logined  */}
           {isAuthenticated && (
