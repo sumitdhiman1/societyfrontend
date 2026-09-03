@@ -25,7 +25,7 @@ export default function FreeAnalysis() {
     fetchSettings();
   }, []);
 
-  if (settings && !settings.isHomepageSectionEnabled) return null;
+  if (settings && settings.isHomepageSectionEnabled === false) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
