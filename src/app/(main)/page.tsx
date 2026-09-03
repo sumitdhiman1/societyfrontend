@@ -34,7 +34,7 @@ function DashboardContent() {
         </div>
 
         {/* Projects Section */}
-        <div className="mt-13  ">
+        <div className="">
           <ProjectTabs />
         </div>
       </div>
