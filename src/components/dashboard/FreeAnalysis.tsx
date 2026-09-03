@@ -60,7 +60,7 @@ export default function FreeAnalysis() {
   };
 
   return (
-    <div className="max-w-[1536px] w-full mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] mt-20 md:mt-32">
+    <div className="max-w-[1536px] w-full mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] mt-20 md:mt-32 mb-0">
       <StatusPopup
         isOpen={!!status}
         onClose={() => setStatus(null)}
