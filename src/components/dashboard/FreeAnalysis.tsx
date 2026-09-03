@@ -170,6 +170,18 @@ export default function FreeAnalysis() {
                 />
               </div>
             </div>
+            </div>
+          
+          <div className="lg:hidden flex flex-col bg-white rounded-[10px] shadow-[0px_4px_20px_rgba(14,16,63,0.07)] relative overflow-hidden w-full max-w-[400px] md:max-w-[600px] mx-auto">
+            <div className="lg:hidden flex flex-col bg-white rounded-[10px]  relative overflow-hidden w-full max-w-[400px] md:max-w-[600px] mx-auto">
+                <div className="relative w-full flex justify-center md:bg-[#EBE9FA]">
+                   <img src="/assets/mobile-check-bg.png" alt="" className="w-full h-auto object-cover" /> 
+                    <div className="absolute inset-0 flex items-center justify-center pt-8">
+                      <img src="/assets/mobile-check.svg" alt="Analysis Illustration" className="w-[66%] md:w-[60%] h-auto object-contain " />
+                      </div>
+                </div>
+            </div>
+
 
             <div className="flex flex-col items-center text-center px-6 pb-8 pt-2" style={{ gap: "20px" }}>
               <h2 className="text-[26px] sm:text-[28px] font-bold text-[#434343] leading-[1.25]">
@@ -205,7 +217,7 @@ export default function FreeAnalysis() {
                 </button>
               </form>
             </div>
-          </div>
+            </div>
         </div>
       </div>
     </div>

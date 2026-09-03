@@ -27,6 +27,9 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "Society - Create What You Want",
   description: "A platform for managing and creating projects.",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({

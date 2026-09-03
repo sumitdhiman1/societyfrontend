@@ -86,7 +86,7 @@ export default function SupportNewsletter() {
       />
 
       <div
-        className="w-full grid grid-cols-2  md:gap-8 font-sans mt-8 md:mt-12 font-sans gap-8 mb-12"
+        className="w-full grid grid-cols-1 lg:grid-cols-2  md:gap-8 font-sans mt-8 md:mt-12 font-sans gap-8 mb-12"
         style={{ fontFamily: "var(--font-inter), sans-serif" }}
       >
         {/* Support Card */}
@@ -104,7 +104,7 @@ export default function SupportNewsletter() {
               alt="Support"
               width={260}
               height={230}
-              className="object-contain"
+              className="object-contain max-w-full h-auto max-h-[170px] md:max-h-[200px]"
             />
           </div>
           <div className="w-full md:w-2/3 flex flex-col items-center md:items-start z-10 text-center md:text-left space-y-4 md:space-y-8 md:space-y-[40px] px-6">
@@ -138,7 +138,7 @@ export default function SupportNewsletter() {
               alt="Newsletter"
               width={260}
               height={230}
-              className="object-contain"
+              className="object-contain max-w-full h-auto max-h-[170px] md:max-h-[200px]"
             />
           </div>
           <div className="flex w-[362px] pr-4 pl-6 flex-col items-center md:items-start z-10 text-center md:text-left space-y-4 md:space-y-8md:space-y-[40px] px-6s">
