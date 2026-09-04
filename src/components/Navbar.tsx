@@ -176,13 +176,13 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
 
       const socketUrl =
         process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-        "https://societywebapi.onrender.com";
+        "http://localhost:5001";
 
       console.log("[Frontend Navbar Socket] 🔌 Connecting to", socketUrl, "| userId:", userId);
 
       const sock = io(socketUrl, {
         path: "/socket.io",
-        transports: ["websocket"],
+        transports: ["websocket", "polling"],
         auth: { token, userId },
         query: { token, userId },
         reconnectionDelay: 2000,

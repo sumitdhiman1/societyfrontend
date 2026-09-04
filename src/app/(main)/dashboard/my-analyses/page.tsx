@@ -3,7 +3,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/lib/authService";
-import { requestAnalysisService } from "@/lib/requestAnalysisService";
+import { requestAnalysisService, claimPendingAnalyses } from "@/lib/requestAnalysisService";
+import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
+import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 export default function MyAnalysesPage() {
   const router = useRouter();
@@ -19,18 +21,18 @@ export default function MyAnalysesPage() {
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
+      const time = now.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+      const weekday = now.toLocaleDateString("en-US", { weekday: "long" });
+      const day = now.getDate();
+      const month = now.toLocaleDateString("en-US", { month: "short" });
+      const year = now.getFullYear();
       setCurrentTime({
-        time: now.toLocaleTimeString("en-US", {
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        }),
-        date: now.toLocaleDateString("en-US", {
-          weekday: "long",
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        }),
+        time,
+        date: `${weekday} ${day}, ${month}, ${year}`,
       });
     };
 
@@ -48,6 +50,8 @@ export default function MyAnalysesPage() {
     const fetchAnalyses = async () => {
       try {
         setLoading(true);
+        // Ensure any guest analysis from cookie is claimed and attached to this user
+        await claimPendingAnalyses();
         const res = await requestAnalysisService.getProjects();
         if (res && res.data) {
           const rawList = Array.isArray(res.data) ? res.data : res.data.data || [];
@@ -58,20 +62,21 @@ export default function MyAnalysesPage() {
               statusKey === "active" ? "in_progress" : statusKey;
 
             const target = item.targetWebsiteUrl || item.websiteUrl || item.domain || "website";
-            const cleanTarget = target.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+            const cleanTarget = target.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+            const fullTargetUrl = target.startsWith("http") ? target : `https://${cleanTarget}`;
 
             return {
               id: aid,
               title: item.title || `Free website analysis - ${cleanTarget}`,
               analysisNumber: item.projectNumber || item.invoiceNumber || `INV-2026-${aid.slice(-3)}`,
-              targetUrl: cleanTarget,
+              targetUrl: fullTargetUrl,
+              displayTarget: cleanTarget,
               submittedDate: item.createdAt
                 ? new Date(item.createdAt).toLocaleString("en-US", {
                     month: "short",
                     day: "numeric",
                     hour: "numeric",
                     minute: "2-digit",
-                    hour12: true,
                   })
                 : "Recently",
               status: normalizedStatus,
@@ -108,36 +113,32 @@ export default function MyAnalysesPage() {
   }, [activeTab, analyses]);
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
+    const s = (status || "").toLowerCase();
+    switch (s) {
       case "completed":
         return (
-          <span className="px-3 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-[#EBF5FF] text-[#2563EB]">
+          <span className="px-4 py-1 rounded-[4px] text-xs font-bold uppercase border bg-[#EBF5FF] text-[#2563EB] border-[#EBF5FF]">
             COMPLETED
-          </span>
-        );
-      case "in_progress":
-      case "active":
-        return (
-          <span className="px-3 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600">
-            IN PROGRESS
           </span>
         );
       case "paused":
         return (
-          <span className="px-3 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-600">
+          <span className="px-4 py-1 rounded-[4px] text-xs font-bold uppercase border bg-[#FEF3C7] text-[#D97706] border-[#FEF3C7]">
             PAUSED
           </span>
         );
       case "canceled":
         return (
-          <span className="px-3 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600">
+          <span className="px-4 py-1 rounded-[4px] text-xs font-bold uppercase border bg-[#F3F4F6] text-[#6B7280] border-[#F3F4F6]">
             CANCELED
           </span>
         );
+      case "in_progress":
+      case "active":
       default:
         return (
-          <span className="px-3 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600">
-            {status.toUpperCase()}
+          <span className="px-4 py-1 rounded-[4px] text-xs font-bold uppercase border bg-[#E1FCEF] text-[#14804A] border-[#E1FCEF]">
+            IN PROGRESS
           </span>
         );
     }
@@ -152,68 +153,84 @@ export default function MyAnalysesPage() {
   ];
 
   return (
-    <div className="bg-[#F8FAFC] min-h-screen flex flex-col font-sans">
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] py-10">
-        
-        {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-[#0D1939] tracking-tight">
-              My Analyses
-            </h1>
+    <div
+      className="bg-white min-h-screen flex flex-col font-sans"
+      style={{ fontFamily: "var(--font-inter), sans-serif" }}
+    >
+      <DashboardSubNav />
+
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-6 md:pb-8 flex flex-col justify-between">
+        {/* Top Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-6 md:gap-0">
+          <div className="w-full md:w-auto min-w-0 overflow-hidden">
+            <div className="flex items-center gap-6 mb-8 md:mb-12">
+              <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100">
+                My Analyses
+              </h1>
+            </div>
+
+            {/* Filter Tabs */}
+            <div
+              className="flex space-x-6 md:space-x-8 border-b border-gray-200 w-full overflow-x-auto"
+              style={{ scrollbarWidth: "none" }}
+            >
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`pb-3 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 rounded-none cursor-pointer ${
+                      isActive
+                        ? "text-primary-300 border-b-2 border-primary-300 font-bold"
+                        : "text-gray-500 hover:text-gray-700 font-normal"
+                    }`}
+                  >
+                    {tab.label} ({tab.count})
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Clock Widget */}
-          {currentTime.time && (
-            <div className="border border-gray-300 rounded-xl p-3.5 bg-white shadow-2xs min-w-[170px] text-left">
-              <p className="text-[11px] text-gray-500 font-normal leading-tight">{currentTime.time}</p>
-              <p className="text-xs font-semibold text-gray-800 mt-0.5 leading-tight">{currentTime.date}</p>
+          <div className="hidden md:flex flex-col justify-center border-2 border-[#707070] rounded-[8px] px-8 bg-[#EEEEEE] text-left w-[254px] h-[99px] shrink-0">
+            <div className="flex flex-col justify-center">
+              <div className="text-[12px] font-semibold text-[#707070] mb-1.5 leading-none">
+                {currentTime.time || "10:35 PM"}
+              </div>
+              <div className="text-[15px] font-medium text-[#505050] leading-tight">
+                {currentTime.date || "Friday 4, Sep, 2026"}
+              </div>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Status Tabs Navigation */}
-        <div className="flex items-center gap-6 sm:gap-8 border-b border-gray-200 overflow-x-auto no-scrollbar mb-8">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`pb-3 text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer relative ${
-                  isActive
-                    ? "font-bold text-[#2563EB]"
-                    : "font-normal text-gray-500 hover:text-gray-900"
-                }`}
-              >
-                {tab.label} ({tab.count})
-                {isActive && (
-                  <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#2563EB]" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Analyses Cards List */}
-        <div className="space-y-4">
+        {/* Content List Section */}
+        <div className="space-y-6 mt-6 flex-grow flex flex-col">
           {loading ? (
             Array.from({ length: 2 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse">
+              <div
+                key={i}
+                className="border border-gray-200 rounded-[8px] p-6 bg-white animate-pulse"
+              >
                 <div className="h-5 bg-gray-200 rounded w-1/3 mb-3"></div>
                 <div className="h-4 bg-gray-100 rounded w-1/4 mb-4"></div>
                 <div className="h-4 bg-gray-100 rounded w-1/6"></div>
               </div>
             ))
           ) : filteredAnalyses.length === 0 ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-              <h3 className="text-base font-bold text-gray-800 mb-1">No analysis projects found</h3>
+            <div className="border border-gray-200 rounded-[8px] p-12 bg-white text-center">
+              <h3 className="text-base font-bold text-gray-800 mb-1">
+                No analysis projects found
+              </h3>
               <p className="text-xs text-gray-500 mb-4">
-                You do not have any {activeTab !== "all" ? activeTab.replace(/_/g, " ") : ""} analysis requests.
+                You do not have any{" "}
+                {activeTab !== "all" ? activeTab.replace(/_/g, " ") : ""} analysis requests.
               </p>
               <button
-                onClick={() => router.push("/dashboard/new-project/packages")}
-                className="inline-flex items-center px-5 py-2.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs font-bold rounded-lg transition-all shadow-xs cursor-pointer"
+                onClick={() => router.push("/#request-analysis")}
+                className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-sm font-bold py-2.5 px-6 rounded-[4px] transition-colors whitespace-nowrap cursor-pointer"
               >
                 Request a New Analysis
               </button>
@@ -222,57 +239,68 @@ export default function MyAnalysesPage() {
             filteredAnalyses.map((a) => (
               <div
                 key={a.id}
-                className="bg-white rounded-xl border border-gray-200/80 p-6 shadow-2xs hover:shadow-sm transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="border border-gray-200 rounded-[8px] p-6 bg-white hover:shadow-sm transition-shadow"
               >
-                {/* Left Content */}
-                <div className="space-y-1">
-                  <h3 className="text-base font-bold text-gray-900">
-                    {a.title} <span className="text-xs text-gray-400 font-normal">({a.analysisNumber})</span>
-                  </h3>
-                  <p className="text-xs text-gray-500">
-                    Target:{" "}
-                    <a
-                      href={a.targetUrl.startsWith("http") ? a.targetUrl : `https://${a.targetUrl}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[#2563EB] hover:underline font-medium"
-                    >
-                      {a.targetUrl}
-                    </a>
-                  </p>
-                  <div className="flex items-center gap-3 pt-3">
-                    <span className="text-xs text-gray-500">Submitted on {a.submittedDate}</span>
-                    {getStatusBadge(a.status)}
+                <div className="flex flex-col gap-4">
+                  <div className="flex-grow">
+                    <h3 className="text-lg font-bold text-gray-800">
+                      {a.title}
+                      <span className="text-sm font-normal text-gray-500 ml-2">
+                        ({a.analysisNumber})
+                      </span>
+                    </h3>
+                    <div className="text-sm text-gray-600 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="font-semibold text-gray-500">Target:</span>
+                      <a
+                        href={a.targetUrl}
+                        className="text-blue-600 hover:underline break-all"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {a.targetUrl}
+                      </a>
+                    </div>
                   </div>
-                </div>
-
-                {/* Right Action Button */}
-                <div className="shrink-0 pt-2 md:pt-0">
-                  <button
-                    onClick={() => router.push(`/dashboard/my-analyses/${a.id}/details`)}
-                    className="w-full md:w-auto px-6 py-2.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs font-bold rounded-lg transition-all shadow-xs cursor-pointer"
-                  >
-                    View details
-                  </button>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+                    <div className="flex flex-wrap items-center gap-4">
+                      <span className="text-sm text-gray-500 font-medium">
+                        Submitted on {a.submittedDate}
+                      </span>
+                      {getStatusBadge(a.status)}
+                    </div>
+                    <button
+                      onClick={() => router.push(`/dashboard/my-analyses/${a.id}/details`)}
+                      className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-sm font-bold py-2.5 px-6 rounded-[4px] transition-colors whitespace-nowrap cursor-pointer"
+                    >
+                      View details
+                    </button>
+                  </div>
                 </div>
               </div>
             ))
           )}
-        </div>
 
-        {/* Bottom Banner Card */}
-        <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-8">
-          <div>
-            <h3 className="text-lg font-bold text-gray-900">New Analysis</h3>
+          {/* New Analysis Banner */}
+          <div className="border border-dashed border-[#717171] rounded-[8px] p-8 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 mt-8">
+            <h3
+              className="text-[22px] font-bold text-gray-900 font-sans"
+              style={{ fontFamily: "var(--font-inter), sans-serif" }}
+            >
+              New Analysis
+            </h3>
+            <button
+              onClick={() => router.push("/#request-analysis")}
+              className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-[15px] font-bold py-3.5 px-8 rounded-[7px] transition-all shadow-sm whitespace-nowrap font-sans border-2 border-[#4343F0] cursor-pointer"
+            >
+              Request a New Analysis
+            </button>
           </div>
-          <button
-            onClick={() => router.push("/dashboard/new-project/packages")}
-            className="px-6 py-3 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs font-bold rounded-lg transition-all shadow-xs cursor-pointer"
-          >
-            Request a New Analysis
-          </button>
         </div>
 
+        {/* Support & Newsletter Section */}
+        <div className="mt-10 md:mt-14 mb-2">
+          <SupportNewsletter />
+        </div>
       </main>
     </div>
   );

@@ -1,4 +1,5 @@
 import HttpClient from "./HttpClient";
+import { claimPendingAnalyses } from "./requestAnalysisService";
 
 export class AuthService {
   private session: any;
@@ -9,7 +10,13 @@ export class AuthService {
 
   async register(data: any) {
     const client = new HttpClient(this.session);
-    return await client.post("/auth/register", data);
+    const response = await client.post("/auth/register", data);
+    if (response.isSuccessful && response.data?.access_token) {
+      this.setSession(response.data);
+      window.dispatchEvent(new Event("auth:login"));
+      claimPendingAnalyses();
+    }
+    return response;
   }
 
   async login(data: any) {
@@ -19,6 +26,7 @@ export class AuthService {
     if (response.isSuccessful && response.data) {
       this.setSession(response.data);
       window.dispatchEvent(new Event("auth:login"));
+      claimPendingAnalyses();
     }
     return response;
   }

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/lib/authService";
+import { getPendingUserInfo } from "@/lib/requestAnalysisService";
 import StatusPopup from "@/components/common/StatusPopup";
 import FacebookIcon from "@/components/icons/facebook";
 import GoogleIcon from "@/components/icons/google";
@@ -101,6 +102,26 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [statusPopup, setStatusPopup] = useState({ isOpen: false, type: "success" as "success" | "error", title: "", message: "" });
+
+  useEffect(() => {
+    const pendingInfo = getPendingUserInfo();
+    if (pendingInfo) {
+      if (pendingInfo.firstName) setFirstName((prev) => prev || pendingInfo.firstName || "");
+      if (pendingInfo.lastName) setLastName((prev) => prev || pendingInfo.lastName || "");
+      if (pendingInfo.email) setEmail((prev) => prev || pendingInfo.email || "");
+      if (pendingInfo.phoneNumber) setPhoneNumber((prev) => prev || pendingInfo.phoneNumber || "");
+      if (pendingInfo.websiteUrl) {
+        setCompanyName((prev) => {
+          if (prev) return prev;
+          const clean = (pendingInfo.websiteUrl || "")
+            .replace(/^https?:\/\//i, "")
+            .replace(/^www\./i, "")
+            .split("/")[0];
+          return clean || "";
+        });
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (step === 3) {
