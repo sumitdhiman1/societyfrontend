@@ -265,8 +265,9 @@ export default function ProjectTabs() {
           </span>
           <div className="flex gap-6">
             <button
+              type="button"
               onClick={() => setViewMode("cards")}
-              className={`flex items-center pb-4 gap-2 relative font-inter transition-colors relative ${viewMode === "cards"
+              className={`flex items-center pb-4 gap-2 relative font-inter transition-colors cursor-pointer ${viewMode === "cards"
                 ? "text-[#363636] font-bold"
                 : "text-gray-500 font-normal"
                 }`}
@@ -279,12 +280,14 @@ export default function ProjectTabs() {
                 <CardsIcon />
               </span>
               <span className="text-[18px] leading-[21px]">Cards</span>
-              <div className="absolute bottom-0 left-0 w-full h-[4px] bg-[#4343F0] rounded-t-[2px]"></div>
-
+              {viewMode === "cards" && (
+                <div className="absolute bottom-0 left-0 w-full h-[4px] bg-[#4343F0] rounded-t-[2px]"></div>
+              )}
             </button>
             <button
+              type="button"
               onClick={() => setViewMode("list")}
-              className={`flex items-center gap-2 pb-4 font-inter transition-colors relative ${viewMode === "list"
+              className={`flex items-center gap-2 pb-4 font-inter transition-colors relative cursor-pointer ${viewMode === "list"
                 ? "text-[#363636] font-bold"
                 : "text-gray-500 font-normal"
                 }`}
@@ -297,6 +300,9 @@ export default function ProjectTabs() {
                 <ListIcon />
               </span>
               <span className="text-[18px] leading-[21px]">List</span>
+              {viewMode === "list" && (
+                <div className="absolute bottom-0 left-0 w-full h-[4px] bg-[#4343F0] rounded-t-[2px]"></div>
+              )}
             </button>
           </div>
         </div>
