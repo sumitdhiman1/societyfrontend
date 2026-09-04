@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { packagesService } from "@/lib/packagesService";
@@ -29,22 +29,11 @@ function PackagesContent() {
   const [showCategories, setShowCategories] = useState(true);
   const [showPriceFilter, setShowPriceFilter] = useState(true);
   const [showTimelineFilter, setShowTimelineFilter] = useState(true);
-
-  const initialCatParam = searchParams.get("categorycode");
-  const initialSortParam = searchParams.get("sortBy");
-
-  const [activeCategoryId, setActiveCategoryId] = useState(() => {
-    if (initialCatParam) {
-      const norm = initialCatParam.toUpperCase();
-      if (norm === "ANALYSIS") return "analysis";
-      if (norm === "BUNDLES") return "bundles";
-      if (norm === "ALL") return "all";
-      return norm.toLowerCase();
-    }
-    return "all";
-  });
-  const [sortBy, setSortBy] = useState(() => initialSortParam || ORDER_ASC);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+
+  // Derive active category directly from searchParams (Single Source of Truth)
+  const categoryCodeParam = (searchParams.get("categorycode") || "ALL").toUpperCase();
+  const sortParam = searchParams.get("sortBy") || ORDER_ASC;
 
   // Filter input states (empty string means not user-filtered)
   const [minPrice, setMinPrice] = useState("");
@@ -63,12 +52,12 @@ function PackagesContent() {
     { _id: "analysis", name: "Analysis", slug: "analysis", categorycode: "ANALYSIS" },
     { _id: "bundles", name: "Bundles", slug: "bundles", categorycode: "BUNDLES" },
     ...categories.filter(c => {
-      const code = (c.categorycode || "").toUpperCase();
+      const code = (c.categorycode || c.slug || "").toUpperCase();
       return code !== "ALL" && code !== "BUNDLES" && code !== "ANALYSIS";
     })
   ], [categories]);
 
-  // Initial categories fetch
+  // Initial categories fetch for sidebar
   useEffect(() => {
     const fetchCategories = async () => {
       setCategoriesLoading(true);
@@ -77,25 +66,8 @@ function PackagesContent() {
         const cats = res?.data ? (Array.isArray(res.data) ? res.data : res.data.categories || res.data.data || []) : [];
         setCategories(cats);
 
-        const catParam = searchParams.get("categorycode");
-        const sortParam = searchParams.get("sortBy");
         const minP = searchParams.get("minPrice");
         const maxP = searchParams.get("maxPrice");
-
-        if (catParam) {
-          const normalized = catParam.toUpperCase();
-          const allCats = [
-            { _id: "all", name: "All Packages", slug: "all", categorycode: "ALL" },
-            { _id: "analysis", name: "Analysis", slug: "analysis", categorycode: "ANALYSIS" },
-            { _id: "bundles", name: "Bundles", slug: "bundles", categorycode: "BUNDLES" },
-            ...cats,
-          ];
-          const found = allCats.find(
-            c => (c.categorycode || "").toUpperCase() === normalized || (c.slug || "").toUpperCase() === normalized
-          );
-          if (found) setActiveCategoryId(found._id);
-        }
-        if (sortParam) setSortBy(sortParam);
         if (minP) setMinPrice(minP);
         if (maxP) setMaxPrice(maxP);
       } catch (error) {
@@ -107,43 +79,20 @@ function PackagesContent() {
     fetchCategories();
   }, []);
 
-  // Update active category from URL
-  useEffect(() => {
-    const catParam = searchParams.get("categorycode");
-    if (!catParam) return;
-
-    const normalized = catParam.toUpperCase();
-    const found = sidebarCategories.find(
-      c => (c.categorycode || "").toUpperCase() === normalized || (c.slug || "").toUpperCase() === normalized
-    );
-    if (found && found._id !== activeCategoryId) {
-      setActiveCategoryId(found._id);
-    }
-  }, [searchParams, sidebarCategories, activeCategoryId]);
-
   // Reset filters on category change
   useEffect(() => {
     setMinPrice("");
     setMaxPrice("");
     setMinTimeline("");
     setMaxTimeline("");
-  }, [activeCategoryId]);
+  }, [categoryCodeParam]);
 
-  const fetchPackages = async (catId: string, cats: any[], currentSort: string) => {
+  const fetchPackages = useCallback(async (catCode: string, currentSort: string) => {
     setLoading(true);
     try {
-      const selectedCat = cats.find(c => c._id === catId);
-      const isAnalysis =
-        catId === "analysis" ||
-        (selectedCat?.categorycode || "").toUpperCase() === "ANALYSIS" ||
-        (selectedCat?.slug || "").toUpperCase() === "ANALYSIS";
-
-      const isBundles =
-        catId === "bundles" ||
-        (selectedCat?.categorycode || "").toUpperCase() === "BUNDLES" ||
-        (selectedCat?.slug || "").toUpperCase() === "BUNDLES";
-
-      const isAll = !isAnalysis && !isBundles && (catId === "all" || !selectedCat || (selectedCat.categorycode || "").toUpperCase() === "ALL");
+      const isAnalysis = catCode === "ANALYSIS";
+      const isBundles = catCode === "BUNDLES";
+      const isAll = catCode === "ALL";
 
       const queryOptions: any = { page: 1, limit: 100, sortBy: currentSort };
       let fetchedPkgs: any[] = [];
@@ -202,40 +151,42 @@ function PackagesContent() {
         },
       ];
 
-      try {
-        const aRes = await requestAnalysisService.getProducts(true);
-        const aData = aRes?.data ? (Array.isArray(aRes.data) ? aRes.data : aRes.data.data || []) : (Array.isArray(aRes) ? aRes : []);
-        if (aData.length > 0) {
-          analysisProducts = aData.map((prod: any, idx: number) => {
-            const isCheck = prod.title?.toLowerCase().includes("check");
-            return {
-              _id: prod._id,
-              name: prod.title,
-              categorycode: "ANALYSIS",
-              isAnalysis: true,
-              isFree: prod.isFree !== false || prod.amount === 0,
-              amount: (prod.isFree !== false || prod.amount === 0) ? "FREE" : `$${prod.amount}`,
-              minPrice: prod.amount || 0,
-              description: prod.shortDescription || prod.description || (isCheck 
-                ? "An offer to check the completed work of any other web professionals, including your own in-house team."
-                : "Our standard free analysis offer covering brand, UI/UX, functionalities, AI potentiality, tech stack."),
-              imageUrl: prod.coverImage || prod.imageUrl || prod.detailImage || prod.detailImageUrl || (isCheck ? "/images/free_checking_of_work.jpg" : "/images/free_website_analysis.jpg"),
-              minTimeline: prod.timelineInDays || (isCheck ? 14 : 5),
-              columns: [{ timeline: prod.timelineInDays || (isCheck ? 14 : 5) }],
-              visibleFormFields: prod.visibleFormFields || {
-                urlToCheck: true,
-                whoCompletedWork: isCheck,
-                agreementDetails: isCheck,
-                whatToLookAt: true,
-                shareAccess: isCheck,
-                additionalInfo: false,
-              },
-              order: prod.order !== undefined ? prod.order : idx + 1,
-            };
-          });
+      if (isAnalysis || isAll) {
+        try {
+          const aRes = await requestAnalysisService.getProducts(true);
+          const aData = aRes?.data ? (Array.isArray(aRes.data) ? aRes.data : aRes.data.data || []) : (Array.isArray(aRes) ? aRes : []);
+          if (aData.length > 0) {
+            analysisProducts = aData.map((prod: any, idx: number) => {
+              const isCheck = prod.title?.toLowerCase().includes("check");
+              return {
+                _id: prod._id,
+                name: prod.title,
+                categorycode: "ANALYSIS",
+                isAnalysis: true,
+                isFree: prod.isFree !== false || prod.amount === 0,
+                amount: (prod.isFree !== false || prod.amount === 0) ? "FREE" : `$${prod.amount}`,
+                minPrice: prod.amount || 0,
+                description: prod.shortDescription || prod.description || (isCheck 
+                  ? "An offer to check the completed work of any other web professionals, including your own in-house team."
+                  : "Our standard free analysis offer covering brand, UI/UX, functionalities, AI potentiality, tech stack."),
+                imageUrl: prod.coverImage || prod.imageUrl || prod.detailImage || prod.detailImageUrl || (isCheck ? "/images/free_checking_of_work.jpg" : "/images/free_website_analysis.jpg"),
+                minTimeline: prod.timelineInDays || (isCheck ? 14 : 5),
+                columns: [{ timeline: prod.timelineInDays || (isCheck ? 14 : 5) }],
+                visibleFormFields: prod.visibleFormFields || {
+                  urlToCheck: true,
+                  whoCompletedWork: isCheck,
+                  agreementDetails: isCheck,
+                  whatToLookAt: true,
+                  shareAccess: isCheck,
+                  additionalInfo: false,
+                },
+                order: prod.order !== undefined ? prod.order : idx + 1,
+              };
+            });
+          }
+        } catch (err) {
+          console.error("Failed to load analysis products:", err);
         }
-      } catch (err) {
-        console.error("Failed to load analysis products:", err);
       }
 
       if (isAnalysis) {
@@ -250,7 +201,7 @@ function PackagesContent() {
         ]);
         fetchedPkgs = [...analysisProducts, ...extractPackages(allRes), ...extractPackages(bundlesRes)];
       } else {
-        queryOptions.categorycode = selectedCat?.categorycode || selectedCat?.slug;
+        queryOptions.categorycode = catCode;
         const res = await packagesService.getAllPackages(queryOptions);
         fetchedPkgs = extractPackages(res);
       }
@@ -285,11 +236,11 @@ function PackagesContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchPackages(activeCategoryId, sidebarCategories, sortBy);
-  }, [activeCategoryId, sortBy, sidebarCategories]);
+    fetchPackages(categoryCodeParam, sortParam);
+  }, [categoryCodeParam, sortParam, fetchPackages]);
 
   // Filtered packages
   const filteredPackages = useMemo(() => {
@@ -336,7 +287,7 @@ function PackagesContent() {
     });
 
     // Sorting
-    switch (sortBy) {
+    switch (sortParam) {
       case NAME_ASC:
         result.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
         break;
@@ -359,7 +310,7 @@ function PackagesContent() {
     }
 
     return result;
-  }, [packages, minPrice, maxPrice, minTimeline, maxTimeline, sortBy]);
+  }, [packages, minPrice, maxPrice, minTimeline, maxTimeline, sortParam]);
 
   const handleCardClick = (pkg: any) => {
     if (pkg.isAnalysis) {
@@ -417,19 +368,19 @@ function PackagesContent() {
 
 
 
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] py-10">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-4 md:pt-12 pb-8 md:pb-12">
         
         {/* Top Header */}
-        <div className="flex flex-row items-center justify-between gap-4 mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-[#0D1939] tracking-tight">
+        <div className="flex items-center justify-between gap-3 mb-6 md:mb-10">
+          <h1 className="text-lg sm:text-2xl md:text-[32px] font-medium text-primary-100 whitespace-nowrap shrink min-w-0 truncate">
             Browse Packages &amp; Plans
           </h1>
 
           {/* Sort by Dropdown */}
-          <div className="relative">
+          <div className="relative shrink-0">
             <button
               onClick={() => setShowSortDropdown(!showSortDropdown)}
-              className="bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg flex items-center gap-2 transition-all shadow-xs cursor-pointer"
+              className="bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm whitespace-nowrap cursor-pointer"
             >
               <span>Sort by</span>
               <svg className={`w-3.5 h-3.5 transition-transform ${showSortDropdown ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -449,16 +400,13 @@ function PackagesContent() {
                   <button
                     key={option.id}
                     onClick={() => {
-                      setSortBy(option.id);
                       setShowSortDropdown(false);
-                      const cat = sidebarCategories.find(c => c._id === activeCategoryId);
-                      const targetCode = (cat && cat._id !== "all" ? cat.categorycode || cat.slug : "ALL").toUpperCase();
                       const params = new URLSearchParams();
-                      params.set("categorycode", targetCode);
+                      params.set("categorycode", categoryCodeParam);
                       params.set("sortBy", option.id);
-                      router.replace(`/dashboard/new-project/packages?${params.toString()}`, { scroll: false });
+                      router.push(`/dashboard/new-project/packages?${params.toString()}`, { scroll: false });
                     }}
-                    className={`w-full text-left px-4 py-2 text-xs sm:text-sm hover:bg-gray-50 transition-colors cursor-pointer ${sortBy === option.id ? "bg-blue-50 font-bold text-[#4343F0]" : "text-gray-700"}`}
+                    className={`w-full text-left px-4 py-2 text-xs sm:text-sm hover:bg-gray-50 transition-colors cursor-pointer ${sortParam === option.id ? "bg-blue-50 font-bold text-[#4343F0]" : "text-gray-700"}`}
                   >
                     {option.label}
                   </button>
@@ -469,52 +417,59 @@ function PackagesContent() {
         </div>
 
         {/* Content Layout */}
-        <div className="flex flex-col lg:flex-row gap-8 items-start">
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
           
           {/* Sidebar */}
-          <aside className="w-full lg:w-[250px] shrink-0">
+          <aside className="w-full lg:w-60 flex-shrink-0 flex flex-col gap-0">
+            <div className="w-full h-px bg-gray-200" />
             
             {/* Categories Section */}
-            <div className="mb-6">
+            <div className="bg-transparent">
               <button
                 onClick={() => setShowCategories(!showCategories)}
-                className="w-full flex items-center justify-between font-bold text-gray-800 text-xs sm:text-sm mb-3 cursor-pointer"
+                className="flex items-center justify-between w-full group py-3.5 cursor-pointer"
               >
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                  </svg>
-                  Categories
-                </span>
-                <svg className={`w-3.5 h-3.5 text-gray-500 transition-transform ${showCategories ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                <div className="flex items-center gap-2.5 font-bold text-[#404040] text-sm sm:text-[15px]">
+                  <img alt="Categories" className="w-5 h-5 shrink-0" src="/assets/Categorysvg.svg" />
+                  <span>Categories</span>
+                </div>
+                <svg
+                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${showCategories ? "rotate-180" : ""}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
 
               {showCategories && (
-                <div className="space-y-0.5">
+                <div className="flex flex-col gap-1 pl-1 pb-3">
                   {categoriesLoading ? (
                     <div className="space-y-2 animate-pulse">
-                      {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-7 bg-gray-200/60 rounded" />)}
+                      {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-7 bg-gray-200/60 rounded-md" />)}
                     </div>
                   ) : (
                     sidebarCategories.map((cat) => {
-                      const isActive = activeCategoryId === cat._id;
+                      const catCode = (cat.categorycode || cat.slug || "").toUpperCase();
+                      const isActive = categoryCodeParam === "ALL"
+                        ? (cat._id === "all" || catCode === "ALL")
+                        : catCode === categoryCodeParam;
+
                       return (
                         <button
                           key={cat._id}
                           onClick={() => {
-                            setActiveCategoryId(cat._id);
                             const targetCode = (cat && cat._id !== "all" ? cat.categorycode || cat.slug : "ALL").toUpperCase();
                             const params = new URLSearchParams();
                             params.set("categorycode", targetCode);
-                            if (sortBy) params.set("sortBy", sortBy);
-                            router.replace(`/dashboard/new-project/packages?${params.toString()}`, { scroll: false });
+                            if (sortParam) params.set("sortBy", sortParam);
+                            router.push(`/dashboard/new-project/packages?${params.toString()}`, { scroll: false });
                           }}
-                          className={`w-full text-left px-3.5 py-2 rounded-xl text-xs sm:text-sm transition-all cursor-pointer ${
+                          className={`text-left py-1.5 px-3 rounded-md text-[13px] transition-colors cursor-pointer ${
                             isActive
-                              ? "bg-white font-bold text-[#0D1939] shadow-xs border border-gray-200/80"
-                              : "text-[#64748B] hover:text-[#0D1939] font-medium hover:bg-gray-100/50"
+                              ? "bg-white text-[#404040] shadow-sm border border-gray-100 font-semibold"
+                              : "text-gray-400 hover:text-gray-600 hover:bg-gray-100/50 font-medium"
                           }`}
                         >
                           {cat.name}
@@ -526,36 +481,43 @@ function PackagesContent() {
               )}
             </div>
 
-            {/* Horizontal Divider */}
-            <div className="border-t border-gray-200/80 my-5" />
+            <div className="w-full h-px bg-gray-200" />
 
             {/* Price Range Section */}
-            <div className="mb-6">
+            <div className="bg-transparent">
               <button
                 onClick={() => setShowPriceFilter(!showPriceFilter)}
-                className="w-full flex items-center justify-between font-bold text-gray-800 text-xs sm:text-sm mb-4 cursor-pointer"
+                className="flex items-center justify-between w-full group py-3.5 cursor-pointer"
               >
-                <span className="flex items-center gap-2">
-                  <span className="w-4 h-4 rounded-full border border-gray-500 flex items-center justify-center text-[10px] text-gray-600 font-bold">$</span>
-                  Price Range
-                </span>
-                <svg className={`w-3.5 h-3.5 text-gray-500 transition-transform ${showPriceFilter ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                <div className="flex items-center gap-2.5 font-bold text-[#404040] text-sm sm:text-[15px]">
+                  <svg className="w-5 h-5 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Price Range</span>
+                </div>
+                <svg
+                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${showPriceFilter ? "rotate-180" : ""}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
 
               {showPriceFilter && (
-                <div>
+                <div className="px-1 pb-3">
                   {/* Slider Bar */}
-                  <div className="relative w-full h-5 flex items-center mb-1">
-                    <div className="absolute w-full h-1 bg-gray-200 rounded-full" />
-                    <div
-                      className="absolute h-1 bg-[#4343F0] rounded-full pointer-events-none"
-                      style={{
-                        left: `${priceMinPercent}%`,
-                        width: `${Math.max(0, priceMaxPercent - priceMinPercent)}%`,
-                      }}
-                    />
+                  <div className="relative w-full mb-6">
+                    <div className="relative h-1 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="absolute h-full bg-[#4343F0] rounded-full"
+                        style={{
+                          left: `${priceMinPercent}%`,
+                          right: `${Math.max(0, 100 - priceMaxPercent)}%`,
+                        }}
+                      />
+                    </div>
                     <input
                       type="range"
                       min={priceRangeMin}
@@ -565,7 +527,7 @@ function PackagesContent() {
                         const val = Math.min(Number(e.target.value), currentMaxPriceVal);
                         setMinPrice(val.toString());
                       }}
-                      className="slider-thumb absolute w-full h-1 appearance-none bg-transparent pointer-events-none z-20"
+                      className="slider-thumb absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none"
                     />
                     <input
                       type="range"
@@ -576,34 +538,34 @@ function PackagesContent() {
                         const val = Math.max(Number(e.target.value), currentMinPriceVal);
                         setMaxPrice(val.toString());
                       }}
-                      className="slider-thumb absolute w-full h-1 appearance-none bg-transparent pointer-events-none z-10"
+                      className="slider-thumb absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none"
                     />
                   </div>
 
                   {/* Range labels below slider */}
-                  <div className="flex items-center justify-between text-xs text-gray-400 font-medium mb-3">
-                    <span>{currencySymbol}{priceRangeMin}</span>
-                    <span>{currencySymbol}{priceRangeMax}</span>
+                  <div className="flex items-center justify-between text-xs text-gray-400 mb-4">
+                    <span>{currencySymbol}{priceRangeMin.toLocaleString()}</span>
+                    <span>{currencySymbol}{priceRangeMax.toLocaleString()}</span>
                   </div>
 
-                  {/* Min / Max Inputs with Dash */}
-                  <div className="flex items-center gap-2">
-                    <div className="border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white flex-1 flex flex-col">
-                      <span className="text-gray-400 text-[10px] font-normal leading-tight mb-0.5">Min</span>
+                  {/* Min / Max Inputs */}
+                  <div className="flex gap-2">
+                    <div className="border border-gray-300 rounded px-3 py-2 bg-white flex-1">
+                      <span className="text-gray-400 text-xs block mb-0.5">Min</span>
                       <input
                         type="number"
-                        className="w-full text-xs sm:text-sm font-semibold text-gray-700 outline-none bg-transparent"
+                        className="w-full text-sm outline-none text-gray-600 font-medium bg-transparent"
                         placeholder={String(priceRangeMin)}
                         value={minPrice}
                         onChange={(e) => setMinPrice(e.target.value)}
                       />
                     </div>
-                    <span className="text-gray-400 font-medium">-</span>
-                    <div className="border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white flex-1 flex flex-col">
-                      <span className="text-gray-400 text-[10px] font-normal leading-tight mb-0.5">Max</span>
+                    <div className="self-center text-gray-400">-</div>
+                    <div className="border border-gray-300 rounded px-3 py-2 bg-white flex-1">
+                      <span className="text-gray-400 text-xs block mb-0.5">Max</span>
                       <input
                         type="number"
-                        className="w-full text-xs sm:text-sm font-semibold text-gray-700 outline-none bg-transparent"
+                        className="w-full text-sm outline-none text-gray-600 font-medium bg-transparent"
                         placeholder={String(priceRangeMax)}
                         value={maxPrice}
                         onChange={(e) => setMaxPrice(e.target.value)}
@@ -614,38 +576,43 @@ function PackagesContent() {
               )}
             </div>
 
-            {/* Horizontal Divider */}
-            <div className="border-t border-gray-200/80 my-5" />
+            <div className="w-full h-px bg-gray-200" />
 
             {/* Timeline Range Section */}
-            <div className="mb-6">
+            <div className="bg-transparent">
               <button
                 onClick={() => setShowTimelineFilter(!showTimelineFilter)}
-                className="w-full flex items-center justify-between font-bold text-gray-800 text-xs sm:text-sm mb-4 cursor-pointer"
+                className="flex items-center justify-between w-full group py-3.5 cursor-pointer"
               >
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="flex items-center gap-2.5 font-bold text-[#404040] text-sm sm:text-[15px]">
+                  <svg className="w-5 h-5 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  Timeline Range
-                </span>
-                <svg className={`w-3.5 h-3.5 text-gray-500 transition-transform ${showTimelineFilter ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                  <span>Timeline Range</span>
+                </div>
+                <svg
+                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${showTimelineFilter ? "rotate-180" : ""}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
 
               {showTimelineFilter && (
-                <div>
+                <div className="px-1 pb-3">
                   {/* Slider Bar */}
-                  <div className="relative w-full h-5 flex items-center mb-1">
-                    <div className="absolute w-full h-1 bg-gray-200 rounded-full" />
-                    <div
-                      className="absolute h-1 bg-[#4343F0] rounded-full pointer-events-none"
-                      style={{
-                        left: `${timelineMinPercent}%`,
-                        width: `${Math.max(0, timelineMaxPercent - timelineMinPercent)}%`,
-                      }}
-                    />
+                  <div className="relative w-full mb-6">
+                    <div className="relative h-1 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="absolute h-full bg-[#4343F0] rounded-full"
+                        style={{
+                          left: `${timelineMinPercent}%`,
+                          right: `${Math.max(0, 100 - timelineMaxPercent)}%`,
+                        }}
+                      />
+                    </div>
                     <input
                       type="range"
                       min={timelineRangeMin}
@@ -655,7 +622,7 @@ function PackagesContent() {
                         const val = Math.min(Number(e.target.value), currentMaxTimelineVal);
                         setMinTimeline(val.toString());
                       }}
-                      className="slider-thumb absolute w-full h-1 appearance-none bg-transparent pointer-events-none z-20"
+                      className="slider-thumb absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none"
                     />
                     <input
                       type="range"
@@ -666,34 +633,34 @@ function PackagesContent() {
                         const val = Math.max(Number(e.target.value), currentMinTimelineVal);
                         setMaxTimeline(val.toString());
                       }}
-                      className="slider-thumb absolute w-full h-1 appearance-none bg-transparent pointer-events-none z-10"
+                      className="slider-thumb absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none"
                     />
                   </div>
 
                   {/* Range labels below slider */}
-                  <div className="flex items-center justify-between text-xs text-gray-400 font-medium mb-3">
-                    <span>{timelineRangeMin} wks</span>
-                    <span>{timelineRangeMax} wks</span>
+                  <div className="flex items-center justify-between text-xs text-gray-400 mb-4">
+                    <span>{timelineRangeMin} days</span>
+                    <span>{timelineRangeMax} days</span>
                   </div>
 
-                  {/* Min wks / Max wks Inputs with Dash */}
-                  <div className="flex items-center gap-2">
-                    <div className="border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white flex-1 flex flex-col">
-                      <span className="text-gray-400 text-[10px] font-normal leading-tight mb-0.5">Min wks</span>
+                  {/* Min / Max Inputs */}
+                  <div className="flex gap-2">
+                    <div className="border border-gray-300 rounded px-3 py-2 bg-white flex-1">
+                      <span className="text-gray-400 text-xs block mb-0.5">Min days</span>
                       <input
                         type="number"
-                        className="w-full text-xs sm:text-sm font-semibold text-gray-700 outline-none bg-transparent"
+                        className="w-full text-sm outline-none text-gray-600 font-medium bg-transparent"
                         placeholder={String(timelineRangeMin)}
                         value={minTimeline}
                         onChange={(e) => setMinTimeline(e.target.value)}
                       />
                     </div>
-                    <span className="text-gray-400 font-medium">-</span>
-                    <div className="border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white flex-1 flex flex-col">
-                      <span className="text-gray-400 text-[10px] font-normal leading-tight mb-0.5">Max wks</span>
+                    <div className="self-center text-gray-400">-</div>
+                    <div className="border border-gray-300 rounded px-3 py-2 bg-white flex-1">
+                      <span className="text-gray-400 text-xs block mb-0.5">Max days</span>
                       <input
                         type="number"
-                        className="w-full text-xs sm:text-sm font-semibold text-gray-700 outline-none bg-transparent"
+                        className="w-full text-sm outline-none text-gray-600 font-medium bg-transparent"
                         placeholder={String(timelineRangeMax)}
                         value={maxTimeline}
                         onChange={(e) => setMaxTimeline(e.target.value)}
@@ -704,9 +671,7 @@ function PackagesContent() {
               )}
             </div>
 
-            {/* Horizontal Divider */}
-            <div className="border-t border-gray-200/80 my-5" />
-
+            <div className="w-full h-px bg-gray-200" />
           </aside>
 
           {/* Cards Grid Section */}
@@ -809,7 +774,16 @@ function PackagesContent() {
               <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-dashed border-gray-200 text-center p-8">
                 <p className="text-gray-500 font-medium text-sm mb-2">No packages found matching your filters.</p>
                 <button
-                  onClick={() => { setMinPrice(""); setMaxPrice(""); setMinTimeline(""); setMaxTimeline(""); setActiveCategoryId("all"); }}
+                  onClick={() => {
+                    setMinPrice("");
+                    setMaxPrice("");
+                    setMinTimeline("");
+                    setMaxTimeline("");
+                    const params = new URLSearchParams();
+                    params.set("categorycode", "ALL");
+                    params.set("sortBy", ORDER_ASC);
+                    router.push(`/dashboard/new-project/packages?${params.toString()}`, { scroll: false });
+                  }}
                   className="text-[#4343F0] font-bold text-xs hover:underline cursor-pointer"
                 >
                   Clear all filters
