@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
-import HttpClient from "@/lib/HttpClient";
 import StatusPopup from "@/components/common/StatusPopup";
-
-const httpClient = new HttpClient();
+import { supportService } from "@/lib/supportService";
+import { mediaService } from "@/lib/mediaService";
+import { authService } from "@/lib/authService";
 
 export default function SubmitTicketPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     subject: "",
     type: "general",
@@ -20,6 +22,7 @@ export default function SubmitTicketPage() {
     type: "success" as "success" | "error",
     title: "",
     message: "",
+    actionButton: undefined as { text: string; onClick: () => void } | undefined,
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -28,34 +31,99 @@ export default function SubmitTicketPage() {
     e.preventDefault();
     if (loading) return;
 
+    // Check authentication
+    if (!authService.isAuthenticated()) {
+      setPopup({
+        isOpen: true,
+        type: "error",
+        title: "Authentication Required",
+        message: "Please log in to submit a support ticket so our team can follow up with your account.",
+        actionButton: {
+          text: "Log In",
+          onClick: () => router.push("/login?redirect=/help-support/submit-ticket"),
+        },
+      });
+      return;
+    }
+
+    if (formData.subject.trim().length < 5) {
+      setPopup({
+        isOpen: true,
+        type: "error",
+        title: "Invalid Subject",
+        message: "Subject must be at least 5 characters long.",
+        actionButton: undefined,
+      });
+      return;
+    }
+
+    if (formData.description.trim().length < 10) {
+      setPopup({
+        isOpen: true,
+        type: "error",
+        title: "Invalid Description",
+        message: "Description message must be at least 10 characters long.",
+        actionButton: undefined,
+      });
+      return;
+    }
+
     try {
       setLoading(true);
-      const data = new FormData();
-      data.append("subject", formData.subject);
-      data.append("type", formData.type);
-      data.append("description", formData.description);
-      attachments.forEach((file) => data.append("attachments", file));
 
-      const res: any = await httpClient.post("/tickets/create", data);
+      // Upload any attachments first
+      const attachmentUrls: string[] = [];
+      if (attachments.length > 0) {
+        for (const file of attachments) {
+          try {
+            const uploadRes: any = await mediaService.uploadImage({ file, folder: "support_tickets" });
+            const fileUrl = uploadRes?.data?.url || uploadRes?.url || uploadRes?.data?.secure_url || uploadRes?.data?.Location;
+            if (fileUrl) {
+              attachmentUrls.push(fileUrl);
+            }
+          } catch (uploadErr) {
+            console.warn("Failed to upload attachment:", file.name, uploadErr);
+          }
+        }
+      }
 
-      if (res.success) {
+      const mappedType = formData.type === "feature_request" ? "feature" : formData.type;
+
+      const payload = {
+        subject: formData.subject.trim(),
+        message: formData.description.trim(),
+        type: mappedType,
+        attachmentUrls,
+      };
+
+      const res: any = await supportService.createTicket(payload);
+
+      if (res?.isSuccessful || res?.statusCode === 201 || res?.data) {
+        const ticketNum = res.data?.ticketNumber || res.data?._id?.slice(-8).toUpperCase();
         setPopup({
           isOpen: true,
           type: "success",
           title: "Ticket Submitted!",
-          message: "Your support ticket has been created successfully. Our team will review it soon.",
+          message: `Your support ticket ${ticketNum ? `#${ticketNum} ` : ""}has been created successfully. Our team will review it soon.`,
+          actionButton: {
+            text: "View Support History",
+            onClick: () => router.push("/help-support/history"),
+          },
         });
         setFormData({ subject: "", type: "general", description: "" });
         setAttachments([]);
       } else {
-        throw new Error(res.message || "Failed to submit ticket");
+        throw new Error(res?.message || "Failed to submit ticket");
       }
     } catch (error: any) {
+      console.error("Support ticket submission error:", error);
+      const errMsg = error?.response?.data?.message || error?.data?.message || error?.message || "An error occurred while submitting your ticket.";
       setPopup({
         isOpen: true,
         type: "error",
         title: "Submission Failed",
-        message: error?.response?.data?.message || "An error occurred while submitting your ticket.",
+        message: Array.isArray(errMsg) ? errMsg.join(", ") : errMsg,
+        actionButton: undefined,
       });
     } finally {
       setLoading(false);
@@ -76,6 +144,7 @@ export default function SubmitTicketPage() {
         type={popup.type}
         title={popup.title}
         message={popup.message}
+        actionButton={popup.actionButton}
       />
 
       {/* Hero Section */}
@@ -133,7 +202,7 @@ export default function SubmitTicketPage() {
                     value={formData.subject}
                     onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                     className="w-full border border-gray-400 rounded-[4px] px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 transition-all h-[50px]"
-                    placeholder="Brief summary of the issue"
+                    placeholder="Brief summary of the issue (min. 5 chars)"
                   />
                 </div>
 
@@ -195,7 +264,7 @@ export default function SubmitTicketPage() {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="w-full border border-gray-400 rounded-[4px] px-4 py-4 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 transition-all h-48 resize-none"
-                placeholder="Please explain your issue in detail..."
+                placeholder="Please explain your issue in detail (min. 10 chars)..."
               ></textarea>
             </div>
 
