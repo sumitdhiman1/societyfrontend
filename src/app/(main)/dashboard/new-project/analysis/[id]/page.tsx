@@ -222,8 +222,8 @@ export default function AnalysisOrderPage() {
     product?.coverImage ||
     product?.imageUrl ||
     (title.toLowerCase().includes("check")
-      ? "/images/browse_packages_card_1770345523802.png"
-      : "/images/browse_packages_card_v2_1770345592512.png");
+      ? "/images/free_checking_of_work.jpg"
+      : "/images/free_website_analysis.jpg");
 
   const vf = product?.visibleFormFields || {};
   const visibleFields = {

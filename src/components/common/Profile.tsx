@@ -76,6 +76,16 @@ export const Profile = ({
             onMouseDown={(e) => {
               e.preventDefault();
               setProfileDropdownOpen(false);
+              router.push("/dashboard/my-analyses");
+            }}
+            className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            My Analyses
+          </button>
+          <button
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setProfileDropdownOpen(false);
               router.push("/dashboard/my-quotes");
             }}
             className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors"

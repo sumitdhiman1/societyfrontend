@@ -3,9 +3,8 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
-import HttpClient from "@/lib/HttpClient";
-
-const httpClient = new HttpClient();
+import { supportService } from "@/lib/supportService";
+import { authService } from "@/lib/authService";
 
 export default function SupportHistoryPage() {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -13,14 +12,24 @@ export default function SupportHistoryPage() {
 
   useEffect(() => {
     const fetchTickets = async () => {
+      if (!authService.isAuthenticated()) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
-        const res: any = await httpClient.get("/tickets/my-tickets");
-        if (res.success && Array.isArray(res.data)) {
+        const res: any = await supportService.getAllTickets();
+        if (res?.data?.tickets && Array.isArray(res.data.tickets)) {
+          setTickets(res.data.tickets);
+        } else if (res?.data && Array.isArray(res.data)) {
           setTickets(res.data);
+        } else {
+          setTickets([]);
         }
       } catch (error) {
         console.error("Failed to fetch tickets:", error);
+        setTickets([]);
       } finally {
         setLoading(false);
       }
@@ -69,31 +78,29 @@ export default function SupportHistoryPage() {
                     <div className="flex-grow">
                       <div className="flex items-center gap-3 mb-2">
                         <span className="text-xs font-bold text-primary-300 uppercase tracking-widest bg-blue-50 px-2 py-1 rounded">
-                          {ticket.type}
+                          {ticket.type || "General"}
                         </span>
                         <span className="text-xs text-gray-400 font-medium">
-                          #{ticket._id.slice(-8).toUpperCase()}
+                          #{ticket.ticketNumber || ticket._id.slice(-8).toUpperCase()}
                         </span>
                       </div>
                       <h3 className="text-lg font-bold text-gray-800 mb-1 group-hover:text-primary-300 transition-colors">
                         {ticket.subject}
                       </h3>
-                      <p className="text-sm text-gray-500 line-clamp-1">{ticket.description}</p>
+                      <p className="text-sm text-gray-500 line-clamp-1">
+                        {ticket.messages?.[0]?.text || ticket.description || "Support ticket opened"}
+                      </p>
                     </div>
                     <div className="flex items-center gap-6 shrink-0">
                       <div className="text-right hidden sm:block">
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Status</p>
-                        <span className={`text-sm font-bold ${ticket.status === "resolved" ? "text-green-500" :
-                            ticket.status === "pending" ? "text-orange-500" : "text-primary-300"
-                          } capitalize`}>
+                        <span className={`text-sm font-bold ${
+                          ticket.status === "closed" || ticket.status === "resolved" ? "text-green-500" :
+                          ticket.status === "in_progress" ? "text-orange-500" : "text-primary-300"
+                        } uppercase text-xs tracking-wider`}>
                           {ticket.status}
                         </span>
                       </div>
-                      <Link href={`/help-support/history/${ticket._id}`}>
-                        <button className="bg-white border-2 border-gray-100 hover:border-primary-300 hover:text-primary-300 text-gray-600 font-bold py-2 px-6 rounded-lg text-sm transition-all">
-                          View Ticket
-                        </button>
-                      </Link>
                     </div>
                   </div>
                 </div>

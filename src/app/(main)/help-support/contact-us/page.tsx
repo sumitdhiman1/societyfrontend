@@ -30,9 +30,18 @@ export default function ContactUsPage() {
 
     try {
       setLoading(true);
-      const res: any = await httpClient.post("/contact/submit", formData);
+      const payload = {
+        fullName: formData.fullName.trim(),
+        email: formData.email.trim(),
+        phoneNumber: formData.phone.trim(),
+        phone: formData.phone.trim(),
+        subject: formData.subject.trim(),
+        message: formData.message.trim(),
+      };
+
+      const res: any = await httpClient.post("/contact/submit", payload);
       
-      if (res.success) {
+      if (res?.isSuccessful || res?.statusCode === 201 || res?.data || res?.success) {
         setPopup({
           isOpen: true,
           type: "success",
@@ -47,14 +56,16 @@ export default function ContactUsPage() {
           message: "",
         });
       } else {
-        throw new Error(res.message || "Failed to send message");
+        throw new Error(res?.message || "Failed to send message");
       }
     } catch (error: any) {
+      console.error("Contact submission error:", error);
+      const errMsg = error?.response?.data?.message || error?.data?.message || error?.message || "An error occurred. Please try again later.";
       setPopup({
         isOpen: true,
         type: "error",
         title: "Submission Failed",
-        message: error?.response?.data?.message || "An error occurred. Please try again later.",
+        message: Array.isArray(errMsg) ? errMsg.join(", ") : errMsg,
       });
     } finally {
       setLoading(false);
