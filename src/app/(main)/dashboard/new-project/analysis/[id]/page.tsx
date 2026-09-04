@@ -218,18 +218,21 @@ export default function AnalysisOrderPage() {
   
   const imageSrc =
     product?.detailImage ||
+    product?.detailImageUrl ||
     product?.coverImage ||
+    product?.imageUrl ||
     (title.toLowerCase().includes("check")
       ? "/images/browse_packages_card_1770345523802.png"
       : "/images/browse_packages_card_v2_1770345592512.png");
 
-  const visibleFields = product?.visibleFormFields || {
-    urlToCheck: true,
-    whatToLookAt: true,
-    additionalInfo: true,
-    whoCompletedWork: title.toLowerCase().includes("check"),
-    agreementDetails: title.toLowerCase().includes("check"),
-    shareAccess: title.toLowerCase().includes("check"),
+  const vf = product?.visibleFormFields || {};
+  const visibleFields = {
+    urlToCheck: vf.urlToCheck !== undefined ? vf.urlToCheck : (product?.showWebsiteUrl !== undefined ? product.showWebsiteUrl : true),
+    whatToLookAt: vf.whatToLookAt !== undefined ? vf.whatToLookAt : (product?.showScopeOfWork !== undefined ? product.showScopeOfWork : false),
+    additionalInfo: vf.additionalInfo !== undefined ? vf.additionalInfo : (product?.showAdditionalComments !== undefined ? product.showAdditionalComments : false),
+    whoCompletedWork: vf.whoCompletedWork !== undefined ? vf.whoCompletedWork : (product?.showWhoCompletedWork !== undefined ? product.showWhoCompletedWork : false),
+    agreementDetails: vf.agreementDetails !== undefined ? vf.agreementDetails : (product?.showAgreementDetails !== undefined ? product.showAgreementDetails : false),
+    shareAccess: vf.shareAccess !== undefined ? vf.shareAccess : (product?.showLoginsDetails !== undefined ? product.showLoginsDetails : false),
   };
 
   const isFree = product?.isFree !== false && (product?.amount === 0 || product?.amount === undefined);
