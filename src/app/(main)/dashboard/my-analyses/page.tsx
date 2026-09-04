@@ -153,7 +153,7 @@ export default function MyAnalysesPage() {
 
   return (
     <div className="bg-[#F8FAFC] min-h-screen flex flex-col font-sans">
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:px-12 py-10">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] py-10">
         
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">

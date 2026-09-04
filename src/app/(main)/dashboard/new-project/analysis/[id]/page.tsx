@@ -250,7 +250,7 @@ export default function AnalysisOrderPage() {
         />
       )}
 
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:px-[60px] pt-8 md:pt-12 pb-16">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-16">
         {/* 1. TOP PRODUCT OVERVIEW SECTION */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start mb-12">
           {/* Left Column: Title and Long Description */}

@@ -29,8 +29,21 @@ function PackagesContent() {
   const [showCategories, setShowCategories] = useState(true);
   const [showPriceFilter, setShowPriceFilter] = useState(true);
   const [showTimelineFilter, setShowTimelineFilter] = useState(true);
-  const [activeCategoryId, setActiveCategoryId] = useState("all");
-  const [sortBy, setSortBy] = useState(ORDER_ASC);
+
+  const initialCatParam = searchParams.get("categorycode");
+  const initialSortParam = searchParams.get("sortBy");
+
+  const [activeCategoryId, setActiveCategoryId] = useState(() => {
+    if (initialCatParam) {
+      const norm = initialCatParam.toUpperCase();
+      if (norm === "ANALYSIS") return "analysis";
+      if (norm === "BUNDLES") return "bundles";
+      if (norm === "ALL") return "all";
+      return norm.toLowerCase();
+    }
+    return "all";
+  });
+  const [sortBy, setSortBy] = useState(() => initialSortParam || ORDER_ASC);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
 
   // Filter input states (empty string means not user-filtered)
@@ -44,8 +57,6 @@ function PackagesContent() {
   const [priceRangeMax, setPriceRangeMax] = useState(430);
   const [timelineRangeMin, setTimelineRangeMin] = useState(1);
   const [timelineRangeMax, setTimelineRangeMax] = useState(52);
-
-
 
   const sidebarCategories = useMemo(() => [
     { _id: "all", name: "All Packages", slug: "all", categorycode: "ALL" },
@@ -63,26 +74,30 @@ function PackagesContent() {
       setCategoriesLoading(true);
       try {
         const res = await packagesService.listCategories({ page: 1, limit: 100 });
-        if (res?.data) {
-          const cats = Array.isArray(res.data) ? res.data : res.data.categories || res.data.data || [];
-          setCategories(cats);
+        const cats = res?.data ? (Array.isArray(res.data) ? res.data : res.data.categories || res.data.data || []) : [];
+        setCategories(cats);
 
-          const catParam = searchParams.get("categorycode");
-          const sortParam = searchParams.get("sortBy");
-          const minP = searchParams.get("minPrice");
-          const maxP = searchParams.get("maxPrice");
+        const catParam = searchParams.get("categorycode");
+        const sortParam = searchParams.get("sortBy");
+        const minP = searchParams.get("minPrice");
+        const maxP = searchParams.get("maxPrice");
 
-          if (catParam) {
-            const normalized = catParam.toUpperCase();
-            const found = [{ _id: "all", categorycode: "ALL" }, { _id: "analysis", categorycode: "ANALYSIS" }, ...cats].find(
-              c => (c.categorycode || "").toUpperCase() === normalized || (c.slug || "").toUpperCase() === normalized
-            );
-            if (found) setActiveCategoryId(found._id);
-          }
-          if (sortParam) setSortBy(sortParam);
-          if (minP) setMinPrice(minP);
-          if (maxP) setMaxPrice(maxP);
+        if (catParam) {
+          const normalized = catParam.toUpperCase();
+          const allCats = [
+            { _id: "all", name: "All Packages", slug: "all", categorycode: "ALL" },
+            { _id: "analysis", name: "Analysis", slug: "analysis", categorycode: "ANALYSIS" },
+            { _id: "bundles", name: "Bundles", slug: "bundles", categorycode: "BUNDLES" },
+            ...cats,
+          ];
+          const found = allCats.find(
+            c => (c.categorycode || "").toUpperCase() === normalized || (c.slug || "").toUpperCase() === normalized
+          );
+          if (found) setActiveCategoryId(found._id);
         }
+        if (sortParam) setSortBy(sortParam);
+        if (minP) setMinPrice(minP);
+        if (maxP) setMaxPrice(maxP);
       } catch (error) {
         console.error("Failed to fetch categories:", error);
       } finally {
@@ -94,7 +109,6 @@ function PackagesContent() {
 
   // Update active category from URL
   useEffect(() => {
-    if (categoriesLoading) return;
     const catParam = searchParams.get("categorycode");
     if (!catParam) return;
 
@@ -105,7 +119,7 @@ function PackagesContent() {
     if (found && found._id !== activeCategoryId) {
       setActiveCategoryId(found._id);
     }
-  }, [searchParams, categoriesLoading, sidebarCategories, activeCategoryId]);
+  }, [searchParams, sidebarCategories, activeCategoryId]);
 
   // Reset filters on category change
   useEffect(() => {
@@ -119,8 +133,17 @@ function PackagesContent() {
     setLoading(true);
     try {
       const selectedCat = cats.find(c => c._id === catId);
-      const isAll = !selectedCat || (selectedCat.categorycode || "").toUpperCase() === "ALL";
-      const isAnalysis = (selectedCat?.categorycode || "").toUpperCase() === "ANALYSIS" || catId === "analysis";
+      const isAnalysis =
+        catId === "analysis" ||
+        (selectedCat?.categorycode || "").toUpperCase() === "ANALYSIS" ||
+        (selectedCat?.slug || "").toUpperCase() === "ANALYSIS";
+
+      const isBundles =
+        catId === "bundles" ||
+        (selectedCat?.categorycode || "").toUpperCase() === "BUNDLES" ||
+        (selectedCat?.slug || "").toUpperCase() === "BUNDLES";
+
+      const isAll = !isAnalysis && !isBundles && (catId === "all" || !selectedCat || (selectedCat.categorycode || "").toUpperCase() === "ALL");
 
       const queryOptions: any = { page: 1, limit: 100, sortBy: currentSort };
       let fetchedPkgs: any[] = [];
@@ -196,7 +219,7 @@ function PackagesContent() {
               description: prod.shortDescription || prod.description || (isCheck 
                 ? "An offer to check the completed work of any other web professionals, including your own in-house team."
                 : "Our standard free analysis offer covering brand, UI/UX, functionalities, AI potentiality, tech stack."),
-              imageUrl: prod.coverImage || prod.detailImage || (isCheck ? "/images/free_checking_of_work.jpg" : "/images/free_website_analysis.jpg"),
+              imageUrl: prod.coverImage || prod.imageUrl || prod.detailImage || prod.detailImageUrl || (isCheck ? "/images/free_checking_of_work.jpg" : "/images/free_website_analysis.jpg"),
               minTimeline: prod.timelineInDays || (isCheck ? 14 : 5),
               columns: [{ timeline: prod.timelineInDays || (isCheck ? 14 : 5) }],
               visibleFormFields: prod.visibleFormFields || {
@@ -207,7 +230,7 @@ function PackagesContent() {
                 shareAccess: isCheck,
                 additionalInfo: false,
               },
-              order: prod.order || idx + 1,
+              order: prod.order !== undefined ? prod.order : idx + 1,
             };
           });
         }
@@ -217,6 +240,9 @@ function PackagesContent() {
 
       if (isAnalysis) {
         fetchedPkgs = analysisProducts;
+      } else if (isBundles) {
+        const bundlesRes = await packagesService.getAllPackages({ ...queryOptions, categorycode: "BUNDLES" });
+        fetchedPkgs = extractPackages(bundlesRes);
       } else if (isAll) {
         const [allRes, bundlesRes] = await Promise.all([
           packagesService.getAllPackages({ ...queryOptions, categorycode: "ALL" }),
@@ -224,7 +250,7 @@ function PackagesContent() {
         ]);
         fetchedPkgs = [...analysisProducts, ...extractPackages(allRes), ...extractPackages(bundlesRes)];
       } else {
-        queryOptions.categorycode = selectedCat.categorycode;
+        queryOptions.categorycode = selectedCat?.categorycode || selectedCat?.slug;
         const res = await packagesService.getAllPackages(queryOptions);
         fetchedPkgs = extractPackages(res);
       }
@@ -262,22 +288,8 @@ function PackagesContent() {
   };
 
   useEffect(() => {
-    if (categoriesLoading) return;
-
-    const cat = sidebarCategories.find(c => c._id === activeCategoryId);
-    const targetCode = (cat && cat._id !== "all" ? cat.categorycode || cat.slug : "ALL").toUpperCase();
-    const urlCode = (searchParams.get("categorycode") || "ALL").toUpperCase();
-    const urlSort = searchParams.get("sortBy") || ORDER_ASC;
-
-    if (targetCode !== urlCode || sortBy !== urlSort) {
-      const params = new URLSearchParams();
-      params.set("categorycode", targetCode);
-      if (sortBy) params.set("sortBy", sortBy);
-      router.replace(`/dashboard/new-project/packages?${params.toString()}`, { scroll: false });
-    }
-
     fetchPackages(activeCategoryId, sidebarCategories, sortBy);
-  }, [activeCategoryId, sortBy, categoriesLoading]);
+  }, [activeCategoryId, sortBy, sidebarCategories]);
 
   // Filtered packages
   const filteredPackages = useMemo(() => {
@@ -405,7 +417,7 @@ function PackagesContent() {
 
 
 
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:px-12 py-10">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] py-10">
         
         {/* Top Header */}
         <div className="flex flex-row items-center justify-between gap-4 mb-8">
@@ -436,7 +448,16 @@ function PackagesContent() {
                 ].map(option => (
                   <button
                     key={option.id}
-                    onClick={() => { setSortBy(option.id); setShowSortDropdown(false); }}
+                    onClick={() => {
+                      setSortBy(option.id);
+                      setShowSortDropdown(false);
+                      const cat = sidebarCategories.find(c => c._id === activeCategoryId);
+                      const targetCode = (cat && cat._id !== "all" ? cat.categorycode || cat.slug : "ALL").toUpperCase();
+                      const params = new URLSearchParams();
+                      params.set("categorycode", targetCode);
+                      params.set("sortBy", option.id);
+                      router.replace(`/dashboard/new-project/packages?${params.toString()}`, { scroll: false });
+                    }}
                     className={`w-full text-left px-4 py-2 text-xs sm:text-sm hover:bg-gray-50 transition-colors cursor-pointer ${sortBy === option.id ? "bg-blue-50 font-bold text-[#4343F0]" : "text-gray-700"}`}
                   >
                     {option.label}
@@ -482,11 +503,18 @@ function PackagesContent() {
                       return (
                         <button
                           key={cat._id}
-                          onClick={() => setActiveCategoryId(cat._id)}
-                          className={`w-full text-left px-3 py-1.5 rounded-lg text-xs sm:text-sm transition-all cursor-pointer ${
+                          onClick={() => {
+                            setActiveCategoryId(cat._id);
+                            const targetCode = (cat && cat._id !== "all" ? cat.categorycode || cat.slug : "ALL").toUpperCase();
+                            const params = new URLSearchParams();
+                            params.set("categorycode", targetCode);
+                            if (sortBy) params.set("sortBy", sortBy);
+                            router.replace(`/dashboard/new-project/packages?${params.toString()}`, { scroll: false });
+                          }}
+                          className={`w-full text-left px-3.5 py-2 rounded-xl text-xs sm:text-sm transition-all cursor-pointer ${
                             isActive
-                              ? "bg-white font-bold text-[#0D1939] shadow-xs"
-                              : "text-gray-500 hover:text-gray-900 font-medium"
+                              ? "bg-white font-bold text-[#0D1939] shadow-xs border border-gray-200/80"
+                              : "text-[#64748B] hover:text-[#0D1939] font-medium hover:bg-gray-100/50"
                           }`}
                         >
                           {cat.name}
@@ -686,8 +714,8 @@ function PackagesContent() {
             {loading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {[1, 2, 3].map(i => (
-                  <div key={i} className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4 animate-pulse">
-                    <div className="w-full h-48 bg-gray-200 rounded-xl" />
+                  <div key={i} className="bg-white rounded-2xl border border-gray-200/80 p-5 space-y-4 animate-pulse">
+                    <div className="w-full aspect-[16/10] bg-gray-200 rounded-xl" />
                     <div className="h-4 w-20 bg-gray-200 rounded-full mx-auto" />
                     <div className="h-6 w-3/4 bg-gray-200 rounded mx-auto" />
                     <div className="h-10 w-full bg-gray-100 rounded" />
@@ -711,15 +739,15 @@ function PackagesContent() {
                     <div
                       key={pkg._id}
                       onClick={() => handleCardClick(pkg)}
-                      className="bg-white rounded-2xl border border-gray-200/70 p-5 shadow-2xs hover:shadow-md transition-all flex flex-col items-center text-center group cursor-pointer"
+                      className="bg-white rounded-[10px] border border-[#d1d1d1] p-6 hover:shadow-lg transition-shadow duration-300 flex flex-col items-center text-center group cursor-pointer"
                     >
                       {/* Card Image */}
-                      <div className="w-full h-48 sm:h-52 bg-gray-100 rounded-xl mb-4 overflow-hidden flex items-center justify-center relative">
+                      <div className="w-full h-48 bg-[#d9d9d9] rounded-md mb-6 flex items-center justify-center relative overflow-hidden">
                         {pkg.imageUrl || pkg.mediumUrl ? (
                           <img
                             src={pkg.imageUrl || pkg.mediumUrl}
                             alt={pkg.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            className="w-full h-full object-cover"
                           />
                         ) : (
                           <svg className="w-12 h-12 text-gray-300" fill="currentColor" viewBox="0 0 24 24">
@@ -729,49 +757,48 @@ function PackagesContent() {
                       </div>
 
                       {/* Category Tag */}
-                      <span className="text-[10px] font-bold text-gray-500 bg-[#F1F5F9] px-3.5 py-0.5 rounded-full uppercase tracking-wider mb-2.5">
+                      <span className="text-[11px] font-bold text-[#808080] bg-[#e0e0e0] px-3 py-1 rounded-full uppercase tracking-wide mb-3">
                         {categoryLabel}
                       </span>
 
                       {/* Title */}
-                      <h3 className="text-lg font-bold text-[#0D1939] group-hover:text-[#4343F0] transition-colors mb-2 leading-snug">
+                      <h3 className="text-xl font-bold text-[#646464] mb-3 leading-tight group-hover:text-[#4343F0] transition-colors">
                         {pkg.name}
                       </h3>
 
                       {/* Description */}
-                      <p className="text-xs text-gray-500 mb-5 leading-relaxed line-clamp-2 px-1">
+                      <p className="text-[13px] text-[#808080] mb-6 leading-relaxed px-2 line-clamp-2">
                         {pkg.description || "Our standard free analysis offer covering brand, UI/UX, functionalities, AI potentiality, tech stack."}
                       </p>
 
-                      {/* Price */}
-                      <div className="mt-auto mb-3">
-                        <span className="text-2xl font-bold text-gray-800 tracking-tight">
+                      {/* Footer: Price & Timeline */}
+                      <div className="mt-auto w-full border-t border-gray-100 pt-4 space-y-2">
+                        <div className="text-[22px] font-bold text-[#808080]">
                           {pkg.amount}
-                        </span>
-                      </div>
+                        </div>
 
-                      {/* Timeline / Badges */}
-                      <div className="flex flex-wrap gap-2 items-center justify-center">
-                        {billingLabel && (
-                          <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${isMonthly && !isFixed ? "bg-blue-50 text-blue-600" : isFixed && !isMonthly ? "bg-purple-50 text-purple-600" : "bg-gray-100 text-gray-600"}`}>
-                            {billingLabel}
-                          </span>
-                        )}
-                        {pkg.isAnalysis ? (
-                          <span className="text-xs font-semibold px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 inline-flex items-center gap-1.5">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Timeline: {pkg.minTimeline || 5} days
-                          </span>
-                        ) : minT !== null && minT > 0 ? (
-                          <span className="text-xs font-semibold px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 inline-flex items-center gap-1.5">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            {isMonthly && !isFixed ? "30 days / month" : `${minT} days`}
-                          </span>
-                        ) : null}
+                        <div className="flex flex-wrap gap-2 items-center justify-center">
+                          {billingLabel && (
+                            <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${isMonthly && !isFixed ? "bg-blue-50 text-blue-600" : isFixed && !isMonthly ? "bg-purple-50 text-purple-600" : "bg-gray-100 text-gray-600"}`}>
+                              {billingLabel}
+                            </span>
+                          )}
+                          {pkg.isAnalysis ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Timeline: {pkg.minTimeline || 5} days
+                            </span>
+                          ) : minT !== null && minT > 0 ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              {isMonthly && !isFixed ? "30 days / month" : `${minT} days`}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
 
                     </div>
