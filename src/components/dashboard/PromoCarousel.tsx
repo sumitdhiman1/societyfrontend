@@ -86,7 +86,7 @@ export default function PromoCarousel() {
   return (
     <div
       className="relative w-full md:min-h-[209px]  rounded-[8px] 
-    overflow-hidden flex-col justify-center flex  px-6 md:px-10 py-6 md:py-0 
+    overflow-hidden flex-col justify-start  flex px-8 md:px-10 snap-center pt-10 pb-16 
      shadow-[0px_5px_25px_#0000000D] bg-[#0D1939] transition-colors"
     >
       <>
@@ -118,10 +118,10 @@ export default function PromoCarousel() {
                     {slide.badge}
                   </div>
                 )}
-                <h2 className="text-left font-bold text-lg md:text-[24px] leading-tight md:leading-[34px] tracking-[0px] text-[#FFFFFF]">
+                <h2 className="text-left font-bold text-lg md:text-[24px] leading-tight md:leading-[30px] lg:leading-[28px] tracking-[0px] text-[#FFFFFF]">
                   {slide.title}
                 </h2>
-                <p className="text-white text-[14px] leading-[22px] font-semibold opacity-90 mt-3">
+                <p className="text-white text-[14px] leading-[22px]  opacity-90 mt-2 lg:mt-2">
                   {slide.subtitle}
                 </p>
               </div>
@@ -130,7 +130,7 @@ export default function PromoCarousel() {
         </div>
       </>
 
-      <div className=" mt-4   pb-3 flex gap-3 z-20">
+      <div className="absolute bottom-[47px] left-8 md:left-10 flex gap-3 z-20">
         {activeSlides.map((_, i) => (
           <button
             key={`promo-dot-${i}`}
@@ -142,11 +142,10 @@ export default function PromoCarousel() {
                 });
               }
             }}
-            className={`md:w-4 md:h-4 h-2.5 w-2.5 rounded-full transition-all duration-300 cursor-pointer ${
-              i === activeIndex
-                ? "bg-white"
-                : "border border-white/50 hover:bg-white/20"
-            }`}
+            className={`md:w-4 md:h-4 h-2.5 w-2.5 rounded-full transition-all duration-300 cursor-pointer ${i === activeIndex
+              ? "bg-white"
+              : "border border-white/50 hover:bg-white/20"
+              }`}
             aria-label={`Go to slide ${i + 1}`}
           />
         ))}

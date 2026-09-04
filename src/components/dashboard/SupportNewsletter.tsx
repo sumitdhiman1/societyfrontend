@@ -107,7 +107,7 @@ export default function SupportNewsletter() {
               className="object-contain max-w-full h-auto max-h-[170px] md:max-h-[200px]"
             />
           </div>
-          <div className="w-full md:w-2/3 flex flex-col items-center md:items-start z-10 text-center md:text-left space-y-4 md:space-y-8 md:space-y-[40px] px-6">
+          <div className="w-full md:w-2/3 flex flex-col items-center md:items-start z-10 text-center md:text-left space-y-4 md:space-y-8 md:space-y-[40px] px-6 p-inline-set">
             <h3 className="text-[26px] mb-5 md:text-[25px] leading-[34px] md:leading-[30px] font-semibold md:font-bold text-[#434343] capitalize font-sans">
               Visit Help & Support
             </h3>
