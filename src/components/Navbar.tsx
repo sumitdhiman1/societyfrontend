@@ -176,13 +176,13 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
 
       const socketUrl =
         process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-        "https://societywebapi.onrender.com";
+        "http://localhost:5001";
 
       console.log("[Frontend Navbar Socket] 🔌 Connecting to", socketUrl, "| userId:", userId);
 
       const sock = io(socketUrl, {
         path: "/socket.io",
-        transports: ["websocket"],
+        transports: ["websocket", "polling"],
         auth: { token, userId },
         query: { token, userId },
         reconnectionDelay: 2000,
@@ -490,7 +490,14 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
                 Log in
               </button>
               <button
-                onClick={() => router.push("/register")}
+                onClick={() => {
+                  const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+                  if (currentPath.startsWith("/dashboard/my-analyses/")) {
+                    router.push(`/register?from=analysis&redirect=${encodeURIComponent(currentPath)}`);
+                  } else {
+                    router.push("/register");
+                  }
+                }}
                 className="w-[148px] h-[46px] bg-[#4545F0] hover:bg-[#3232b7] text-white text-[15px] font-bold flex items-center justify-center rounded-[7px] transition-all shadow-md hover:shadow-lg whitespace-nowrap"
                 style={{ fontFamily: "var(--font-inter), sans-serif" }}
               >
@@ -578,7 +585,12 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
                 </button>
                 <button
                   onClick={() => {
-                    router.push("/register");
+                    const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+                    if (currentPath.startsWith("/dashboard/my-analyses/")) {
+                      router.push(`/register?from=analysis&redirect=${encodeURIComponent(currentPath)}`);
+                    } else {
+                      router.push("/register");
+                    }
                     setMobileMenuOpen(false);
                   }}
                   className="w-full h-11 border-2 text-[#4343F0] border-[#4343F0] text-sm font-bold flex items-center justify-center rounded-md"

@@ -107,13 +107,13 @@ export default function SupportNewsletter() {
               className="object-contain max-w-full h-auto max-h-[170px] md:max-h-[200px]"
             />
           </div>
-          <div className="w-full md:w-2/3 flex flex-col items-center md:items-start z-10 text-center md:text-left space-y-4 md:space-y-8 md:space-y-[40px] px-6">
+          <div className="w-full md:w-2/3 flex flex-col items-center md:items-start z-10 text-center md:text-left space-y-4 md:space-y-8 md:space-y-[40px] px-6 p-inline-set">
             <h3 className="text-[26px] mb-5 md:text-[25px] leading-[34px] md:leading-[30px] font-semibold md:font-bold text-[#434343] capitalize font-sans">
               Visit Help & Support
             </h3>
             <Link href="/help-support" className="w-full    ">
               <button
-                className="bg-[#4343F0] font-semibold   hover:bg-[#3232b7]
+                className="bg-[#4343F0] font-semibold   hover:bg-[#5c5cf2]
                text-white md:font-bold h-[54px] md:h-[50px] w-full flex items-center 
                justify-center rounded-lg shadow-lg md:shadow-md text-sm transition-all px-4 font-sanstracking-widest"
               >
@@ -161,7 +161,7 @@ export default function SupportNewsletter() {
               <button
                 type="submit"
                 disabled={loading}
-                className="bg-[#4343F0] hover:bg-[#3232b7] text-white font-semibold md:font-bold px-6   text-sm h-full whitespace-nowrap shrink-0 disabled:opacity-75 flex items-center justify-center min-w-[110px] md:min-w-[100px] transition-colors uppercase tracking-widest"
+                className="bg-[#4343F0] hover:bg-[#5c5cf2] text-white font-semibold md:font-bold px-6   text-sm h-full whitespace-nowrap shrink-0 disabled:opacity-75 flex items-center justify-center min-w-[110px] md:min-w-[100px] transition-colors uppercase tracking-widest"
               >
                 {loading ? (
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
