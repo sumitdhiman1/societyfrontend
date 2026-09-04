@@ -228,8 +228,8 @@ export default function AnalysisOrderPage() {
   const vf = product?.visibleFormFields || {};
   const visibleFields = {
     urlToCheck: vf.urlToCheck !== undefined ? vf.urlToCheck : (product?.showWebsiteUrl !== undefined ? product.showWebsiteUrl : true),
+    additionalInfo: vf.additionalInfo !== undefined ? vf.additionalInfo : (product?.showAdditionalComments !== undefined ? product.showAdditionalComments : true),
     whatToLookAt: vf.whatToLookAt !== undefined ? vf.whatToLookAt : (product?.showScopeOfWork !== undefined ? product.showScopeOfWork : false),
-    additionalInfo: vf.additionalInfo !== undefined ? vf.additionalInfo : (product?.showAdditionalComments !== undefined ? product.showAdditionalComments : false),
     whoCompletedWork: vf.whoCompletedWork !== undefined ? vf.whoCompletedWork : (product?.showWhoCompletedWork !== undefined ? product.showWhoCompletedWork : false),
     agreementDetails: vf.agreementDetails !== undefined ? vf.agreementDetails : (product?.showAgreementDetails !== undefined ? product.showAgreementDetails : false),
     shareAccess: vf.shareAccess !== undefined ? vf.shareAccess : (product?.showLoginsDetails !== undefined ? product.showLoginsDetails : false),
@@ -250,271 +250,238 @@ export default function AnalysisOrderPage() {
         />
       )}
 
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-16">
-        {/* 1. TOP PRODUCT OVERVIEW SECTION */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start mb-12">
-          {/* Left Column: Title and Long Description */}
-          <div className="lg:col-span-7 flex flex-col justify-center">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#0D1939] tracking-tight leading-tight">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-10 md:gap-12 mb-10 md:mb-16">
+          <div className="lg:w-[50%] flex flex-col">
+            <h1 className="text-[28px] md:text-[48px] lg:text-[64px] font-bold text-gray-800 leading-[1.1] mb-4 md:mb-6 tracking-tight">
               {title}
             </h1>
-            <p className="text-base sm:text-lg text-gray-500 mt-6 leading-relaxed font-normal whitespace-pre-line">
+            <p className="text-gray-500 leading-relaxed text-base md:text-lg max-w-xl font-medium">
               {longDescription}
             </p>
           </div>
-
-          {/* Right Column: Detail Image */}
-          <div className="lg:col-span-5">
-            <div className="w-full aspect-[16/10] bg-white rounded-2xl overflow-hidden shadow-xs border border-gray-200/80 flex items-center justify-center">
+          <div className="lg:w-[50%] flex items-center justify-center lg:justify-end">
+            <div className="w-full max-w-[620px] aspect-[16/10] bg-[#F0F0F0] rounded-[4px] overflow-hidden shadow-sm border border-gray-200">
               {imageSrc ? (
                 <img
-                  src={imageSrc}
                   alt={title}
                   className="w-full h-full object-cover"
+                  src={imageSrc}
                 />
               ) : (
-                <div className="text-gray-300">No Image Available</div>
+                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                  No Image Available
+                </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* 2. ORDER FORM CARD (Fill out the form to order:) */}
-        <div className="bg-white rounded-2xl border border-gray-200/80 p-6 sm:p-10 shadow-xs mb-12">
-          <h2 className="text-lg font-bold text-gray-900 mb-6 tracking-tight">
-            Fill out the form to order:
-          </h2>
-
-          <form id="analysis-order-form" onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* URL(s) to check: */}
-              {visibleFields.urlToCheck !== false && (
-                <div>
-                  <label className="block text-sm font-bold text-gray-800 mb-2">
-                    URL(s) to check:
-                  </label>
-                  <textarea
-                    rows={4}
-                    required
-                    placeholder="e.g. https://yourwebsite.com"
-                    value={formData.targetWebsiteUrl}
-                    onChange={(e) =>
-                      setFormData({ ...formData, targetWebsiteUrl: e.target.value })
-                    }
-                    className="w-full p-4 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#5356ff] focus:ring-1 focus:ring-[#5356ff] transition-all resize-none shadow-2xs"
-                  />
-                </div>
-              )}
-
-              {/* What specifically do you want us to look at? */}
-              {visibleFields.whatToLookAt !== false && (
-                <div>
-                  <label className="block text-sm font-bold text-gray-800 mb-2">
-                    What specifically do you want us to look at?
-                  </label>
-                  <textarea
-                    rows={4}
-                    placeholder="e.g. design, functionality, SEO, speed, mobile, conversions, etc."
-                    value={formData.scopeOfWork}
-                    onChange={(e) =>
-                      setFormData({ ...formData, scopeOfWork: e.target.value })
-                    }
-                    className="w-full p-4 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#5356ff] focus:ring-1 focus:ring-[#5356ff] transition-all resize-none shadow-2xs"
-                  />
-                </div>
-              )}
-
-              {/* Provide any additional required information: */}
-              {visibleFields.additionalInfo !== false && (
-                <div>
-                  <label className="block text-sm font-bold text-gray-800 mb-2">
-                    Provide any additional required information:
-                  </label>
-                  <textarea
-                    rows={4}
-                    placeholder="Any extra information you'd like to share"
-                    value={formData.additionalComments}
-                    onChange={(e) =>
-                      setFormData({ ...formData, additionalComments: e.target.value })
-                    }
-                    className="w-full p-4 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#5356ff] focus:ring-1 focus:ring-[#5356ff] transition-all resize-none shadow-2xs"
-                  />
-                </div>
-              )}
-
-              {/* Who was the work completed by? */}
-              {visibleFields.whoCompletedWork && (
-                <div>
-                  <label className="block text-sm font-bold text-gray-800 mb-2">
-                    Who was the work completed by?
-                  </label>
-                  <textarea
-                    rows={4}
-                    placeholder="e.g. Freelancer, agency, internal team, etc."
-                    value={formData.whoCompletedWork}
-                    onChange={(e) =>
-                      setFormData({ ...formData, whoCompletedWork: e.target.value })
-                    }
-                    className="w-full p-4 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#5356ff] focus:ring-1 focus:ring-[#5356ff] transition-all resize-none shadow-2xs"
-                  />
-                </div>
-              )}
-
-              {/* What was the agreement for this work? */}
-              {visibleFields.agreementDetails && (
-                <div>
-                  <label className="block text-sm font-bold text-gray-800 mb-2">
-                    What was the agreement for this work?
-                  </label>
-                  <textarea
-                    rows={4}
-                    placeholder="e.g. timeline, deliverables, milestones, etc."
-                    value={formData.agreementDetails}
-                    onChange={(e) =>
-                      setFormData({ ...formData, agreementDetails: e.target.value })
-                    }
-                    className="w-full p-4 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#5356ff] focus:ring-1 focus:ring-[#5356ff] transition-all resize-none shadow-2xs"
-                  />
-                </div>
-              )}
-
-              {/* Please share required access with our email: */}
-              {visibleFields.shareAccess && (
-                <div>
-                  <label className="block text-sm font-bold text-gray-800 mb-2">
-                    Please share required access with our email:
-                  </label>
-                  <textarea
-                    rows={4}
-                    placeholder="e.g. staging link, login credentials, collaborator invites, etc."
-                    value={formData.loginsDetails}
-                    onChange={(e) =>
-                      setFormData({ ...formData, loginsDetails: e.target.value })
-                    }
-                    className="w-full p-4 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#5356ff] focus:ring-1 focus:ring-[#5356ff] transition-all resize-none font-mono shadow-2xs"
-                  />
-                </div>
-              )}
-            </div>
-          </form>
+        <div className="bg-[#fcfcfc] border border-gray-200 rounded-[4px] shadow-sm p-6 md:p-8 mb-10 md:mb-16">
+          <h2 className="text-xl font-bold text-gray-700 mb-6">Fill out the form to order:</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {visibleFields.urlToCheck !== false && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">URL(s) to check:</label>
+                <textarea
+                  id="field-targetUrl"
+                  className="w-full min-h-[120px] bg-white border border-gray-300 rounded-[4px] p-3 text-sm outline-none focus:border-blue-500"
+                  placeholder="e.g. https://yourwebsite.com"
+                  value={formData.targetWebsiteUrl}
+                  onChange={(e) => setFormData({ ...formData, targetWebsiteUrl: e.target.value })}
+                />
+              </div>
+            )}
+            {visibleFields.additionalInfo !== false && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Provide any additional required information:</label>
+                <textarea
+                  className="w-full min-h-[120px] bg-white border border-gray-300 rounded-[4px] p-3 text-sm outline-none focus:border-blue-500"
+                  placeholder="Any extra information you'd like to share"
+                  value={formData.additionalComments}
+                  onChange={(e) => setFormData({ ...formData, additionalComments: e.target.value })}
+                />
+              </div>
+            )}
+            {visibleFields.whatToLookAt && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">What specifically do you want us to look at?</label>
+                <textarea
+                  className="w-full min-h-[120px] bg-white border border-gray-300 rounded-[4px] p-3 text-sm outline-none focus:border-blue-500"
+                  placeholder="e.g. design, functionality, SEO, speed, mobile, conversions, etc."
+                  value={formData.scopeOfWork}
+                  onChange={(e) => setFormData({ ...formData, scopeOfWork: e.target.value })}
+                />
+              </div>
+            )}
+            {visibleFields.whoCompletedWork && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Who was the work completed by?</label>
+                <textarea
+                  className="w-full min-h-[120px] bg-white border border-gray-300 rounded-[4px] p-3 text-sm outline-none focus:border-blue-500"
+                  placeholder="e.g. Freelancer, agency, internal team, etc."
+                  value={formData.whoCompletedWork}
+                  onChange={(e) => setFormData({ ...formData, whoCompletedWork: e.target.value })}
+                />
+              </div>
+            )}
+            {visibleFields.agreementDetails && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">What was the agreement for this work?</label>
+                <textarea
+                  className="w-full min-h-[120px] bg-white border border-gray-300 rounded-[4px] p-3 text-sm outline-none focus:border-blue-500"
+                  placeholder="e.g. timeline, deliverables, milestones, etc."
+                  value={formData.agreementDetails}
+                  onChange={(e) => setFormData({ ...formData, agreementDetails: e.target.value })}
+                />
+              </div>
+            )}
+            {visibleFields.shareAccess && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Please share required access with our email:</label>
+                <textarea
+                  className="w-full min-h-[120px] bg-white border border-gray-300 rounded-[4px] p-3 text-sm outline-none focus:border-blue-500 font-mono"
+                  placeholder="e.g. staging link, login credentials, collaborator invites, etc."
+                  value={formData.loginsDetails}
+                  onChange={(e) => setFormData({ ...formData, loginsDetails: e.target.value })}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* 3. COMPLETE YOUR PURCHASE SECURELY SECTION */}
-        <div className="text-center mb-8">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0D1939] tracking-tight">
-            Complete Your Purchase Securely
-          </h2>
-          <p className="text-sm text-gray-500 mt-2 font-normal">
-            Your information is protected and your project starts immediately.
-          </p>
-        </div>
+        <div className="mt-16" id="payment-section">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-600 mb-3">Complete Your Purchase Securely</h2>
+            <p className="text-gray-500 text-lg">Your information is protected and your project starts immediately.</p>
+          </div>
 
-        {/* 2-Column Summary Cards Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch mb-8">
-          {/* Left Card: Purchase & Deliverables Summary */}
-          <div className="lg:col-span-8 bg-white rounded-2xl border border-gray-200/90 p-6 sm:p-8 shadow-xs flex flex-col justify-between">
-            <div>
-              {/* Badges */}
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <span className="inline-flex items-center px-3.5 py-1 bg-gray-100/90 text-gray-600 rounded-full text-xs font-semibold">
-                  Start Date: {startDateFormatted}
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 bg-gray-100/90 text-gray-600 rounded-full text-xs font-semibold">
-                  Estimated Deadline: {deadlineFormatted}
-                  <HelpIcon />
-                </span>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white border border-gray-300 rounded-[4px] shadow-sm p-6 md:p-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                  <div className="bg-gray-200 px-4 py-2 rounded-full w-fit">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-600 font-medium">Start Date: {startDateFormatted}</span>
+                    </div>
+                  </div>
+                  <div className="bg-gray-200 px-4 py-2 rounded-full w-fit">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-600 font-medium">Estimated Deadline: {deadlineFormatted}</span>
+                      <span className="relative inline-block ml-1 group">
+                        <button
+                          type="button"
+                          className="w-4 h-4 rounded-full bg-gray-400 text-white text-[9px] font-bold flex items-center justify-center cursor-help leading-none transition-colors hover:bg-gray-500"
+                          aria-label="About estimated deadline"
+                          tabIndex={0}
+                        >
+                          ?
+                        </button>
+                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 w-full h-2 pointer-events-auto"></span>
+                        <span
+                          role="tooltip"
+                          className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-gray-900 text-white text-[11px] rounded-lg p-2.5 shadow-xl z-[9999] leading-relaxed font-normal normal-case break-words whitespace-normal opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150 origin-bottom"
+                        >
+                          Time spent waiting for client replies does not count towards project deadlines.
+                          <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></span>
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
+                  <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-600 leading-tight pr-4">
+                    {title}
+                  </h3>
+                  <div className="flex items-center gap-4">
+                    <div className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-600">
+                      {priceDisplay}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-6 text-sm text-gray-500 flex items-center gap-3 flex-wrap">
+                  <span><strong>Project No:</strong> {projectNo}</span>
+                  <span className="text-gray-400">|</span>
+                  <span><strong>Timeline:</strong> {timelineDays} Days</span>
+                </div>
+
+                <div className="mb-8 text-sm text-gray-500 leading-relaxed">
+                  {shortDescription}
+                </div>
+
+                <div className="border-t border-gray-300 mb-6"></div>
+
+                <div>
+                  <h4 className="text-base font-bold text-gray-700 mb-4">Included :</h4>
+                  <ul className="space-y-3">
+                    <li className="flex items-start gap-3 text-sm text-gray-600">
+                      <svg className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Comprehensive Website Review</span>
+                    </li>
+                    <li className="flex items-start gap-3 text-sm text-gray-600">
+                      <svg className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Detailed PDF Report</span>
+                    </li>
+                    <li className="flex items-start gap-3 text-sm text-gray-600">
+                      <svg className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Key Performance Issues Identified</span>
+                    </li>
+                    <li className="flex items-start gap-3 text-sm text-gray-600">
+                      <svg className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Actionable Recommendations</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
 
-              {/* Title & Price */}
-              <div className="flex items-baseline justify-between gap-4 mt-2">
-                <h3 className="text-2xl sm:text-3xl font-extrabold text-[#0D1939] tracking-tight">
-                  {title}
-                </h3>
-                <span className="text-2xl sm:text-3xl font-extrabold text-[#0D1939] tracking-tight">
-                  {priceDisplay}
-                </span>
+              <div className="bg-white border border-gray-300 rounded-[4px] shadow-sm p-6 md:p-8 flex flex-col items-center justify-center text-center">
+                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Free Analysis</h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  This analysis is completely free. We will review your website and notify you within {timelineDays} days.
+                </p>
+                <button
+                  type="button"
+                  onClick={(e) => handleSubmit(e as any)}
+                  disabled={submitting}
+                  className="w-full px-6 py-3.5 bg-[#3535b8] hover:bg-[#2a2a9a] text-white font-semibold rounded transition-colors duration-200 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {submitting && <SpinnerIcon size={16} />}
+                  <span>{submitting ? "Submitting..." : "Submit Request"}</span>
+                </button>
               </div>
-
-              {/* Metadata */}
-              <div className="text-xs text-gray-500 font-semibold mt-2 flex items-center gap-2">
-                <span>Project No: {projectNo}</span>
-                <span>|</span>
-                <span>Timeline: {timelineDays} Days</span>
-              </div>
-
-              {/* Short Description */}
-              <p className="text-xs sm:text-sm text-gray-500 mt-4 leading-relaxed font-normal">
-                {shortDescription}
-              </p>
             </div>
 
-            {/* Included Deliverables */}
-            <div className="border-t border-gray-100 pt-6 mt-6">
-              <h4 className="text-sm font-bold text-gray-900 mb-3 tracking-tight">
-                Included :
-              </h4>
-              <ul className="space-y-2.5">
-                <li className="flex items-center gap-2.5 text-xs sm:text-sm text-gray-700 font-medium">
-                  <CheckIcon className="w-4 h-4 text-gray-800 flex-shrink-0" />
-                  <span>Comprehensive Website Review</span>
-                </li>
-                <li className="flex items-center gap-2.5 text-xs sm:text-sm text-gray-700 font-medium">
-                  <CheckIcon className="w-4 h-4 text-gray-800 flex-shrink-0" />
-                  <span>Detailed PDF Report</span>
-                </li>
-                <li className="flex items-center gap-2.5 text-xs sm:text-sm text-gray-700 font-medium">
-                  <CheckIcon className="w-4 h-4 text-gray-800 flex-shrink-0" />
-                  <span>Key Performance Issues Identified</span>
-                </li>
-                <li className="flex items-center gap-2.5 text-xs sm:text-sm text-gray-700 font-medium">
-                  <CheckIcon className="w-4 h-4 text-gray-800 flex-shrink-0" />
-                  <span>Actionable Recommendations</span>
-                </li>
-              </ul>
+            <div className="lg:col-span-1">
+              <div className="bg-white border border-gray-300 rounded-[4px] shadow-sm p-6">
+                <h3 className="text-xl font-bold text-gray-600 text-center mb-3">Questions Before You Pay?</h3>
+                <p className="text-sm text-gray-500 text-center mb-6">
+                  Our support team is here to help with pricing, payments, or package details—no pressure.
+                </p>
+                <button
+                  type="button"
+                  onClick={openChat}
+                  className="w-full px-6 py-3 bg-[#3535b8] hover:bg-[#2a2a9a] text-white font-semibold rounded transition-colors duration-200 cursor-pointer"
+                >
+                  Contact Support
+                </button>
+              </div>
             </div>
           </div>
-
-          {/* Right Card: Questions Before You Pay? */}
-          <div className="lg:col-span-4 bg-white rounded-2xl border border-gray-200/90 p-6 sm:p-8 shadow-xs text-center flex flex-col justify-center items-center">
-            <h3 className="text-lg font-bold text-[#0D1939] tracking-tight mb-2">
-              Questions Before You Pay?
-            </h3>
-            <p className="text-xs text-gray-500 leading-relaxed mb-6 max-w-xs font-normal">
-              Our support team is here to help with pricing, payments, or package details—no pressure.
-            </p>
-            <button
-              type="button"
-              onClick={openChat}
-              className="w-full py-3.5 bg-[#2A37D8] hover:bg-[#1E2BB8] text-white font-bold rounded-xl text-sm transition-all shadow-md active:scale-[0.98] cursor-pointer"
-            >
-              Contact Support
-            </button>
-          </div>
-        </div>
-
-        {/* 4. FREE ANALYSIS / SUBMIT ACTION CARD */}
-        <div className="bg-white rounded-2xl border border-gray-200/80 p-8 sm:p-10 shadow-xs text-center flex flex-col items-center justify-center">
-          {/* Top Green Check Circle */}
-          <div className="w-12 h-12 rounded-full bg-[#E8F8EE] text-[#1EAA55] flex items-center justify-center mb-4 shadow-2xs">
-            <CheckIcon className="w-6 h-6 text-[#1EAA55]" />
-          </div>
-
-          <h3 className="text-xl font-bold text-gray-900 mb-1">
-            Free Analysis
-          </h3>
-          <p className="text-xs sm:text-sm text-gray-500 mb-6 font-normal">
-            This analysis is completely free. We will review your website and notify you within {timelineDays} days.
-          </p>
-
-          <button
-            type="button"
-            onClick={(e) => handleSubmit(e as any)}
-            disabled={submitting}
-            className="w-full max-w-3xl py-3.5 bg-[#2A37D8] hover:bg-[#1E2BB8] text-white font-bold rounded-xl text-sm transition-all shadow-md active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
-          >
-            {submitting && <SpinnerIcon size={16} />}
-            <span>{submitting ? "Submitting..." : "Submit Request"}</span>
-          </button>
         </div>
       </main>
     </div>

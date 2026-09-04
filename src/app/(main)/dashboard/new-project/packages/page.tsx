@@ -121,9 +121,9 @@ function PackagesContent() {
             urlToCheck: true,
             whoCompletedWork: false,
             agreementDetails: false,
-            whatToLookAt: true,
+            whatToLookAt: false,
             shareAccess: false,
-            additionalInfo: false,
+            additionalInfo: true,
           },
           order: 1,
         },
@@ -143,9 +143,9 @@ function PackagesContent() {
             urlToCheck: true,
             whoCompletedWork: true,
             agreementDetails: true,
-            whatToLookAt: true,
+            whatToLookAt: false,
             shareAccess: true,
-            additionalInfo: false,
+            additionalInfo: true,
           },
           order: 2,
         },
@@ -176,9 +176,9 @@ function PackagesContent() {
                   urlToCheck: true,
                   whoCompletedWork: isCheck,
                   agreementDetails: isCheck,
-                  whatToLookAt: true,
+                  whatToLookAt: false,
                   shareAccess: isCheck,
-                  additionalInfo: false,
+                  additionalInfo: true,
                 },
                 order: prod.order !== undefined ? prod.order : idx + 1,
               };
@@ -527,7 +527,7 @@ function PackagesContent() {
                         const val = Math.min(Number(e.target.value), currentMaxPriceVal);
                         setMinPrice(val.toString());
                       }}
-                      className="slider-thumb absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none"
+                      className="absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#4343F0] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#4343F0] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:hover:scale-110 [&::-moz-range-thumb]:transition-transform"
                     />
                     <input
                       type="range"
@@ -538,7 +538,7 @@ function PackagesContent() {
                         const val = Math.max(Number(e.target.value), currentMinPriceVal);
                         setMaxPrice(val.toString());
                       }}
-                      className="slider-thumb absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none"
+                      className="absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#4343F0] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#4343F0] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:hover:scale-110 [&::-moz-range-thumb]:transition-transform"
                     />
                   </div>
 
@@ -554,7 +554,7 @@ function PackagesContent() {
                       <span className="text-gray-400 text-xs block mb-0.5">Min</span>
                       <input
                         type="number"
-                        className="w-full text-sm outline-none text-gray-600 font-medium bg-transparent"
+                        className="w-full text-sm outline-none text-gray-600 font-medium"
                         placeholder={String(priceRangeMin)}
                         value={minPrice}
                         onChange={(e) => setMinPrice(e.target.value)}
@@ -565,7 +565,7 @@ function PackagesContent() {
                       <span className="text-gray-400 text-xs block mb-0.5">Max</span>
                       <input
                         type="number"
-                        className="w-full text-sm outline-none text-gray-600 font-medium bg-transparent"
+                        className="w-full text-sm outline-none text-gray-600 font-medium"
                         placeholder={String(priceRangeMax)}
                         value={maxPrice}
                         onChange={(e) => setMaxPrice(e.target.value)}
@@ -622,7 +622,7 @@ function PackagesContent() {
                         const val = Math.min(Number(e.target.value), currentMaxTimelineVal);
                         setMinTimeline(val.toString());
                       }}
-                      className="slider-thumb absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none"
+                      className="absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#4343F0] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#4343F0] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:hover:scale-110 [&::-moz-range-thumb]:transition-transform"
                     />
                     <input
                       type="range"
@@ -633,7 +633,7 @@ function PackagesContent() {
                         const val = Math.max(Number(e.target.value), currentMinTimelineVal);
                         setMaxTimeline(val.toString());
                       }}
-                      className="slider-thumb absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none"
+                      className="absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#4343F0] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#4343F0] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:hover:scale-110 [&::-moz-range-thumb]:transition-transform"
                     />
                   </div>
 
@@ -649,7 +649,7 @@ function PackagesContent() {
                       <span className="text-gray-400 text-xs block mb-0.5">Min days</span>
                       <input
                         type="number"
-                        className="w-full text-sm outline-none text-gray-600 font-medium bg-transparent"
+                        className="w-full text-sm outline-none text-gray-600 font-medium"
                         placeholder={String(timelineRangeMin)}
                         value={minTimeline}
                         onChange={(e) => setMinTimeline(e.target.value)}
@@ -660,7 +660,7 @@ function PackagesContent() {
                       <span className="text-gray-400 text-xs block mb-0.5">Max days</span>
                       <input
                         type="number"
-                        className="w-full text-sm outline-none text-gray-600 font-medium bg-transparent"
+                        className="w-full text-sm outline-none text-gray-600 font-medium"
                         placeholder={String(timelineRangeMax)}
                         value={maxTimeline}
                         onChange={(e) => setMaxTimeline(e.target.value)}
@@ -677,7 +677,7 @@ function PackagesContent() {
           {/* Cards Grid Section */}
           <div className="flex-grow w-full">
             {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 transition-opacity duration-200 opacity-100">
                 {[1, 2, 3].map(i => (
                   <div key={i} className="bg-white rounded-2xl border border-gray-200/80 p-5 space-y-4 animate-pulse">
                     <div className="w-full aspect-[16/10] bg-gray-200 rounded-xl" />
@@ -688,7 +688,7 @@ function PackagesContent() {
                 ))}
               </div>
             ) : filteredPackages.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 transition-opacity duration-200 opacity-100">
                 {filteredPackages.map((pkg) => {
                   const minT = pkg.columns && pkg.columns.length > 0 ? pkg.columns.reduce((acc: any, col: any) => col.timeline && (acc === null || col.timeline < acc) ? col.timeline : acc, null) : null;
                   const billingTypes = pkg.columns && pkg.columns.length > 0 ? [...new Set(pkg.columns.map((c: any) => c.billingType).filter(Boolean))] : [];
@@ -712,7 +712,7 @@ function PackagesContent() {
                           <img
                             src={pkg.imageUrl || pkg.mediumUrl}
                             alt={pkg.name}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full"
                           />
                         ) : (
                           <svg className="w-12 h-12 text-gray-300" fill="currentColor" viewBox="0 0 24 24">

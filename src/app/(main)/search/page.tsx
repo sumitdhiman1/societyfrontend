@@ -63,7 +63,7 @@ function SearchResults() {
 
   return (
     <div className="bg-[#F3F4F6] min-h-screen font-sans flex flex-col">
-      <main className="max-w-[1600px] w-full mx-auto px-4 md:px-8 lg:px-[54px] pt-10 pb-16 flex-grow">
+      <main className="max-w-[1536px] w-full mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-10 pb-16 flex-grow">
         <h1 className="text-3xl font-bold text-[#363636] mb-8 font-manrope">
           Search Results for <span className="text-[#5356ff]">"{query}"</span>
         </h1>
