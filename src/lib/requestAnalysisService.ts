@@ -25,24 +25,59 @@ export function savePendingAnalysisInfo(analysis: any) {
   }
 
   const client = typeof analysis.client === "object" ? analysis.client : {};
-  const email = analysis.clientEmail || client?.email || "";
-  const fullName =
-    analysis.clientName &&
-    analysis.clientName !== "Unknown" &&
-    analysis.clientName !== "Prospect"
-      ? analysis.clientName
-      : client?.fullName || "";
-  const phoneNumber = analysis.phoneNumber || client?.phoneNumber || "";
-  const targetWebsiteUrl =
-    analysis.targetWebsiteUrl || analysis.websiteUrl || "";
+  
+  // Clean email
+  let email = analysis.clientEmail || client?.email || "";
+  if (typeof email !== "string" || !email.includes("@")) {
+    email = "";
+  }
 
-  let firstName = client?.firstName || "";
-  let lastName = client?.lastName || "";
+  // Filter dummy/placeholder names
+  const dummyNames = ["unknown", "prospect", "client", "n/a", "null", "undefined", "user", "admin"];
+  const isValidName = (name: any) => {
+    if (!name || typeof name !== "string") return false;
+    const clean = name.trim().toLowerCase();
+    if (dummyNames.includes(clean)) return false;
+    if (clean.includes("@")) return false; // Contains email address
+    return true;
+  };
+
+  let fullName = "";
+  if (isValidName(analysis.clientName)) {
+    fullName = analysis.clientName.trim();
+  } else if (isValidName(client?.fullName)) {
+    fullName = client.fullName.trim();
+  }
+
+  let firstName = "";
+  let lastName = "";
+
+  if (isValidName(client?.firstName)) {
+    firstName = client.firstName.trim();
+  }
+  if (isValidName(client?.lastName)) {
+    lastName = client.lastName.trim();
+  }
+
   if (!firstName && fullName) {
-    const parts = fullName.trim().split(" ");
+    const parts = fullName.split(/\s+/);
     firstName = parts[0] || "";
     lastName = parts.slice(1).join(" ") || "";
   }
+
+  // Clean phone number
+  let phoneNumber = analysis.phoneNumber || analysis.clientPhone || client?.phoneNumber || client?.phone || "";
+  if (typeof phoneNumber !== "string" || !isValidName(phoneNumber)) {
+    phoneNumber = "";
+  }
+
+  // Clean company name
+  let companyName = analysis.clientCompany || analysis.companyName || client?.companyName || client?.company || "";
+  if (typeof companyName !== "string" || !isValidName(companyName)) {
+    companyName = "";
+  }
+
+  const targetWebsiteUrl = analysis.targetWebsiteUrl || analysis.websiteUrl || analysis.domain || "";
 
   const userInfo = {
     email: email.trim(),
@@ -50,11 +85,12 @@ export function savePendingAnalysisInfo(analysis: any) {
     firstName: firstName.trim(),
     lastName: lastName.trim(),
     phoneNumber: phoneNumber.trim(),
-    websiteUrl: targetWebsiteUrl.trim(),
+    companyName: companyName.trim(),
+    websiteUrl: typeof targetWebsiteUrl === "string" ? targetWebsiteUrl.trim() : "",
     analysisId: analysisId || "",
   };
 
-  if (email || fullName || phoneNumber || targetWebsiteUrl) {
+  if (email || firstName || lastName || phoneNumber || companyName) {
     try {
       const encoded = btoa(encodeURIComponent(JSON.stringify(userInfo)));
       document.cookie = `pending_user_info=${encoded}; path=/; max-age=2592000; SameSite=Lax;`;
@@ -69,6 +105,7 @@ export function getPendingUserInfo(): {
   firstName?: string;
   lastName?: string;
   phoneNumber?: string;
+  companyName?: string;
   websiteUrl?: string;
   analysisId?: string;
 } | null {

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { authService } from "@/lib/authService";
 import { getPendingUserInfo } from "@/lib/requestAnalysisService";
 import StatusPopup from "@/components/common/StatusPopup";
@@ -84,8 +84,9 @@ const SubmitButton = ({ label, type = "button", disabled, onClick, className = "
   </button>
 );
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState(1);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -104,24 +105,37 @@ export default function RegisterPage() {
   const [statusPopup, setStatusPopup] = useState({ isOpen: false, type: "success" as "success" | "error", title: "", message: "" });
 
   useEffect(() => {
-    const pendingInfo = getPendingUserInfo();
-    if (pendingInfo) {
-      if (pendingInfo.firstName) setFirstName((prev) => prev || pendingInfo.firstName || "");
-      if (pendingInfo.lastName) setLastName((prev) => prev || pendingInfo.lastName || "");
-      if (pendingInfo.email) setEmail((prev) => prev || pendingInfo.email || "");
-      if (pendingInfo.phoneNumber) setPhoneNumber((prev) => prev || pendingInfo.phoneNumber || "");
-      if (pendingInfo.websiteUrl) {
-        setCompanyName((prev) => {
-          if (prev) return prev;
-          const clean = (pendingInfo.websiteUrl || "")
-            .replace(/^https?:\/\//i, "")
-            .replace(/^www\./i, "")
-            .split("/")[0];
-          return clean || "";
-        });
+    // Only autofill if user specifically navigated from analysis details page
+    const fromParam = searchParams.get("from");
+    const redirectParam = searchParams.get("redirect");
+
+    let isFromAnalysisDetail = false;
+    if (fromParam === "analysis" || redirectParam?.includes("/dashboard/my-analyses/")) {
+      isFromAnalysisDetail = true;
+    } else if (typeof window !== "undefined") {
+      const storedFlag = sessionStorage.getItem("from_analysis_detail");
+      const referrer = document.referrer || "";
+      if (storedFlag || referrer.includes("/dashboard/my-analyses/")) {
+        isFromAnalysisDetail = true;
       }
     }
-  }, []);
+
+    if (isFromAnalysisDetail) {
+      const pendingInfo = getPendingUserInfo();
+      if (pendingInfo) {
+        if (pendingInfo.firstName) setFirstName(pendingInfo.firstName);
+        if (pendingInfo.lastName) setLastName(pendingInfo.lastName);
+        if (pendingInfo.email) setEmail(pendingInfo.email);
+        if (pendingInfo.phoneNumber) setPhoneNumber(pendingInfo.phoneNumber);
+        if (pendingInfo.companyName) {
+          setCompanyName(pendingInfo.companyName);
+        }
+      }
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("from_analysis_detail");
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (step === 3) {
@@ -303,5 +317,19 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen w-full flex items-center justify-center bg-white">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#4343F0]"></div>
+        </div>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
   );
 }

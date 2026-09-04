@@ -21,6 +21,9 @@ function AnalysisLayoutContent({ children }: { children: React.ReactNode }) {
     }
     if (analysisId) {
       savePendingAnalysisId(analysisId);
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("from_analysis_detail", analysisId);
+      }
       if (authService.isAuthenticated()) {
         claimPendingAnalyses();
       }
