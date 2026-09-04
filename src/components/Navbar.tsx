@@ -424,6 +424,12 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
               {!shouldHideMenu && (
                 <div className="hidden xl:flex items-center gap-6">
                   <button
+                    onClick={() => router.push("/dashboard/my-analyses")}
+                    className=" text-white hover:text-gray-300 text-[15px] font-medium"
+                  >
+                    My Analyses
+                  </button>
+                  <button
                     onClick={() => router.push("/dashboard/my-quotes")}
                     className=" text-white hover:text-gray-300 text-[15px] font-medium"
                   >
@@ -585,6 +591,15 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
             
             {isAuthenticated && (
               <div className="flex flex-col gap-5 pb-4 border-b border-gray-300">
+                <button
+                  onClick={() => {
+                    router.push("/dashboard/my-analyses");
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full text-left text-[#363636] hover:text-[#4343F0] hover:bg-white/5 px-4 rounded-md text-sm font-medium transition-colors"
+                >
+                  My Analyses
+                </button>
                 <button
                   onClick={() => {
                     router.push("/dashboard/my-quotes");

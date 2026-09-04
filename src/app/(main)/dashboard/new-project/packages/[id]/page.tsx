@@ -245,7 +245,7 @@ function PackageDetailsContent() {
         message={status.message}
       />
       
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:px-[60px] pt-8 md:pt-12 pb-20">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-20">
         
         {/* Hero Section */}
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-10 md:gap-12 mb-10 md:mb-16">

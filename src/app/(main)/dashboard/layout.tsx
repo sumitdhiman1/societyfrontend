@@ -14,14 +14,21 @@ export default function DashboardLayout({
 
   useEffect(() => {
     const checkAuth = () => {
-      const currentPath = window.location.pathname;
+      const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+      const isCustomQuote =
+        currentPath === "/dashboard/new-project/custom-quote" ||
+        currentPath.startsWith("/dashboard/new-project/custom-quote/");
+
       const publicRoutePrefixes = [
         "/dashboard/new-project",
         "/dashboard/my-analyses",
       ];
-      const isPublicRoute = publicRoutePrefixes.some((prefix) =>
-        currentPath === prefix || currentPath.startsWith(`${prefix}/`)
-      );
+      const isPublicRoute =
+        !isCustomQuote &&
+        publicRoutePrefixes.some(
+          (prefix) =>
+            currentPath === prefix || currentPath.startsWith(`${prefix}/`)
+        );
 
       if (!isPublicRoute && !authService.isAuthenticated()) {
         const redirectPath = window.location.pathname + window.location.search;

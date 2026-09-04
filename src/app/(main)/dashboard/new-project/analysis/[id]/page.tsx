@@ -218,18 +218,21 @@ export default function AnalysisOrderPage() {
   
   const imageSrc =
     product?.detailImage ||
+    product?.detailImageUrl ||
     product?.coverImage ||
+    product?.imageUrl ||
     (title.toLowerCase().includes("check")
-      ? "/images/browse_packages_card_1770345523802.png"
-      : "/images/browse_packages_card_v2_1770345592512.png");
+      ? "/images/free_checking_of_work.jpg"
+      : "/images/free_website_analysis.jpg");
 
-  const visibleFields = product?.visibleFormFields || {
-    urlToCheck: true,
-    whatToLookAt: true,
-    additionalInfo: true,
-    whoCompletedWork: title.toLowerCase().includes("check"),
-    agreementDetails: title.toLowerCase().includes("check"),
-    shareAccess: title.toLowerCase().includes("check"),
+  const vf = product?.visibleFormFields || {};
+  const visibleFields = {
+    urlToCheck: vf.urlToCheck !== undefined ? vf.urlToCheck : (product?.showWebsiteUrl !== undefined ? product.showWebsiteUrl : true),
+    whatToLookAt: vf.whatToLookAt !== undefined ? vf.whatToLookAt : (product?.showScopeOfWork !== undefined ? product.showScopeOfWork : false),
+    additionalInfo: vf.additionalInfo !== undefined ? vf.additionalInfo : (product?.showAdditionalComments !== undefined ? product.showAdditionalComments : false),
+    whoCompletedWork: vf.whoCompletedWork !== undefined ? vf.whoCompletedWork : (product?.showWhoCompletedWork !== undefined ? product.showWhoCompletedWork : false),
+    agreementDetails: vf.agreementDetails !== undefined ? vf.agreementDetails : (product?.showAgreementDetails !== undefined ? product.showAgreementDetails : false),
+    shareAccess: vf.shareAccess !== undefined ? vf.shareAccess : (product?.showLoginsDetails !== undefined ? product.showLoginsDetails : false),
   };
 
   const isFree = product?.isFree !== false && (product?.amount === 0 || product?.amount === undefined);
@@ -247,7 +250,7 @@ export default function AnalysisOrderPage() {
         />
       )}
 
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:px-[60px] pt-8 md:pt-12 pb-16">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-16">
         {/* 1. TOP PRODUCT OVERVIEW SECTION */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start mb-12">
           {/* Left Column: Title and Long Description */}
