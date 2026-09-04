@@ -16,7 +16,24 @@ import { useChatWidget } from "@/context/ChatWidgetContext";
 import { useCurrency } from "@/context/CurrencyContext";
 import { authService } from "@/lib/authService";
 import { paymentService } from "@/lib/paymentService";
-import { priceCalculatorService, CalculatorCategory, CalculatorConfig, CalculatorSelection, CalculatorQuestion } from "@/lib/priceCalculatorService";
+import { priceCalculatorService, CalculatorCategory, CalculatorConfig, CalculatorSelection } from "@/lib/priceCalculatorService";
+import {
+  getSelectedTier,
+  getTierQuestionKey,
+  getGraphicsCategoryKeys,
+  filterGraphicsAnswers,
+  groupAnswersByHeading,
+  shouldShowPriceBar,
+  selectionsToArray,
+  filterQuestionAnswers,
+  isQuestionVisible,
+  getSeoServiceMode,
+  filterSeoAnswers,
+  isMonthlyBillingCategory,
+  pruneHiddenSelections,
+  getCategoryDisplayName,
+  getCategoryIllustration,
+} from "@/lib/calculatorUtils";
 import { downloadCalculatorPdf, getCalculatorPdfBase64 } from "@/lib/calculatorPdfService";
 import StatusPopup from "@/components/common/StatusPopup";
 import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
@@ -29,6 +46,12 @@ import AmexIcon from "@/components/icons/amex";
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
   : null;
+
+const calculatorDarkBg = {
+  backgroundImage: "radial-gradient(circle, #001f5c 1%, transparent 1%)",
+  backgroundSize: "20px 20px",
+  backgroundColor: "#00102e",
+} as const;
 
 const stripeElementOptions = {
   disableLink: true,
@@ -51,135 +74,234 @@ const stripeElementOptions = {
 
 // --- Sub-components ---
 
-const CategoryGrid = ({ categories, selectedCategoryKey, onSelect }: { categories: CalculatorCategory[], selectedCategoryKey: string | null, onSelect: (key: string) => void }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8">
-    {categories.map((cat: CalculatorCategory) => (
-      <button
-        key={cat.categoryKey}
-        onClick={() => onSelect(cat.categoryKey)}
-        className={`group relative bg-white rounded-[4px] shadow-[0px_10px_30px_rgba(0,0,0,0.1)] border-0 overflow-hidden transition-all duration-300 transform hover:-translate-y-1 flex flex-col items-center w-full focus:outline-none focus:ring-2 focus:ring-white/20 ${selectedCategoryKey === cat.categoryKey ? "ring-0" : ""
-          }`}
-        style={{ minHeight: "300px" }}
-      >
-        <div className="w-full flex-grow flex items-center justify-center p-6 bg-white">
-          <img
-            src={`/images/calculator/${cat.categoryKey}_illustration_v1.png`}
-            alt={cat.categoryName}
-            className="max-w-full max-h-[160px] object-contain transition-transform duration-500 group-hover:scale-110"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = "/images/calculator/website_illustration_v1_1769769521492.png";
-            }}
-          />
-        </div>
-        <div className="w-full py-6 px-4 text-left bg-white min-h-[80px] flex items-center">
-          <h3 className="font-black text-[#002E8A] uppercase tracking-tight text-[15px] leading-tight">
-            {(cat => {
-              switch (cat.categoryKey) {
-                case "website": return "A NEW WEBSITE";
-                case "graphics": return "GRAPHIC DESIGNS";
-                case "seo": return "SEARCH ENGINE OPTIMIZATION";
-                case "marketing": return "A MARKETING CAMPAIGN";
-                default: return cat.categoryName;
-              }
-            })(cat)}
-          </h3>
-        </div>
-        <div className={`w-full py-1.5 px-4 text-left text-[9px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${selectedCategoryKey === cat.categoryKey ? "bg-[#334155] text-white opacity-100" : "bg-transparent text-transparent opacity-0 h-0 pointer-events-none"
-          }`}>
-          SELECTED
-        </div>
-      </button>
-    ))}
-  </div>
-);
-
-const QuestionCard = ({ question, selection, onToggleAnswer, index }: { question: any, selection: any, onToggleAnswer: any, index?: number }) => {
-  const [textVal, setTextVal] = useState(selection?.textValue || "");
-  const [numVal, setNumVal] = useState(selection?.numericValue?.toString() || "");
-
-  useEffect(() => {
-    setTextVal(selection?.textValue || "");
-    setNumVal(selection?.numericValue?.toString() || "");
-  }, [selection?.textValue, selection?.numericValue]);
-
-  const activeKeys = selection?.answerKeys || [];
+const CurrencyDropdown = ({
+  currency,
+  setCurrency,
+  size = "md",
+}: {
+  currency: string;
+  setCurrency: (c: "usd" | "eur") => void;
+  size?: "sm" | "md";
+}) => {
+  const labelClass =
+    size === "sm"
+      ? "text-[16px] font-bold text-[#002E8A] uppercase tracking-wide font-sans"
+      : "text-sm md:text-[18px] font-bold text-[#002E8A] uppercase tracking-wide font-sans";
+  const valueClass =
+    size === "sm"
+      ? "text-[16px] font-bold text-black uppercase font-sans"
+      : "text-lg md:text-xl font-bold text-black uppercase font-sans";
 
   return (
-    <div className="animate-in fade-in duration-700 bg-[#002E8A] p-6 md:p-12 rounded-[10px] shadow-2xl">
-      <h2 className="text-xl md:text-2xl font-bold text-white mb-6 md:mb-8 tracking-tight font-manrope">
-        {index !== undefined ? `${index + 1}. ` : ""}{question.text}
-      </h2>
-
-      {question.type === "text" && (
-        <div className="space-y-4">
-          <textarea
-            value={textVal}
-            onChange={(e) => setTextVal(e.target.value)}
-            onBlur={() => textVal.trim() && onToggleAnswer(question.key, textVal, "text")}
-            placeholder="Enter your response here..."
-            className="w-full p-4 bg-white/5 border border-white/20 rounded-lg text-white focus:border-white focus:ring-1 focus:ring-white focus:outline-none min-h-[120px] resize-vertical placeholder:text-gray-400 transition-all"
-          />
-        </div>
-      )}
-
-      {question.type === "number" && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <input
-              type="number"
-              value={numVal}
-              onChange={(e) => setNumVal(e.target.value)}
-              onBlur={() => numVal && !isNaN(Number(numVal)) && onToggleAnswer(question.key, numVal, "number")}
-              placeholder="0"
-              min="0"
-              className="w-24 p-4 bg-white/5 border border-white/20 rounded-lg text-white focus:border-white focus:ring-1 focus:ring-white focus:outline-none text-lg text-center transition-all font-bold"
-            />
-            {question.isMultiplier && question.multiplierAmount && (
-              <div className="text-gray-300 font-bold text-sm uppercase tracking-wider">× ${question.multiplierAmount} each</div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {(question.type === "single" || question.type === "multi") && question.answers && question.answers.length > 0 && (
-        <div className="grid grid-cols-1 gap-3">
-          {question.answers.map((ans: any) => {
-            const isSelected = activeKeys.includes(ans.key);
-            return (
-              <button
-                key={ans.key}
-                onClick={() => onToggleAnswer(question.key, ans.key, question.type)}
-                className="w-full flex items-center gap-4 p-4 rounded-lg border-2 border-transparent hover:bg-white/5 transition-all group outline-none text-left"
-              >
-                <div className="flex-shrink-0">
-                  {question.type === "multi" ? (
-                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${isSelected ? "bg-white border-white" : "border-white bg-transparent"
-                      }`}>
-                      {isSelected && (
-                        <svg className="w-3 h-3 text-[#002E8A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="w-5 h-5 rounded-full border border-white flex items-center justify-center transition-all">
-                      {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
-                    </div>
-                  )}
-                </div>
-                <div className="flex-grow">
-                  <div className="text-[17px] font-medium text-white tracking-wide transition-colors">{ans.text}</div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
+    <div className="flex items-center gap-2 md:gap-3">
+      <span className={labelClass}>CURRENCY:</span>
+      <div className="relative inline-flex items-center">
+        <select
+          value={currency}
+          onChange={(e) => setCurrency(e.target.value as "usd" | "eur")}
+          aria-label="Select currency"
+          className={`${valueClass} appearance-none bg-transparent pr-6 cursor-pointer focus:outline-none`}
+        >
+          <option value="usd">USD</option>
+          <option value="eur">EUR</option>
+        </select>
+        <svg
+          className="w-4 h-4 text-black pointer-events-none absolute right-0 top-1/2 -translate-y-1/2"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.5}
+          aria-hidden
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+        </svg>
+      </div>
     </div>
   );
 };
 
-const ProposalPreview = ({ category, selections, totalPrice, timeline, billingType, onDownloadPdf }: any) => {
+const CategoryGrid = ({ categories, selectedCategoryKey, onSelect }: { categories: CalculatorCategory[], selectedCategoryKey: string | null, onSelect: (key: string) => void }) => (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8 items-stretch">
+    {categories.map((cat: CalculatorCategory) => {
+      const isSelected = selectedCategoryKey === cat.categoryKey;
+      return (
+      <button
+        key={cat.categoryKey}
+        onClick={() => onSelect(cat.categoryKey)}
+        className={`group relative bg-white rounded-[4px] shadow-[0px_10px_30px_rgba(0,0,0,0.1)] border-0 transition-all duration-300 transform hover:-translate-y-1 flex flex-col w-full h-full focus:outline-none focus:ring-2 focus:ring-white/20 ${
+          isSelected ? "pb-[26px]" : ""
+        }`}
+      >
+        <div className="w-full flex-1 flex items-center justify-center px-6 pt-8 pb-4 bg-white min-h-[190px] rounded-t-[4px]">
+          <img
+            src={getCategoryIllustration(cat.categoryKey, cat.image)}
+            alt={cat.categoryName}
+            className="max-w-full max-h-[150px] w-auto object-contain transition-transform duration-500 group-hover:scale-105"
+          />
+        </div>
+        <div className="w-full px-4 pt-2 pb-5 bg-white min-h-[88px] flex items-start">
+          <h3 className="font-black text-[#002E8A] uppercase tracking-tight text-[15px] leading-[1.3] text-left">
+            {getCategoryDisplayName(cat.categoryKey, cat.categoryName)}
+          </h3>
+        </div>
+        {isSelected && (
+          <div className="absolute bottom-0 left-0 right-0 h-[26px] flex items-center px-4 text-[9px] font-black uppercase tracking-[0.2em] bg-[#334155] text-white rounded-b-[4px]">
+            SELECTED
+          </div>
+        )}
+      </button>
+    );
+    })}
+  </div>
+);
+
+const NumberStepper = ({
+  value,
+  onChange,
+  min = 0,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  min?: number;
+}) => (
+  <div className="flex items-center gap-4">
+    <button
+      type="button"
+      onClick={() => onChange(Math.max(min, value - 1))}
+      className="w-12 h-12 rounded-lg border-2 border-[#002E8A] text-[#002E8A] text-2xl font-bold flex items-center justify-center hover:bg-[#002E8A]/5 transition-colors"
+    >
+      −
+    </button>
+    <div className="min-w-[64px] text-center text-3xl font-bold text-[#002E8A]">{value}</div>
+    <button
+      type="button"
+      onClick={() => onChange(value + 1)}
+      className="w-12 h-12 rounded-lg border-2 border-[#002E8A] text-[#002E8A] text-2xl font-bold flex items-center justify-center hover:bg-[#002E8A]/5 transition-colors"
+    >
+      +
+    </button>
+  </div>
+);
+
+const QuestionCard = ({
+  question,
+  selection,
+  onToggleAnswer,
+  index,
+  tier,
+  categoryKey,
+  categorySelections,
+  seoServiceMode,
+}: {
+  question: any;
+  selection: any;
+  onToggleAnswer: any;
+  index?: number;
+  tier: string;
+  categoryKey?: string | null;
+  categorySelections?: string[];
+  seoServiceMode?: string;
+}) => {
+  const [textVal, setTextVal] = useState(selection?.textValue || "");
+  const numVal = selection?.numericValue ?? 0;
+
+  useEffect(() => {
+    setTextVal(selection?.textValue || "");
+  }, [selection?.textValue]);
+
+  const activeKeys = selection?.answerKeys || [];
+  const filteredQuestion = filterQuestionAnswers(question, tier);
+  let visibleAnswers = filteredQuestion.answers || [];
+  if (question.key === "GFX_ITEMS" && categorySelections) {
+    visibleAnswers = filterGraphicsAnswers(visibleAnswers, categorySelections);
+  }
+  if (question.key === "SEO_ITEMS" && seoServiceMode) {
+    visibleAnswers = filterSeoAnswers(visibleAnswers, seoServiceMode);
+  }
+  const answerGroups =
+    question.type === "multi" && visibleAnswers.some((a: any) => a.metadata?.heading)
+      ? groupAnswersByHeading(visibleAnswers)
+      : [{ heading: null, answers: visibleAnswers }];
+
+  return (
+    <div className="animate-in fade-in duration-700 bg-white p-6 md:p-10 rounded-[10px] shadow-2xl">
+      <h2 className="text-xl md:text-2xl font-bold text-[#002E8A] mb-6 md:mb-8 tracking-tight font-manrope">
+        {index !== undefined ? `${index + 1}. ` : ""}{question.text}
+      </h2>
+
+      {question.type === "text" && (
+        <textarea
+          value={textVal}
+          onChange={(e) => setTextVal(e.target.value)}
+          onBlur={() => onToggleAnswer(question.key, textVal, "text")}
+          placeholder={question.config?.placeholder || "Enter your response here..."}
+          className="w-full p-4 bg-white border border-gray-200 rounded-lg text-[#002E8A] focus:border-[#002E8A] focus:ring-1 focus:ring-[#002E8A] focus:outline-none min-h-[120px] resize-vertical placeholder:text-gray-400 transition-all"
+        />
+      )}
+
+      {question.type === "number" && (
+        <NumberStepper
+          value={numVal}
+          min={question.config?.minValue ?? 1}
+          onChange={(n) => onToggleAnswer(question.key, n, "number")}
+        />
+      )}
+
+      {(question.type === "single" || question.type === "multi") &&
+        answerGroups.map((group, gIdx) => (
+          <div key={gIdx} className={gIdx > 0 ? "mt-6" : ""}>
+            {group.heading && (
+              <h3 className="text-[#002E8A] font-bold text-lg mb-3">{group.heading}</h3>
+            )}
+            <div className="grid grid-cols-1 gap-1">
+              {group.answers.map((ans: any) => {
+                const isSelected = activeKeys.includes(ans.key);
+                return (
+                  <button
+                    key={ans.key}
+                    type="button"
+                    onClick={() => onToggleAnswer(question.key, ans.key, question.type)}
+                    className="w-full flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 transition-all outline-none text-left"
+                  >
+                    <div className="flex-shrink-0">
+                      {question.type === "multi" ? (
+                        <div
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                            isSelected ? "bg-[#002E8A] border-[#002E8A]" : "border-gray-400 bg-white"
+                          }`}
+                        >
+                          {isSelected && (
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="w-5 h-5 rounded-full border-2 border-[#002E8A] flex items-center justify-center">
+                          {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#002E8A]" />}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-[17px] font-medium text-[#002E8A] tracking-wide">{ans.text}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+    </div>
+  );
+};
+
+const ProposalPreview = ({
+  category,
+  selections,
+  totalPrice,
+  timeline,
+  billingType,
+  onDownloadPdf,
+  onContinueToPayment,
+}: any) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const { currency, conversionRate } = useCurrency();
 
@@ -187,35 +309,37 @@ const ProposalPreview = ({ category, selections, totalPrice, timeline, billingTy
     const converted = currency === "eur" ? amt / conversionRate : amt;
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: currency.toUpperCase()
+      currency: currency.toUpperCase(),
     }).format(converted);
   };
 
-  const isMonthly = billingType === "monthly" || (!billingType && category.timeline?.toLowerCase().includes("month"));
+  const isMonthly = billingType === "monthly";
 
-  const firstQuestionKey = category.questions.length > 0 ? category.questions[0].key : undefined;
+  const sortedQuestions = [...(category.questions || [])].sort(
+    (a: any, b: any) => (a.order || 0) - (b.order || 0)
+  );
+  const firstQuestionKey = sortedQuestions[0]?.key;
   let subtitle = "";
-  const breakdown: any[] = [];
+  const breakdown: { question: string; answers: string[] }[] = [];
 
-  category.questions.forEach((q: any) => {
+  sortedQuestions.forEach((q: any) => {
+    if (!isQuestionVisible(q, selections)) return;
+
     const sel = selections[q.key];
-    if (q.isMultiplier) {
-      const val = sel?.numericValue ?? 1;
-      breakdown.push({ question: q.text, answers: [val.toString()] });
-      return;
-    }
     if (!sel) return;
 
-    if (q.key === firstQuestionKey && q.type === "single") {
+    if (q.key === firstQuestionKey && q.type === "single" && sel.answerKeys?.[0]) {
       const ans = q.answers.find((a: any) => a.key === sel.answerKeys[0]);
       if (ans) subtitle = ans.text;
       return;
     }
 
     const ansTexts: string[] = [];
-    if (q.type === "text" && sel.textValue) {
-      ansTexts.push(sel.textValue);
-    } else if (sel.answerKeys) {
+    if (q.type === "number" && sel.numericValue !== undefined) {
+      ansTexts.push(String(sel.numericValue));
+    } else if (q.type === "text" && sel.textValue?.trim()) {
+      ansTexts.push(sel.textValue.trim());
+    } else if (sel.answerKeys?.length) {
       sel.answerKeys.forEach((k: string) => {
         const ans = q.answers.find((a: any) => a.key === k);
         if (ans) ansTexts.push(ans.text);
@@ -226,6 +350,8 @@ const ProposalPreview = ({ category, selections, totalPrice, timeline, billingTy
       breakdown.push({ question: q.text, answers: ansTexts });
     }
   });
+
+  const displayName = getCategoryDisplayName(category.categoryKey, category.categoryName);
 
   const handleDownload = async () => {
     try {
@@ -272,7 +398,7 @@ const ProposalPreview = ({ category, selections, totalPrice, timeline, billingTy
         currency: currency
       });
 
-      const res = await fetch("https://societywebapi.onrender.com/api/quotes/email-calculator-proposal", {
+      const res = await fetch("/api-gateway/quotes/email-calculator-proposal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -297,29 +423,43 @@ const ProposalPreview = ({ category, selections, totalPrice, timeline, billingTy
   return (
     <div className="w-full max-w-[680px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 my-6">
       <h2 className="text-[34px] font-normal text-white text-center mb-8 tracking-wide font-manrope">YOUR PROPOSAL</h2>
-      <div className="bg-white rounded-[10px] p-10 shadow-2xl text-left border border-white">
-        <h3 className="text-[#002E8A] font-extrabold text-[28px] mb-1 uppercase tracking-tight leading-none">{category.categoryName}</h3>
-        <p className="text-[#002E8A] text-[16px] uppercase font-light mb-12 tracking-wide font-sans">{subtitle}</p>
+      <div className="bg-white rounded-[10px] p-8 md:p-10 shadow-2xl text-left border border-white">
+        <h3 className="text-[#002E8A] font-extrabold text-[26px] md:text-[28px] mb-2 uppercase tracking-tight leading-none">
+          {displayName}
+        </h3>
+        {subtitle && (
+          <p className="text-[#5a6a7a] text-[15px] md:text-[16px] font-normal mb-10 leading-snug">
+            {subtitle}
+          </p>
+        )}
+        {!subtitle && <div className="mb-10" />}
 
-        <div className="space-y-8">
-          {breakdown.map((item: any, idx: number) => (
+        <div className="space-y-7">
+          {breakdown.map((item, idx) => (
             <div key={idx} className="font-sans">
-              <h4 className="text-[#002E8A] font-bold text-[18px] mb-2">{item.question}</h4>
+              <h4 className="text-[#002E8A] font-bold text-[17px] md:text-[18px] mb-1.5 leading-snug">
+                {item.question}
+              </h4>
               {item.answers.length === 1 ? (
-                <p className="text-[#002E8A] text-[18px] font-normal leading-relaxed">{item.answers[0]}</p>
+                <p className="text-[#5a6a7a] text-[16px] md:text-[17px] font-normal leading-relaxed">
+                  {item.answers[0]}
+                </p>
               ) : (
-                <ul className="list-disc pl-6 text-[#002E8A] text-[18px] font-normal leading-relaxed space-y-1">
-                  {item.answers.map((ans: string, aIdx: number) => <li key={aIdx}>{ans}</li>)}
+                <ul className="list-disc pl-5 text-[#5a6a7a] text-[16px] md:text-[17px] font-normal leading-relaxed space-y-1">
+                  {item.answers.map((ans, aIdx) => (
+                    <li key={aIdx}>{ans}</li>
+                  ))}
                 </ul>
               )}
             </div>
           ))}
         </div>
 
-        <div className="mt-16 mb-6">
-          <h3 className="text-[#002E8A] text-[32px] font-black tracking-tighter mb-1">
-            PROJECT TOTAL COST: {formatPriceLocal(totalPrice)}
-            {isMonthly && <span className="text-[16px] font-normal ml-2">/month</span>}
+        <div className="mt-12 mb-6">
+          <h3 className="text-[#002E8A] text-[28px] md:text-[32px] font-black tracking-tighter">
+            PROJECT TOTAL COST:{" "}
+            <span className="text-[#4B4DED]">{formatPriceLocal(totalPrice)}</span>
+            {isMonthly && <span className="text-[15px] font-normal ml-2 text-[#002E8A]">/month</span>}
           </h3>
           {isMonthly && <p className="text-[#002E8A] text-[13px] font-medium mt-1 opacity-75">First month billed on start. Then auto-renewed monthly.</p>}
         </div>
@@ -367,6 +507,16 @@ const ProposalPreview = ({ category, selections, totalPrice, timeline, billingTy
             <span className="text-[16px] font-black tracking-wide uppercase">Email Proposal</span>
           </button>
         </div>
+
+        {onContinueToPayment && (
+          <button
+            type="button"
+            onClick={onContinueToPayment}
+            className="w-full mt-8 bg-[#002E8A] hover:bg-[#001b54] text-white font-black py-4 px-6 rounded-[5px] transition-colors uppercase tracking-widest text-[15px]"
+          >
+            Ready to Begin?
+          </button>
+        )}
       </div>
     </div>
   );
@@ -550,10 +700,7 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
       <div className="bg-white rounded-[10px] p-6 md:p-10 shadow-2xl mx-auto w-full max-w-[680px]">
         <div className="flex justify-between items-center mb-8">
           <h3 className="text-black font-bold text-[18px]">Amount:</h3>
-          <div className="flex bg-gray-100 rounded-lg p-1 mx-2">
-            <button type="button" onClick={() => setCurrency("usd")} className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "usd" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"}`}>USD</button>
-            <button type="button" onClick={() => setCurrency("eur")} className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "eur" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"}`}>EUR</button>
-          </div>
+          <CurrencyDropdown currency={currency} setCurrency={setCurrency} size="sm" />
           <div className="flex gap-2 items-center opacity-90 hidden sm:flex">
             <VisaIcon />
             <MastercardIcon />
@@ -712,7 +859,7 @@ export default function CalculatorPage() {
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
   const [selections, setSelections] = useState<Record<string, CalculatorSelection>>({});
   const [isStickyVisible, setIsStickyVisible] = useState(false);
-  const [showResult, setShowResult] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
   const stickyRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
 
@@ -759,34 +906,66 @@ export default function CalculatorPage() {
     };
   }, [selectedCategoryKey]);
 
-  const selectedCategory = useMemo(() => config?.categories.find(c => c.categoryKey === selectedCategoryKey) || null, [config, selectedCategoryKey]);
-  const sortedQuestions = useMemo(() => selectedCategory ? [...selectedCategory.questions].sort((a, b) => (a.order || 0) - (b.order || 0)) : [], [selectedCategory]);
+  const [calculation, setCalculation] = useState<{ totalPrice: number; timeline?: string }>({
+    totalPrice: 0,
+    timeline: undefined,
+  });
+  const calcTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const calculation = useMemo(() => {
-    if (!selectedCategoryKey) return { totalPrice: 0, timeline: undefined };
+  const selectedCategory = useMemo(
+    () => config?.categories.find((c) => c.categoryKey === selectedCategoryKey) || null,
+    [config, selectedCategoryKey]
+  );
+  const sortedQuestions = useMemo(
+    () =>
+      selectedCategory
+        ? [...selectedCategory.questions].sort((a, b) => (a.order || 0) - (b.order || 0))
+        : [],
+    [selectedCategory]
+  );
+  const tier = useMemo(
+    () => getSelectedTier(selections, getTierQuestionKey(selectedCategoryKey || "")),
+    [selections, selectedCategoryKey]
+  );
+  const graphicsCategoryKeys = useMemo(
+    () => getGraphicsCategoryKeys(selections),
+    [selections]
+  );
+  const seoServiceMode = useMemo(
+    () => (selectedCategoryKey === "seo" ? getSeoServiceMode(selections) : undefined),
+    [selections, selectedCategoryKey]
+  );
+  const visibleQuestions = useMemo(
+    () => sortedQuestions.filter((q) => isQuestionVisible(q, selections)),
+    [sortedQuestions, selections]
+  );
+  const isMonthlyBilling = isMonthlyBillingCategory(selectedCategoryKey);
+  const showPriceBar = useMemo(
+    () => (selectedCategory ? shouldShowPriceBar(selectedCategory, selections) : false),
+    [selectedCategory, selections]
+  );
 
-    let total = selectedCategory?.baseAmount || 0;
-    let timeline = selectedCategory?.timeline;
+  useEffect(() => {
+    if (!selectedCategoryKey || !showPriceBar) {
+      setCalculation({ totalPrice: 0, timeline: undefined });
+      return;
+    }
 
-    selectedCategory?.questions.forEach(q => {
-      const sel = selections[q.key];
-      if (sel) {
-        if (q.isMultiplier && sel.numericValue) {
-          total += q.multiplierAmount! * sel.numericValue;
-        } else if (sel.answerKeys) {
-          sel.answerKeys.forEach(ak => {
-            const ans = q.answers.find(a => a.key === ak);
-            if (ans) {
-              total += ans.amount;
-              if (ans.timeline) timeline = ans.timeline;
-            }
-          });
-        }
+    if (calcTimerRef.current) clearTimeout(calcTimerRef.current);
+    calcTimerRef.current = setTimeout(async () => {
+      const result = await priceCalculatorService.calculatePrice(
+        selectedCategoryKey,
+        selectionsToArray(selections)
+      );
+      if (result) {
+        setCalculation({ totalPrice: result.totalPrice, timeline: result.timeline });
       }
-    });
+    }, 300);
 
-    return { totalPrice: total, timeline };
-  }, [selectedCategory, selections, selectedCategoryKey]);
+    return () => {
+      if (calcTimerRef.current) clearTimeout(calcTimerRef.current);
+    };
+  }, [selectedCategoryKey, selections, showPriceBar]);
 
   const handleToggleAnswer = (questionKey: string, value: any, type: string) => {
     setSelections(prev => {
@@ -806,21 +985,62 @@ export default function CalculatorPage() {
         numericValue = Number(value);
       }
 
-      return {
+      const next = {
         ...prev,
         [questionKey]: {
           questionKey,
           answerKeys: nextKeys,
           textValue,
-          numericValue
-        }
+          numericValue,
+        },
       };
+
+      if (questionKey === "WEB_TIER") {
+        delete next.WEB_TIMELINE;
+      }
+      if (questionKey === "GFX_CATEGORIES") {
+        const gfxItems = next.GFX_ITEMS;
+        if (gfxItems?.answerKeys?.length) {
+          const allowed = new Set(
+            filterGraphicsAnswers(
+              selectedCategory?.questions.find((q) => q.key === "GFX_ITEMS")?.answers || [],
+              next.GFX_CATEGORIES?.answerKeys || []
+            ).map((a: any) => a.key)
+          );
+          next.GFX_ITEMS = {
+            ...gfxItems,
+            answerKeys: gfxItems.answerKeys.filter((k: string) => allowed.has(k)),
+          };
+          if (!next.GFX_ITEMS.answerKeys.length) delete next.GFX_ITEMS;
+        }
+      }
+      if (questionKey === "SEO_SERVICE_TYPE" && next.SEO_ITEMS?.answerKeys?.length) {
+        const mode = getSeoServiceMode(next);
+        const allowed = new Set(
+          filterSeoAnswers(
+            selectedCategory?.questions.find((q) => q.key === "SEO_ITEMS")?.answers || [],
+            mode
+          ).map((a: any) => a.key)
+        );
+        next.SEO_ITEMS = {
+          ...next.SEO_ITEMS,
+          answerKeys: next.SEO_ITEMS.answerKeys.filter((k: string) => allowed.has(k)),
+        };
+        if (!next.SEO_ITEMS.answerKeys.length) delete next.SEO_ITEMS;
+      }
+      if (questionKey === "SEO_ITEMS") {
+        const keys = next.SEO_ITEMS?.answerKeys || [];
+        if (!keys.includes("SEO_ITEM_CONTENT")) delete next.SEO_WORDS;
+        if (!keys.includes("SEO_ITEM_BACKLINKS")) delete next.SEO_BACKLINKS;
+      }
+
+      return pruneHiddenSelections(next, sortedQuestions);
     });
   };
 
   const { setBottomOffset } = useChatWidget();
   useEffect(() => {
-    if (isStickyVisible && selectedCategoryKey && calculation.totalPrice > 0) {
+    if (isStickyVisible && selectedCategoryKey && showPriceBar && calculation.totalPrice > 0) {
       setBottomOffset(100);
     } else {
       setBottomOffset(0);
@@ -869,8 +1089,13 @@ export default function CalculatorPage() {
 
       <main className="flex-grow w-full overflow-hidden flex flex-col relative z-10">
 
-        {/* Category Selection Section with dark blue background */}
-        <div className="calculator-category-section bg-[#002E8A] py-8 md:py-16 w-full">
+        {/* Category Selection Section */}
+        <div
+          className={`calculator-category-section w-full transition-colors duration-300 ${
+            selectedCategoryKey ? "py-6 md:py-10" : "bg-[#002E8A] py-8 md:py-16"
+          }`}
+          style={selectedCategoryKey ? calculatorDarkBg : undefined}
+        >
           <div className="container mx-auto px-[34px] md:px-8 lg:px-[54px] max-w-[1600px]">
             <div className="mb-12 text-left ms-[-8px] mt-2">
               <h2 className="text-[20px] md:text-[24px] pl-[0px] md:pl-0 font-normal leading-none tracking-[0px] mb-0 text-[#f2f2f2] [font-family:var(--font-poppins)]">
@@ -885,7 +1110,7 @@ export default function CalculatorPage() {
                 onSelect={(key) => {
                   setSelectedCategoryKey(key);
                   setSelections({});
-                  setShowResult(false);
+                  setShowPayment(false);
                 }}
               />
             )}
@@ -893,85 +1118,80 @@ export default function CalculatorPage() {
         </div>
 
         {/* Questions Section with radial gradient pattern */}
-        {selectedCategoryKey && !showResult && (
-          <div
-            className="w-full"
-            style={{
-              backgroundImage: "radial-gradient(circle, #001f5c 1%, transparent 1%)",
-              backgroundSize: "20px 20px",
-              backgroundColor: "#00102e"
-            }}
-          >
-            <div className="container mx-auto px-4 md:px-8 lg:px-[54px] max-w-[1600px] py-10 md:py-16 flex flex-col items-center gap-8">
-              {sortedQuestions.map((q: any, index: number) => (
-                <div key={q.key} className="w-full max-w-[680px]">
-                  <QuestionCard
-                    question={q}
-                    selection={selections[q.key]}
-                    onToggleAnswer={handleToggleAnswer}
-                    index={index}
+        {selectedCategoryKey && (
+          <>
+            <div className="w-full" style={calculatorDarkBg}>
+              <div className="container mx-auto px-4 md:px-8 lg:px-[54px] max-w-[1600px] pt-2 md:pt-4 pb-10 md:pb-16 flex flex-col items-center gap-8">
+                {visibleQuestions.map((q: any, index: number) => (
+                  <div key={q.key} className="w-full max-w-[680px]">
+                    <QuestionCard
+                      question={q}
+                      selection={selections[q.key]}
+                      onToggleAnswer={handleToggleAnswer}
+                      index={index}
+                      tier={tier}
+                      categoryKey={selectedCategoryKey}
+                      categorySelections={graphicsCategoryKeys}
+                      seoServiceMode={seoServiceMode}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {showPriceBar && selectedCategory && (
+              <div
+                ref={stickyRef}
+                className="w-full bg-[#001b54] pb-10 md:pb-20"
+                style={{
+                  backgroundImage: "radial-gradient(circle, #00287a 1%, transparent 1%)",
+                  backgroundSize: "30px 30px",
+                }}
+              >
+                <div className="container mx-auto px-4 md:px-8 lg:px-[54px] max-w-[1600px] pt-8 md:pt-12 flex flex-col items-center w-full">
+                  <ProposalPreview
+                    category={selectedCategory}
+                    selections={selections}
+                    totalPrice={calculation.totalPrice}
+                    timeline={calculation.timeline}
+                    billingType={isMonthlyBilling ? "monthly" : undefined}
+                    onContinueToPayment={
+                      !showPayment ? () => setShowPayment(true) : undefined
+                    }
                   />
+                  {showPayment && (
+                    <div className="w-full mt-6">
+                      <WrappedPaymentForm
+                        totalPrice={calculation.totalPrice}
+                        timeline={calculation.timeline}
+                        categoryKey={selectedCategoryKey || selectedCategory.categoryKey}
+                        selections={selections}
+                        formatPriceLocal={formatPriceLocal}
+                        currency={currency}
+                        setCurrency={setCurrency}
+                      />
+                    </div>
+                  )}
                 </div>
-              ))}
-
-              <div className="w-full flex justify-center mt-10">
-                <button
-                  onClick={() => {
-                    setShowResult(true);
-                    setTimeout(() => stickyRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-                  }}
-                  className="bg-white text-[#002E8A] px-16 py-5 rounded font-bold text-base uppercase tracking-widest hover:bg-gray-100 shadow-2xl transition-all active:scale-95 flex items-center gap-3"
-                >
-                  Calculate My Quote
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                </button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Result & Payment with different pattern */}
-        {showResult && selectedCategory && (
-          <div
-            ref={stickyRef}
-            className="w-full bg-[#001b54] pb-10 md:pb-20"
-            style={{
-              backgroundImage: "radial-gradient(circle, #00287a 1%, transparent 1%)",
-              backgroundSize: "30px 30px"
-            }}
-          >
-            <div className="container mx-auto px-4 md:px-8 lg:px-[54px] max-w-[1600px] pt-8 md:pt-12 flex flex-col items-center w-full">
-              <ProposalPreview category={selectedCategory} selections={selections} totalPrice={calculation.totalPrice} timeline={calculation.timeline} />
-              <div className="w-full mt-6">
-                <WrappedPaymentForm
-                  totalPrice={calculation.totalPrice}
-                  timeline={calculation.timeline}
-                  categoryKey={selectedCategoryKey || selectedCategory.categoryKey}
-                  selections={selections}
-                  formatPriceLocal={formatPriceLocal}
-                  currency={currency}
-                  setCurrency={setCurrency}
-                />
-              </div>
-            </div>
-          </div>
+            )}
+          </>
         )}
       </main>
 
       {/* Reverted Sticky Bottom Bar to centered production style */}
-      {selectedCategoryKey && calculation.totalPrice > 0 && (
+      {selectedCategoryKey && showPriceBar && calculation.totalPrice > 0 && (
         <div className={`fixed bottom-0 left-0 right-0 py-4 md:h-[100px] bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.05)] border-t border-gray-100 flex items-center z-[100] transition-transform duration-500 ease-in-out ${isStickyVisible ? "translate-y-0" : "translate-y-full"}`}>
           <div className="container mx-auto flex flex-col md:flex-row justify-center items-center gap-4 md:gap-10 px-4">
             <div className="flex items-center gap-4">
               <span className="text-sm md:text-[18px] font-bold text-[#002E8A] uppercase tracking-wide font-sans whitespace-nowrap">PROJECT TOTAL COST:</span>
-              <span className="text-2xl md:text-[34px] font-black text-black tracking-tighter">{formatPriceLocal(calculation.totalPrice)}</span>
+              <span className="text-2xl md:text-[34px] font-black text-black tracking-tighter">
+                {formatPriceLocal(calculation.totalPrice)}
+                {isMonthlyBilling && <span className="text-sm md:text-lg font-bold ml-1">/month</span>}
+              </span>
             </div>
-            <div className="flex items-center gap-3 md:pl-8">
-              <span className="text-sm md:text-[18px] font-bold text-[#002E8A] uppercase tracking-wide font-sans">CURRENCY:</span>
-              <div className="flex bg-gray-50 rounded-lg p-1 border border-gray-200">
-                <button type="button" onClick={() => setCurrency("usd")} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${currency === "usd" ? "bg-white shadow-sm text-[#002E8A]" : "text-gray-500 hover:text-gray-700"}`}>USD ($)</button>
-                <button type="button" onClick={() => setCurrency("eur")} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${currency === "eur" ? "bg-white shadow-sm text-[#002E8A]" : "text-gray-500 hover:text-gray-700"}`}>EUR (€)</button>
-              </div>
+            <div className="md:pl-8">
+              <CurrencyDropdown currency={currency} setCurrency={setCurrency} />
             </div>
           </div>
         </div>
