@@ -14,7 +14,7 @@ export class MediaService {
       formData.append("folder", data.folder);
     }
     // Note: HttpClient should handle multipart/form-data correctly when passing FormData
-    return await this.client.post("/s3/upload", formData);
+    return await this.client.post("/cloudinary/upload", formData);
   }
 }
 

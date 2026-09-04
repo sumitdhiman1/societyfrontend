@@ -294,7 +294,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
 
   return (
     <nav className="w-full h-[88px] bg-[#00102E] text-white shadow-[0px_5px_20px_#0000000D] relative z-50 font-sans">
-      <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-[54px] h-full flex items-center justify-between">
+      <div className="max-w-[1536px]  mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] h-full flex items-center justify-between">
         <div className="flex items-center gap-3 shrink-0">
           {/* Mobile view - lefside menu trigger visible only if the user is logined  */}
           {isAuthenticated && (
@@ -368,7 +368,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
               />
               <button
                 onClick={() => handleSearch()}
-                className="h-full px-5 bg-[#4343F0] hover:bg-[#3232b7] text-white flex items-center justify-center transition-colors"
+                className="h-full px-5 bg-[#4343F0]  hover:bg-[#3232b7] text-white flex items-center justify-center transition-colors rounded-[6px]"
               >
                 <SearchIcon />
               </button>
@@ -424,6 +424,12 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
               {!shouldHideMenu && (
                 <div className="hidden xl:flex items-center gap-6">
                   <button
+                    onClick={() => router.push("/dashboard/my-analyses")}
+                    className=" text-white hover:text-gray-300 text-[15px] font-medium"
+                  >
+                    My Analyses
+                  </button>
+                  <button
                     onClick={() => router.push("/dashboard/my-quotes")}
                     className=" text-white hover:text-gray-300 text-[15px] font-medium"
                   >
@@ -475,7 +481,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
               </div>
             </>
           ) : (
-            <div className="flex items-center gap-6 ml-4">
+            <div className="flex items-center gap-6">
               <button
                 onClick={() => router.push("/login")}
                 className="w-[176px] h-[46px] border-2 border-[#E3E6E6] text-white text-[15px] font-bold flex items-center justify-center rounded-[7px] transition-colors hover:bg-white/10 whitespace-nowrap"
@@ -582,9 +588,18 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
               </div>
             )}
 
-            
+
             {isAuthenticated && (
               <div className="flex flex-col gap-5 pb-4 border-b border-gray-300">
+                <button
+                  onClick={() => {
+                    router.push("/dashboard/my-analyses");
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full text-left text-[#363636] hover:text-[#4343F0] hover:bg-white/5 px-4 rounded-md text-sm font-medium transition-colors"
+                >
+                  My Analyses
+                </button>
                 <button
                   onClick={() => {
                     router.push("/dashboard/my-quotes");
@@ -618,31 +633,31 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
                   New Project
                 </button>
 
-                      <button
-                      onClick={() => {
-                        authService.logout();
-                        setIsAuthenticated(false);
-                        router.push("/");
-                        setMobileMenuOpen(false);
-                      }}
-                      className="text-red-600 hover:text-red-800 hover:bg-red-500/10 px-4 py-2 rounded-md text-sm font-medium text-left transition-colors w-full flex items-center gap-2"
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                        <polyline points="16 17 21 12 16 7" />
-                        <line x1="21" y1="12" x2="9" y2="12" />
-                      </svg>
-                      Log Out
-                    </button>
+                <button
+                  onClick={() => {
+                    authService.logout();
+                    setIsAuthenticated(false);
+                    router.push("/");
+                    setMobileMenuOpen(false);
+                  }}
+                  className="text-red-600 hover:text-red-800 hover:bg-red-500/10 px-4 py-2 rounded-md text-sm font-medium text-left transition-colors w-full flex items-center gap-2"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                  Log Out
+                </button>
               </div>
             )}
 

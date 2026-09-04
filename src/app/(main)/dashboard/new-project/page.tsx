@@ -39,11 +39,17 @@ export default function NewProjectPage() {
   }, []);
 
   const handleNavigation = (option: typeof projectOptions[0]) => {
-    if (option.buttonText === "Custom quote" && user && !user.isEmailVerified) {
-      setShowPopup(true);
-    } else {
-      router.push(option.href);
+    if (option.buttonText === "Custom quote") {
+      if (!authService.isAuthenticated()) {
+        router.push(`/login?redirect=${encodeURIComponent(option.href)}`);
+        return;
+      }
+      if (user && !user.isEmailVerified) {
+        setShowPopup(true);
+        return;
+      }
     }
+    router.push(option.href);
   };
 
   return (

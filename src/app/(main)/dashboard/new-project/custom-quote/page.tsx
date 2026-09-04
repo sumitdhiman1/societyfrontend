@@ -49,8 +49,12 @@ export default function CustomQuotePage() {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    setUser(authService.getUser());
-  }, []);
+    const currentUser = authService.getUser();
+    setUser(currentUser);
+    if (!authService.isAuthenticated()) {
+      router.push("/login?redirect=/dashboard/new-project/custom-quote");
+    }
+  }, [router]);
 
   const requiresVerification = user && !user.isEmailVerified;
   const [files, setFiles] = useState<FileItem[]>([]);

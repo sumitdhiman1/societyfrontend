@@ -25,7 +25,7 @@ export default function RequestAnalysis() {
   }, []);
 
   useEffect(() => {
-    if (settings === null || !settings.isPopupEnabled) return;
+    if (settings && settings.isPopupEnabled === false) return;
 
     if (document.cookie.includes("requestwebsite_analysis_shown=true")) {
       console.log("RequestAnalysis already shown (cookie found)");

@@ -15,6 +15,7 @@ import VisaIcon from "@/components/icons/visa";
 import MastercardIcon from "@/components/icons/mastercard";
 import AmexIcon from "@/components/icons/amex";
 import DiscoverIcon from "@/components/icons/discover";
+import { LinkedIn } from "@/components/icons/linkedin";
 
 const httpClient = new HttpClient();
 
@@ -82,7 +83,7 @@ export default function Footer() {
 
   return (
     <footer ref={footerRef} className="w-full bg-primary-400 text-gray-700 pt-8 md:pt-10 pb-5 font-sans">
-      <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-[54px]">
+      <div className="mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] max-w-[1536px] lg:px-[54px]">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 md:gap-6 lg:gap-12 mb-10 md:mb-10 lg:mb-16">
           {/* Column 1: Services */}
           <div className="flex flex-col gap-4 md:gap-2">
@@ -185,20 +186,20 @@ export default function Footer() {
         </div>
 
         {/* Footer Bottom Row 1: Payment & VAT */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-0 md:mb-2 gap-4">
           <div className="flex items-center gap-4 opacity-70 grayscale hover:grayscale-0 transition-all scale-90 md:scale-100">
             <VisaIcon className="h-6" />
             <MastercardIcon className="h-6" />
             <AmexIcon className="h-6" />
             <DiscoverIcon className="h-6" />
           </div>
-          <p className="text-sm text-[#434343]/60 font-semibold">
+          <p className="text-sm text-custom-4 font-semibold">
             Prices exclude VAT
           </p>
         </div>
 
         {/* Chat Widget Toggle Button */}
-        <div className="flex justify-end mb-4">
+        <div className="flex justify-end pb-4">
           <button
             onClick={toggleChat}
             className={`p-4 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center justify-center relative ${isOpen ? "bg-red-500 hover:bg-red-600 rotate-90" : "bg-[#5356ff] hover:bg-[#3232b7]"
@@ -234,11 +235,15 @@ export default function Footer() {
               <FacebookIcon className="w-[34px] h-[34px]" />
             </Link>
             <Link href="/" className="hover:opacity-80 transition-opacity">
-              <TwitterIcon className="w-[34px] h-[34px]" />
-            </Link>
-            <Link href="/" className="hover:opacity-80 transition-opacity">
               <InstagramIcon className="w-[34px] h-[34px]" />
             </Link>
+            <Link href="/" className="hover:opacity-80 transition-opacity">
+              <LinkedIn className="w-[34px] h-[34px]" />
+            </Link>
+            <Link href="/" className="hover:opacity-80 transition-opacity">
+              <TwitterIcon className="w-[34px] h-[34px]" />
+            </Link>
+
             <Link href="/" className="hover:opacity-80 transition-opacity">
               <YoutubeIcon className="w-[34px] h-[34px]" />
             </Link>

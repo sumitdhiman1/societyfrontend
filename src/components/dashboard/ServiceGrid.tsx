@@ -51,7 +51,7 @@ export default function ServiceGrid() {
 
   return (
     <div
-      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 lg:gap-x-[22px] lg:gap-y-[22px] gap-[24px] font-sans pt-1"
+      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 font-sans pt-1"
       style={{ fontFamily: "var(--font-inter), sans-serif" }}
     >
       {categories.map((category) => (

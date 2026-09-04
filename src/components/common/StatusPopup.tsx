@@ -9,6 +9,10 @@ interface StatusPopupProps {
   type: "success" | "error";
   title: string;
   message: string;
+  actionButton?: {
+    text: string;
+    onClick: () => void;
+  };
 }
 
 export default function StatusPopup({
@@ -17,6 +21,7 @@ export default function StatusPopup({
   type,
   title,
   message,
+  actionButton,
 }: StatusPopupProps) {
   const [shouldRender, setRender] = useState(isOpen);
 
@@ -93,11 +98,11 @@ export default function StatusPopup({
           <h3 className="text-2xl font-bold mb-3 text-[#363636]">{title}</h3>
           <p className="text-gray-500 mb-8 leading-relaxed px-4">{message}</p>
           <button
-            onClick={onClose}
-            className={`w-full py-3.5 rounded-xl font-bold text-white transition-all shadow-lg hover:shadow-xl active:scale-[0.98] ${isSuccess ? "bg-[#5356ff] hover:bg-[#3232b7]" : "bg-red-500 hover:bg-red-600"
+            onClick={actionButton?.onClick || onClose}
+            className={`w-full py-3.5 rounded-xl font-bold text-white transition-all shadow-lg hover:shadow-xl active:scale-[0.98] cursor-pointer ${isSuccess ? "bg-[#5356ff] hover:bg-[#3232b7]" : "bg-red-500 hover:bg-red-600"
               }`}
           >
-            {isSuccess ? "Continue" : "Try Again"}
+            {actionButton?.text || (isSuccess ? "Continue" : "Try Again")}
           </button>
         </div>
       </div>

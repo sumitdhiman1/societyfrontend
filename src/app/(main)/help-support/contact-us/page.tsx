@@ -30,9 +30,18 @@ export default function ContactUsPage() {
 
     try {
       setLoading(true);
-      const res: any = await httpClient.post("/contact/submit", formData);
+      const payload = {
+        fullName: formData.fullName.trim(),
+        email: formData.email.trim(),
+        phoneNumber: formData.phone.trim(),
+        phone: formData.phone.trim(),
+        subject: formData.subject.trim(),
+        message: formData.message.trim(),
+      };
+
+      const res: any = await httpClient.post("/contact/submit", payload);
       
-      if (res.success) {
+      if (res?.isSuccessful || res?.statusCode === 201 || res?.data || res?.success) {
         setPopup({
           isOpen: true,
           type: "success",
@@ -47,14 +56,16 @@ export default function ContactUsPage() {
           message: "",
         });
       } else {
-        throw new Error(res.message || "Failed to send message");
+        throw new Error(res?.message || "Failed to send message");
       }
     } catch (error: any) {
+      console.error("Contact submission error:", error);
+      const errMsg = error?.response?.data?.message || error?.data?.message || error?.message || "An error occurred. Please try again later.";
       setPopup({
         isOpen: true,
         type: "error",
         title: "Submission Failed",
-        message: error?.response?.data?.message || "An error occurred. Please try again later.",
+        message: Array.isArray(errMsg) ? errMsg.join(", ") : errMsg,
       });
     } finally {
       setLoading(false);
@@ -184,7 +195,7 @@ export default function ContactUsPage() {
                   className="flex items-center gap-4 w-full bg-primary-300 hover:bg-primary-100 text-white px-4 py-3 rounded-md border-[3px] border-gray-300 shadow-md transition-colors"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd" />
+                    <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
                   </svg>
                   <span className="text-sm font-semibold tracking-tight">Live chat</span>
                 </Link>

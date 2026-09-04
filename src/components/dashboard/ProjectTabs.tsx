@@ -197,11 +197,10 @@ export default function ProjectTabs() {
   }) => (
     <button
       onClick={() => setActiveTab(id)}
-      className={`text-[16px] sm:text-[18px] leading-[21px] font-inter text-left transition-colors relative pb-4 whitespace-nowrap ${
-        activeTab === id
-          ? "font-bold text-[#363636]"
-          : "font-normal text-[#434343] opacity-50 hover:opacity-100"
-      }`}
+      className={`text-[16px] sm:text-[18px] leading-[21px] font-inter text-left transition-colors relative pb-4 whitespace-nowrap ${activeTab === id
+        ? "font-bold text-[#363636]"
+        : "font-normal text-[#434343] opacity-50 hover:opacity-100"
+        }`}
     >
       {label}
       <span className="ml-1 text-sm text-gray-400 font-bold">({count})</span>
@@ -249,7 +248,7 @@ export default function ProjectTabs() {
         </div>
       </div>
 
-      <div className="hidden md:flex flex-row flex-nowrap justify-between items-end border-b border-gray-200 pb-0 w-full mt-6 md:mt-8 lg:mt-[46px] gap-x-4">
+      <div className="hidden md:flex flex-row flex-nowrap justify-between items-end border-b border-gray-200 pb-0 w-full mt-6 md:mt-8  gap-x-4">
         <div
           className="flex gap-6 sm:gap-10 overflow-x-auto flex-nowrap min-w-0"
           style={{ scrollbarWidth: "none" }}
@@ -260,18 +259,18 @@ export default function ProjectTabs() {
           <TabButton id="canceled" label="Canceled" count={stats.canceled} />
         </div>
 
-        <div className="flex items-end gap-6 sm:gap-10 md:gap-12 lg:gap-[60px] pb-4 ml-auto">
-          <span className="text-[18px] leading-[21px] font-normal font-inter text-[#434343] hidden sm:block">
+        <div className="flex items-end gap-6 sm:gap-10 md:gap-12 lg:gap-[60px] ml-auto">
+          <span className="text-[18px] leading-[21px] font-normal font-inter pb-4 text-[#434343] hidden sm:block">
             View
           </span>
           <div className="flex gap-6">
             <button
+              type="button"
               onClick={() => setViewMode("cards")}
-              className={`flex items-center gap-2 font-inter transition-colors relative ${
-                viewMode === "cards"
-                  ? "text-[#363636] font-bold"
-                  : "text-gray-500 font-normal"
-              }`}
+              className={`flex items-center pb-4 gap-2 relative font-inter transition-colors cursor-pointer ${viewMode === "cards"
+                ? "text-[#363636] font-bold"
+                : "text-gray-500 font-normal"
+                }`}
             >
               <span
                 className={
@@ -281,14 +280,17 @@ export default function ProjectTabs() {
                 <CardsIcon />
               </span>
               <span className="text-[18px] leading-[21px]">Cards</span>
+              {viewMode === "cards" && (
+                <div className="absolute bottom-0 left-0 w-full h-[4px] bg-[#4343F0] rounded-t-[2px]"></div>
+              )}
             </button>
             <button
+              type="button"
               onClick={() => setViewMode("list")}
-              className={`flex items-center gap-2 font-inter transition-colors relative ${
-                viewMode === "list"
-                  ? "text-[#363636] font-bold"
-                  : "text-gray-500 font-normal"
-              }`}
+              className={`flex items-center gap-2 pb-4 font-inter transition-colors relative cursor-pointer ${viewMode === "list"
+                ? "text-[#363636] font-bold"
+                : "text-gray-500 font-normal"
+                }`}
             >
               <span
                 className={
@@ -298,13 +300,16 @@ export default function ProjectTabs() {
                 <ListIcon />
               </span>
               <span className="text-[18px] leading-[21px]">List</span>
+              {viewMode === "list" && (
+                <div className="absolute bottom-0 left-0 w-full h-[4px] bg-[#4343F0] rounded-t-[2px]"></div>
+              )}
             </button>
           </div>
         </div>
       </div>
 
       {viewMode === "cards" && (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 xl:gap-x-[62px] xl:gap-y-[48px] mt-6 md:mt-8 lg:mt-[50px]">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 xl:gap-x-[62px] xl:gap-y-[48px] mt-6 md:mt-8 ">
           {loading ? (
             [1, 2].map((i) => (
               <div
@@ -351,7 +356,7 @@ export default function ProjectTabs() {
                       <div>
                         <div className="flex items-center">
                           <p className="text-[#4343F0] md:hidden block text-[11px] xl:text-[13px] font-bold">
-                           Deadline
+                            Deadline
                           </p>
                           <p className="hidden md:block text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
                             Exp. Deadline
@@ -389,7 +394,7 @@ export default function ProjectTabs() {
                   </div>
                 </div>
               ))}
-              <div className="w-full max-h-[166px] md:min-h-[221px] border-2 border-dashed border-[#4343F0]/30   rounded-[6px] flex flex-col p-6 md:p-8 justify-between hover:bg-[#F2F4FF] text-center lg:text-left">
+              <div className="w-full max-h-[166px] md:min-h-[221px] bg-white border-2 border-dashed border-[#4343F0]/30   rounded-[6px] flex flex-col p-6 md:p-8 justify-between hover:bg-[#F2F4FF] text-center lg:text-left">
                 <h3 className="text-[26px] md:text-[29px] font-semibold text-[#363636]">
                   New Project
                 </h3>
