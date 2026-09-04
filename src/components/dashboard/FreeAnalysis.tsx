@@ -25,7 +25,7 @@ export default function FreeAnalysis() {
     fetchSettings();
   }, []);
 
-  if (settings && settings.isHomepageSectionEnabled === false) return null;
+  if (settings && !settings.isHomepageSectionEnabled) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,7 +171,7 @@ export default function FreeAnalysis() {
               </div>
             </div>
             </div>
-          
+                    {/* Mobile / Tablet Version */}
           <div className="lg:hidden flex flex-col bg-white rounded-[10px] shadow-[0px_4px_20px_rgba(14,16,63,0.07)] relative overflow-hidden w-full max-w-[400px] md:max-w-[600px] mx-auto">
             <div className="lg:hidden flex flex-col bg-white rounded-[10px]  relative overflow-hidden w-full max-w-[400px] md:max-w-[600px] mx-auto">
                 <div className="relative w-full flex justify-center md:bg-[#EBE9FA]">

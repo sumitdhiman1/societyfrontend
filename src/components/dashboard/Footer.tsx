@@ -15,6 +15,7 @@ import VisaIcon from "@/components/icons/visa";
 import MastercardIcon from "@/components/icons/mastercard";
 import AmexIcon from "@/components/icons/amex";
 import DiscoverIcon from "@/components/icons/discover";
+import { LinkedIn } from "@/components/icons/linkedin";
 
 const httpClient = new HttpClient();
 
@@ -185,20 +186,20 @@ export default function Footer() {
         </div>
 
         {/* Footer Bottom Row 1: Payment & VAT */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-0 md:mb-2 gap-4">
           <div className="flex items-center gap-4 opacity-70 grayscale hover:grayscale-0 transition-all scale-90 md:scale-100">
             <VisaIcon className="h-6" />
             <MastercardIcon className="h-6" />
             <AmexIcon className="h-6" />
             <DiscoverIcon className="h-6" />
           </div>
-          <p className="text-sm text-[#434343]/60 font-semibold">
+          <p className="text-sm text-custom-4 font-semibold">
             Prices exclude VAT
           </p>
         </div>
 
         {/* Chat Widget Toggle Button */}
-        <div className="flex justify-end mb-4">
+        <div className="flex justify-end pb-4">
           <button
             onClick={toggleChat}
             className={`p-4 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center justify-center relative ${isOpen ? "bg-red-500 hover:bg-red-600 rotate-90" : "bg-[#5356ff] hover:bg-[#3232b7]"
@@ -234,11 +235,15 @@ export default function Footer() {
               <FacebookIcon className="w-[34px] h-[34px]" />
             </Link>
             <Link href="/" className="hover:opacity-80 transition-opacity">
-              <TwitterIcon className="w-[34px] h-[34px]" />
-            </Link>
-            <Link href="/" className="hover:opacity-80 transition-opacity">
               <InstagramIcon className="w-[34px] h-[34px]" />
             </Link>
+            <Link href="/" className="hover:opacity-80 transition-opacity">
+              <LinkedIn className="w-[34px] h-[34px]" />
+            </Link>
+            <Link href="/" className="hover:opacity-80 transition-opacity">
+              <TwitterIcon className="w-[34px] h-[34px]" />
+            </Link>
+
             <Link href="/" className="hover:opacity-80 transition-opacity">
               <YoutubeIcon className="w-[34px] h-[34px]" />
             </Link>
