@@ -74,9 +74,9 @@ export default function UserWelcome({ title }: UserWelcomeProps) {
           </div>
           <button
             onClick={() => router.push("/dashboard/new-project")}
- 
-            className="md:w-[247px] w-[200px] bg-[#4343F0] hover:bg-[#2828c0] text-white font-bold py-3 rounded-[6px] transition-colors shadow-sm text-[14px] mt-6"
- >
+
+            className="md:w-[247px] w-[200px] bg-[#4343F0] hover:bg-[#5c5cf2] text-white font-bold py-3 rounded-[6px] transition-colors shadow-sm text-[14px] mt-6"
+          >
             Start A New Project
           </button>
         </>

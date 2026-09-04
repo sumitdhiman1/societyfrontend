@@ -49,3 +49,8 @@ body {
 .animate-toast-in {
   animation: toast-slide-in 0.3s ease-out forwards;
 }
+
+@theme {
+  --radius-lg: 6px;
+  --radiu-lg: 12px;
+}
