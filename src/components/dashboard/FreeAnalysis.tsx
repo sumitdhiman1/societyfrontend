@@ -130,7 +130,7 @@ export default function FreeAnalysis() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="h-[48px] px-7 bg-[#4343F0] hover:bg-[#3232b7] rounded-[6px] text-white font-bold text-[15px] border-none cursor-pointer whitespace-nowrap flex items-center justify-center shrink-0 transition-colors font-sans disabled:opacity-50"
+                    className="h-[48px] px-7 bg-[#4343F0] hover:bg-[#5356ff] rounded-[6px] text-white font-bold text-[15px] border-none cursor-pointer whitespace-nowrap flex items-center justify-center shrink-0 transition-colors font-sans disabled:opacity-50"
                   >
                     {loading ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -170,16 +170,16 @@ export default function FreeAnalysis() {
                 />
               </div>
             </div>
-            </div>
-                    {/* Mobile / Tablet Version */}
+          </div>
+          {/* Mobile / Tablet Version */}
           <div className="lg:hidden flex flex-col bg-white rounded-[10px] shadow-[0px_4px_20px_rgba(14,16,63,0.07)] relative overflow-hidden w-full max-w-[400px] md:max-w-[600px] mx-auto">
             <div className="lg:hidden flex flex-col bg-white rounded-[10px]  relative overflow-hidden w-full max-w-[400px] md:max-w-[600px] mx-auto">
-                <div className="relative w-full flex justify-center md:bg-[#EBE9FA]">
-                   <img src="/assets/mobile-check-bg.png" alt="" className="w-full h-auto object-cover" /> 
-                    <div className="absolute inset-0 flex items-center justify-center pt-8">
-                      <img src="/assets/mobile-check.svg" alt="Analysis Illustration" className="w-[66%] md:w-[60%] h-auto object-contain " />
-                      </div>
+              <div className="relative w-full flex justify-center md:bg-[#EBE9FA]">
+                <img src="/assets/mobile-check-bg.png" alt="" className="w-full h-auto object-cover" />
+                <div className="absolute inset-0 flex items-center justify-center pt-8">
+                  <img src="/assets/mobile-check.svg" alt="Analysis Illustration" className="w-[66%] md:w-[60%] h-auto object-contain " />
                 </div>
+              </div>
             </div>
 
 
@@ -217,7 +217,7 @@ export default function FreeAnalysis() {
                 </button>
               </form>
             </div>
-            </div>
+          </div>
         </div>
       </div>
     </div>
