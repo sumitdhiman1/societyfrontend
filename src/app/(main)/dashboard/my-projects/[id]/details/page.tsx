@@ -1172,7 +1172,7 @@ export default function ProjectDetailsPage() {
 
         {/* Sidebar - Project Manager */}
         <div className="lg:col-span-1">
-          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-8 sticky top-24">
+          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-8 sticky top-28">
             <div className="text-center">
               {(() => {
                 const manager = project.assignedManagers?.[0] || project.projectManager;

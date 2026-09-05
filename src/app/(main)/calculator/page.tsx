@@ -121,36 +121,35 @@ const CurrencyDropdown = ({
 };
 
 const CategoryGrid = ({ categories, selectedCategoryKey, onSelect }: { categories: CalculatorCategory[], selectedCategoryKey: string | null, onSelect: (key: string) => void }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8 items-stretch">
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8 items-start">
     {categories.map((cat: CalculatorCategory) => {
       const isSelected = selectedCategoryKey === cat.categoryKey;
       return (
-      <button
-        key={cat.categoryKey}
-        onClick={() => onSelect(cat.categoryKey)}
-        className={`group relative bg-white rounded-[4px] shadow-[0px_10px_30px_rgba(0,0,0,0.1)] border-0 transition-all duration-300 transform hover:-translate-y-1 flex flex-col w-full h-full focus:outline-none focus:ring-2 focus:ring-white/20 ${
-          isSelected ? "pb-[26px]" : ""
-        }`}
-      >
-        <div className="w-full flex-1 flex items-center justify-center px-6 pt-8 pb-4 bg-white min-h-[190px] rounded-t-[4px]">
-          <img
-            src={getCategoryIllustration(cat.categoryKey, cat.image)}
-            alt={cat.categoryName}
-            className="max-w-full max-h-[150px] w-auto object-contain transition-transform duration-500 group-hover:scale-105"
-          />
-        </div>
-        <div className="w-full px-4 pt-2 pb-5 bg-white min-h-[88px] flex items-start">
-          <h3 className="font-black text-[#002E8A] uppercase tracking-tight text-[15px] leading-[1.3] text-left">
-            {getCategoryDisplayName(cat.categoryKey, cat.categoryName)}
-          </h3>
-        </div>
-        {isSelected && (
-          <div className="absolute bottom-0 left-0 right-0 h-[26px] flex items-center px-4 text-[9px] font-black uppercase tracking-[0.2em] bg-[#334155] text-white rounded-b-[4px]">
-            SELECTED
+        <button
+          key={cat.categoryKey}
+          onClick={() => onSelect(cat.categoryKey)}
+          className={`group relative bg-white rounded-[6px] shadow-[0px_10px_30px_rgba(0,0,0,0.1)] border-0 transition-all duration-300 transform hover:-translate-y-1 flex flex-col w-full  focus:outline-none focus:ring-2 focus:ring-white/20 ${isSelected ? "" : ""
+            }`}
+        >
+          <div className="w-full border-rs-cs flex-1 flex items-center justify-center px-6 pt-4 pb-4 bg-white min-h-[160px] rounded-t-[4px]">
+            <img
+              src={getCategoryIllustration(cat.categoryKey, cat.image)}
+              alt={cat.categoryName}
+              className="max-w-full max-h-[130px] w-auto object-contain transition-transform duration-500 group-hover:scale-105"
+            />
           </div>
-        )}
-      </button>
-    );
+          <div className="w-full border-rs-cs min-h-[65px] px-6 pb-4 flex items-center justify-start bg-white">
+            <h3 className="font-extrabold text-[#1F2937] uppercase tracking-[0.01em] text-[14px] md:text-[15px] leading-snug text-left">
+              {getCategoryDisplayName(cat.categoryKey, cat.categoryName)}
+            </h3>
+          </div>
+          {isSelected && (
+            <div className="w-full selected-cs bg-[#4A5568] text-white py-2.5 text-center text-[11px] font-bold uppercase tracking-[0.2em] transition-all duration-300">
+              SELECTED
+            </div>
+          )}
+        </button>
+      );
     })}
   </div>
 );
@@ -224,8 +223,8 @@ const QuestionCard = ({
       : [{ heading: null, answers: visibleAnswers }];
 
   return (
-    <div className="animate-in fade-in duration-700 bg-white p-6 md:p-10 rounded-[10px] shadow-2xl">
-      <h2 className="text-xl md:text-2xl font-bold text-[#002E8A] mb-6 md:mb-8 tracking-tight font-manrope">
+    <div className="animate-in fade-in duration-700 animate-in fade-in duration-700 bg-white p-8 md:p-12 rounded-2xl shadow-xl border border-gray-100/80 text-left max-w-[680px] mx-auto">
+      <h2 className="text-[20px] md:text-[22px] font-medium text-[#475569] mb-6 md:mb-8 tracking-normal leading-snug">
         {index !== undefined ? `${index + 1}. ` : ""}{question.text}
       </h2>
 
@@ -253,7 +252,7 @@ const QuestionCard = ({
             {group.heading && (
               <h3 className="text-[#002E8A] font-bold text-lg mb-3">{group.heading}</h3>
             )}
-            <div className="grid grid-cols-1 gap-1">
+            <div className="grid grid-cols-1 gap-1 multiple-radio">
               {group.answers.map((ans: any) => {
                 const isSelected = activeKeys.includes(ans.key);
                 return (
@@ -261,19 +260,19 @@ const QuestionCard = ({
                     key={ans.key}
                     type="button"
                     onClick={() => onToggleAnswer(question.key, ans.key, question.type)}
-                    className="w-full flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 transition-all outline-none text-left"
+                    className="w-full flex items-center gap-4 cursor-pointer group outline-none text-left py-1.5 mb-3 transition-colors"
                   >
                     <div className="flex-shrink-0">
                       {question.type === "multi" ? (
                         <div
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                            isSelected ? "bg-[#002E8A] border-[#002E8A]" : "border-gray-400 bg-white"
-                          }`}
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? "bg-[#002E8A] border-[#002E8A] w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all border-[#4F46E5] bg-white" : "border-gray-400 bg-white"
+                            }`}
                         >
                           {isSelected && (
-                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
-                            </svg>
+                            // <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            //   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
+                            // </svg>
+                            <div className="w-2.5 h-2.5 rounded-full bg-[#4F46E5]"></div>
                           )}
                         </div>
                       ) : (
@@ -282,7 +281,7 @@ const QuestionCard = ({
                         </div>
                       )}
                     </div>
-                    <div className="text-[17px] font-medium text-[#002E8A] tracking-wide">{ans.text}</div>
+                    <div className="text-[16px] md:text-[17px] leading-relaxed transition-colors text-[#475569] font-normal group-hover:text-[#334155]">{ans.text}</div>
                   </button>
                 );
               })}
@@ -1063,24 +1062,24 @@ export default function CalculatorPage() {
     <div className="bg-[#00102E] min-h-screen flex flex-col font-sans relative">
 
       {/* Hero Section */}
-      <div className="relative text-white overflow-hidden w-full min-h-[280px] md:min-h-[360px]">
+      <div className="relative flex items-center text-white overflow-hidden w-full min-h-[280px] md:min-h-[406px]">
         <Image
-          src="/images/home-hero-bg.jpg"
+          src="/images/calculator_hero.jpg"
           alt="Price calculator hero background"
           fill
           priority
           className="object-cover object-center"
         />
-        <div className="relative z-10 w-full max-w-[1600px] mx-auto px-6 sm:px-5 md:px-8 lg:px-[54px] py-10 sm:py-10 md:py-[40px]">
+        <div className="absolute inset-0 z-0 bg-gradient-to-r from-[#00102E] via-[#00102E]/60 to-transparent"></div>
+        <div className="mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] text-left relative z-10 max-w-[1536px] w-full">
           <div className="flex flex-row justify-center items-center">
             <div className="w-full text-center md:text-left">
-              <h1 className="text-[30px] sm:text-[28px] md:text-[36px] font-semibold mt-6 md:mt-8 mb-[25px] text-white leading-tight md:leading-[2] [font-family:var(--font-poppins)]">
+              <p className="text-gray-300 text-sm md:text-base font-medium mb-3">Calculator</p>
+              <h1 className="text-4xl md:text-[52px] font-extrabold mb-4 leading-tight tracking-tight text-white">
                 Instantly create your price quote.
               </h1>
-              <p className="text-left text-[14px] sm:text-[16px] md:text-[18px] font-light text-white leading-[1.6] md:leading-relaxed tracking-normal [font-family:var(--font-poppins)] pb-6 md:pb-0">
+              <p className="text-base md:text-xl text-gray-200 font-normal leading-relaxed max-w-2xl">
                 Already know the details of your project? There&apos;s an easy way to get started!{" "}
-                <span className="hidden md:inline"><br /></span>
-                Select your web project below, then fill out the requirements to calculate your price.
               </p>
             </div>
           </div>
@@ -1091,17 +1090,16 @@ export default function CalculatorPage() {
 
         {/* Category Selection Section */}
         <div
-          className={`calculator-category-section w-full transition-colors duration-300 ${
-            selectedCategoryKey ? "py-6 md:py-10" : "bg-[#002E8A] py-8 md:py-16"
-          }`}
+          className={`calculator-category-section w-full transition-colors duration-300 ${selectedCategoryKey ? "py-6 md:py-10" : "bg-[#00102E] py-8 md:py-16"
+            }`}
           style={selectedCategoryKey ? calculatorDarkBg : undefined}
         >
-          <div className="container mx-auto px-[34px] md:px-8 lg:px-[54px] max-w-[1600px]">
-            <div className="mb-12 text-left ms-[-8px] mt-2">
-              <h2 className="text-[20px] md:text-[24px] pl-[0px] md:pl-0 font-normal leading-none tracking-[0px] mb-0 text-[#f2f2f2] [font-family:var(--font-poppins)]">
+          <div className="mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] max-w-[1536px] w-full">
+            <div className="mb-8 text-left">
+              <h2 className="text-[24px] md:text-[28px] font-semibold text-white mb-1.5 leading-snug">
                 What would you like to create?
               </h2>
-              <p className="text-[14px] md:text-[16px] pl-[0px] md:pl-0 font-medium leading-[23px] mt-[15px] uppercase text-white [font-family:var(--font-poppins)]">CLICK ON AN OPTION BELOW</p>
+              <p className="text-[11px] font-black text-white/70 uppercase tracking-[0.2em]">CLICK ON AN OPTION BELOW</p>
             </div>
             {config && (
               <CategoryGrid
@@ -1121,7 +1119,7 @@ export default function CalculatorPage() {
         {selectedCategoryKey && (
           <>
             <div className="w-full" style={calculatorDarkBg}>
-              <div className="container mx-auto px-4 md:px-8 lg:px-[54px] max-w-[1600px] pt-2 md:pt-4 pb-10 md:pb-16 flex flex-col items-center gap-8">
+              <div className="mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] max-w-[1536px] w-full py-10 md:py-16 flex flex-col items-center gap-10 min-h-[480px]">
                 {visibleQuestions.map((q: any, index: number) => (
                   <div key={q.key} className="w-full max-w-[680px]">
                     <QuestionCard

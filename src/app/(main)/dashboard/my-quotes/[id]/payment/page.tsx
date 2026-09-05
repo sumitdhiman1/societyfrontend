@@ -383,7 +383,7 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
       </div>
       
       <div className="lg:col-span-1">
-        <div className="bg-white border border-gray-300 rounded-lg p-10 text-center sticky top-8">
+        <div className="bg-white border border-gray-300 rounded-lg p-10 text-center sticky top-28">
           <h3 className="text-xl font-bold text-gray-600 mb-2">Need Help?</h3>
           <p className="text-gray-500 text-xs mb-8">Contact us for assistance.</p>
           <Link href="/help-support">

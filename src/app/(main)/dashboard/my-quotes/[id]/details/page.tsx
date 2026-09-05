@@ -490,7 +490,7 @@ export default function QuoteDetailsPage() {
           </div>
         </div>
         <div className="lg:col-span-1 space-y-6">
-          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-8 sticky top-24">
+          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-8 sticky top-28">
             <div className="text-center">
               <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gray-100 border border-gray-200">
                 {manager?.avatar ? (

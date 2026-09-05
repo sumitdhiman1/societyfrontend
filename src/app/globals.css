@@ -55,9 +55,24 @@ body {
   --radiu-lg: 12px;
 }
 
+.selected-cs {
+  border-bottom-right-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+
 .p-inline-set {
   padding-inline: 17px;
 }
+
+.multiple-radio button:last-child {
+  margin-bottom: 0 !important;
+}
+
+
+.border-rs-cs {
+  border-radius: 6px !important;
+}
+
 
 @media screen and (max-width: 1660px) {
   .p-inline-set {

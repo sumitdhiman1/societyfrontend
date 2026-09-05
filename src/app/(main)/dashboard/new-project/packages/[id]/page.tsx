@@ -496,7 +496,7 @@ function PackageDetailsContent() {
                   </div>
 
                   {/* Sidebar Section */}
-                  <div className="bg-white border border-gray-200 rounded-[10px] shadow-[0px_5px_25px_#0000000D] p-8 text-center sticky top-8">
+                  <div className="bg-white border border-gray-200 rounded-[10px] shadow-[0px_5px_25px_#0000000D] p-8 text-center sticky top-28">
                     <h3 className="text-xl font-bold text-[#646464] mb-3">Questions Before You Pay?</h3>
                     <p className="text-[13px] text-[#808080] mb-8 leading-relaxed">
                       Our support team is here to help with pricing, payments, or package details—no pressure.

@@ -624,7 +624,7 @@ function BundleDetailsContent() {
               </div>
 
               <div className="lg:col-span-1">
-                <div className="bg-white border border-gray-300 rounded-xl shadow-sm p-8 sticky top-8">
+                <div className="bg-white border border-gray-300 rounded-xl shadow-sm p-8 sticky top-28">
                   <h3 className="text-xl font-bold text-gray-800 text-center mb-4">Questions Before You Pay?</h3>
                   <p className="text-sm text-gray-500 text-center mb-8 leading-relaxed">Our support team is here to help with pricing, payments, or package details—no pressure.</p>
                   <button onClick={openChat} className="w-full px-6 py-4 bg-[#3535b8] hover:bg-[#2a2a9a] text-white font-bold rounded-lg transition-all shadow-md active:scale-95">
