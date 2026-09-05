@@ -894,10 +894,6 @@ export default function CalculatorPage() {
   const [loading, setLoading] = useState(true);
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
   const [selections, setSelections] = useState<Record<string, CalculatorSelection>>({});
-  const [isStickyVisible, setIsStickyVisible] = useState(false);
-  const stickyRef = useRef<HTMLDivElement>(null);
-  const footerRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     (async () => {
       try {
@@ -910,36 +906,6 @@ export default function CalculatorPage() {
       }
     })();
   }, []);
-
-  useEffect(() => {
-    setIsStickyVisible(!!selectedCategoryKey);
-  }, [selectedCategoryKey]);
-
-  useEffect(() => {
-    const stickyEl = stickyRef.current;
-    const footerEl = footerRef.current;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setIsStickyVisible(false);
-          } else if (selectedCategoryKey && entry.boundingClientRect.top > 0) {
-            setIsStickyVisible(true);
-          }
-        });
-      },
-      { threshold: 0 }
-    );
-
-    if (stickyEl) observer.observe(stickyEl);
-    if (footerEl) observer.observe(footerEl);
-
-    return () => {
-      if (stickyEl) observer.unobserve(stickyEl);
-      if (footerEl) observer.unobserve(footerEl);
-    };
-  }, [selectedCategoryKey]);
 
   const [calculation, setCalculation] = useState<{ totalPrice: number; timeline?: string }>({
     totalPrice: 0,
@@ -983,6 +949,7 @@ export default function CalculatorPage() {
     () => (selectedCategory ? shouldShowPriceBar(selectedCategory, selections) : false),
     [selectedCategory, selections]
   );
+  const showStickyPriceBar = !!(selectedCategoryKey && showPriceBar && calculation.totalPrice > 0);
 
   useEffect(() => {
     if (!selectedCategoryKey || !hasUserSelections) {
@@ -1052,13 +1019,13 @@ export default function CalculatorPage() {
 
   const { setBottomOffset } = useChatWidget();
   useEffect(() => {
-    if (isStickyVisible && selectedCategoryKey && showPriceBar && calculation.totalPrice > 0) {
+    if (showStickyPriceBar) {
       setBottomOffset(100);
     } else {
       setBottomOffset(0);
     }
     return () => setBottomOffset(0);
-  }, [isStickyVisible, selectedCategoryKey, calculation.totalPrice, setBottomOffset]);
+  }, [showStickyPriceBar, setBottomOffset]);
 
   if (loading) {
     return (
@@ -1151,7 +1118,6 @@ export default function CalculatorPage() {
 
             {selectedCategory && (
               <div
-                ref={stickyRef}
                 className="w-full bg-[#001b54] pb-10 md:pb-20"
                 style={{
                   backgroundImage: "radial-gradient(circle, #00287a 1%, transparent 1%)",
@@ -1186,8 +1152,8 @@ export default function CalculatorPage() {
       </main>
 
       {/* Reverted Sticky Bottom Bar to centered production style */}
-      {selectedCategoryKey && showPriceBar && calculation.totalPrice > 0 && (
-        <div className={`fixed bottom-0 left-0 right-0 py-4 md:h-[100px] bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.05)] border-t border-gray-100 flex items-center z-[100] transition-transform duration-500 ease-in-out ${isStickyVisible ? "translate-y-0" : "translate-y-full"}`}>
+      {showStickyPriceBar && (
+        <div className="fixed bottom-0 left-0 right-0 py-4 md:h-[100px] bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.05)] border-t border-gray-100 flex items-center z-[100]">
           <div className="container mx-auto flex flex-col md:flex-row justify-center items-center gap-4 md:gap-10 px-4">
             <div className="flex items-center gap-4">
               <span className="text-sm md:text-[18px] font-bold text-[#002E8A] uppercase tracking-wide font-sans whitespace-nowrap">PROJECT TOTAL COST:</span>
@@ -1201,8 +1167,6 @@ export default function CalculatorPage() {
           </div>
         </div>
       )}
-
-      <div ref={footerRef} className="h-1 w-full" aria-hidden="true" />
     </div>
   );
 }
