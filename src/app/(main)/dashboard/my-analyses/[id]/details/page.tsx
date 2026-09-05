@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { useAnalysis } from "@/context/AnalysisContext";
 import { projectService } from "@/lib/projectService";
 import { mediaService } from "@/lib/mediaService";
@@ -10,6 +11,168 @@ import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
 import { io, Socket } from "socket.io-client";
+
+const formatStatusTitle = (rawTitle: string): string => {
+  if (!rawTitle) return "System Notification";
+  let clean = rawTitle
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}👤🚀📌✅🔔]/gu, "")
+    .trim();
+
+  const lower = clean.toLowerCase();
+  if (lower === "project manager assigned" || lower === "project manager assigned!") {
+    return "Project manager assigned";
+  }
+  if (lower === "order completed" || lower === "order completed!") {
+    return "Order completed!";
+  }
+  if (lower === "bundle project starting" || lower === "bundle project starting!") {
+    return "Bundle project starting";
+  }
+
+  if (clean.length > 1 && clean === clean.toUpperCase()) {
+    clean = clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
+  }
+  return clean;
+};
+
+const renderStatusMessageText = (text: string, attachments?: any[]) => {
+  if (!text) return null;
+
+  const pdfAttachment = attachments?.find((a: any) => {
+    const u = typeof a === "string" ? a : a?.url || "";
+    return u.toLowerCase().endsWith(".pdf") || a?.type === "pdf";
+  });
+  const pdfUrl = typeof pdfAttachment === "string" ? pdfAttachment : pdfAttachment?.url;
+
+  const renderPdfButton = () => {
+    if (!pdfUrl) return null;
+    return (
+      <span className="block mt-3">
+        <a
+          href={pdfUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#5356ff]/10 hover:bg-[#5356ff]/20 text-[#5356ff] text-xs font-bold rounded-lg border border-[#5356ff]/30 transition-colors"
+        >
+          📄 View / Download Analysis Report (PDF)
+        </a>
+      </span>
+    );
+  };
+
+  // 1. Markdown link: [Label](url)
+  const markdownRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/;
+  if (markdownRegex.test(text)) {
+    const parts: Array<{ type: "text" | "link"; label?: string; href?: string; content?: string }> = [];
+    const globalMdRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g;
+    let match: RegExpExecArray | null;
+    let lastIndex = 0;
+
+    while ((match = globalMdRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ type: "text", content: text.substring(lastIndex, match.index) });
+      }
+      const label = match[1];
+      let href = match[2];
+      if (href.includes("/help-support/contact-us")) {
+        href = "/help-support/contact-us";
+      }
+      parts.push({ type: "link", label, href });
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < text.length) {
+      parts.push({ type: "text", content: text.substring(lastIndex) });
+    }
+
+    return (
+      <span>
+        {parts.map((part, idx) => {
+          if (part.type === "link" && part.href) {
+            const isInternal = part.href.startsWith("/");
+            return isInternal ? (
+              <Link
+                key={idx}
+                href={part.href}
+                className="text-[#5356ff] underline hover:text-[#3232b7] font-semibold transition-colors"
+              >
+                {part.label}
+              </Link>
+            ) : (
+              <a
+                key={idx}
+                href={part.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#5356ff] underline hover:text-[#3232b7] font-semibold transition-colors"
+              >
+                {part.label}
+              </a>
+            );
+          }
+          return <span key={idx}>{part.content}</span>;
+        })}
+        {renderPdfButton()}
+      </span>
+    );
+  }
+
+  // 2. Contact phrase regex without markdown
+  const contactRegex = /(click here to contact us for further assistance\.?|click here to contact us\.?|contact us for further assistance\.?|contact us\.?)/i;
+  if (contactRegex.test(text)) {
+    const parts = text.split(contactRegex);
+    return (
+      <span>
+        {parts.map((part, i) =>
+          contactRegex.test(part) ? (
+            <Link
+              key={i}
+              href="/help-support/contact-us"
+              className="text-[#5356ff] underline hover:text-[#3232b7] font-semibold transition-colors"
+            >
+              {part}
+            </Link>
+          ) : (
+            <span key={i}>{part}</span>
+          )
+        )}
+        {renderPdfButton()}
+      </span>
+    );
+  }
+
+  // 3. Raw URL
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  if (urlRegex.test(text)) {
+    const parts = text.split(urlRegex);
+    return (
+      <span>
+        {parts.map((part, i) =>
+          urlRegex.test(part) ? (
+            <a
+              key={i}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#5356ff] underline hover:text-[#3232b7] font-semibold transition-colors"
+            >
+              {part}
+            </a>
+          ) : (
+            <span key={i}>{part}</span>
+          )
+        )}
+        {renderPdfButton()}
+      </span>
+    );
+  }
+
+  return (
+    <span>
+      {text}
+      {renderPdfButton()}
+    </span>
+  );
+};
 
 // Helper components
 const categoryMap: Record<string, string> = {
@@ -569,12 +732,14 @@ export default function AnalysisDetailsPage() {
                 const msgId = msg.id || `msg-${idx}`;
 
                 if (msg.type === "system_notification") {
-                  const title = msg.content?.systemText || msg.message || "System Notification";
+                  const rawTitle = msg.content?.systemText || msg.message || "System Notification";
+                  const title = formatStatusTitle(rawTitle);
                   const text = msg.content?.text || "";
+                  const attachments = msg.attachments || [];
                   return (
                     <div key={msgId} className="text-center py-6 px-4 bg-white/70 rounded-xl border border-gray-200">
                       <h3 className="text-xl font-bold text-gray-700 mb-1">{title}</h3>
-                      <p className="text-sm font-medium text-gray-500">{text}</p>
+                      <div className="text-sm font-medium text-gray-500">{renderStatusMessageText(text, attachments)}</div>
                     </div>
                   );
                 }
@@ -981,65 +1146,7 @@ export default function AnalysisDetailsPage() {
                           </div>
                         )}
 
-                        {!isAccepted && !actionModal.isOpen && (
-                          <div className="flex flex-wrap gap-4 mt-6 pl-0 md:pl-[64px]">
-                            <button
-                              onClick={() => {
-                                if (!currentUser) {
-                                  setShowAuthModal(true);
-                                  return;
-                                }
-                                handleAcceptProposal(msg.id);
-                              }}
-                              disabled={isActionLoading}
-                              className="px-8 py-3 bg-[#327334] hover:bg-[#2a5f2b] text-white text-xs font-bold rounded-md shadow-sm transition-colors cursor-pointer"
-                            >
-                              Accept Offer
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (!currentUser) {
-                                  setShowAuthModal(true);
-                                  return;
-                                }
-                                setActionModal({
-                                  isOpen: true,
-                                  action: "request_modification",
-                                  proposalId: msg.id,
-                                  title: "Request Modifications",
-                                  description: "Please describe what changes you would like to request.",
-                                  placeholder: "Type requested modifications...",
-                                  required: true,
-                                });
-                              }}
-                              disabled={isActionLoading}
-                              className="px-8 py-3 bg-[#1C446F] hover:bg-[#163659] text-white text-xs font-bold rounded-md shadow-sm transition-colors cursor-pointer"
-                            >
-                              Request Modifications
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (!currentUser) {
-                                  setShowAuthModal(true);
-                                  return;
-                                }
-                                setActionModal({
-                                  isOpen: true,
-                                  action: "decline",
-                                  proposalId: msg.id,
-                                  title: "Decline Offer",
-                                  description: "Are you sure you want to decline this offer?",
-                                  placeholder: "Reason (optional)...",
-                                  required: false,
-                                });
-                              }}
-                              disabled={isActionLoading}
-                              className="px-8 py-3 bg-[#7D1A1A] hover:bg-[#651515] text-white text-xs font-bold rounded-md shadow-sm transition-colors cursor-pointer"
-                            >
-                              Decline Offer
-                            </button>
-                          </div>
-                        )}
+
 
                         {actionModal.isOpen && actionModal.proposalId === msg.id && (
                           <div className="mt-6 p-6 bg-gray-50 rounded-xl border border-gray-300">
@@ -1182,29 +1289,37 @@ export default function AnalysisDetailsPage() {
                       </div>
                     )}
                     {/* Recommended Solutions if any */}
-                    {((msg.recommendedSolutions && msg.recommendedSolutions.length > 0) ||
-                      (msg.content?.recommendedSolutions && msg.content.recommendedSolutions.length > 0)) && (
-                      <div className="pl-0 sm:pl-16 mb-6">
-                        <h5 className="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">
-                          Recommended Solutions
-                        </h5>
-                        <div className="border-t border-gray-200 mb-4" />
-                        <div className="flex flex-wrap sm:flex-nowrap sm:overflow-x-auto pb-2 gap-4 scrollbar-hide">
-                          {(msg.recommendedSolutions || msg.content?.recommendedSolutions).map((sol: any, j: number) => (
-                            <PackageCard
-                              key={(sol.packageId || sol._id || j) + "-" + j}
-                              packageId={sol.packageId || sol._id || sol.id}
-                              title={sol.title || sol.name}
-                              price={sol.price || sol.amount}
-                              imageUrl={sol.imageUrl || sol.mediumUrl || sol.thumbnailUrl}
-                              category={sol.category || sol.categorycode}
-                              description={sol.description}
-                              link={sol.link || `/dashboard/new-project/packages/${sol.packageId || sol._id || sol.id}`}
-                            />
-                          ))}
+                    {(() => {
+                      const recs =
+                        (msg.recommendedSolutions && msg.recommendedSolutions.length > 0 ? msg.recommendedSolutions : null) ||
+                        (msg.content?.recommendedSolutions && msg.content.recommendedSolutions.length > 0 ? msg.content.recommendedSolutions : null) ||
+                        (msg.content?.deliverableItems && msg.content.deliverableItems.length > 0 ? msg.content.deliverableItems : null) ||
+                        (msg.content?.lineItems && msg.content.lineItems.length > 0 ? msg.content.lineItems : null) ||
+                        [];
+                      if (recs.length === 0) return null;
+                      return (
+                        <div className="pl-0 sm:pl-16 mb-6">
+                          <h5 className="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">
+                            Recommended Solutions
+                          </h5>
+                          <div className="border-t border-gray-200 mb-4" />
+                          <div className="flex flex-wrap sm:flex-nowrap sm:overflow-x-auto pb-2 gap-4 scrollbar-hide">
+                            {recs.map((sol: any, j: number) => (
+                              <PackageCard
+                                key={(sol.packageId || sol._id || j) + "-" + j}
+                                packageId={sol.packageId || sol._id || sol.id}
+                                title={sol.title || sol.name}
+                                price={sol.price || sol.cost || sol.amount}
+                                imageUrl={sol.imageUrl || sol.mediumUrl || sol.thumbnailUrl}
+                                category={sol.category || sol.categorycode}
+                                description={sol.description}
+                                link={sol.link || `/dashboard/new-project/packages/${sol.packageId || sol._id || sol.id}`}
+                              />
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 );
               })}

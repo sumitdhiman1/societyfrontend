@@ -1,6 +1,20 @@
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import { authService } from "./authService";
+
+function loadScript(src: string): Promise<void> {
+  if (typeof document === "undefined") return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) {
+      resolve();
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = src;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(script);
+  });
+}
 
 export interface ProjectPDFData {
   title?: string;
@@ -226,36 +240,56 @@ export async function downloadProjectDetailsPDF(data: any): Promise<void> {
   if (typeof window === "undefined") return;
 
   const d = extractProjectDetails(data);
-  const container = document.createElement("div");
-  container.style.position = "fixed";
-  container.style.left = "-9999px";
-  container.style.top = "0";
-  container.style.width = "794px";
-  container.style.backgroundColor = "#ffffff";
-  container.innerHTML = getProjectDetailsHTML(d);
-
-  document.body.appendChild(container);
 
   try {
-    const canvas = await html2canvas(container, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: "#ffffff",
-    });
+    if (!(window as any).html2canvas) {
+      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
+    }
+    if (!(window as any).jspdf) {
+      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+    }
 
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF("p", "pt", "a4");
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    const html2canvas = (window as any).html2canvas;
+    const jsPdfLib = (window as any).jspdf?.jsPDF || (window as any).jsPDF;
 
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-    const filename = `Project_Details_${d.rawProjectNumber.replace(/[^a-zA-Z0-9-_]/g, "") || "document"}.pdf`;
-    pdf.save(filename);
+    if (!html2canvas || !jsPdfLib) {
+      throw new Error("PDF generation libraries not available");
+    }
+
+    const container = document.createElement("div");
+    container.style.position = "fixed";
+    container.style.left = "-9999px";
+    container.style.top = "0";
+    container.style.width = "794px";
+    container.style.backgroundColor = "#ffffff";
+    container.innerHTML = getProjectDetailsHTML(d);
+
+    document.body.appendChild(container);
+
+    try {
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPdfLib("p", "pt", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      const filename = `Project_Details_${d.rawProjectNumber.replace(/[^a-zA-Z0-9-_]/g, "") || "document"}.pdf`;
+      pdf.save(filename);
+    } finally {
+      if (document.body.contains(container)) {
+        document.body.removeChild(container);
+      }
+    }
   } catch (err) {
-    console.error("Failed to generate project PDF:", err);
-  } finally {
-    document.body.removeChild(container);
+    console.warn("Direct PDF generation fallback to print:", err);
+    printProjectDetails(data);
   }
 }
 

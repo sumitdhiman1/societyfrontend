@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { useProject } from "@/context/ProjectContext";
 import { projectService } from "@/lib/projectService";
 import { mediaService } from "@/lib/mediaService";
@@ -9,6 +10,168 @@ import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
 import LoadingDots from "@/components/common/LoadingDots";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
+
+const formatStatusTitle = (rawTitle: string): string => {
+  if (!rawTitle) return "System Notification";
+  let clean = rawTitle
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}👤🚀📌✅🔔]/gu, "")
+    .trim();
+
+  const lower = clean.toLowerCase();
+  if (lower === "project manager assigned" || lower === "project manager assigned!") {
+    return "Project manager assigned";
+  }
+  if (lower === "order completed" || lower === "order completed!") {
+    return "Order completed!";
+  }
+  if (lower === "bundle project starting" || lower === "bundle project starting!") {
+    return "Bundle project starting";
+  }
+
+  if (clean.length > 1 && clean === clean.toUpperCase()) {
+    clean = clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
+  }
+  return clean;
+};
+
+const renderStatusMessageText = (text: string, attachments?: any[]) => {
+  if (!text) return null;
+
+  const pdfAttachment = attachments?.find((a: any) => {
+    const u = typeof a === "string" ? a : a?.url || "";
+    return u.toLowerCase().endsWith(".pdf") || a?.type === "pdf";
+  });
+  const pdfUrl = typeof pdfAttachment === "string" ? pdfAttachment : pdfAttachment?.url;
+
+  const renderPdfButton = () => {
+    if (!pdfUrl) return null;
+    return (
+      <span className="block mt-3">
+        <a
+          href={pdfUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#5356ff]/10 hover:bg-[#5356ff]/20 text-[#5356ff] text-xs font-bold rounded-lg border border-[#5356ff]/30 transition-colors"
+        >
+          📄 View / Download Analysis Report (PDF)
+        </a>
+      </span>
+    );
+  };
+
+  // 1. Markdown link: [Label](url)
+  const markdownRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/;
+  if (markdownRegex.test(text)) {
+    const parts: Array<{ type: "text" | "link"; label?: string; href?: string; content?: string }> = [];
+    const globalMdRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g;
+    let match: RegExpExecArray | null;
+    let lastIndex = 0;
+
+    while ((match = globalMdRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ type: "text", content: text.substring(lastIndex, match.index) });
+      }
+      const label = match[1];
+      let href = match[2];
+      if (href.includes("/help-support/contact-us")) {
+        href = "/help-support/contact-us";
+      }
+      parts.push({ type: "link", label, href });
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < text.length) {
+      parts.push({ type: "text", content: text.substring(lastIndex) });
+    }
+
+    return (
+      <span>
+        {parts.map((part, idx) => {
+          if (part.type === "link" && part.href) {
+            const isInternal = part.href.startsWith("/");
+            return isInternal ? (
+              <Link
+                key={idx}
+                href={part.href}
+                className="text-[#5356ff] underline hover:text-[#3232b7] font-semibold transition-colors"
+              >
+                {part.label}
+              </Link>
+            ) : (
+              <a
+                key={idx}
+                href={part.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#5356ff] underline hover:text-[#3232b7] font-semibold transition-colors"
+              >
+                {part.label}
+              </a>
+            );
+          }
+          return <span key={idx}>{part.content}</span>;
+        })}
+        {renderPdfButton()}
+      </span>
+    );
+  }
+
+  // 2. Contact phrase regex without markdown
+  const contactRegex = /(click here to contact us for further assistance\.?|click here to contact us\.?|contact us for further assistance\.?|contact us\.?)/i;
+  if (contactRegex.test(text)) {
+    const parts = text.split(contactRegex);
+    return (
+      <span>
+        {parts.map((part, i) =>
+          contactRegex.test(part) ? (
+            <Link
+              key={i}
+              href="/help-support/contact-us"
+              className="text-[#5356ff] underline hover:text-[#3232b7] font-semibold transition-colors"
+            >
+              {part}
+            </Link>
+          ) : (
+            <span key={i}>{part}</span>
+          )
+        )}
+        {renderPdfButton()}
+      </span>
+    );
+  }
+
+  // 3. Raw URL
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  if (urlRegex.test(text)) {
+    const parts = text.split(urlRegex);
+    return (
+      <span>
+        {parts.map((part, i) =>
+          urlRegex.test(part) ? (
+            <a
+              key={i}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#5356ff] underline hover:text-[#3232b7] font-semibold transition-colors"
+            >
+              {part}
+            </a>
+          ) : (
+            <span key={i}>{part}</span>
+          )
+        )}
+        {renderPdfButton()}
+      </span>
+    );
+  }
+
+  return (
+    <span>
+      {text}
+      {renderPdfButton()}
+    </span>
+  );
+};
 
 export default function ProjectDetailsPage() {
   const { project, refreshProject } = useProject();
@@ -498,12 +661,14 @@ export default function ProjectDetailsPage() {
 
                 // System Notifications
                 if (msg.type === "system_notification") {
-                  const title = msg.content?.systemText || msg.message || "System Notification";
+                  const rawTitle = msg.content?.systemText || msg.message || "System Notification";
+                  const title = formatStatusTitle(rawTitle);
                   const text = msg.content?.text || "";
+                  const attachments = msg.attachments || [];
                   return (
                     <div key={msgId} className="text-center py-6 sm:py-10 px-4">
                       <h3 className="text-xl sm:text-3xl font-bold text-gray-600 mb-2 sm:mb-3">{title}</h3>
-                      <p className="text-sm sm:text-xl font-medium text-gray-500">{text}</p>
+                      <div className="text-sm sm:text-xl font-medium text-gray-500">{renderStatusMessageText(text, attachments)}</div>
                     </div>
                   );
                 }
