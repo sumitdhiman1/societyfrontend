@@ -164,8 +164,31 @@ export class AuthService {
   }
 
   loginWithGoogle() {
-    const client = new HttpClient(this.session);
-    window.location.href = `${client.baseUrl}/auth/google`;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    if (typeof window !== "undefined") {
+      const redirectUri = encodeURIComponent(window.location.origin);
+      window.location.href = `${apiUrl}/auth/google?redirect_uri=${redirectUri}`;
+    }
+  }
+
+  loginWithFacebook() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    if (typeof window !== "undefined") {
+      const redirectUri = encodeURIComponent(window.location.origin);
+      window.location.href = `${apiUrl}/auth/facebook?redirect_uri=${redirectUri}`;
+    }
+  }
+
+  handleSocialCallback(accessToken: string, refreshToken: string, user?: any) {
+    if (accessToken) {
+      this.setTokens(accessToken, refreshToken || "");
+    }
+    if (user) {
+      const userData = btoa(JSON.stringify(user));
+      document.cookie = `user_data=${userData}; path=/; max-age=604800;`;
+    }
+    window.dispatchEvent(new Event("auth:login"));
+    claimPendingAnalyses();
   }
 }
 

@@ -7,6 +7,7 @@ import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";
 import { downloadFile } from "@/lib/utils";
 import LoadingDots from "@/components/common/LoadingDots";
+import AuthPromptModal from "@/components/common/AuthPromptModal";
 
 export default function ProjectDetailsPage() {
   const { project, refreshProject } = useProject();
@@ -14,6 +15,7 @@ export default function ProjectDetailsPage() {
   const [isSending, setIsSending] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [attachments, setAttachments] = useState<any[]>([]);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [actionModal, setActionModal] = useState<{
@@ -795,10 +797,23 @@ export default function ProjectDetailsPage() {
             </div>
             <div className="p-6">
               <textarea
-                className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent"
-                placeholder="Type a message..."
+                className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent cursor-pointer"
+                placeholder={currentUser ? "Type a message..." : "Please log in or register to message our team..."}
                 value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
+                onChange={(e) => {
+                  if (!currentUser) {
+                    setShowAuthModal(true);
+                    return;
+                  }
+                  setMessageText(e.target.value);
+                }}
+                onClick={() => {
+                  if (!currentUser) setShowAuthModal(true);
+                }}
+                onFocus={() => {
+                  if (!currentUser) setShowAuthModal(true);
+                }}
+                readOnly={!currentUser}
               />
             </div>
 
@@ -844,8 +859,14 @@ export default function ProjectDetailsPage() {
 
             <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
               <button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2.5 rounded-md border-2 border-blue-600 hover:bg-blue-50 shadow-sm"
+                onClick={() => {
+                  if (!currentUser) {
+                    setShowAuthModal(true);
+                  } else {
+                    fileInputRef.current?.click();
+                  }
+                }}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2.5 rounded-md border-2 border-blue-600 hover:bg-blue-50 shadow-sm cursor-pointer"
                 type="button"
                 disabled={isSending}
               >
@@ -858,16 +879,30 @@ export default function ProjectDetailsPage() {
 
               <div className="flex gap-3 w-full sm:w-auto">
                 <button
-                  onClick={() => { setMessageText(""); setAttachments([]); }}
-                  className="flex-1 sm:flex-none px-6 py-2.5 bg-[#800020] hover:bg-[#600018] text-white font-bold text-sm rounded-md transition-colors shadow-sm"
+                  onClick={() => {
+                    if (!currentUser) {
+                      setShowAuthModal(true);
+                      return;
+                    }
+                    setMessageText("");
+                    setAttachments([]);
+                  }}
+                  className="flex-1 sm:flex-none px-6 py-2.5 bg-[#800020] hover:bg-[#600018] text-white font-bold text-sm rounded-md transition-colors shadow-sm cursor-pointer"
                   disabled={isSending}
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleSendMessage}
-                  disabled={isSending || isUploading || (!messageText.trim() && attachments.filter(a => a.status === "done").length === 0)}
-                  className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-md text-sm font-bold transition-all shadow-sm ${isSending || isUploading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-800 hover:bg-blue-900"
+                  onClick={(e) => {
+                    if (!currentUser) {
+                      e.preventDefault();
+                      setShowAuthModal(true);
+                      return;
+                    }
+                    handleSendMessage();
+                  }}
+                  disabled={currentUser && (isSending || isUploading || (!messageText.trim() && attachments.filter(a => a.status === "done").length === 0))}
+                  className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-md text-sm font-bold transition-all shadow-sm cursor-pointer ${isSending || isUploading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-800 hover:bg-blue-900"
                     }`}
                 >
                   {isSending ? "Sending..." : isUploading ? "Uploading..." : "Send Message"}
@@ -912,6 +947,15 @@ export default function ProjectDetailsPage() {
           </div>
         </div>
       </div>
+
+      {/* Auth Prompt Modal */}
+      <AuthPromptModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        title="Join the Conversation"
+        description="Please log in or register to message our team and upload files for this project."
+        redirectUrl={project?._id ? `/dashboard/my-projects/${project._id}/details` : undefined}
+      />
     </div>
   );
 }

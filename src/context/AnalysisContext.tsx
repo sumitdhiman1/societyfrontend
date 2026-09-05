@@ -22,30 +22,68 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const isInitialMount = useRef(true);
 
-  const fetchAnalysis = useCallback(async () => {
+  const fetchAnalysis = useCallback(async (silent = false) => {
     if (!analysisId) return;
 
-    setIsLoading(true);
+    if (!silent) {
+      setIsLoading(true);
+    }
     try {
       const res = await requestAnalysisService.getProject(analysisId);
       if (res?.data) {
         setAnalysis(res.data);
       }
     } catch (error) {
-      console.error("Failed to fetch analysis:", error);
+      if (!silent) {
+        console.error("Failed to fetch analysis:", error);
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) {
+        setIsLoading(false);
+      }
     }
   }, [analysisId]);
 
   useEffect(() => {
     if (analysisId && isInitialMount.current) {
       isInitialMount.current = false;
-      fetchAnalysis();
+      fetchAnalysis(false);
     }
+
+    // Set up active silent background polling (every 3 seconds) for live chat updates
+    const pollInterval = setInterval(() => {
+      fetchAnalysis(true);
+    }, 3000);
+
+    // Listen to window custom events from sockets
+    const handleRealtimeMessage = (e: any) => {
+      const payload = e?.detail;
+      const targetId = payload?.projectId || payload?.data?.projectId || payload?.analysisId;
+      if (!targetId || targetId === analysisId) {
+        fetchAnalysis(true);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchAnalysis(true);
+      }
+    };
+
+    window.addEventListener("notification:new", handleRealtimeMessage);
+    window.addEventListener("project_message", handleRealtimeMessage);
+    window.addEventListener("project_updated", handleRealtimeMessage);
+    window.addEventListener("focus", handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       isInitialMount.current = true;
+      clearInterval(pollInterval);
+      window.removeEventListener("notification:new", handleRealtimeMessage);
+      window.removeEventListener("project_message", handleRealtimeMessage);
+      window.removeEventListener("project_updated", handleRealtimeMessage);
+      window.removeEventListener("focus", handleVisibilityChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [analysisId, fetchAnalysis]);
 
@@ -53,7 +91,7 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
     () => ({
       analysis,
       isLoading,
-      refreshAnalysis: fetchAnalysis,
+      refreshAnalysis: () => fetchAnalysis(true),
     }),
     [analysis, isLoading, fetchAnalysis],
   );

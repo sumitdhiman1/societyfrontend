@@ -16,42 +16,77 @@ export const QuoteProvider = ({ children }: { children: React.ReactNode }) => {
   
   const [quote, setQuote] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const fetchedRef = useRef(false);
+  const isInitialMount = useRef(true);
 
-  const fetchQuote = useCallback(async () => {
-    setIsLoading(true);
+  const fetchQuote = useCallback(async (silent = false) => {
+    if (!id) return;
+    if (!silent && !quote) {
+      setIsLoading(true);
+    }
     try {
       const response = await quoteService.getQuoteById(id);
       if (response?.data) {
         setQuote(response.data);
       }
     } catch (e) {
-      console.error("Failed to fetch quote:", e);
+      if (!silent) {
+        console.error("Failed to fetch quote:", e);
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) {
+        setIsLoading(false);
+      }
     }
-  }, [id]);
+  }, [id, quote]);
 
   useEffect(() => {
-    if (authService.isAuthenticated()) {
-      if (id && !fetchedRef.current) {
-        fetchedRef.current = true;
-        fetchQuote();
-      }
-      return () => {
-        if (fetchedRef.current) {
-          fetchedRef.current = false;
-        }
-      };
-    } else {
-      router.push("/login?redirect=/dashboard/my-projects");
+    if (id && isInitialMount.current) {
+      isInitialMount.current = false;
+      fetchQuote(false);
     }
-  }, [id, fetchQuote, router]);
+
+    // Active silent background polling (every 3 seconds) for live chat updates
+    const pollInterval = setInterval(() => {
+      fetchQuote(true);
+    }, 3000);
+
+    // Listen to window custom events from sockets
+    const handleRealtimeQuote = (e: any) => {
+      const payload = e?.detail;
+      const targetId = payload?.quoteId || payload?.data?.quoteId || payload?.id;
+      if (!targetId || targetId === id) {
+        fetchQuote(true);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchQuote(true);
+      }
+    };
+
+    window.addEventListener("notification:new", handleRealtimeQuote);
+    window.addEventListener("quote_message", handleRealtimeQuote);
+    window.addEventListener("quote_updated", handleRealtimeQuote);
+    window.addEventListener("focus", handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      isInitialMount.current = true;
+      clearInterval(pollInterval);
+      window.removeEventListener("notification:new", handleRealtimeQuote);
+      window.removeEventListener("quote_message", handleRealtimeQuote);
+      window.removeEventListener("quote_updated", handleRealtimeQuote);
+      window.removeEventListener("focus", handleVisibilityChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [id, fetchQuote]);
 
   const value = useMemo(() => ({
     quote,
+    setQuote,
     isLoading,
-    refreshQuote: () => fetchQuote()
+    refreshQuote: (silent = true) => fetchQuote(silent)
   }), [quote, isLoading, fetchQuote]);
 
   return <QuoteContext.Provider value={value}>{children}</QuoteContext.Provider>;

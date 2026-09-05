@@ -7,6 +7,7 @@ import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";
 import { downloadFile } from "@/lib/utils";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
+import AuthPromptModal from "@/components/common/AuthPromptModal";
 import { useRouter } from "next/navigation";
 
 export default function AnalysisDetailsPage() {
@@ -16,6 +17,7 @@ export default function AnalysisDetailsPage() {
   const [isSending, setIsSending] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [attachments, setAttachments] = useState<any[]>([]);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [actionModal, setActionModal] = useState<{
@@ -38,7 +40,6 @@ export default function AnalysisDetailsPage() {
 
   const [actionComment, setActionComment] = useState("");
   const [isActionLoading, setIsActionLoading] = useState(false);
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -115,10 +116,12 @@ export default function AnalysisDetailsPage() {
       try {
         const aId = analysis._id || analysis.id;
         const res = await projectService.addMessage(aId, messageText, false, uploadedUrls);
-        if (res && (res.statusCode === 200 || res.statusCode === 201)) {
+        if (res && (res.isSuccessful || res.success || res.statusCode === 200 || res.statusCode === 201 || res.data)) {
           setMessageText("");
           setAttachments([]);
           refreshAnalysis();
+        } else {
+          console.error("Failed to send message, response:", res);
         }
       } catch (error) {
         console.error("Failed to send message:", error);
@@ -135,7 +138,7 @@ export default function AnalysisDetailsPage() {
       const avatar = currentUser?.avatar;
       const aId = analysis._id || analysis.id;
       const res = await projectService.acceptProposal(aId, proposalId, username, avatar);
-      if (res && (res.statusCode === 200 || res.statusCode === 201)) {
+      if (res && (res.isSuccessful || res.success || res.statusCode === 200 || res.statusCode === 201 || res.data)) {
         refreshAnalysis();
       }
     } catch (error) {
@@ -160,7 +163,7 @@ export default function AnalysisDetailsPage() {
           res = await projectService.requestProposalModification(aId, actionModal.proposalId, actionComment, username, avatar);
         }
 
-        if (res && (res.statusCode === 200 || res.statusCode === 201)) {
+        if (res && (res.isSuccessful || res.success || res.statusCode === 200 || res.statusCode === 201 || res.data)) {
           setActionModal({ ...actionModal, isOpen: false });
           setActionComment("");
           refreshAnalysis();
@@ -334,14 +337,24 @@ export default function AnalysisDetailsPage() {
                       {!isAccepted && !actionModal.isOpen && (
                         <div className="flex flex-wrap gap-4 mt-6">
                           <button
-                            onClick={() => handleAcceptProposal(msg.id)}
+                            onClick={() => {
+                              if (!currentUser) {
+                                setShowAuthModal(true);
+                                return;
+                              }
+                              handleAcceptProposal(msg.id);
+                            }}
                             disabled={isActionLoading}
                             className="px-8 py-3 bg-[#327334] hover:bg-[#2a5f2b] text-white text-xs font-bold rounded-md shadow-sm transition-colors cursor-pointer"
                           >
                             Accept Offer
                           </button>
                           <button
-                            onClick={() =>
+                            onClick={() => {
+                              if (!currentUser) {
+                                setShowAuthModal(true);
+                                return;
+                              }
                               setActionModal({
                                 isOpen: true,
                                 action: "request_modification",
@@ -350,15 +363,19 @@ export default function AnalysisDetailsPage() {
                                 description: "Please describe what changes you would like to request.",
                                 placeholder: "Type requested modifications...",
                                 required: true,
-                              })
-                            }
+                              });
+                            }}
                             disabled={isActionLoading}
                             className="px-8 py-3 bg-[#1C446F] hover:bg-[#163659] text-white text-xs font-bold rounded-md shadow-sm transition-colors cursor-pointer"
                           >
                             Request Modifications
                           </button>
                           <button
-                            onClick={() =>
+                            onClick={() => {
+                              if (!currentUser) {
+                                setShowAuthModal(true);
+                                return;
+                              }
                               setActionModal({
                                 isOpen: true,
                                 action: "decline",
@@ -367,8 +384,8 @@ export default function AnalysisDetailsPage() {
                                 description: "Are you sure you want to decline this offer?",
                                 placeholder: "Reason (optional)...",
                                 required: false,
-                              })
-                            }
+                              });
+                            }}
                             disabled={isActionLoading}
                             className="px-8 py-3 bg-[#7D1A1A] hover:bg-[#651515] text-white text-xs font-bold rounded-md shadow-sm transition-colors cursor-pointer"
                           >
@@ -407,10 +424,11 @@ export default function AnalysisDetailsPage() {
                   );
                 }
 
-                const isClient = msg.sender === "client" || msg.role === "client";
-                const senderName = msg.username || (isClient ? "You" : "Analysis Team");
-                const senderAvatar = msg.userAvatar;
-                const attachmentList = msg.attachments || [];
+                const isClient = msg.sender === "client" || msg.role === "client" || (currentUser?._id && msg.userId === currentUser._id) || (currentUser?.id && msg.userId === currentUser.id);
+                const senderName = msg.username || (isClient ? (currentUser?.fullName || currentUser?.username || "You") : "Analysis Team");
+                const senderAvatar = msg.userAvatar || (isClient ? currentUser?.avatar : undefined);
+                const rawAttachments = msg.attachments || msg.content?.attachedFiles || [];
+                const attachmentList = Array.isArray(rawAttachments) ? rawAttachments : [];
 
                 return (
                   <div key={msgId} className="bg-white rounded-xl shadow-sm border border-gray-300 p-6 md:p-8">
@@ -419,8 +437,8 @@ export default function AnalysisDetailsPage() {
                         {senderAvatar ? (
                           <img src={senderAvatar} alt={senderName} className="w-12 h-12 rounded-full object-cover shadow-sm" />
                         ) : (
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm bg-gray-800">
-                            {senderName[0]}
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm ${isClient ? 'bg-blue-900' : 'bg-gray-800'}`}>
+                            {(senderName || "U")[0]?.toUpperCase()}
                           </div>
                         )}
                         <div>
@@ -433,12 +451,12 @@ export default function AnalysisDetailsPage() {
                         </div>
                       </div>
                       <span className="text-xs text-gray-400 font-medium whitespace-nowrap">
-                        {formatDateTime(msg.createdAt)}
+                        {formatDateTime(msg.createdAt || msg.timestamp)}
                       </span>
                     </div>
 
                     <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap pl-0 sm:pl-16 mb-6">
-                      {msg.message}
+                      {msg.message || msg.content?.text}
                     </div>
 
                     {attachmentList.length > 0 && (
@@ -448,9 +466,11 @@ export default function AnalysisDetailsPage() {
                         </h5>
                         <div className="flex flex-wrap gap-4">
                           {attachmentList.map((att: any, attIdx: number) => {
-                            const url = typeof att === "string" ? att : att.url;
-                            const name = typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "file") : att.name || "file";
-                            const isPdf = url.toLowerCase().includes(".pdf");
+                            const url = typeof att === "string" ? att : (att.url || att.secure_url);
+                            const name = typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "file") : (att.name || att.filename || decodeURIComponent((url || "").split("/").pop() || "file"));
+                            const isPdf = (url || "").toLowerCase().includes(".pdf");
+
+                            if (!url) return null;
 
                             return (
                               <a
@@ -483,7 +503,7 @@ export default function AnalysisDetailsPage() {
             </div>
           )}
 
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} className="h-4 w-full shrink-0" />
 
           {/* New Message Box Form */}
           <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden w-full">
@@ -509,20 +529,31 @@ export default function AnalysisDetailsPage() {
 
               <div className="p-6 pb-2">
                 <textarea
-                  className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent cursor-text"
+                  className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent cursor-pointer"
                   placeholder={
                     currentUser
                       ? "Type your message or submit requested details..."
                       : "Please log in or register to message our team..."
                   }
                   value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
+                  onChange={(e) => {
+                    if (!currentUser) {
+                      setShowAuthModal(true);
+                      return;
+                    }
+                    setMessageText(e.target.value);
+                  }}
                   onClick={() => {
-                    if (!currentUser && analysis?._id) {
-                      router.push(`/register?redirect=/dashboard/my-analyses/${analysis._id}/details`);
+                    if (!currentUser) {
+                      setShowAuthModal(true);
                     }
                   }}
-                  disabled={!currentUser}
+                  onFocus={() => {
+                    if (!currentUser) {
+                      setShowAuthModal(true);
+                    }
+                  }}
+                  readOnly={!currentUser}
                 />
               </div>
 
@@ -554,7 +585,13 @@ export default function AnalysisDetailsPage() {
               <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => {
+                    if (!currentUser) {
+                      setShowAuthModal(true);
+                    } else {
+                      fileInputRef.current?.click();
+                    }
+                  }}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2.5 rounded-md border-2 border-blue-600 hover:bg-blue-50 shadow-sm cursor-pointer"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -573,6 +610,10 @@ export default function AnalysisDetailsPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      if (!currentUser) {
+                        setShowAuthModal(true);
+                        return;
+                      }
                       setMessageText("");
                       setAttachments([]);
                     }}
@@ -581,11 +622,19 @@ export default function AnalysisDetailsPage() {
                     Cancel
                   </button>
                   <button
-                    type="submit"
+                    type={currentUser ? "submit" : "button"}
+                    onClick={(e) => {
+                      if (!currentUser) {
+                        e.preventDefault();
+                        setShowAuthModal(true);
+                      }
+                    }}
                     disabled={
-                      isSending ||
-                      isUploading ||
-                      (!messageText.trim() && attachments.filter((a) => a.status === "done").length === 0)
+                      currentUser && (
+                        isSending ||
+                        isUploading ||
+                        (!messageText.trim() && attachments.filter((a) => a.status === "done").length === 0)
+                      )
                     }
                     className="flex-1 sm:flex-none px-8 py-2.5 bg-[#4343F0] hover:bg-[#3333D0] text-white rounded-[8px] text-sm font-bold transition-all disabled:opacity-50 cursor-pointer shadow-md"
                   >
@@ -622,6 +671,15 @@ export default function AnalysisDetailsPage() {
           </div>
         </div>
       </div>
+
+      {/* Auth Prompt Modal */}
+      <AuthPromptModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        title="Join the Conversation"
+        description="Please log in or register to message our team and upload files for this analysis."
+        redirectUrl={analysis?._id ? `/dashboard/my-analyses/${analysis._id}/details` : undefined}
+      />
 
       {/* Support & Newsletter Section */}
       <div className="w-full mt-10">

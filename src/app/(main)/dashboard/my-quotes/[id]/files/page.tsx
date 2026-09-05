@@ -9,18 +9,33 @@ import { authService } from "@/lib/authService";
 import { downloadFile } from "@/lib/utils";
 
 function ensureHttps(url: string) {
+  if (!url) return "";
+  if (url.includes("localhost") || url.includes("127.0.0.1")) return url;
   return url.startsWith("http://") ? "https://" + url.slice(7) : url;
 }
 
-function getCategory(mimeType: string) {
-  if (mimeType.startsWith("image/")) return "image";
-  if (mimeType.startsWith("video/")) return "video";
-  if (mimeType === "application/pdf" || mimeType.includes("word") || mimeType.includes("spreadsheet") || mimeType.includes("presentation") || mimeType.includes("text")) return "document";
-  return "other";
+function isImage(mimeType?: string, url?: string, filename?: string) {
+  if (mimeType && mimeType.startsWith("image/")) return true;
+  const str = (url || filename || "").split("?")[0].toLowerCase();
+  return !!str.match(/\.(jpeg|jpg|gif|png|svg|webp|avif)$/i);
 }
 
-function isImage(mimeType: string) {
-  return mimeType.startsWith("image/");
+function getCategory(mimeType?: string, filename?: string) {
+  const mime = (mimeType || "").toLowerCase();
+  const name = (filename || "").toLowerCase();
+  if (mime.startsWith("image/") || name.match(/\.(jpeg|jpg|gif|png|svg|webp|avif)$/i)) return "image";
+  if (mime.startsWith("video/") || name.match(/\.(mp4|webm|mov|avi)$/i)) return "video";
+  if (
+    mime === "application/pdf" ||
+    mime.includes("word") ||
+    mime.includes("spreadsheet") ||
+    mime.includes("presentation") ||
+    mime.includes("text") ||
+    name.match(/\.(pdf|doc|docx|txt|xls|xlsx|ppt|pptx|csv)$/i)
+  ) {
+    return "document";
+  }
+  return "other";
 }
 
 const filterCategories = [
@@ -28,21 +43,30 @@ const filterCategories = [
   { label: "Documents", value: "document" },
   { label: "Images", value: "image" },
   { label: "Video", value: "video" },
-  { label: "Other", value: "other" }
+  { label: "Other", value: "other" },
 ];
 
-function FileIcon({ mimeType, url }: { mimeType: string; url: string }) {
-  if (isImage(mimeType)) {
+function FileIcon({ mimeType, url, filename }: { mimeType: string; url: string; filename?: string }) {
+  const [imgError, setImgError] = useState(false);
+  const isImg = isImage(mimeType, url, filename);
+
+  if (isImg && !imgError && url) {
     return (
       <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
-        <img src={ensureHttps(url)} alt="" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+        <img
+          src={ensureHttps(url)}
+          alt={filename || ""}
+          className="w-full h-full object-cover"
+          onError={() => setImgError(true)}
+        />
       </div>
     );
   }
-  if (mimeType === "application/pdf" || mimeType.includes("word") || mimeType.includes("document")) {
+  const cleanStr = (url || filename || mimeType || "").toLowerCase();
+  if (mimeType === "application/pdf" || cleanStr.includes("word") || cleanStr.includes("document") || cleanStr.endsWith(".pdf")) {
     return <div className="w-10 h-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0 text-xl">📄</div>;
   }
-  if (mimeType.startsWith("video/")) {
+  if (mimeType?.startsWith("video/") || cleanStr.match(/\.(mp4|webm|mov|avi)$/i)) {
     return <div className="w-10 h-10 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center flex-shrink-0 text-xl">🎬</div>;
   }
   return <div className="w-10 h-10 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center flex-shrink-0 text-xl">📎</div>;
@@ -54,7 +78,7 @@ function SourceBadge({ source }: { source: string }) {
   return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-600 border border-green-100 ml-2">Uploaded</span>;
 }
 
-function ImageModal({ file, onClose }: { file: any, onClose: () => void }) {
+function ImageModal({ file, onClose }: { file: any; onClose: () => void }) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", handleKeyDown);
@@ -113,26 +137,33 @@ export default function QuoteFilesPage() {
   const processedUrls = new Set<string>();
 
   (quote?.messages || quote?.conversations || []).forEach((msg: any) => {
-    (msg.content?.attachedFiles || msg.attachedFiles || []).forEach((file: any) => {
-      if (!file?.url) return;
-      const url = ensureHttps(file.url);
+    const rawAttached = msg.content?.attachedFiles || msg.attachments || msg.attachedFiles || msg.content?.attachedFilesUrl || msg.attachedFilesUrl || [];
+    (Array.isArray(rawAttached) ? rawAttached : []).forEach((file: any) => {
+      const fileUrl = typeof file === 'string' ? file : file?.url;
+      if (!fileUrl) return;
+      const url = ensureHttps(fileUrl);
       if (processedUrls.has(url)) return;
       processedUrls.add(url);
 
-      const mimeType = file.type === "image" ? "image/png" 
-        : (file.type === "document" || file.url.endsWith(".pdf")) ? "application/pdf"
-        : file.type === "video" ? "video/mp4" : "application/octet-stream";
-        
-      const filename = file.filename ? decodeURIComponent(file.filename) : url.split("/").pop() || "attachment";
+      const rawName = typeof file === 'string' ? '' : file.filename || file.name;
+      const filename = rawName ? decodeURIComponent(rawName) : url.split("/").pop()?.split("?")[0] || "attachment";
+      const cleanUrl = url.split("?")[0].toLowerCase();
+      const isImg = file.type === "image" || cleanUrl.match(/\.(jpeg|jpg|gif|png|svg|webp|avif)$/i);
+      const isDoc = file.type === "document" || cleanUrl.endsWith(".pdf") || cleanUrl.match(/\.(pdf|doc|docx|txt|xls|xlsx)$/i);
+      const isVid = file.type === "video" || cleanUrl.match(/\.(mp4|webm|mov|avi)$/i);
+
+      const mimeType = isImg ? "image/png" 
+        : isDoc ? "application/pdf"
+        : isVid ? "video/mp4" : "application/octet-stream";
       
       chatFiles.push({
         _id: `chat-${url}`,
         url,
         name: filename,
-        size: 0,
+        size: file.size || 0,
         mimeType,
-        category: getCategory(mimeType),
-        uploadedAt: msg.createdAt || msg.sentAt || "",
+        category: getCategory(mimeType, filename),
+        uploadedAt: msg.createdAt || msg.sentAt || msg.timestamp || "",
         source: msg.type === "quote_proposal" ? "delivery" : "chat",
         canDelete: false
       });
@@ -146,7 +177,7 @@ export default function QuoteFilesPage() {
       name: f.name,
       size: f.size,
       mimeType: f.mimeType,
-      category: f.category,
+      category: f.category || getCategory(f.mimeType, f.name),
       uploadedAt: f.uploadedAt,
       source: "uploaded",
       canDelete: true
@@ -157,47 +188,52 @@ export default function QuoteFilesPage() {
   const filteredFiles = activeCategory === "all" ? allFiles : allFiles.filter(f => f.category === activeCategory);
 
   const formatSize = (bytes: number) => {
-    if (!bytes) return "—";
+    if (!bytes || bytes <= 0) return "—";
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return `${parseFloat((bytes / Math.pow(1024, i)).toFixed(1))} ${["B", "KB", "MB", "GB"][i]}`;
   };
 
-  const handleUploadFiles = async (files: FileList) => {
+  const handleUploadFiles = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    if (!quote?._id || fileArray.length === 0) return;
+
     const user = authService.getUser();
-    if (user && !user.isEmailVerified) {
+    if (user && user.isEmailVerified === false) {
       toast.error("To protect your data, file uploads are restricted for unverified accounts. Please verify your email.");
       return;
     }
     
-    if (!quote?._id || files.length === 0) return;
-    
     setIsUploading(true);
-    const promises = Array.from(files).map(async (file) => {
+    let successCount = 0;
+
+    for (const file of fileArray) {
       try {
-        const res = await mediaService.uploadImage({ 
+        const res: any = await mediaService.uploadImage({ 
           file, 
           folder: `quotes/${quote._id}/files` 
         });
-        const url = res.data?.url || res.data?.secure_url;
-        if (!url) throw new Error("No URL returned from upload");
+        const url = res?.data?.secure_url || res?.data?.url || res?.secure_url || res?.url;
+        if (!url) throw new Error(res?.message || "No URL returned from upload");
         
         await quoteService.addQuoteFile(quote._id, {
           url,
           name: file.name,
           size: file.size,
           mimeType: file.type || "application/octet-stream",
-          category: getCategory(file.type || "")
+          category: getCategory(file.type, file.name)
         });
-      } catch (e) {
+        successCount++;
+      } catch (e: any) {
         console.error("Upload failed for", file.name, e);
-        toast.error(`Upload failed for ${file.name}`);
+        toast.error(`Upload failed for ${file.name}: ${e?.message || "Error"}`);
       }
-    });
+    }
 
-    await Promise.all(promises);
     await loadFiles();
     setIsUploading(false);
-    toast.success(`${files.length} file(s) added successfully.`);
+    if (successCount > 0) {
+      toast.success(`${successCount} file(s) added successfully.`);
+    }
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -314,12 +350,12 @@ export default function QuoteFilesPage() {
             ) : viewMode === "grid" ? (
               <div className="p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {filteredFiles.map(file => (
-                  <div key={file._id} className="group relative rounded-xl overflow-hidden bg-gray-100 border border-gray-200 aspect-square cursor-pointer hover:border-[#3232b7] transition-all" onClick={() => isImage(file.mimeType) && setPreviewFile(file)}>
-                    {isImage(file.mimeType) ? (
+                  <div key={file._id} className="group relative rounded-xl overflow-hidden bg-gray-100 border border-gray-200 aspect-square cursor-pointer hover:border-[#3232b7] transition-all" onClick={() => isImage(file.mimeType, file.url, file.name) && setPreviewFile(file)}>
+                    {isImage(file.mimeType, file.url, file.name) ? (
                       <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center">
-                        <FileIcon mimeType={file.mimeType} url={file.url} />
+                        <FileIcon mimeType={file.mimeType} url={file.url} filename={file.name} />
                         <p className="text-[10px] text-gray-500 mt-2 truncate w-full">{file.name}</p>
                       </div>
                     )}
@@ -337,8 +373,8 @@ export default function QuoteFilesPage() {
               <div className="divide-y divide-gray-100">
                 {filteredFiles.map(file => (
                   <div key={file._id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors group">
-                    <div onClick={() => isImage(file.mimeType) && setPreviewFile(file)} className={isImage(file.mimeType) ? "cursor-pointer" : ""}>
-                      <FileIcon mimeType={file.mimeType} url={file.url} />
+                    <div onClick={() => isImage(file.mimeType, file.url, file.name) && setPreviewFile(file)} className={isImage(file.mimeType, file.url, file.name) ? "cursor-pointer" : ""}>
+                      <FileIcon mimeType={file.mimeType} url={file.url} filename={file.name} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
