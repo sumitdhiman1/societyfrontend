@@ -109,6 +109,37 @@ const PackageCard = ({
   );
 };
 
+const extractProjectId = (quoteObj: any, msgObj?: any, contentObj?: any): string => {
+  const candidates = [
+    contentObj?.projectId,
+    msgObj?.content?.projectId,
+    msgObj?.projectId,
+    quoteObj?.projectId,
+    quoteObj?.project?._id,
+    quoteObj?.project?.id,
+    quoteObj?.project,
+  ];
+  for (const c of candidates) {
+    if (!c) continue;
+    if (typeof c === "string" && c.trim() && c !== "[object Object]") {
+      return c.trim();
+    }
+    if (typeof c === "object") {
+      if (c._id && typeof c._id === "string") return c._id;
+      if (c.id && typeof c.id === "string") return c.id;
+      if (typeof c.toString === "function") {
+        const str = c.toString();
+        if (str && str !== "[object Object]") return str;
+      }
+    }
+  }
+  // Fallback if quote is approved, use quote._id (backend will look up project by quoteId)
+  if (quoteObj?.status?.toLowerCase() === "approved" && quoteObj?._id) {
+    return String(quoteObj._id);
+  }
+  return "";
+};
+
 export default function QuoteDetailsPage() {
   const { quote, setQuote, refreshQuote } = useQuote();
   const router = useRouter();
@@ -694,8 +725,13 @@ export default function QuoteDetailsPage() {
           if (msg.type === "system_notification" || msg.isSystemMessage) {
             const title = msg.content?.systemText || msg.systemText || msg.message || "System Notification";
             const text = msg.content?.text || msg.text || "";
-            const rawProjId = msg.content?.projectId || quote.projectId || (quote.project && (quote.project._id || quote.project));
-            const projectUrl = msg.content?.redirectUrl || (rawProjId ? `/dashboard/my-projects/${rawProjId}/details` : "/dashboard/my-projects");
+            const rawProjId = extractProjectId(quote, msg, msg.content);
+            const projectUrl =
+              msg.content?.redirectUrl && !msg.content.redirectUrl.includes("[object Object]")
+                ? msg.content.redirectUrl
+                : rawProjId
+                ? `/dashboard/my-projects/${rawProjId}/details`
+                : "/dashboard/my-projects";
 
             // If a quote_proposal card is already displaying the Project Created or Offer header, skip system notification
             const hasAcceptedProposal = allMessages.some((m: any) => m.type === "quote_proposal" && (m.content?.status === "accepted" || quote.status?.toLowerCase() === "approved"));
@@ -766,8 +802,10 @@ export default function QuoteDetailsPage() {
             const isDeclined = content.status === "declined" || content.status === "rejected" || quote.status?.toLowerCase() === "rejected";
             const canAct = !isSuperseded && !isAccepted && !isDeclined;
 
-            const resolvedProjectId = quote.projectId || (quote.project && (quote.project._id || quote.project)) || content.projectId;
-            const projectRedirectUrl = resolvedProjectId ? `/dashboard/my-projects/${resolvedProjectId}/details` : "/dashboard/my-projects";
+            const resolvedProjectId = extractProjectId(quote, msg, content);
+            const projectRedirectUrl = resolvedProjectId
+              ? `/dashboard/my-projects/${resolvedProjectId}/details`
+              : "/dashboard/my-projects";
 
             return (
               <div key={msgId} ref={isLast ? messagesEndRef : null} className="w-full">

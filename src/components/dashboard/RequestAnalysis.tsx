@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { requestAnalysisService } from "@/lib/requestAnalysisService";
+import { authService } from "@/lib/authService";
 import AnalysisIllustration from "./AnalysisIllustration";
 
 export default function RequestAnalysis() {
@@ -10,6 +11,22 @@ export default function RequestAnalysis() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [settings, setSettings] = useState<any>(null);
+
+  useEffect(() => {
+    const syncUserEmail = () => {
+      const user = authService.getUser();
+      if (user?.email) {
+        setEmail(user.email);
+      }
+    };
+    syncUserEmail();
+    window.addEventListener("auth:login", syncUserEmail);
+    window.addEventListener("auth:logout", () => setEmail(""));
+    return () => {
+      window.removeEventListener("auth:login", syncUserEmail);
+      window.removeEventListener("auth:logout", () => setEmail(""));
+    };
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -60,7 +77,8 @@ export default function RequestAnalysis() {
       const response = await requestAnalysisService.submitRequest({ email, websiteUrl });
       if (response.statusCode === 201) {
         setWebsiteUrl("");
-        setEmail("");
+        const user = authService.getUser();
+        setEmail(user?.email || "");
         closePopup();
       } else {
         console.error("Submission failed:", response.message);
