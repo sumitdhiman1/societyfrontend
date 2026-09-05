@@ -26,6 +26,81 @@ const LoadingDots = ({ text = "Sending" }) => (
   </span>
 );
 
+const categoryMap: Record<string, string> = {
+  // Short auto-generated codes (from initials)
+  PAM: "Paid Ads Marketing",
+  GDB: "Graphic Design & Branding",
+  GD: "Graphic Design & Branding",
+  WD: "Websites Development",
+  WDE: "Websites Development",
+  WM: "Website Maintenance",
+  SMM: "Social Media Marketing",
+  SEO: "SEO",
+  BUN: "Bundles",
+  // Full codes with underscores
+  PAID_ADS: "Paid Ads Marketing",
+  PAID_ADS_MARKETING: "Paid Ads Marketing",
+  PAIDADS: "Paid Ads Marketing",
+  "PAID ADS MARKETING": "Paid Ads Marketing",
+  "PAID ADS": "Paid Ads Marketing",
+  GRAPHIC_DESIGN: "Graphic Design & Branding",
+  GRAPHIC_DESIGN_BRANDING: "Graphic Design & Branding",
+  "GRAPHIC DESIGN & BRANDING": "Graphic Design & Branding",
+  "GRAPHIC DESIGN": "Graphic Design & Branding",
+  WEBSITES_DEVELOPMENT: "Websites Development",
+  WEBSITE_DEVELOPMENT: "Websites Development",
+  "WEBSITES DEVELOPMENT": "Websites Development",
+  "WEBSITE MAINTENANCE": "Website Maintenance",
+  WEBSITE_MAINTENANCE: "Website Maintenance",
+  SOCIAL_MEDIA_MARKETING: "Social Media Marketing",
+  "SOCIAL MEDIA MARKETING": "Social Media Marketing",
+  BUNDLES: "Bundles",
+  BUNDLE: "Bundles",
+  ANALYSIS: "Analysis",
+};
+
+const formatCategoryName = (cat: any, title?: string): string => {
+  if (!cat && !title) return "";
+  let raw = "";
+  if (cat && typeof cat === "object") {
+    raw = cat.name || cat.title || cat.categorycode || cat.code || "";
+  } else if (cat) {
+    raw = String(cat).trim();
+  }
+
+  // If raw is an ObjectId or empty, fallback to title matching
+  if (!raw || raw.match(/^[0-9a-fA-F]{24}$/)) {
+    if (title) {
+      const norm = title.toLowerCase();
+      if (norm.includes("ads") || norm.includes("shopping") || norm.includes("audit")) return "Paid Ads Marketing";
+      if (norm.includes("graphic") || norm.includes("brand") || norm.includes("logo")) return "Graphic Design & Branding";
+      if (norm.includes("development") || norm.includes("website dev")) return "Websites Development";
+      if (norm.includes("maintenance")) return "Website Maintenance";
+      if (norm.includes("seo") || norm.includes("search engine")) return "SEO";
+      if (norm.includes("social media") || norm.includes("smm")) return "Social Media Marketing";
+    }
+    return "";
+  }
+
+  const upper = raw.toUpperCase().trim();
+  const stripped = upper.replace(/-\d+$/, "").trim();
+
+  if (categoryMap[upper]) return categoryMap[upper];
+  if (categoryMap[stripped]) return categoryMap[stripped];
+
+  if (upper.includes("_")) {
+    const spaced = upper.replace(/_/g, " ");
+    if (categoryMap[spaced]) return categoryMap[spaced];
+    return spaced
+      .toLowerCase()
+      .split(" ")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  }
+
+  return raw;
+};
+
 const PackageCard = ({
   packageId,
   title,
@@ -46,6 +121,8 @@ const PackageCard = ({
         ? String(price)
         : `$ ${price}`
       : "";
+
+  const resolvedCat = formatCategoryName(category, title);
 
   return (
     <a
@@ -80,9 +157,9 @@ const PackageCard = ({
       </div>
 
       <div className="p-4 flex flex-col flex-1 bg-white">
-        {category && (
+        {resolvedCat && (
           <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2.5 py-0.5 rounded-full uppercase tracking-wider w-fit mb-2">
-            {category}
+            {resolvedCat}
           </span>
         )}
         <h4 className="font-bold text-gray-800 text-sm leading-snug mb-1.5 group-hover:text-blue-600 transition-colors line-clamp-2">
@@ -96,9 +173,6 @@ const PackageCard = ({
         <div className="mt-auto pt-2 flex items-center justify-between border-t border-gray-100">
           <span className="font-bold text-gray-800 text-xs sm:text-sm">
             {displayPrice}
-          </span>
-          <span className="text-[10px] text-blue-600 font-semibold group-hover:underline flex items-center gap-1">
-            View Details →
           </span>
         </div>
       </div>
@@ -173,8 +247,6 @@ export default function QuoteDetailsPage() {
   const [isAccepting, setIsAccepting] = useState(false);
   const [isOpeningProject, setIsOpeningProject] = useState(false);
   const [isDeclining, setIsDeclining] = useState(false);
-  const [showDeclineModal, setShowDeclineModal] = useState(false);
-  const [declineReason, setDeclineReason] = useState("");
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [attachments, setAttachments] = useState<
     Array<{ id: string; name: string; status: "uploading" | "done" | "error"; url?: string; file?: File }>
@@ -520,15 +592,12 @@ export default function QuoteDetailsPage() {
     try {
       const res = await quoteService.updateQuote(quote._id, {
         action: "deny",
-        rejectionReason: declineReason.trim() || undefined,
         username: user?.fullName,
         userAvatar: user?.avatar,
       });
 
       if (res.isSuccessful || res.statusCode === 200) {
         toast.success("Proposal declined");
-        setShowDeclineModal(false);
-        setDeclineReason("");
         if (res.data) setQuote(res.data);
         else refreshQuote(true);
       } else {
@@ -863,43 +932,89 @@ export default function QuoteDetailsPage() {
             const totalDuration = content.totalDuration || quote.totalDuration || "-";
             const totalCost = content.totalCost ?? quote.totalCost ?? 0;
 
-            // Check if there is a later proposal message (making this one superseded)
-            const hasLaterProposal = allMessages.slice(i + 1).some((m: any) => m.type === "quote_proposal");
-            const isSuperseded = hasLaterProposal || content.status === "superseded";
-            const isAccepted = content.status === "accepted" || quote.status?.toLowerCase() === "approved";
-            const isDeclined = content.status === "declined" || content.status === "rejected" || quote.status?.toLowerCase() === "rejected";
-            const canAct = !isSuperseded && !isAccepted && !isDeclined;
+            // Check subsequent messages to track actions on this proposal
+            const subsequentMessages = allMessages.slice(i + 1);
+            const hasLaterProposal = subsequentMessages.some((m: any) => m.type === "quote_proposal");
+
+            // Messages between this proposal and the next proposal (or end of feed)
+            const messagesUntilNextProposal: any[] = [];
+            for (const nextMsg of subsequentMessages) {
+              if (nextMsg.type === "quote_proposal") break;
+              messagesUntilNextProposal.push(nextMsg);
+            }
+
+            const wasDeclinedAfterThis = messagesUntilNextProposal.some(
+              (m: any) =>
+                m.type === "quote_action" &&
+                (m.content?.action === "denied" || m.content?.action === "declined" || m.action === "denied" || m.action === "declined")
+            );
+
+            const wasAcceptedAfterThis = messagesUntilNextProposal.some(
+              (m: any) =>
+                m.type === "quote_action" &&
+                (m.content?.action === "accepted" || m.action === "accepted")
+            );
+
+            const isAccepted =
+              content.status === "accepted" ||
+              wasAcceptedAfterThis ||
+              (!hasLaterProposal && quote.status?.toLowerCase() === "approved");
+
+            const isDeclined =
+              content.status === "declined" ||
+              content.status === "rejected" ||
+              wasDeclinedAfterThis ||
+              (!hasLaterProposal &&
+                quote.status?.toLowerCase() === "rejected" &&
+                !content.isNewProposal &&
+                (!content.actionsAvailable || content.actionsAvailable.length === 0));
+
+            const isSuperseded =
+              !isDeclined && !isAccepted && (hasLaterProposal || content.status === "superseded");
+
+            const canAct = !hasLaterProposal && !isAccepted && !isDeclined;
 
             return (
               <div key={msgId} ref={isLast ? messagesEndRef : null} className="w-full">
-                {/* Header above offer card - only when offer is pending */}
-                {!isSuperseded && !isAccepted && !isDeclined && (
-                  <div className="text-center my-8">
-                    <h2 className="text-2xl sm:text-3xl font-extrabold text-[#111827] mb-2">
-                      You Received an Offer
-                    </h2>
-                    <p className="text-sm font-medium text-gray-500">
-                      Weve prepared a custom proposal for your project.
-                    </p>
-                  </div>
-                )}
+                {/* Header above offer card */}
+                <div className="text-center my-8">
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-[#111827] mb-2">
+                    You Received an Offer
+                  </h2>
+                  <p className="text-sm font-medium text-gray-500">
+                    Weve prepared a custom proposal for your project.
+                  </p>
+                </div>
 
                 {/* Proposal Card */}
                 <div className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 md:p-10 shadow-sm">
-                  {/* Card Top Row: Title on Left, From on Right */}
-                  <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-1">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Project Proposal</h3>
-                      {isSuperseded ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold border border-gray-300 text-gray-500 bg-white">
-                          Superseded
-                        </span>
-                      ) : isDeclined ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold border border-red-300 bg-red-50 text-red-700">
-                          Declined
-                        </span>
-                      ) : null}
-                    </div>
+                  {/* Card Header: SUBMITTED - Date & Status Badge */}
+                  <div className="flex items-center gap-3 pb-4 mb-6 border-b border-gray-100">
+                    <span className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wide">
+                      SUBMITTED - {formatQuoteDate(msgDate)}
+                    </span>
+                    {isSuperseded ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold border border-gray-300 text-gray-500 bg-white">
+                        Superseded
+                      </span>
+                    ) : isDeclined ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold border border-red-500 text-red-500 bg-white">
+                        Declined
+                      </span>
+                    ) : isAccepted ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold border border-emerald-500 text-emerald-600 bg-white">
+                        Accepted
+                      </span>
+                    ) : canAct ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold border border-blue-500 text-blue-600 bg-white">
+                        Offer Sent
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/* Card Title Row: Title on Left, From on Right */}
+                  <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-4">
+                    <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Project Proposal</h3>
                     {senderName && (
                       <span className="text-xs sm:text-sm text-gray-400 font-normal">
                         From: {senderName}
@@ -975,18 +1090,30 @@ export default function QuoteDetailsPage() {
                         Request Modifications
                       </button>
                       <button
-                        onClick={() => setShowDeclineModal(true)}
+                        onClick={handleDeclineQuote}
                         disabled={isAccepting || isDeclining}
                         className="flex-1 bg-[#7A1C1C] hover:bg-[#631616] text-white font-bold text-xs sm:text-sm py-3.5 px-6 rounded-lg shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
                       >
-                        Decline Proposal
+                        {isDeclining ? <LoadingDots text="Declining" /> : "Decline Proposal"}
                       </button>
                     </div>
                   )}
                 </div>
 
-                {/* Project Created section below the accepted proposal card */}
-                {isAccepted && !isSuperseded && (
+                {/* Fallback Quote Declined section only if no quote_action message exists in the feed */}
+                {isDeclined && !allMessages.some((m: any) => (m.type === "quote_action" || m.type === "action") && (m.content?.action === "denied" || m.content?.action === "declined" || m.action === "denied" || m.action === "declined")) && (
+                  <div className="text-center my-12 py-2 w-full">
+                    <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
+                      Quote Declined
+                    </h2>
+                    <p className="text-xs sm:text-sm font-normal text-gray-500 max-w-lg mx-auto leading-relaxed">
+                      The offered quote has been declined.
+                    </p>
+                  </div>
+                )}
+
+                {/* Fallback Project Created section only if no accept message exists in the feed */}
+                {isAccepted && !allMessages.some((m: any) => (m.type === "quote_action" && m.content?.action === "accepted") || (m.type === "system_notification" && (m.content?.systemText?.toLowerCase().includes("project created") || m.text?.toLowerCase().includes("project created")))) && (
                   <div className="text-center my-12 py-2 w-full">
                     <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
                       Project Created
@@ -1015,6 +1142,55 @@ export default function QuoteDetailsPage() {
                 )}
               </div>
             );
+          }
+
+          // Quote Action (Chronological Decline or Acceptance Event)
+          if (msg.type === "quote_action" || msg.type === "action") {
+            const action = msg.content?.action || msg.action;
+            if (action === "denied" || action === "declined") {
+              return (
+                <div key={msgId} ref={isLast ? messagesEndRef : null} className="text-center my-10 py-2 w-full">
+                  <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
+                    Quote Declined
+                  </h2>
+                  <p className="text-xs sm:text-sm font-normal text-gray-500 max-w-lg mx-auto leading-relaxed">
+                    The offered quote has been declined.
+                  </p>
+                </div>
+              );
+            }
+
+            if (action === "accepted") {
+              return (
+                <div key={msgId} ref={isLast ? messagesEndRef : null} className="text-center my-10 py-2 w-full">
+                  <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
+                    Project Created
+                  </h2>
+                  <p className="text-xs sm:text-sm font-normal text-gray-500 mb-6 max-w-lg mx-auto leading-relaxed">
+                    Great news! Your quote has been converted into an active project.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => goToCreatedProject(msg, msg.content)}
+                    disabled={isOpeningProject}
+                    className="inline-flex items-center justify-center gap-1.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold py-2.5 px-6 rounded-[6px] shadow-sm transition-all active:scale-95 cursor-pointer mx-auto disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isOpeningProject ? (
+                      <LoadingDots text="Opening" />
+                    ) : (
+                      <>
+                        View Project
+                        <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </>
+                    )}
+                  </button>
+                </div>
+              );
+            }
+
+            return null;
           }
 
           // Regular User / Staff Message
@@ -1316,50 +1492,6 @@ export default function QuoteDetailsPage() {
           </div>
         </div>
       </div>
-
-      {/* Decline Proposal Modal */}
-      {showDeclineModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-          onClick={() => !isDeclining && setShowDeclineModal(false)}
-        >
-          <div
-            className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-bold text-gray-800 mb-2">Decline Proposal</h3>
-            <p className="text-xs text-gray-500 mb-4">
-              Are you sure you want to decline this proposal? You can optionally provide feedback to our team below.
-            </p>
-            <textarea
-              value={declineReason}
-              onChange={(e) => setDeclineReason(e.target.value)}
-              placeholder="Reason for declining (optional)..."
-              className="w-full h-24 p-3 text-sm border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 mb-5"
-            />
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                disabled={isDeclining}
-                onClick={() => setShowDeclineModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isDeclining}
-                onClick={handleDeclineQuote}
-                className="px-5 py-2 bg-[#7D1A1A] hover:bg-[#651515] text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-60 cursor-pointer"
-              >
-                {isDeclining ? <LoadingDots text="Declining" /> : "Decline Proposal"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Auth Prompt Modal */}
       <AuthPromptModal

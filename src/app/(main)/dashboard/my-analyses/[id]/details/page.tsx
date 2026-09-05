@@ -12,6 +12,81 @@ import AuthPromptModal from "@/components/common/AuthPromptModal";
 import { io, Socket } from "socket.io-client";
 
 // Helper components
+const categoryMap: Record<string, string> = {
+  // Short auto-generated codes (from initials)
+  PAM: "Paid Ads Marketing",
+  GDB: "Graphic Design & Branding",
+  GD: "Graphic Design & Branding",
+  WD: "Websites Development",
+  WDE: "Websites Development",
+  WM: "Website Maintenance",
+  SMM: "Social Media Marketing",
+  SEO: "SEO",
+  BUN: "Bundles",
+  // Full codes with underscores
+  PAID_ADS: "Paid Ads Marketing",
+  PAID_ADS_MARKETING: "Paid Ads Marketing",
+  PAIDADS: "Paid Ads Marketing",
+  "PAID ADS MARKETING": "Paid Ads Marketing",
+  "PAID ADS": "Paid Ads Marketing",
+  GRAPHIC_DESIGN: "Graphic Design & Branding",
+  GRAPHIC_DESIGN_BRANDING: "Graphic Design & Branding",
+  "GRAPHIC DESIGN & BRANDING": "Graphic Design & Branding",
+  "GRAPHIC DESIGN": "Graphic Design & Branding",
+  WEBSITES_DEVELOPMENT: "Websites Development",
+  WEBSITE_DEVELOPMENT: "Websites Development",
+  "WEBSITES DEVELOPMENT": "Websites Development",
+  "WEBSITE MAINTENANCE": "Website Maintenance",
+  WEBSITE_MAINTENANCE: "Website Maintenance",
+  SOCIAL_MEDIA_MARKETING: "Social Media Marketing",
+  "SOCIAL MEDIA MARKETING": "Social Media Marketing",
+  BUNDLES: "Bundles",
+  BUNDLE: "Bundles",
+  ANALYSIS: "Analysis",
+};
+
+const formatCategoryName = (cat: any, title?: string): string => {
+  if (!cat && !title) return "";
+  let raw = "";
+  if (cat && typeof cat === "object") {
+    raw = cat.name || cat.title || cat.categorycode || cat.code || "";
+  } else if (cat) {
+    raw = String(cat).trim();
+  }
+
+  // If raw is an ObjectId or empty, fallback to title matching
+  if (!raw || raw.match(/^[0-9a-fA-F]{24}$/)) {
+    if (title) {
+      const norm = title.toLowerCase();
+      if (norm.includes("ads") || norm.includes("shopping") || norm.includes("audit")) return "Paid Ads Marketing";
+      if (norm.includes("graphic") || norm.includes("brand") || norm.includes("logo")) return "Graphic Design & Branding";
+      if (norm.includes("development") || norm.includes("website dev")) return "Websites Development";
+      if (norm.includes("maintenance")) return "Website Maintenance";
+      if (norm.includes("seo") || norm.includes("search engine")) return "SEO";
+      if (norm.includes("social media") || norm.includes("smm")) return "Social Media Marketing";
+    }
+    return "";
+  }
+
+  const upper = raw.toUpperCase().trim();
+  const stripped = upper.replace(/-\d+$/, "").trim();
+
+  if (categoryMap[upper]) return categoryMap[upper];
+  if (categoryMap[stripped]) return categoryMap[stripped];
+
+  if (upper.includes("_")) {
+    const spaced = upper.replace(/_/g, " ");
+    if (categoryMap[spaced]) return categoryMap[spaced];
+    return spaced
+      .toLowerCase()
+      .split(" ")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  }
+
+  return raw;
+};
+
 const PackageCard = ({
   packageId,
   title,
@@ -32,6 +107,8 @@ const PackageCard = ({
         ? String(price)
         : `$ ${price}`
       : "";
+
+  const resolvedCat = formatCategoryName(category, title);
 
   return (
     <a
@@ -66,9 +143,9 @@ const PackageCard = ({
       </div>
 
       <div className="p-4 flex flex-col flex-1 bg-white">
-        {category && (
+        {resolvedCat && (
           <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2.5 py-0.5 rounded-full uppercase tracking-wider w-fit mb-2">
-            {category}
+            {resolvedCat}
           </span>
         )}
         <h4 className="font-bold text-gray-800 text-sm leading-snug mb-1.5 group-hover:text-blue-600 transition-colors line-clamp-2">
@@ -82,9 +159,6 @@ const PackageCard = ({
         <div className="mt-auto pt-2 flex items-center justify-between border-t border-gray-100">
           <span className="font-bold text-gray-800 text-xs sm:text-sm">
             {displayPrice}
-          </span>
-          <span className="text-[10px] text-blue-600 font-semibold group-hover:underline flex items-center gap-1">
-            View Details →
           </span>
         </div>
       </div>

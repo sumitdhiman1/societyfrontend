@@ -50,30 +50,34 @@ export default function MyQuotesPage() {
   }, [router]);
 
   const fetchQuotes = useCallback(async (page: number, tab: string) => {
-    if (page === 1) setInitialLoading(true);
     setFetchingData(true);
 
     try {
       const statusParam = STATUS_MAPPING[tab];
       const res = await quoteService.getAllQuotes(statusParam, page, 10);
-
-      const quoteList = Array.isArray(res?.data) ? res.data : [];
+      const payload = res?.data;
+      const quoteList = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.quotes)
+        ? payload.quotes
+        : Array.isArray(payload?.data)
+        ? payload.data
+        : [];
       setQuotes(quoteList);
 
-      if (res.pagination) {
-        setPagination({
-          total: res.pagination.total,
-          totalPages: res.pagination.totalPages,
-          limit: res.pagination.limit,
-        });
-      }
+      const pag = res?.pagination || payload?.pagination || {};
+      const total = Number(pag.total ?? pag.totalItems ?? 0);
+      const limit = Number(pag.limit ?? pag.itemsPerPage ?? 10) || 10;
+      const totalPages = Number(pag.totalPages) || Math.max(1, Math.ceil(total / limit) || 1);
+      setPagination({ total, totalPages, limit });
 
-      if (res.summary) {
+      const summary = res?.summary || payload?.summary;
+      if (summary) {
         setCounts({
-          all: res.summary.total || 0,
-          pending: res.summary.pending || 0,
-          approved: res.summary.approved || 0,
-          rejected: res.summary.rejected || 0,
+          all: summary.total || 0,
+          pending: summary.pending || 0,
+          approved: summary.approved || 0,
+          rejected: summary.rejected || 0,
         });
       }
     } catch (error) {
@@ -87,14 +91,6 @@ export default function MyQuotesPage() {
 
   useEffect(() => {
     if (authService.isAuthenticated()) {
-      setCurrentPage(1);
-      setQuotes([]);
-      fetchQuotes(1, activeTab);
-    }
-  }, [activeTab, fetchQuotes]);
-
-  useEffect(() => {
-    if (authService.isAuthenticated() && currentPage > 1) {
       fetchQuotes(currentPage, activeTab);
     }
   }, [currentPage, activeTab, fetchQuotes]);
@@ -162,7 +158,10 @@ export default function MyQuotesPage() {
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setCurrentPage(1);
+                  }}
                   className={`pb-3 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 ${activeTab === tab.id
                       ? "text-primary-300 border-b-2 border-primary-300"
                       : "text-gray-500 hover:text-gray-700"
@@ -281,7 +280,7 @@ export default function MyQuotesPage() {
           </div>
         </div>
 
-        {!initialLoading && quotes.length > 0 && pagination.totalPages > 1 && (
+        {!initialLoading && pagination.totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 mt-12 py-4">
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
