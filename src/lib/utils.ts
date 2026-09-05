@@ -35,3 +35,17 @@ export function isImageUrl(url: string): boolean {
   return false;
 }
 
+export function getSafeUrl(url?: string): string {
+  if (!url || typeof url !== "string") return "";
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  if (trimmed.includes("localhost") || trimmed.includes("127.0.0.1")) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("http:")) {
+    return trimmed.replace("http:", "https:");
+  }
+  return trimmed;
+}
+
+

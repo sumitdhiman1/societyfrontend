@@ -640,7 +640,9 @@ export default function AnalysisFilesPage() {
                         }`}
                         onError={(e) => {
                           const target = e.currentTarget;
-                          if (target.src.startsWith("http:")) target.src = target.src.replace("http:", "https:");
+                          if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
+                            target.src = target.src.replace("http:", "https:");
+                          }
                         }}
                       />
                     ) : (

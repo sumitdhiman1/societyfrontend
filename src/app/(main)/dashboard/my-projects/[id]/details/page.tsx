@@ -5,7 +5,7 @@ import { useProject } from "@/context/ProjectContext";
 import { projectService } from "@/lib/projectService";
 import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";
-import { downloadFile, isImageUrl } from "@/lib/utils";
+import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
 import LoadingDots from "@/components/common/LoadingDots";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
@@ -561,7 +561,7 @@ export default function ProjectDetailsPage() {
                               {(msg.attachments || content.attachedFiles).map((att: any, aIdx: number) => {
                                 const url = typeof att === "string" ? att : att.url;
                                 const filename = (typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "Attachment") : att.filename || att.name || "Attachment");
-                                const safeUrl = url.startsWith("http:") ? url.replace("http:", "https:") : url;
+                                const safeUrl = getSafeUrl(url);
                                 const isImg = isImageUrl(url);
                                 const isSvg = url.toLowerCase().includes(".svg");
                                 const isPdf = url.toLowerCase().includes(".pdf");
@@ -588,7 +588,7 @@ export default function ProjectDetailsPage() {
                                           }
                                           onError={(e) => {
                                             const target = e.currentTarget;
-                                            if (target.src.startsWith("http:")) {
+                                            if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
                                               target.src = target.src.replace("http:", "https:");
                                             }
                                           }}
@@ -650,7 +650,7 @@ export default function ProjectDetailsPage() {
                                     rawImage = "https://res.cloudinary.com/dzllquuof/image/upload/v1766925642/Website/Services/ldi5mje9jw6igxajabmx.png";
                                   }
                                 }
-                                const itemImage = rawImage ? (rawImage.startsWith("http:") ? rawImage.replace("http:", "https:") : rawImage) : null;
+                                const itemImage = rawImage ? getSafeUrl(rawImage) : null;
                                 const isPkgSvg = itemImage ? itemImage.toLowerCase().includes(".svg") : false;
                                 const pkgId = item._id || item.id || item.packageId || item.package;
                                 const pkgHref = pkgId ? `/dashboard/new-project/packages/${pkgId}` : "#";
@@ -792,7 +792,7 @@ export default function ProjectDetailsPage() {
                                           src={itemImage}
                                           onError={(e) => {
                                             const target = e.currentTarget;
-                                            if (target.src.startsWith("http:")) {
+                                            if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
                                               target.src = target.src.replace("http:", "https:");
                                             }
                                           }}
@@ -982,8 +982,8 @@ export default function ProjectDetailsPage() {
                 const senderName = msg.username || (isClient ? project.client?.fullName || "Client" : manager?.fullName || "Project Manager");
                 const senderAvatar = msg.userAvatar || (isClient ? project.client?.avatar : manager?.avatar);
                 const initial = senderName.charAt(0).toUpperCase();
-                const attachmentList = msg.attachments || [];
-                const hasAttachments = attachmentList.length > 0;
+                const attachmentList = (msg.attachments && msg.attachments.length > 0) ? msg.attachments : (msg.content?.attachedFiles || msg.attachedFiles || (msg.content as any)?.attachedFilesUrl || msg.attachedFilesUrl || []);
+                const hasAttachments = Array.isArray(attachmentList) && attachmentList.length > 0;
                 const isLast = idx === project.messages.length - 1;
 
                 return (
@@ -1018,9 +1018,9 @@ export default function ProjectDetailsPage() {
                           <div className="border-t border-gray-200 mb-4" />
                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
                             {attachmentList.map((att: any, attIdx: number) => {
-                              const url = typeof att === "string" ? att : att.url;
+                              const url = typeof att === "string" ? att : (att.url || att.secure_url || att.path);
                               const name = typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "file") : att.filename || att.name || "file";
-                              const safeUrl = url.startsWith("http:") ? url.replace("http:", "https:") : url;
+                              const safeUrl = getSafeUrl(url);
                               const isImg = isImageUrl(url);
                               const isSvg = url.toLowerCase().includes(".svg");
                               const isPdf = url.toLowerCase().includes(".pdf");
@@ -1047,7 +1047,7 @@ export default function ProjectDetailsPage() {
                                         }
                                         onError={(e) => {
                                           const target = e.currentTarget;
-                                          if (target.src.startsWith("http:")) {
+                                          if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
                                             target.src = target.src.replace("http:", "https:");
                                           }
                                         }}
@@ -1130,38 +1130,57 @@ export default function ProjectDetailsPage() {
             </div>
 
             {attachments.length > 0 && (
-              <div className="px-6 pb-2">
+              <div className="px-6 pb-3">
                 <div className="flex flex-wrap gap-3">
                   {attachments.map((att) => {
-                    const isImg = att.type.startsWith("image/");
+                    const isImg = isImageUrl(att.url) || att.type?.startsWith("image/") || (att.file && att.file.type?.startsWith("image/")) || /\.(svg|png|jpg|jpeg|webp|gif|bmp|ico|avif)$/i.test(att.name);
+                    const displayUrl = getSafeUrl(att.url || (att.file ? URL.createObjectURL(att.file) : ""));
                     return (
-                      <div key={att.id} className={`relative group border border-gray-200 rounded-lg p-2 w-28 bg-white shadow-sm flex flex-col items-center ${att.status === "uploading" ? "opacity-70" : ""} ${att.status === "error" ? "border-red-400 bg-red-50" : ""}`}>
-                        <div className="mb-2 h-16 w-full flex items-center justify-center bg-gray-100 rounded overflow-hidden relative">
-                          {att.status === "uploading" && (
-                            <div className="absolute inset-0 z-10 bg-black/10 flex items-center justify-center">
-                              <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                      <div
+                        key={att.id}
+                        className={`relative group border border-gray-200 rounded-xl p-2 w-24 h-24 sm:w-28 sm:h-28 bg-white shadow-sm flex flex-col items-center justify-between hover:border-gray-300 transition-all ${
+                          att.status === "uploading" ? "opacity-70" : ""
+                        } ${att.status === "error" ? "border-red-400 bg-red-50" : ""}`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(att.id)}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow cursor-pointer hover:bg-red-600"
+                          title="Remove file"
+                        >
+                          ×
+                        </button>
+                        <div className="w-full flex-1 flex items-center justify-center overflow-hidden">
+                          {att.status === "uploading" ? (
+                            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                          ) : isImg && displayUrl ? (
+                            <img
+                              src={displayUrl}
+                              alt={att.name}
+                              className="w-full h-full object-contain"
+                              onError={(e) => {
+                                const target = e.currentTarget;
+                                if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
+                                  target.src = target.src.replace("http:", "https:");
+                                }
+                              }}
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center text-gray-400">
+                              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
                             </div>
                           )}
-                          {isImg ? (
-                            <img src={att.url || URL.createObjectURL(att.file)} className="h-full w-full object-cover" alt="preview" />
-                          ) : (
-                            <svg className="text-gray-400 w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          )}
                         </div>
-                        <span className="text-[10px] font-medium text-gray-600 truncate w-full text-center">{att.name}</span>
-                        <div className="text-[10px] text-gray-400 capitalize">
-                          {att.status === "uploading" ? "Uploading" : att.status === "done" ? "Ready" : att.status}
+                        <div className="w-full text-center mt-1">
+                          <p className="text-[11px] font-medium text-gray-700 truncate w-full" title={att.name}>
+                            {att.name}
+                          </p>
+                          <p className="text-[10px] text-gray-400 font-medium capitalize">
+                            {att.status === "uploading" ? "Uploading..." : att.status === "done" ? "Ready" : att.status}
+                          </p>
                         </div>
-                        <button
-                          onClick={() => removeAttachment(att.id)}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 shadow hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
                       </div>
                     );
                   })}
@@ -1178,14 +1197,19 @@ export default function ProjectDetailsPage() {
                     fileInputRef.current?.click();
                   }
                 }}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2.5 rounded-md border-2 border-blue-600 hover:bg-blue-50 shadow-sm cursor-pointer"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2 rounded-lg border-2 border-blue-600 hover:bg-blue-50 shadow-sm cursor-pointer"
                 type="button"
                 disabled={isSending}
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                 </svg>
                 Attach Files
+                {attachments.length > 0 && (
+                  <span className="inline-flex items-center justify-center w-5 h-5 bg-[#4343F0] text-white text-[11px] font-bold rounded-full ml-1">
+                    {attachments.length}
+                  </span>
+                )}
               </button>
               <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileUpload} />
 
@@ -1199,7 +1223,7 @@ export default function ProjectDetailsPage() {
                     setMessageText("");
                     setAttachments([]);
                   }}
-                  className="flex-1 sm:flex-none px-6 py-2.5 bg-[#800020] hover:bg-[#600018] text-white font-bold text-sm rounded-md transition-colors shadow-sm cursor-pointer"
+                  className="flex-1 sm:flex-none px-6 py-2.5 bg-[#800020] hover:bg-[#600018] text-white font-bold text-xs rounded-lg transition-colors shadow-sm cursor-pointer"
                   disabled={isSending}
                 >
                   Cancel
@@ -1214,8 +1238,9 @@ export default function ProjectDetailsPage() {
                     handleSendMessage();
                   }}
                   disabled={currentUser && (isSending || isUploading || (!messageText.trim() && attachments.filter(a => a.status === "done").length === 0))}
-                  className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-md text-sm font-bold transition-all shadow-sm cursor-pointer ${isSending || isUploading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-800 hover:bg-blue-900"
-                    }`}
+                  className={`flex-1 sm:flex-none px-7 py-2.5 text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer ${
+                    isSending || isUploading ? "bg-gray-400 cursor-not-allowed" : "bg-[#7B8BF5] hover:bg-[#5356ff]"
+                  }`}
                 >
                   {isSending ? "Sending..." : isUploading ? "Uploading..." : "Send Message"}
                 </button>

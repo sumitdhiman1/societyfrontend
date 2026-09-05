@@ -6,9 +6,10 @@ import { toast } from "sonner";
 import { useQuote } from "../layout";
 import { authService } from "@/lib/authService";
 import { quoteService } from "@/lib/quoteService";
+import { projectService } from "@/lib/projectService";
 import { mediaService } from "@/lib/mediaService";
 import { packagesService } from "@/lib/packagesService";
-import { downloadFile, isImageUrl } from "@/lib/utils";
+import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
 import { io, Socket } from "socket.io-client";
 
@@ -34,11 +35,7 @@ const PackageCard = ({
   description,
   link,
 }: any) => {
-  const safeImg = imageUrl
-    ? imageUrl.startsWith("http:")
-      ? imageUrl.replace("http:", "https:")
-      : imageUrl
-    : null;
+  const safeImg = imageUrl ? getSafeUrl(imageUrl) : null;
   const isSvg = safeImg ? safeImg.toLowerCase().includes(".svg") : false;
 
   const displayPrice =
@@ -67,7 +64,7 @@ const PackageCard = ({
             }`}
             onError={(e) => {
               const target = e.currentTarget;
-              if (target.src.startsWith("http:")) {
+              if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
                 target.src = target.src.replace("http:", "https:");
               }
             }}
@@ -109,7 +106,42 @@ const PackageCard = ({
   );
 };
 
+const toIdString = (value: any): string => {
+  if (!value) return "";
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed && trimmed !== "[object Object]" ? trimmed : "";
+  }
+  if (typeof value === "object") {
+    if (typeof value.toHexString === "function") return value.toHexString();
+    if (value._id) return toIdString(value._id);
+    if (typeof value.toString === "function") {
+      const str = value.toString();
+      if (str && str !== "[object Object]") return str;
+    }
+    if (typeof value.id === "string") return toIdString(value.id);
+  }
+  return "";
+};
+
+const projectIdFromResponse = (res: any, quoteId: string): string => {
+  const payload = res?.data?.data || res?.data || res;
+  const candidates = [
+    payload?._id,
+    payload?.id,
+    payload?.projectId,
+    payload?.project?._id,
+    payload?.project?.id,
+  ];
+  for (const c of candidates) {
+    const id = toIdString(c);
+    if (id && id !== quoteId) return id;
+  }
+  return "";
+};
+
 const extractProjectId = (quoteObj: any, msgObj?: any, contentObj?: any): string => {
+  const quoteId = toIdString(quoteObj?._id || quoteObj?.id || quoteObj?.quoteId);
   const candidates = [
     contentObj?.projectId,
     msgObj?.content?.projectId,
@@ -119,23 +151,14 @@ const extractProjectId = (quoteObj: any, msgObj?: any, contentObj?: any): string
     quoteObj?.project?.id,
     quoteObj?.project,
   ];
-  for (const c of candidates) {
-    if (!c) continue;
-    if (typeof c === "string" && c.trim() && c !== "[object Object]") {
-      return c.trim();
-    }
-    if (typeof c === "object") {
-      if (c._id && typeof c._id === "string") return c._id;
-      if (c.id && typeof c.id === "string") return c.id;
-      if (typeof c.toString === "function") {
-        const str = c.toString();
-        if (str && str !== "[object Object]") return str;
-      }
+  if (Array.isArray(quoteObj?.messages)) {
+    for (const msg of quoteObj.messages) {
+      candidates.push(msg?.content?.projectId, msg?.projectId);
     }
   }
-  // Fallback if quote is approved, use quote._id (backend will look up project by quoteId)
-  if (quoteObj?.status?.toLowerCase() === "approved" && quoteObj?._id) {
-    return String(quoteObj._id);
+  for (const c of candidates) {
+    const id = toIdString(c);
+    if (id && id !== quoteId) return id;
   }
   return "";
 };
@@ -148,6 +171,7 @@ export default function QuoteDetailsPage() {
   const [isSending, setIsSending] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isAccepting, setIsAccepting] = useState(false);
+  const [isOpeningProject, setIsOpeningProject] = useState(false);
   const [isDeclining, setIsDeclining] = useState(false);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
@@ -353,9 +377,10 @@ export default function QuoteDetailsPage() {
       name: file.name,
       status: "uploading" as const,
       file,
+      url: "",
     }));
 
-    setAttachments((prev) => [...prev, ...newItems.map(({ file, ...rest }) => rest)]);
+    setAttachments((prev) => [...prev, ...newItems]);
 
     for (const item of newItems) {
       try {
@@ -437,6 +462,50 @@ export default function QuoteDetailsPage() {
       } finally {
         setIsAccepting(false);
       }
+    }
+  };
+
+  const resolveCreatedProjectId = async (quoteObj: any, msg?: any, content?: any): Promise<string> => {
+    const quoteId = toIdString(quoteObj?._id || quote?._id);
+    let projectId = extractProjectId(quoteObj || quote, msg, content);
+    if (projectId) return projectId;
+
+    if (quoteId) {
+      try {
+        const latest = await quoteService.getQuoteById(quoteId);
+        const latestQuote = latest?.data?.data || latest?.data;
+        if (latestQuote) {
+          setQuote(latestQuote);
+          projectId = extractProjectId(latestQuote, msg, content);
+          if (projectId) return projectId;
+        }
+      } catch (e) {
+        console.error("Failed to refresh quote for project redirect:", e);
+      }
+
+      try {
+        const projectRes = await projectService.getProjectById(quoteId);
+        projectId = projectIdFromResponse(projectRes, quoteId);
+        if (projectId) return projectId;
+      } catch (e) {
+        console.error("Failed to resolve project by quote id:", e);
+      }
+    }
+    return "";
+  };
+
+  const goToCreatedProject = async (msg?: any, content?: any) => {
+    if (isOpeningProject) return;
+    setIsOpeningProject(true);
+    try {
+      const projectId = await resolveCreatedProjectId(quote, msg, content);
+      if (projectId) {
+        router.push(`/dashboard/my-projects/${projectId}/details`);
+        return;
+      }
+      toast.error("Project is not ready yet. Please try again.");
+    } finally {
+      setIsOpeningProject(false);
     }
   };
 
@@ -626,7 +695,7 @@ export default function QuoteDetailsPage() {
                         const url = typeof fileItem === "string" ? fileItem : (fileItem.url || fileItem.path || fileItem.secure_url || "");
                         const rawName = typeof fileItem === "string" ? fileItem.split("/").pop() || `File-${idx + 1}` : (fileItem.filename || fileItem.name || fileItem.fileName || url.split("/").pop() || `File-${idx + 1}`);
                         const fileName = decodeURIComponent(rawName.split("?")[0]);
-                        const safeUrl = url.startsWith("http:") ? url.replace("http:", "https:") : url;
+                        const safeUrl = getSafeUrl(url);
                         const isImg = isImageUrl(safeUrl) || /\.(svg|png|jpg|jpeg|webp|gif|bmp|ico|avif)$/i.test(fileName) || isImageUrl(fileName);
 
                         return (
@@ -645,7 +714,7 @@ export default function QuoteDetailsPage() {
                                   className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200"
                                   onError={(e) => {
                                     const target = e.currentTarget;
-                                    if (target.src.startsWith("http:")) {
+                                    if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
                                       target.src = target.src.replace("http:", "https:");
                                     }
                                   }}
@@ -725,14 +794,6 @@ export default function QuoteDetailsPage() {
           if (msg.type === "system_notification" || msg.isSystemMessage) {
             const title = msg.content?.systemText || msg.systemText || msg.message || "System Notification";
             const text = msg.content?.text || msg.text || "";
-            const rawProjId = extractProjectId(quote, msg, msg.content);
-            const projectUrl =
-              msg.content?.redirectUrl && !msg.content.redirectUrl.includes("[object Object]")
-                ? msg.content.redirectUrl
-                : rawProjId
-                ? `/dashboard/my-projects/${rawProjId}/details`
-                : "/dashboard/my-projects";
-
             // If a quote_proposal card is already displaying the Project Created or Offer header, skip system notification
             const hasAcceptedProposal = allMessages.some((m: any) => m.type === "quote_proposal" && (m.content?.status === "accepted" || quote.status?.toLowerCase() === "approved"));
             if (
@@ -761,13 +822,20 @@ export default function QuoteDetailsPage() {
                   </p>
                   <button
                     type="button"
-                    onClick={() => router.push(projectUrl)}
-                    className="inline-flex items-center justify-center gap-1.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold py-2.5 px-6 rounded-[6px] shadow-sm transition-all active:scale-95 cursor-pointer mx-auto"
+                    onClick={() => goToCreatedProject(msg, msg.content)}
+                    disabled={isOpeningProject}
+                    className="inline-flex items-center justify-center gap-1.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold py-2.5 px-6 rounded-[6px] shadow-sm transition-all active:scale-95 cursor-pointer mx-auto disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    View Project
-                    <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
-                    </svg>
+                    {isOpeningProject ? (
+                      <LoadingDots text="Opening" />
+                    ) : (
+                      <>
+                        View Project
+                        <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </>
+                    )}
                   </button>
                 </div>
               );
@@ -801,11 +869,6 @@ export default function QuoteDetailsPage() {
             const isAccepted = content.status === "accepted" || quote.status?.toLowerCase() === "approved";
             const isDeclined = content.status === "declined" || content.status === "rejected" || quote.status?.toLowerCase() === "rejected";
             const canAct = !isSuperseded && !isAccepted && !isDeclined;
-
-            const resolvedProjectId = extractProjectId(quote, msg, content);
-            const projectRedirectUrl = resolvedProjectId
-              ? `/dashboard/my-projects/${resolvedProjectId}/details`
-              : "/dashboard/my-projects";
 
             return (
               <div key={msgId} ref={isLast ? messagesEndRef : null} className="w-full">
@@ -933,13 +996,20 @@ export default function QuoteDetailsPage() {
                     </p>
                     <button
                       type="button"
-                      onClick={() => router.push(projectRedirectUrl)}
-                      className="inline-flex items-center justify-center gap-1.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold py-2.5 px-6 rounded-[6px] shadow-sm transition-all active:scale-95 cursor-pointer mx-auto"
+                      onClick={() => goToCreatedProject(msg, content)}
+                      disabled={isOpeningProject}
+                      className="inline-flex items-center justify-center gap-1.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold py-2.5 px-6 rounded-[6px] shadow-sm transition-all active:scale-95 cursor-pointer mx-auto disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      View Project
-                      <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
-                      </svg>
+                      {isOpeningProject ? (
+                        <LoadingDots text="Opening" />
+                      ) : (
+                        <>
+                          View Project
+                          <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </>
+                      )}
                     </button>
                   </div>
                 )}
@@ -992,7 +1062,7 @@ export default function QuoteDetailsPage() {
                     {attachmentList.map((file: any, j: number) => {
                       const url = file.url;
                       const filename = file.filename || "file";
-                      const safeUrl = url.startsWith("http:") ? url.replace("http:", "https:") : url;
+                      const safeUrl = getSafeUrl(url);
                       const isImg = isImageUrl(url);
                       const isSvg = url.toLowerCase().includes(".svg");
                       const isPdf = url.toLowerCase().includes(".pdf");
@@ -1019,7 +1089,7 @@ export default function QuoteDetailsPage() {
                                 }
                                 onError={(e) => {
                                   const target = e.currentTarget;
-                                  if (target.src.startsWith("http:")) {
+                                  if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
                                     target.src = target.src.replace("http:", "https:");
                                   }
                                 }}
@@ -1119,46 +1189,98 @@ export default function QuoteDetailsPage() {
             onClick={() => {
               if (!user) setShowAuthModal(true);
             }}
-            onFocus={() => {
-              if (!user) setShowAuthModal(true);
-            }}
-            readOnly={!user}
           />
+
+          {/* Attachments Preview Grid */}
+          {attachments.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap gap-3">
+              {attachments.map((att) => {
+                const isImg = (att.url ? isImageUrl(att.url) : false) || att.file?.type?.startsWith("image/") || /\.(svg|png|jpg|jpeg|webp|gif|bmp|ico|avif)$/i.test(att.name);
+                const displayUrl = getSafeUrl(att.url || (att.file ? URL.createObjectURL(att.file) : ""));
+                return (
+                  <div
+                    key={att.id}
+                    className="w-24 h-24 sm:w-28 sm:h-28 border border-gray-200 rounded-xl p-2 flex flex-col items-center justify-between bg-white relative group shadow-sm hover:border-gray-300 transition-all"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(att.id)}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow cursor-pointer hover:bg-red-600"
+                      title="Remove file"
+                    >
+                      ×
+                    </button>
+                    <div className="w-full flex-1 flex items-center justify-center overflow-hidden">
+                      {isImg && displayUrl ? (
+                        <img
+                          src={displayUrl}
+                          alt={att.name}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
+                              target.src = target.src.replace("http:", "https:");
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-gray-400">
+                          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    <div className="w-full text-center mt-1">
+                      <p className="text-[11px] font-medium text-gray-700 truncate w-full" title={att.name}>
+                        {att.name}
+                      </p>
+                      <p className="text-[10px] text-gray-400 font-medium capitalize">
+                        {att.status === "done" ? "Ready" : att.status === "uploading" ? "Uploading..." : "Failed"}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-
-
-        {/* Actions Bottom Bar */}
-        <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              className="hidden"
-              onChange={handleFileChange}
-            />
-            <button
-              type="button"
-              onClick={() => {
-                if (!user) {
-                  setShowAuthModal(true);
-                  return;
-                }
-                fileInputRef.current?.click();
-              }}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-bold text-xs py-2 px-4 rounded-lg transition-colors cursor-pointer"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                />
-              </svg>
-              + Attach Files
-            </button>
-          </div>
+          <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (!user) {
+                    setShowAuthModal(true);
+                    return;
+                  }
+                  fileInputRef.current?.click();
+                }}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-bold text-xs py-2 px-4 rounded-lg transition-colors cursor-pointer"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                  />
+                </svg>
+                Attach Files
+                {attachments.length > 0 && (
+                  <span className="inline-flex items-center justify-center w-5 h-5 bg-[#4343F0] text-white text-[11px] font-bold rounded-full ml-1">
+                    {attachments.length}
+                  </span>
+                )}
+              </button>
+            </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
             <button
