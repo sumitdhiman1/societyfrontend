@@ -38,7 +38,7 @@ export function isGraphicsItemVisible(
 }
 
 export function filterGraphicsAnswers(answers: any[], categoryKeys: string[]) {
-  if (!categoryKeys.length) return [];
+  if (!categoryKeys.length) return answers;
   return answers.filter((a) => isGraphicsItemVisible(a, categoryKeys));
 }
 
@@ -85,12 +85,18 @@ export function shouldShowPriceBar(
 export function selectionsToArray(
   selections: Record<string, CalculatorSelection>
 ): CalculatorSelection[] {
-  return Object.values(selections).filter(
-    (s) =>
-      (s.answerKeys && s.answerKeys.length > 0) ||
-      s.numericValue !== undefined ||
-      (s.textValue !== undefined && s.textValue !== "")
-  );
+  return Object.values(selections)
+    .filter(
+      (s) =>
+        (s.answerKeys && s.answerKeys.length > 0) ||
+        s.numericValue !== undefined ||
+        (s.textValue !== undefined && s.textValue !== "")
+    )
+    .map((s) =>
+      s.answerKeys?.length
+        ? { ...s, answerKeys: [...new Set(s.answerKeys)] }
+        : s
+    );
 }
 
 export function filterQuestionAnswers(
@@ -112,10 +118,24 @@ export type ConditionalOn = {
   answerKeys?: string[];
 };
 
+const SEO_ALWAYS_VISIBLE_KEYS = new Set([
+  "SEO_WORDS",
+  "SEO_BACKLINKS",
+  "SEO_MONTHS",
+  "SEO_TIMELINE",
+]);
+
+const MARKETING_ALWAYS_VISIBLE_KEYS = new Set([
+  "MKT_PAID_PLATFORMS",
+  "MKT_AD_SPEND",
+]);
+
 export function isQuestionVisible(
-  question: { conditionalOn?: ConditionalOn },
+  question: { key?: string; conditionalOn?: ConditionalOn },
   selections: Record<string, CalculatorSelection>
 ): boolean {
+  if (question.key && SEO_ALWAYS_VISIBLE_KEYS.has(question.key)) return true;
+  if (question.key && MARKETING_ALWAYS_VISIBLE_KEYS.has(question.key)) return true;
   const cond = question.conditionalOn;
   if (!cond) return true;
   const dep = selections[cond.questionKey];
@@ -164,6 +184,107 @@ export function getCategoryIllustration(categoryKey: string, imageUrl?: string):
 export function getCategoryDisplayName(categoryKey: string, categoryName?: string): string {
   if (categoryName?.trim()) return categoryName.trim().toUpperCase();
   return categoryKey.toUpperCase();
+}
+
+export function getCategoryProposalName(categoryKey: string, categoryName?: string): string {
+  if (categoryName?.trim()) return categoryName.trim();
+  return categoryKey
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+const DEFAULT_CATEGORY_TIMELINES: Record<string, string> = {
+  website: "2 weeks",
+  graphics: "2 weeks",
+  seo: "2 weeks",
+  marketing: "Monthly Service",
+};
+
+export function getDefaultCategoryTimeline(categoryKey: string, categoryTimeline?: string): string {
+  if (categoryTimeline?.trim()) return categoryTimeline.trim();
+  return DEFAULT_CATEGORY_TIMELINES[categoryKey] || "2 weeks";
+}
+
+/** Strip rush-fee suffix from timeline labels except graphics (live shows fees there). */
+export function formatCalculatorAnswerLabel(text: string, questionKey?: string): string {
+  if (questionKey === "GFX_TIMELINE" || questionKey === "SEO_TIMELINE") return text;
+  return text.replace(/:\s*\+\d+% rush fee/i, "").trim();
+}
+
+/** Optional marker only on text questions; multi/single/number stay plain (live UI). */
+export function formatCalculatorQuestionText(
+  text: string,
+  isRequired?: boolean,
+  questionType?: string
+): string {
+  const trimmed = text.replace(/\s*\(Optional\)/gi, "").trim();
+  if (questionType !== "text") {
+    return trimmed;
+  }
+  if (isRequired === false && !/\(Optional\)/i.test(text)) {
+    return `${trimmed} (Optional)`;
+  }
+  return trimmed;
+}
+
+/** Nearest 5 for most categories; SEO uses nearest $1 (live parity). */
+export function roundCalculatorPrice(amount: number, categoryKey?: string): number {
+  if (!Number.isFinite(amount)) return 0;
+  if (categoryKey === "seo") {
+    return Math.round(amount);
+  }
+  return 5 * Math.round(amount / 5);
+}
+
+export function getCalculatorDisplayAmount(
+  amountUsd: number,
+  currency: string,
+  conversionRate = 1,
+  categoryKey?: string
+): number {
+  const inCurrency = currency === "eur" ? amountUsd / conversionRate : amountUsd;
+  return roundCalculatorPrice(inCurrency, categoryKey);
+}
+
+/** Exact payable amount in display currency (2dp) for payment form — live parity. */
+export function getCalculatorPayableAmount(
+  amountUsd: number,
+  currency: string,
+  conversionRate = 1
+): number {
+  const inCurrency = currency === "eur" ? amountUsd / conversionRate : amountUsd;
+  return Math.round(inCurrency * 100) / 100;
+}
+
+/** 50% deposit uses floor to cents (live: $787.95 → $393.97). */
+export function getCalculatorHalfPayableAmount(payableTotal: number): number {
+  return Math.floor((payableTotal / 2) * 100) / 100;
+}
+
+export function formatCalculatorPrice(
+  amountUsd: number,
+  currency: string,
+  conversionRate = 1,
+  categoryKey?: string
+): string {
+  return formatCalculatorDisplayAmount(
+    getCalculatorDisplayAmount(amountUsd, currency, conversionRate, categoryKey),
+    currency,
+    categoryKey
+  );
+}
+
+export function formatCalculatorDisplayAmount(
+  amountInCurrency: number,
+  currency: string,
+  categoryKey?: string
+): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(roundCalculatorPrice(amountInCurrency, categoryKey));
 }
 
 export function pruneHiddenSelections(
