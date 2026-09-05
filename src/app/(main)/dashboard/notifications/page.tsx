@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import { notificationService } from "@/lib/services";
 import { authService } from "@/lib/authService";
 
@@ -157,7 +156,6 @@ export default function NotificationsPage() {
   if (loading && notifications.length === 0) {
     return (
       <div className="bg-white min-h-screen flex flex-col">
-        <DashboardSubNav />
         <div className="flex-grow flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-300" />
         </div>
@@ -167,7 +165,6 @@ export default function NotificationsPage() {
 
   return (
     <div className="bg-white min-h-screen flex flex-col font-sans">
-      <DashboardSubNav />
       <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 md:mb-12 gap-4">
           <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100">

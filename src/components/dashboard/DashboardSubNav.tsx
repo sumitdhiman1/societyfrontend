@@ -23,7 +23,12 @@ export default function DashboardSubNav({ hideMenu = false }: { hideMenu?: boole
     setIsAuthenticated(authService.isAuthenticated());
   }, []);
 
-  if (!isAuthenticated || hideMenu || pathname === "/calculator") return null;
+  // Only show this menubar on Accounts pages
+  const isAccountPage = navItems.some(
+    (item) => pathname === item.href || pathname.startsWith(item.href + "/")
+  );
+
+  if (!isAuthenticated || hideMenu || !isAccountPage) return null;
 
   return (
     <div className="w-full bg-gray-100 font-sans">

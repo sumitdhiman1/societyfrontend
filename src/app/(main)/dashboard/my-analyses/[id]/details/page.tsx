@@ -11,6 +11,91 @@ import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
 import { io, Socket } from "socket.io-client";
 
+// Helper components
+const PackageCard = ({
+  packageId,
+  title,
+  price,
+  imageUrl,
+  category,
+  description,
+  link,
+}: any) => {
+  const safeImg = imageUrl
+    ? imageUrl.startsWith("http:")
+      ? imageUrl.replace("http:", "https:")
+      : imageUrl
+    : null;
+  const isSvg = safeImg ? safeImg.toLowerCase().includes(".svg") : false;
+
+  const displayPrice =
+    typeof price === "number"
+      ? `$${price.toLocaleString("en-US")}`
+      : price
+      ? String(price).startsWith("$") || String(price).startsWith("€")
+        ? String(price)
+        : `$ ${price}`
+      : "";
+
+  return (
+    <a
+      href={link || `/dashboard/new-project/packages/${packageId}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex flex-col bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition-all group w-full sm:w-[260px] md:w-[280px] shrink-0 no-underline text-left"
+    >
+      <div className="h-36 sm:h-40 bg-gray-100 relative overflow-hidden flex items-center justify-center">
+        {safeImg ? (
+          <img
+            src={safeImg}
+            alt={title}
+            className={`w-full h-full transition-transform duration-300 group-hover:scale-105 ${
+              isSvg ? "object-contain p-2.5" : "object-cover"
+            }`}
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (target.src.startsWith("http:")) {
+                target.src = target.src.replace("http:", "https:");
+              }
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-300">
+            <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+        )}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
+      </div>
+
+      <div className="p-4 flex flex-col flex-1 bg-white">
+        {category && (
+          <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2.5 py-0.5 rounded-full uppercase tracking-wider w-fit mb-2">
+            {category}
+          </span>
+        )}
+        <h4 className="font-bold text-gray-800 text-sm leading-snug mb-1.5 group-hover:text-blue-600 transition-colors line-clamp-2">
+          {title}
+        </h4>
+        {description && (
+          <p className="text-xs text-gray-500 leading-relaxed mb-3 line-clamp-2">
+            {description}
+          </p>
+        )}
+        <div className="mt-auto pt-2 flex items-center justify-between border-t border-gray-100">
+          <span className="font-bold text-gray-800 text-xs sm:text-sm">
+            {displayPrice}
+          </span>
+          <span className="text-[10px] text-blue-600 font-semibold group-hover:underline flex items-center gap-1">
+            View Details →
+          </span>
+        </div>
+      </div>
+    </a>
+  );
+};
+
 export default function AnalysisDetailsPage() {
   const { analysis, refreshAnalysis } = useAnalysis();
   const [messageText, setMessageText] = useState("");
@@ -73,6 +158,9 @@ export default function AnalysisDetailsPage() {
     fetchAllPackages();
   }, []);
 
+  const refreshAnalysisRef = useRef(refreshAnalysis);
+  refreshAnalysisRef.current = refreshAnalysis;
+
   // Real-time socket for project/analysis messages
   useEffect(() => {
     let activeSocket: Socket | null = null;
@@ -133,7 +221,7 @@ export default function AnalysisDetailsPage() {
       const handleMessageUpdate = (data: any) => {
         const incomingId = data?.projectId || data?.project?._id || data?.project?.id;
         if (!incomingId || String(incomingId) === String(aId)) {
-          refreshAnalysis();
+          refreshAnalysisRef.current();
         }
       };
 
@@ -143,7 +231,7 @@ export default function AnalysisDetailsPage() {
       sock.on("notification", (notif: any) => {
         const pId = notif?.data?.projectId || notif?.projectId;
         if (!pId || String(pId) === String(aId)) {
-          refreshAnalysis();
+          refreshAnalysisRef.current();
         }
       });
     };
@@ -159,7 +247,7 @@ export default function AnalysisDetailsPage() {
         } catch {}
       }
     };
-  }, [analysis?._id, analysis?.id, refreshAnalysis]);
+  }, [analysis?._id, analysis?.id]);
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.hash === "#messages") {
@@ -234,7 +322,12 @@ export default function AnalysisDetailsPage() {
       setIsSending(true);
       try {
         const aId = analysis._id || analysis.id;
-        const res = await projectService.addMessage(aId, messageText, false, uploadedUrls);
+        const res = await projectService.addMessage(
+          aId,
+          messageText,
+          false,
+          uploadedUrls
+        );
         if (res && (res.isSuccessful || res.success || res.statusCode === 200 || res.statusCode === 201 || res.data)) {
           setMessageText("");
           setAttachments([]);
@@ -1015,6 +1108,30 @@ export default function AnalysisDetailsPage() {
                         </div>
                       </div>
                     )}
+                    {/* Recommended Solutions if any */}
+                    {((msg.recommendedSolutions && msg.recommendedSolutions.length > 0) ||
+                      (msg.content?.recommendedSolutions && msg.content.recommendedSolutions.length > 0)) && (
+                      <div className="pl-0 sm:pl-16 mb-6">
+                        <h5 className="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">
+                          Recommended Solutions
+                        </h5>
+                        <div className="border-t border-gray-200 mb-4" />
+                        <div className="flex flex-wrap sm:flex-nowrap sm:overflow-x-auto pb-2 gap-4 scrollbar-hide">
+                          {(msg.recommendedSolutions || msg.content?.recommendedSolutions).map((sol: any, j: number) => (
+                            <PackageCard
+                              key={(sol.packageId || sol._id || j) + "-" + j}
+                              packageId={sol.packageId || sol._id || sol.id}
+                              title={sol.title || sol.name}
+                              price={sol.price || sol.amount}
+                              imageUrl={sol.imageUrl || sol.mediumUrl || sol.thumbnailUrl}
+                              category={sol.category || sol.categorycode}
+                              description={sol.description}
+                              link={sol.link || `/dashboard/new-project/packages/${sol.packageId || sol._id || sol.id}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1122,27 +1239,29 @@ export default function AnalysisDetailsPage() {
               )}
 
               <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!currentUser) {
-                      setShowAuthModal(true);
-                      return;
-                    }
-                    fileInputRef.current?.click();
-                  }}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2.5 rounded-md border-2 border-blue-600 hover:bg-blue-50 shadow-sm cursor-pointer"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                    />
-                  </svg>
-                  Attach Files
-                </button>
+                <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!currentUser) {
+                        setShowAuthModal(true);
+                        return;
+                      }
+                      fileInputRef.current?.click();
+                    }}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2.5 rounded-md border-2 border-blue-600 hover:bg-blue-50 shadow-sm cursor-pointer"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                      />
+                    </svg>
+                    Attach Files
+                  </button>
+                </div>
                 <input ref={fileInputRef} hidden multiple type="file" onChange={handleFileUpload} />
 
                 <div className="flex gap-3 w-full sm:w-auto">
@@ -1172,7 +1291,8 @@ export default function AnalysisDetailsPage() {
                       currentUser &&
                       (isSending ||
                         isUploading ||
-                        (!messageText.trim() && attachments.filter((a) => a.status === "done").length === 0))
+                        (!messageText.trim() &&
+                          attachments.filter((a) => a.status === "done").length === 0))
                     }
                     className="flex-1 sm:flex-none px-8 py-2.5 bg-[#4343F0] hover:bg-[#3333D0] text-white rounded-[8px] text-sm font-bold transition-all disabled:opacity-50 cursor-pointer shadow-md"
                   >

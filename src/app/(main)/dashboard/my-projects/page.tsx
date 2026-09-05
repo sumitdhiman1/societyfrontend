@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { authService } from "@/lib/authService";
 import { projectService } from "@/lib/projectService";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
-import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 
 export default function MyProjectsPage() {
   const router = useRouter();
@@ -101,7 +100,6 @@ export default function MyProjectsPage() {
 
   return (
     <div className="bg-[#F4F5FA] min-h-screen flex flex-col">
-      <DashboardSubNav />
       <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-6 md:gap-0">
           <div className="w-full md:w-auto min-w-0 overflow-hidden">

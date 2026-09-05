@@ -226,6 +226,7 @@ export const requestAnalysisService = new RequestAnalysisService();
 
 export async function claimPendingAnalyses() {
   const pendingIds = getPendingAnalysisIds();
+  if (!pendingIds || pendingIds.length === 0) return;
   try {
     const res = await requestAnalysisService.claimProject({ analysisIds: pendingIds });
     if (res && (res.isSuccessful || res.statusCode === 200 || res.data)) {

@@ -24,8 +24,19 @@ export class ProjectService {
     return this.client.get(`/projects/getprojectbyid/${id}`);
   }
 
-  async addMessage(projectId: string, message: string, isInternal: boolean = false, attachments: any[] = []) {
-    return this.client.post(`/projects/addmessage/${projectId}`, { message, isInternal, attachments });
+  async addMessage(
+    projectId: string,
+    message: string,
+    isInternal: boolean = false,
+    attachments: any[] = [],
+    recommendedSolutions?: any[]
+  ) {
+    return this.client.post(`/projects/addmessage/${projectId}`, {
+      message,
+      isInternal,
+      attachments,
+      recommendedSolutions,
+    });
   }
 
   async acceptProposal(projectId: string, proposalMessageId: string, username: string, userAvatar: string, comments: string = "") {

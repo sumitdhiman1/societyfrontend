@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AnalysisProvider, useAnalysis } from "@/context/AnalysisContext";
-import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import { requestAnalysisService, savePendingAnalysisId, savePendingAnalysisInfo, claimPendingAnalyses } from "@/lib/requestAnalysisService";
 import { authService } from "@/lib/authService";
 
@@ -14,17 +13,18 @@ function AnalysisLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const params = useParams();
   const analysisId = params.id as string;
+  const hasClaimedRef = useRef(false);
 
   useEffect(() => {
     if (analysis) {
       savePendingAnalysisInfo(analysis);
     }
     if (analysisId) {
-      savePendingAnalysisId(analysisId);
       if (typeof window !== "undefined") {
         sessionStorage.setItem("from_analysis_detail", analysisId);
       }
-      if (authService.isAuthenticated()) {
+      if (!hasClaimedRef.current && authService.isAuthenticated()) {
+        hasClaimedRef.current = true;
         claimPendingAnalyses();
       }
     }
@@ -96,7 +96,6 @@ function AnalysisLayoutContent({ children }: { children: React.ReactNode }) {
       className="bg-white min-h-screen flex flex-col font-sans"
       style={{ fontFamily: "var(--font-inter), sans-serif" }}
     >
-      <DashboardSubNav />
       <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
         <div className="mb-10">
           <div className="flex items-center gap-3 group mb-8 md:mb-12">

@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/lib/authService";
 import { quoteService } from "@/lib/quoteService";
-import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 const STATUS_MAPPING: Record<string, string | undefined> = {
@@ -110,28 +109,40 @@ export default function MyQuotesPage() {
   const getStatusBadgeStyles = (status: string) => {
     switch (status?.toLowerCase()) {
       case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "requested":
+      case "submitted":
+        return "bg-[#FEF08A] text-[#854D0E] border-[#FEF08A]";
       case "approved":
-        return "bg-[#E1FCEF] text-[#14804A] border-[#E1FCEF]";
+      case "accepted":
+        return "bg-[#DCFCE7] text-[#15803D] border-[#DCFCE7]";
       case "rejected":
-        return "bg-red-100 text-red-800 border-red-200";
+      case "declined":
+        return "bg-[#FEE2E2] text-[#B91C1C] border-[#FEE2E2]";
       case "sent":
-        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "offer_sent":
+      case "proposal_sent":
+        return "bg-[#DBEAFE] text-[#1D4ED8] border-[#DBEAFE]";
       case "inactive":
         return "bg-gray-100 text-gray-500 border-gray-200";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-[#FEF08A] text-[#854D0E] border-[#FEF08A]";
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatSubmittedDate = (dateString: string) => {
+    if (!dateString) return "";
     const d = new Date(dateString);
-    return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+    if (isNaN(d.getTime())) return "";
+    const month = d.toLocaleString("en-US", { month: "short" }).toUpperCase();
+    const day = d.getDate();
+    const time = d
+      .toLocaleString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+      .toUpperCase();
+    return `Submitted on ${month} ${day}, ${time}`;
   };
 
   return (
     <div className="bg-[#F4F5FA] min-h-screen flex flex-col">
-      <DashboardSubNav />
       <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-6 md:gap-0">
           <div className="w-full md:w-auto min-w-0 overflow-hidden">
@@ -183,10 +194,10 @@ export default function MyQuotesPage() {
           </div>
         </div>
 
-        <div className={`space-y-6 mt-8 min-h-[400px] transition-all duration-300 ${fetchingData ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
+        <div className={`space-y-6 mt-8 min-h-[300px] transition-all duration-300 ${fetchingData ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
           {initialLoading && quotes.length === 0 ? (
             [1, 2, 3].map((i) => (
-              <div key={i} className="border border-gray-200 rounded-[4px] p-6 h-40 animate-pulse bg-gray-50" />
+              <div key={i} className="border border-gray-200 rounded-[8px] p-6 h-40 animate-pulse bg-white" />
             ))
           ) : quotes.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-lg border border-gray-200">
@@ -199,7 +210,7 @@ export default function MyQuotesPage() {
               <p className="text-gray-500 text-sm mb-6">You don't have any quotes in this status yet.</p>
               <button
                 onClick={() => router.push("/dashboard/new-project/custom-quote")}
-                className="bg-[#5356ff] hover:bg-[#3333D0] text-white text-sm font-bold py-2.5 px-6 rounded-[4px] transition-colors"
+                className="bg-[#4343F0] hover:bg-[#3232b7] text-white text-sm font-bold py-2.5 px-6 rounded-[6px] transition-colors"
               >
                 Request a Quote
               </button>
@@ -227,9 +238,9 @@ export default function MyQuotesPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
                     <div className="flex flex-wrap items-center gap-4">
                       <span className="text-sm text-gray-500 font-medium">
-                        Submitted - {formatDate(quote.createdAt)}
+                        {formatSubmittedDate(quote.createdAt)}
                       </span>
-                      <span className={`px-4 py-1 rounded-[4px] text-xs font-bold uppercase border ${getStatusBadgeStyles(quote.status)}`}>
+                      <span className={`px-3 py-1 rounded-[4px] text-xs font-bold uppercase border ${getStatusBadgeStyles(quote.status)}`}>
                         {quote.status}
                       </span>
                       {(quote.totalCost != null || quote.estimatedPrice != null) && (
@@ -243,7 +254,7 @@ export default function MyQuotesPage() {
                         const id = quote.quoteId || quote._id;
                         router.push(`/dashboard/my-quotes/${id}`);
                       }}
-                      className="bg-[#5356ff] hover:bg-[#3333D0] text-white text-sm font-bold py-2.5 px-6 rounded-[4px] transition-colors whitespace-nowrap"
+                      className="bg-[#4343F0] hover:bg-[#3232b7] text-white text-sm font-bold py-2.5 px-6 rounded-[6px] transition-colors whitespace-nowrap cursor-pointer"
                     >
                       View details
                     </button>
@@ -252,6 +263,22 @@ export default function MyQuotesPage() {
               </div>
             ))
           )}
+
+          {/* New Quote Banner */}
+          <div className="border border-dashed border-[#717171] rounded-[8px] p-8 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 mt-8">
+            <h3
+              className="text-[22px] font-bold text-gray-900 font-sans"
+              style={{ fontFamily: "var(--font-inter), sans-serif" }}
+            >
+              New Quote
+            </h3>
+            <button
+              onClick={() => router.push("/dashboard/new-project/custom-quote")}
+              className="bg-[#4343F0] hover:bg-[#3232b7] text-white text-[15px] font-bold py-3.5 px-8 rounded-[7px] transition-all shadow-sm whitespace-nowrap font-sans border-2 border-[#4343F0] cursor-pointer"
+            >
+              Create a New Quote
+            </button>
+          </div>
         </div>
 
         {!initialLoading && quotes.length > 0 && pagination.totalPages > 1 && (

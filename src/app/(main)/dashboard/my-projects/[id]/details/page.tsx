@@ -6,6 +6,7 @@ import { projectService } from "@/lib/projectService";
 import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";
 import { downloadFile, isImageUrl } from "@/lib/utils";
+import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
 import LoadingDots from "@/components/common/LoadingDots";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
 
@@ -461,10 +462,28 @@ export default function ProjectDetailsPage() {
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
               <span className="text-sm text-gray-500 font-bold"></span>
               <div className="flex flex-col xs:flex-row gap-3 w-full sm:w-auto">
-                <button className="w-full sm:w-auto px-6 py-2 bg-[#163659] hover:bg-[#112b4a] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors">
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    if (project.resultsPdfUrl || project.pdfUrl) {
+                      downloadFile(e as any, project.resultsPdfUrl || project.pdfUrl, "Project_Document.pdf");
+                    } else {
+                      await downloadProjectDetailsPDF(project);
+                    }
+                  }}
+                  className="w-full sm:w-auto px-6 py-2 bg-[#163659] hover:bg-[#112b4a] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer"
+                >
                   Download Project (.PDF)
                 </button>
-                <button className="w-full sm:w-auto px-6 py-2 bg-[#5356ff] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    printProjectDetails(project);
+                  }}
+                  className="w-full sm:w-auto px-6 py-2 bg-[#5356ff] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer"
+                >
                   Print Details
                 </button>
               </div>
