@@ -84,22 +84,20 @@ const CurrencyPillToggle = ({
   currency: string;
   setCurrency: (c: "usd" | "eur") => void;
 }) => (
-  <div className="flex bg-gray-100 rounded-lg p-0.5">
+  <div className="flex bg-gray-100 rounded-lg p-1  mx-2">
     <button
       type="button"
       onClick={() => setCurrency("usd")}
-      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
-        currency === "usd" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"
-      }`}
+      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "usd" ? "text-gray-500 hover:text-gray-700 " : "text-gray-500 hover:text-gray-700"
+        }`}
     >
       USD
     </button>
     <button
       type="button"
       onClick={() => setCurrency("eur")}
-      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
-        currency === "eur" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"
-      }`}
+      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "eur" ? "text-gray-500 hover:text-gray-700" : "text-gray-500 hover:text-gray-700"
+        }`}
     >
       EUR
     </button>
@@ -119,12 +117,13 @@ const CurrencyDropdown = ({
 }) => {
   const labelClass =
     size === "sm"
-      ? "text-[16px] font-bold text-[#002E8A] uppercase tracking-wide font-sans"
-      : "text-sm md:text-[18px] font-bold text-[#002E8A] uppercase tracking-wide font-sans";
+      ? "text-[16px] font-bold text-[#002E8A] uppercase tracking-wide font-sans "
+      : "text-sm text-[12px] md:text-[14px] font-bold text-[#002e8a] uppercase tracking-wide ";
+  // text-[12px] md:text-[14px] font-black text-[#002e8a] uppercase tracking-[0.1em]
   const valueClass =
     size === "sm"
       ? "text-[16px] font-bold text-black uppercase font-sans"
-      : "text-lg md:text-xl font-bold text-black uppercase font-sans";
+      : "font-bold text-[14px] font-black text-black uppercase tracking-wide font-sans";
 
   return (
     <div className="flex items-center gap-2 md:gap-3">
@@ -197,22 +196,24 @@ const NumberStepper = ({
   onChange: (n: number) => void;
   min?: number;
 }) => (
-  <div className="flex items-center gap-4">
-    <button
-      type="button"
-      onClick={() => onChange(Math.max(min, value - 1))}
-      className="w-12 h-12 rounded-lg border-2 border-[#002E8A] text-[#002E8A] text-2xl font-bold flex items-center justify-center hover:bg-[#002E8A]/5 transition-colors"
-    >
-      −
-    </button>
-    <div className="min-w-[64px] text-center text-3xl font-bold text-[#002E8A]">{value}</div>
-    <button
-      type="button"
-      onClick={() => onChange(value + 1)}
-      className="w-12 h-12 rounded-lg border-2 border-[#002E8A] text-[#002E8A] text-2xl font-bold flex items-center justify-center hover:bg-[#002E8A]/5 transition-colors"
-    >
-      +
-    </button>
+  <div className="flex items-center gap-6 flex-wrap">
+    <div className="flex items-center gap-0 bg-gray-50 border border-gray-300 rounded-xl overflow-hidden shadow-sm">
+      <button
+        type="button"
+        onClick={() => onChange(Math.max(min, value - 1))}
+        className="w-12 h-14 flex items-center justify-center text-gray-600 hover:text-[#4F46E5] hover:bg-gray-200/60 transition-all text-xl font-bold select-none"
+      >
+        −
+      </button>
+      <div className="w-20 h-14 bg-white text-[#334155] text-2xl font-bold flex items-center justify-center outline-none focus:bg-blue-50/50 transition-all border-x border-gray-200 tabular-nums">{value}</div>
+      <button
+        type="button"
+        onClick={() => onChange(value + 1)}
+        className="w-12 h-14 flex items-center justify-center text-gray-600 hover:text-[#4F46E5] hover:bg-gray-200/60 transition-all text-xl font-bold select-none"
+      >
+        +
+      </button>
+    </div>
   </div>
 );
 
@@ -268,7 +269,7 @@ const QuestionCard = ({
           onChange={(e) => setTextVal(e.target.value)}
           onBlur={() => onToggleAnswer(question.key, textVal, "text")}
           placeholder={question.config?.placeholder || "Enter your response here..."}
-          className="w-full p-4 bg-white border border-gray-200 rounded-lg text-[#002E8A] focus:border-[#002E8A] focus:ring-1 focus:ring-[#002E8A] focus:outline-none min-h-[120px] resize-vertical placeholder:text-gray-400 transition-all"
+          className="w-full p-4 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:border-[#4F46E5] focus:bg-white focus:outline-none min-h-[120px] resize-vertical placeholder:text-gray-400 font-sans text-[16px]"
         />
       )}
 
@@ -299,7 +300,7 @@ const QuestionCard = ({
                     <div className="flex-shrink-0">
                       {question.type === "multi" ? (
                         <div
-                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? "bg-[#002E8A] border-[#002E8A] w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all border-[#4F46E5] bg-white" : "border-gray-400 bg-white"
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? "bg-[#4F46E5] border-[#4F46E5] w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all  bg-white" : "border-[#CBD5E1] bg-white group-hover:border-[#4F46E5]"
                             }`}
                         >
                           {isSelected && (
@@ -310,8 +311,9 @@ const QuestionCard = ({
                           )}
                         </div>
                       ) : (
-                        <div className="w-5 h-5 rounded-full border-2 border-[#002E8A] flex items-center justify-center">
-                          {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#002E8A]" />}
+                        <div className={`w-5 h-5 rounded-full border-2 border-[#4F46E5] flex items-center justify-center  ${isSelected ? "bg-[#4F46E5] border-[#4F46E5] w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all  bg-white" : "border-[#CBD5E1] bg-white group-hover:border-[#4F46E5]"
+                          }`}>
+                          {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#4F46E5]" />}
                         </div>
                       )}
                     </div>
@@ -454,13 +456,13 @@ const ProposalPreview = ({
 
   return (
     <div className="w-full max-w-[680px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 my-6">
-      <h2 className="text-[34px] font-normal text-white text-center mb-8 tracking-wide font-manrope">YOUR PROPOSAL</h2>
+      <h2 className="text-[24px] md:text-[26px] font-medium text-white text-center mb-8 tracking-normal">YOUR PROPOSAL</h2>
       <div className="bg-white rounded-[10px] p-8 md:p-10 shadow-2xl text-left border border-white">
-        <h3 className="text-[#002E8A] font-extrabold text-[26px] md:text-[28px] mb-2 uppercase tracking-tight leading-none">
+        <h3 className="text-[#111827] font-bold text-[24px] md:text-[26px] mb-1 leading-tight">
           {displayName}
         </h3>
         {subtitle && (
-          <p className="text-[#5a6a7a] text-[15px] md:text-[16px] font-normal mb-10 leading-snug">
+          <p className="text-[#64748B] text-[15px] font-normal mb-8 leading-normal font-sans">
             {subtitle}
           </p>
         )}
@@ -469,11 +471,11 @@ const ProposalPreview = ({
         <div className="space-y-7">
           {breakdown.map((item, idx) => (
             <div key={idx} className="font-sans">
-              <h4 className="text-[#002E8A] font-bold text-[17px] md:text-[18px] mb-1.5 leading-snug">
+              <h4 className="text-[#334155] font-bold text-[17px] mb-2">
                 {item.question}
               </h4>
               {item.answers.length === 1 ? (
-                <p className="text-[#5a6a7a] text-[16px] md:text-[17px] font-normal leading-relaxed">
+                <p className="text-[#475569] text-[16px] font-normal leading-relaxed pl-5">
                   {item.answers[0]}
                 </p>
               ) : (
@@ -487,10 +489,10 @@ const ProposalPreview = ({
           ))}
         </div>
 
-        <div className="mt-12 mb-6">
-          <h3 className="text-[#002E8A] text-[28px] md:text-[32px] font-black tracking-tighter">
+        <div className="mt-10 mb-6">
+          <h3 className="text-[#111827] text-[24px] md:text-[26px] font-bold tracking-tight mb-1">
             PROJECT TOTAL COST:{" "}
-            <span className="text-[#4B4DED]">{formatPriceLocal(totalPrice)}</span>
+            <span className="text-[#4F46E5] font-black font-bold">{formatPriceLocal(totalPrice)}</span>
             {isMonthly && <span className="text-[15px] font-normal ml-2 text-[#002E8A]">/month</span>}
           </h3>
           {isMonthly && <p className="text-[#002E8A] text-[13px] font-medium mt-1 opacity-75">First month billed on start. Then auto-renewed monthly.</p>}
@@ -498,13 +500,13 @@ const ProposalPreview = ({
 
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[#002E8A] text-[18px] font-bold">Estimated Deadline</span>
+            <span className="text-[#374151] text-[16px] font-medium">Estimated Deadline</span>
             <div className="relative">
               <button
                 type="button"
                 onMouseEnter={() => setShowTooltip(true)}
                 onMouseLeave={() => setShowTooltip(false)}
-                className="w-5 h-5 rounded-full bg-[#002E8A] text-white text-[11px] font-bold flex items-center justify-center cursor-help leading-none"
+                className="w-4 h-4 rounded-full bg-gray-300 text-gray-700 text-[11px] font-bold flex items-center justify-center cursor-help leading-none"
               >
                 ?
               </button>
@@ -515,28 +517,28 @@ const ProposalPreview = ({
               )}
             </div>
           </div>
-          <p className="text-[#002E8A] text-[16px] font-normal">{timeline || category.timeline || "To be determined based on scope"}</p>
+          <p className="text-[#111827] text-[16px] font-bold">{timeline || category.timeline || "To be determined based on scope"}</p>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8 text-sm text-blue-700 leading-relaxed">
+        <div className="bg-[#EEF2FF] border border-[#C7D2FE] rounded-xl p-4 mb-8 text-sm text-[#4338CA] leading-relaxed">
           <strong>📋 Timeline Note:</strong> The estimated deadline does not count time when your response is pending — including approvals, content submissions, or payment deadlines. Your project manager will notify you if the project timeline is paused.
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 mt-4">
-          <button onClick={handleDownload} className="w-full bg-[#002E8A] hover:bg-[#001b54] text-white font-bold py-4 px-6 rounded-[5px] transition-colors flex items-center justify-center gap-2 shadow-[0px_4px_10px_rgba(0,0,0,0.1)] group">
+          <button onClick={handleDownload} className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-semibold py-3.5 px-6 rounded-[6px] transition-all flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg cursor-pointer">
             <svg className="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            <span className="text-[16px] font-black tracking-wide uppercase">Download PDF</span>
+            <span className="text-[16px] font-semibold tracking-normal">Download PDF</span>
           </button>
-          <button onClick={handleEmail} className="w-full bg-white border-2 border-[#002E8A] hover:bg-gray-50 text-[#002E8A] font-bold py-4 px-6 rounded-[5px] transition-colors flex items-center justify-center gap-2 group">
+          <button onClick={handleEmail} className="w-full bg-white border border-gray-300 hover:bg-gray-50 text-[#374151] font-semibold py-3.5 px-6 rounded-[6px] transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer">
             <svg className="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1 0.9-2 2-2z" />
               <polyline points="22,6 12,13 2,6" />
             </svg>
-            <span className="text-[16px] font-black tracking-wide uppercase">Email Proposal</span>
+            <span className="text-[16px] font-semibold text-[#374151] tracking-normal">Email Proposal</span>
           </button>
         </div>
       </div>
@@ -755,12 +757,12 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
             address: billingSameAsBusiness
               ? undefined
               : {
-                  line1: billingAddress.street,
-                  city: billingAddress.city,
-                  state: billingAddress.state,
-                  postal_code: billingAddress.zip,
-                  country: billingAddress.country,
-                },
+                line1: billingAddress.street,
+                city: billingAddress.city,
+                state: billingAddress.state,
+                postal_code: billingAddress.zip,
+                country: billingAddress.country,
+              },
           },
         },
       });
@@ -803,16 +805,16 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
         </div>
       )}
 
-      <div className="text-center mb-2">
-        <h2 className="text-[34px] font-normal text-white mb-4 font-manrope uppercase tracking-wide">READY TO BEGIN?</h2>
-        <p className="text-gray-100 text-[16px] font-light leading-relaxed">
+      <div className="text-center mb-6">
+        <h2 className="text-[24px] md:text-[26px] font-medium text-white mb-3 tracking-normal">READY TO BEGIN?</h2>
+        <p className="text-gray-300 text-[15px] font-light leading-relaxed max-w-[450px] mx-auto">
           Pay any amount as a deposit to have our team<br />begin work on this project.
         </p>
       </div>
 
-      <div className="bg-white rounded-[10px] p-6 md:p-10 shadow-2xl mx-auto w-full max-w-[680px]">
+      <div className="bg-white rounded-2xl p-6 md:p-10 shadow-2xl mx-auto w-full max-w-[680px] border border-white">
         <div className="flex justify-between items-center mb-8">
-          <h3 className="text-black font-bold text-[18px]">Amount:</h3>
+          <h3 className="text-[#111827] font-bold text-[18px]">Amount:</h3>
           <CurrencyPillToggle currency={currency} setCurrency={setCurrency} />
           <div className="flex gap-2 items-center opacity-90 hidden sm:flex">
             <VisaIcon />
@@ -821,35 +823,41 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
           </div>
         </div>
 
-        <div className="flex flex-col gap-[18px] text-[16px] mb-8">
-          <label className="flex items-center gap-[14px] cursor-pointer group">
-            <div className={`w-[22px] h-[22px] rounded-full border-[2.5px] flex flex-shrink-0 items-center justify-center transition-colors ${paymentOption === "full" ? "border-black" : "border-gray-400"}`}>
-              {paymentOption === "full" && <div className="w-[10px] h-[10px] rounded-full bg-black" />}
+        <div className="flex flex-col gap-4 text-[16px] mb-8 md:mb-10">
+          <label className="flex items-center gap-3.5 cursor-pointer group">
+            <div className={`w-[20px] h-[20px] rounded-full border-2 flex flex-shrink-0 items-center justify-center transition-all ${paymentOption === "full" ? "border-[#4F46E5] " : "border-[#CBD5E1] group-hover:border-[#4F46E5]"}`}>
+              {paymentOption === "full" && (
+                <div className={`w-[10px] h-[10px] rounded-full transition-colors ${paymentOption === "full" ? "bg-[#4F46E5]" : "bg-black"}`} />
+              )}
             </div>
             <input type="radio" name="paymentOption" className="hidden" checked={paymentOption === "full"} onChange={() => setPaymentOption("full")} />
-            <span className={`transition-colors font-medium ${paymentOption === "full" ? "text-black" : "text-gray-800"}`}>Full {formatPriceLocal(totalPrice)}</span>
+            <span className={`transition-colors font-normal text-[16px] ${paymentOption === "full" ? "text-black" : "text-[#475569]"}`}>Full {formatPriceLocal(totalPrice)}</span>
           </label>
 
           {halfPrice > 0 && (
             <label className="flex items-center gap-[14px] cursor-pointer group">
-              <div className={`w-[22px] h-[22px] rounded-full border-[2.5px] flex flex-shrink-0 items-center justify-center transition-colors ${paymentOption === "half" ? "border-black" : "border-gray-400"}`}>
-                {paymentOption === "half" && <div className="w-[10px] h-[10px] rounded-full bg-black" />}
+              <div className={`w-[20px] h-[20px] rounded-full border-2 flex flex-shrink-0 items-center justify-center transition-all  ${paymentOption === "half" ? "border-[#4F46E5]" : "border-[#CBD5E1] group-hover:border-[#4F46E5]"}`}>
+                {paymentOption === "half" && (
+                  <div className={`w-[10px] h-[10px] rounded-full transition-colors ${paymentOption === "half" ? "bg-[#4F46E5]" : "bg-black"}`} />
+                )}
               </div>
               <input type="radio" name="paymentOption" className="hidden" checked={paymentOption === "half"} onChange={() => setPaymentOption("half")} />
-              <span className={`transition-colors font-medium ${paymentOption === "half" ? "text-black" : "text-gray-800"}`}>50% {formatPriceLocal(halfPrice)}</span>
+              <span className={`transition-colors font-normal text-[16px] ${paymentOption === "half" ? "text-black" : "text-[#475569]"}`}>50% {formatPriceLocal(halfPrice)}</span>
             </label>
           )}
 
           <label className="flex flex-wrap items-center gap-[14px] cursor-pointer group">
-            <div className={`w-[22px] h-[22px] rounded-full border-[2.5px] flex flex-shrink-0 items-center justify-center transition-colors ${paymentOption === "custom" ? "border-black" : "border-gray-400"}`}>
-              {paymentOption === "custom" && <div className="w-[10px] h-[10px] rounded-full bg-black" />}
+            <div className={`w-[20px] h-[20px] rounded-full border-2 flex flex-shrink-0 items-center justify-center transition-all  ${paymentOption === "custom" ? "border-[#4F46E5]" : "border-[#CBD5E1] group-hover:border-[#4F46E5]"}`}>
+              {paymentOption === "custom" && (
+                <div className={`w-[10px] h-[10px] rounded-full transition-colors ${paymentOption === "custom" ? "bg-[#4F46E5]" : "bg-black"}`} />
+              )}
             </div>
             <input type="radio" name="paymentOption" className="hidden" checked={paymentOption === "custom"} onChange={() => setPaymentOption("custom")} />
-            <span className={`transition-colors font-medium ${paymentOption === "custom" ? "text-black" : "text-gray-800"}`}>Other</span>
+            <span className={`transition-colors font-normal text-[16px] ${paymentOption === "custom" ? "text-black" : "text-[#475569]"}`}>Other</span>
             {paymentOption === "custom" && (
               <div className="flex flex-col gap-1">
                 <div className="relative w-28 ml-2">
-                  <span className={`absolute left-0 top-1/2 -translate-y-1/2 font-medium ${errors.amount ? "text-red-500" : "text-black"}`}>{currency === "eur" ? "€" : "$"}</span>
+                  <span className={`absolute left-0 top-1/2 -translate-y-1/2 font-medium ${errors.amount ? "text-red-500" : "text-[#475569]"}`}>{currency === "eur" ? "€" : "$"}</span>
                   <input type="number" min="1" value={customAmount} onChange={(e) => { setCustomAmount(e.target.value); if (errors.amount) setErrors((p: any) => ({ ...p, amount: "" })); }} className={`w-full border-b ${errors.amount ? "border-red-500" : "border-black"} py-0.5 pl-4 pr-1 text-[16px] font-medium outline-none bg-transparent`} placeholder="Amount" />
                 </div>
                 {errors.amount && <span className="text-[10px] text-red-500 font-bold ml-2">{errors.amount}</span>}
@@ -858,18 +866,18 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
           </label>
         </div>
 
-        <div className="bg-gray-50 rounded-lg p-5 mb-8 space-y-3">
+        <div className="mt-4 mb-8 p-5 bg-gray-50/80 rounded-xl border border-gray-200 text-sm font-sans space-y-2.5">
           <div className="flex justify-between text-[15px]">
             <span className="text-gray-600">Base Amount ({currencyLabel}):</span>
-            <span className="font-medium text-gray-800">{formatPriceLocal(baseAmount)}</span>
+            <span className="font-semibold text-gray-800">{formatPriceLocal(baseAmount)}</span>
           </div>
           <div className="flex justify-between text-[15px]">
             <span className="text-gray-600">VAT ({vatPercent}%):</span>
-            <span className="font-medium text-gray-800">{formatPriceLocal(vatAmount)}</span>
+            <span className="font-semibold text-gray-800">{formatPriceLocal(vatAmount)}</span>
           </div>
-          <div className="flex justify-between text-[17px] pt-2 border-t border-gray-200">
-            <span className="font-bold text-[#002E8A]">Total Payable:</span>
-            <span className="font-bold text-[#002E8A]">{formatPriceLocal(totalPayable)}</span>
+          <div className="pt-2 border-t border-gray-200 flex justify-between items-center text-base font-bold text-gray-900">
+            <span className="">Total Payable:</span>
+            <span className="text-[#4F46E5] text-lg font-black">{formatPriceLocal(totalPayable)}</span>
           </div>
         </div>
 
@@ -950,16 +958,16 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
           </div>
         )}
 
-        <div className="space-y-8 font-sans">
+        <div className="space-y-6 font-sans opacity-60 cursor-pointer">
           <div>
-            <label className="block text-[16px] font-bold text-black mb-[10px]">Name on the card:</label>
-            <input type="text" value={cardholderName} onChange={(e) => { setCardholderName(e.target.value); if (errors.cardHolderName) setErrors((p: any) => ({ ...p, cardHolderName: "" })); }} placeholder="Name on the card" className={`w-full border-b ${errors.cardHolderName ? "border-red-500" : "border-black/80"} py-2.5 bg-transparent outline-none placeholder-gray-600 focus:border-black text-[16px] transition-all`} />
+            <label className="block text-[15px] font-medium text-[#111827] mb-2">Name on the card:</label>
+            <input type="text" value={cardholderName} onChange={(e) => { setCardholderName(e.target.value); if (errors.cardHolderName) setErrors((p: any) => ({ ...p, cardHolderName: "" })); }} placeholder="Name on the card" className={`w-full border-b ${errors.cardHolderName ? "border-red-500" : "border-gray-200 border-b"} py-2.5 bg-transparent outline-none placeholder-gray-400 focus:border-[#4F46E5] text-[15px] transition-all`} />
             {errors.cardHolderName && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.cardHolderName}</span>}
           </div>
 
           <div>
-            <label className="block text-[16px] font-bold text-black mb-[10px]">Card number:</label>
-            <div className={`w-full border-b ${errors.cardNumber ? "border-red-500" : "border-black/80"} py-2.5 focus-within:border-black transition-all`}>
+            <label className="block text-[15px] font-medium text-[#111827] mb-2">Card number:</label>
+            <div className={`w-full border-b ${errors.cardNumber ? "border-red-500" : "border-gray-200 border-b"} py-2.5 focus-within:border-[#4F46E5] transition-all`}>
               <CardNumberElement options={{ ...stripeElementOptions, showIcon: false }} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, number: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardNumber: "" })); }} />
             </div>
             {errors.cardNumber && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.cardNumber}</span>}
@@ -967,14 +975,14 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
 
           <div className="grid grid-cols-2 gap-10">
             <div>
-              <label className="block text-[16px] font-bold text-black mb-[10px]">Expiry date:</label>
+              <label className="block text-[15px] font-medium text-[#111827] mb-2">Expiry date:</label>
               <div className={`w-full border-b ${errors.cardExpiry ? "border-red-500" : "border-black/80"} py-2.5 focus-within:border-black transition-all`}>
                 <CardExpiryElement options={stripeElementOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, expiry: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardExpiry: "" })); }} />
               </div>
               {errors.cardExpiry && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.cardExpiry}</span>}
             </div>
             <div>
-              <label className="block text-[16px] font-bold text-black mb-[10px]">CVC:</label>
+              <label className="block text-[15px] font-medium text-[#111827] mb-2">CVC:</label>
               <div className={`w-full border-b ${errors.cardCvc ? "border-red-500" : "border-black/80"} py-2.5 focus-within:border-black transition-all`}>
                 <CardCvcElement options={stripeElementOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, cvc: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardCvc: "" })); }} />
               </div>
@@ -1035,7 +1043,7 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
       <button
         type="submit"
         disabled={isProcessing || !stripe || !elements || requiresVerification}
-        className="w-full max-w-[680px] mx-auto py-5 px-6 rounded bg-[#4343F0] text-white font-black text-[16px] tracking-widest shadow-xl hover:bg-[#3535d0] transition-all disabled:opacity-70 disabled:cursor-not-allowed uppercase active:scale-[0.98] mt-4"
+        className="w-full max-w-[680px] mx-auto py-4 px-6 rounded-[6px] bg-[#4343F0] text-white font-extrabold text-[16px] tracking-widest shadow-xl hover:bg-[#3232b7] transition-all  disabled:cursor-not-allowed uppercase active:scale-[0.98]"
       >
         {isProcessing
           ? "PROCESSING..."
@@ -1349,13 +1357,13 @@ export default function CalculatorPage() {
             {showPriceBar && selectedCategory && (
               <div
                 ref={stickyRef}
-                className="w-full bg-[#001b54] pb-10 md:pb-20"
+                className="w-full bg-[#00102e] pb-10 md:pb-20"
                 style={{
                   backgroundImage: "radial-gradient(circle, #00287a 1%, transparent 1%)",
                   backgroundSize: "30px 30px",
                 }}
               >
-                <div className="container mx-auto px-4 md:px-8 lg:px-[54px] max-w-[1600px] pt-8 md:pt-12 flex flex-col items-center w-full">
+                <div className="mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] max-w-[1536px] w-full pt-8 md:pt-12 flex flex-col items-center">
                   <ProposalPreview
                     category={selectedCategory}
                     selections={selections}
@@ -1365,14 +1373,14 @@ export default function CalculatorPage() {
                   />
                   <div className="w-full mt-6">
                     <WrappedPaymentForm
-                        totalPrice={calculation.totalPrice}
-                        timeline={calculation.timeline}
-                        categoryKey={selectedCategoryKey || selectedCategory.categoryKey}
-                        selections={selections}
-                        formatPriceLocal={formatPriceLocal}
-                        currency={currency}
-                        setCurrency={setCurrency}
-                      />
+                      totalPrice={calculation.totalPrice}
+                      timeline={calculation.timeline}
+                      categoryKey={selectedCategoryKey || selectedCategory.categoryKey}
+                      selections={selections}
+                      formatPriceLocal={formatPriceLocal}
+                      currency={currency}
+                      setCurrency={setCurrency}
+                    />
                   </div>
                 </div>
               </div>
@@ -1383,11 +1391,11 @@ export default function CalculatorPage() {
 
       {/* Reverted Sticky Bottom Bar to centered production style */}
       {selectedCategoryKey && showPriceBar && calculation.totalPrice > 0 && (
-        <div className={`fixed bottom-0 left-0 right-0 py-4 md:h-[100px] bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.05)] border-t border-gray-100 flex items-center z-[100] transition-transform duration-500 ease-in-out ${isStickyVisible ? "translate-y-0" : "translate-y-full"}`}>
-          <div className="container mx-auto flex flex-col md:flex-row justify-center items-center gap-4 md:gap-10 px-4">
+        <div className={`fixed bottom-0 left-0 right-0 border-t border-gray-200 shadow-lg z-[100] h-20 bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.05)] flex items-center z-[100] transition-transform duration-500 ease-in-out ${isStickyVisible ? "translate-y-0" : "translate-y-full"}`}>
+          <div className="mx-auto max-w-[1536px] flex flex-col md:flex-row justify-center items-center gap-4 md:gap-10 px-4">
             <div className="flex items-center gap-4">
-              <span className="text-sm md:text-[18px] font-bold text-[#002E8A] uppercase tracking-wide font-sans whitespace-nowrap">PROJECT TOTAL COST:</span>
-              <span className="text-2xl md:text-[34px] font-black text-black tracking-tighter">
+              <span className="text-[12px] md:text-[14px] uppercase text-[#002e8a] tracking-[0.1em] font-semibold">PROJECT TOTAL COST:</span>
+              <span className="text-2xl md:text-3xl font-black text-black font-bold">
                 {formatPriceLocal(calculation.totalPrice)}
                 {isMonthlyBilling && <span className="text-sm md:text-lg font-bold ml-1">/month</span>}
               </span>
