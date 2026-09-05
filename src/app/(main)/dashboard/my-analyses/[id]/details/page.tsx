@@ -8,12 +8,11 @@ import { authService } from "@/lib/authService";
 import { packagesService } from "@/lib/packagesService";
 import { downloadFile, isImageUrl } from "@/lib/utils";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
-import { useRouter } from "next/navigation";
+import AuthPromptModal from "@/components/common/AuthPromptModal";
 import { io, Socket } from "socket.io-client";
 
 export default function AnalysisDetailsPage() {
   const { analysis, refreshAnalysis } = useAnalysis();
-  const router = useRouter();
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -43,7 +42,6 @@ export default function AnalysisDetailsPage() {
 
   const [actionComment, setActionComment] = useState("");
   const [isActionLoading, setIsActionLoading] = useState(false);
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -237,10 +235,12 @@ export default function AnalysisDetailsPage() {
       try {
         const aId = analysis._id || analysis.id;
         const res = await projectService.addMessage(aId, messageText, false, uploadedUrls);
-        if (res && (res.statusCode === 200 || res.statusCode === 201)) {
+        if (res && (res.isSuccessful || res.success || res.statusCode === 200 || res.statusCode === 201 || res.data)) {
           setMessageText("");
           setAttachments([]);
           refreshAnalysis();
+        } else {
+          console.error("Failed to send message, response:", res);
         }
       } catch (error) {
         console.error("Failed to send message:", error);
@@ -261,7 +261,7 @@ export default function AnalysisDetailsPage() {
       const avatar = currentUser?.avatar;
       const aId = analysis._id || analysis.id;
       const res = await projectService.acceptProposal(aId, proposalId, username, avatar);
-      if (res && (res.statusCode === 200 || res.statusCode === 201)) {
+      if (res && (res.isSuccessful || res.success || res.statusCode === 200 || res.statusCode === 201 || res.data)) {
         refreshAnalysis();
       }
     } catch (error) {
@@ -290,7 +290,7 @@ export default function AnalysisDetailsPage() {
           res = await projectService.requestProposalModification(aId, actionModal.proposalId, actionComment, username, avatar);
         }
 
-        if (res && (res.statusCode === 200 || res.statusCode === 201)) {
+        if (res && (res.isSuccessful || res.success || res.statusCode === 200 || res.statusCode === 201 || res.data)) {
           setActionModal({ ...actionModal, isOpen: false });
           setActionComment("");
           refreshAnalysis();
@@ -310,7 +310,10 @@ export default function AnalysisDetailsPage() {
   const submittedDateStr = formatDateTime(analysis.createdAt || analysis.startDate);
   const deliveryDueStr = analysis.deadline ? formatDateTime(analysis.deadline) : "";
 
-  const manager = analysis.assignedManagers?.[0] || analysis.projectManager;
+  const managers = (Array.isArray(analysis.assignedManagers) && analysis.assignedManagers.length > 0)
+    ? analysis.assignedManagers
+    : (analysis.projectManager ? [analysis.projectManager] : []);
+  const manager = managers[0];
   const managerName = manager?.fullName || "Not assigned yet";
   const managerAvatar = manager?.avatar;
 
@@ -814,16 +817,104 @@ export default function AnalysisDetailsPage() {
                             </div>
                           </div>
                         )}
+
+                        {!isAccepted && !actionModal.isOpen && (
+                          <div className="flex flex-wrap gap-4 mt-6 pl-0 md:pl-[64px]">
+                            <button
+                              onClick={() => {
+                                if (!currentUser) {
+                                  setShowAuthModal(true);
+                                  return;
+                                }
+                                handleAcceptProposal(msg.id);
+                              }}
+                              disabled={isActionLoading}
+                              className="px-8 py-3 bg-[#327334] hover:bg-[#2a5f2b] text-white text-xs font-bold rounded-md shadow-sm transition-colors cursor-pointer"
+                            >
+                              Accept Offer
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (!currentUser) {
+                                  setShowAuthModal(true);
+                                  return;
+                                }
+                                setActionModal({
+                                  isOpen: true,
+                                  action: "request_modification",
+                                  proposalId: msg.id,
+                                  title: "Request Modifications",
+                                  description: "Please describe what changes you would like to request.",
+                                  placeholder: "Type requested modifications...",
+                                  required: true,
+                                });
+                              }}
+                              disabled={isActionLoading}
+                              className="px-8 py-3 bg-[#1C446F] hover:bg-[#163659] text-white text-xs font-bold rounded-md shadow-sm transition-colors cursor-pointer"
+                            >
+                              Request Modifications
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (!currentUser) {
+                                  setShowAuthModal(true);
+                                  return;
+                                }
+                                setActionModal({
+                                  isOpen: true,
+                                  action: "decline",
+                                  proposalId: msg.id,
+                                  title: "Decline Offer",
+                                  description: "Are you sure you want to decline this offer?",
+                                  placeholder: "Reason (optional)...",
+                                  required: false,
+                                });
+                              }}
+                              disabled={isActionLoading}
+                              className="px-8 py-3 bg-[#7D1A1A] hover:bg-[#651515] text-white text-xs font-bold rounded-md shadow-sm transition-colors cursor-pointer"
+                            >
+                              Decline Offer
+                            </button>
+                          </div>
+                        )}
+
+                        {actionModal.isOpen && actionModal.proposalId === msg.id && (
+                          <div className="mt-6 p-6 bg-gray-50 rounded-xl border border-gray-300">
+                            <h4 className="font-bold text-gray-800 mb-2">{actionModal.title}</h4>
+                            <textarea
+                              className="w-full min-h-[100px] p-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:border-[#4343F0]"
+                              placeholder={actionModal.placeholder}
+                              value={actionComment}
+                              onChange={(e) => setActionComment(e.target.value)}
+                            />
+                            <div className="flex justify-end gap-3 mt-4">
+                              <button
+                                onClick={() => setActionModal({ ...actionModal, isOpen: false })}
+                                className="px-5 py-2 bg-gray-200 text-gray-700 text-xs font-bold rounded hover:bg-gray-300 cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={handleActionSubmit}
+                                disabled={isActionLoading || (actionModal.required && !actionComment.trim())}
+                                className="px-6 py-2 bg-[#4343F0] text-white text-xs font-bold rounded hover:bg-[#3232b7] disabled:opacity-50 cursor-pointer"
+                              >
+                                Submit
+                              </button>
+                            </div>
+                          </div>
+                        )}
                         </div>
                       </div>
                     );
                 }
 
-                const isClient = msg.sender === "client" || msg.role === "client";
+                const isClient = msg.sender === "client" || msg.role === "client" || (currentUser?._id && msg.userId === currentUser._id) || (currentUser?.id && msg.userId === currentUser.id);
                 const clientName = currentUser?.fullName || (currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim() : '') || currentUser?.username;
                 const senderName = msg.username || (isClient ? (clientName || "You") : "Analysis Team");
                 const senderAvatar = msg.userAvatar || (isClient ? currentUser?.avatar : undefined);
-                const attachmentList = msg.attachments || [];
+                const rawAttachments = msg.attachments || msg.content?.attachedFiles || [];
+                const attachmentList = Array.isArray(rawAttachments) ? rawAttachments : [];
 
                 return (
                   <div key={msgId} className="bg-white rounded-xl shadow-sm border border-gray-300 p-6 md:p-8">
@@ -832,8 +923,8 @@ export default function AnalysisDetailsPage() {
                         {senderAvatar ? (
                           <img src={senderAvatar} alt={senderName} className="w-12 h-12 rounded-full object-cover shadow-sm" />
                         ) : (
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm bg-gray-800">
-                            {senderName[0]}
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm ${isClient ? 'bg-blue-900' : 'bg-gray-800'}`}>
+                            {(senderName || "U")[0]?.toUpperCase()}
                           </div>
                         )}
                         <div>
@@ -846,12 +937,12 @@ export default function AnalysisDetailsPage() {
                         </div>
                       </div>
                       <span className="text-xs text-gray-400 font-medium whitespace-nowrap">
-                        {formatDateTime(msg.createdAt)}
+                        {formatDateTime(msg.createdAt || msg.timestamp)}
                       </span>
                     </div>
 
                     <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap pl-0 sm:pl-16 mb-6">
-                      {msg.message}
+                      {msg.message || msg.content?.text}
                     </div>
 
                     {attachmentList.length > 0 && (
@@ -862,8 +953,9 @@ export default function AnalysisDetailsPage() {
                         <div className="border-t border-gray-200 mb-4" />
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
                           {attachmentList.map((att: any, attIdx: number) => {
-                            const url = typeof att === "string" ? att : att.url;
-                            const name = typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "file") : att.filename || att.name || "file";
+                            const url = typeof att === "string" ? att : (att.url || att.secure_url);
+                            const name = typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "file") : (att.name || att.filename || decodeURIComponent((url || "").split("/").pop() || "file"));
+                            if (!url) return null;
                             const safeUrl = url.startsWith("http:") ? url.replace("http:", "https:") : url;
                             const isImg = isImageUrl(url);
                             const isSvg = url.toLowerCase().includes(".svg");
@@ -932,7 +1024,7 @@ export default function AnalysisDetailsPage() {
             </div>
           )}
 
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} className="h-4 w-full shrink-0" />
 
           {/* New Message Box Form */}
           <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden w-full">
@@ -958,7 +1050,7 @@ export default function AnalysisDetailsPage() {
 
               <div className="p-6 pb-2">
                 <textarea
-                  className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent cursor-text"
+                  className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent cursor-pointer"
                   placeholder={
                     currentUser
                       ? "Type your message or submit requested details..."
@@ -982,6 +1074,7 @@ export default function AnalysisDetailsPage() {
                       setShowAuthModal(true);
                     }
                   }}
+                  readOnly={!currentUser}
                 />
               </div>
 
@@ -1059,6 +1152,10 @@ export default function AnalysisDetailsPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      if (!currentUser) {
+                        setShowAuthModal(true);
+                        return;
+                      }
                       setMessageText("");
                       setAttachments([]);
                     }}
@@ -1067,7 +1164,13 @@ export default function AnalysisDetailsPage() {
                     Cancel
                   </button>
                   <button
-                    type="submit"
+                    type={currentUser ? "submit" : "button"}
+                    onClick={(e) => {
+                      if (!currentUser) {
+                        e.preventDefault();
+                        setShowAuthModal(true);
+                      }
+                    }}
                     disabled={
                       currentUser &&
                       (isSending ||
@@ -1086,82 +1189,75 @@ export default function AnalysisDetailsPage() {
 
         {/* Right Column / Sidebar (col-span-1) */}
         <div className="lg:col-span-1">
-          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-8">
-            <div className="text-center">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gray-100 border border-gray-200">
-                {managerAvatar ? (
-                  <img src={managerAvatar} alt={managerName} className="w-full h-full object-cover" />
-                ) : manager ? (
-                  <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-3xl font-bold">
-                    {managerName[0]}
-                  </div>
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white text-3xl font-bold">
-                    ?
-                  </div>
-                )}
+          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 sm:p-8">
+            {managers.length <= 1 ? (
+              <div className="text-center">
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gray-100 border border-gray-200">
+                  {managerAvatar ? (
+                    <img src={managerAvatar} alt={managerName} className="w-full h-full object-cover" />
+                  ) : manager ? (
+                    <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-3xl font-bold">
+                      {managerName[0]}
+                    </div>
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white text-3xl font-bold">
+                      ?
+                    </div>
+                  )}
+                </div>
+                <h4 className="text-lg font-bold text-gray-800 mb-1">{managerName}</h4>
+                <p className="text-sm text-gray-500 mb-4 font-medium uppercase tracking-wider text-[10px]">
+                  Project Manager
+                </p>
               </div>
-              <h4 className="text-lg font-bold text-gray-800 mb-1">{managerName}</h4>
-              <p className="text-sm text-gray-500 mb-4 font-medium uppercase tracking-wider text-[10px]">
-                Project Manager
-              </p>
-            </div>
+            ) : (
+              <div>
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 text-center">
+                  Project Managers ({managers.length})
+                </h3>
+                <div className="space-y-3">
+                  {managers.map((m: any, idx: number) => {
+                    const name = m?.fullName || "Project Manager";
+                    const avatar = m?.avatar;
+                    return (
+                      <div key={m._id || m.id || idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-sm overflow-hidden bg-gray-200 shrink-0">
+                          {avatar ? (
+                            <img src={avatar} alt={name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-bold text-sm">
+                              {name[0] || "M"}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-sm font-bold text-gray-800 truncate">{name}</h4>
+                          <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Project Manager</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Auth Prompt Modal */}
+      <AuthPromptModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        title="Join the Conversation"
+        description="Please log in or register to message our team and upload files for this analysis."
+        redirectUrl={analysis?._id ? `/dashboard/my-analyses/${analysis._id}/details` : undefined}
+      />
 
       {/* Support & Newsletter Section */}
       <div className="w-full mt-10">
         <SupportNewsletter />
       </div>
 
-      {/* Guest Authentication Modal Alert */}
-      {showAuthModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl max-w-md w-full p-6 sm:p-8 relative mx-auto flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
-            <button
-              type="button"
-              onClick={() => setShowAuthModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-            >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <div className="w-16 h-16 rounded-full bg-[#4343F0]/10 flex items-center justify-center text-[#4343F0] mb-5">
-              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-            <h3 className="text-xl sm:text-2xl font-extrabold text-gray-900 mb-2">Join the Conversation</h3>
-            <p className="text-sm font-medium text-gray-500 mb-6 leading-relaxed">
-              Please log in or register to message our team and upload files for this analysis.
-            </p>
-            <div className="flex flex-col gap-3 w-full">
-              <button
-                type="button"
-                onClick={() => {
-                  const currentPath = `/dashboard/my-analyses/${analysis._id || analysis.id}/details`;
-                  router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
-                }}
-                className="w-full py-3 bg-[#4343F0] hover:bg-[#3333D0] text-white text-sm font-bold rounded-lg shadow-sm transition-all text-center cursor-pointer"
-              >
-                Log In
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const currentPath = `/dashboard/my-analyses/${analysis._id || analysis.id}/details`;
-                  router.push(`/register?from=analysis&redirect=${encodeURIComponent(currentPath)}`);
-                }}
-                className="w-full py-3 bg-[#4343F0] hover:bg-[#3333D0] text-white text-sm font-bold rounded-lg shadow-sm transition-all text-center cursor-pointer"
-              >
-                Register / Create Account
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

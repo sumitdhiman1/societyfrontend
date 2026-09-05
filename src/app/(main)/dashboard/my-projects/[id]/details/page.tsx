@@ -7,6 +7,7 @@ import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";
 import { downloadFile, isImageUrl } from "@/lib/utils";
 import LoadingDots from "@/components/common/LoadingDots";
+import AuthPromptModal from "@/components/common/AuthPromptModal";
 
 export default function ProjectDetailsPage() {
   const { project, refreshProject } = useProject();
@@ -14,6 +15,7 @@ export default function ProjectDetailsPage() {
   const [isSending, setIsSending] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [attachments, setAttachments] = useState<any[]>([]);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [actionModal, setActionModal] = useState<{
@@ -504,9 +506,9 @@ export default function ProjectDetailsPage() {
                           <div className="flex flex-wrap items-center gap-3">
                             <span className="text-[10px] sm:text-xs text-gray-500 font-bold">Submitted - {formatDate(msg.createdAt)}</span>
                             <span className={`px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border ${content.status === "accepted" ? "border-green-400 text-green-600 bg-green-50" :
-                                content.status === "declined" ? "border-red-400 text-red-600 bg-red-50" :
-                                  content.status === "modification_requested" ? "border-orange-400 text-orange-600 bg-orange-50" :
-                                    "border-blue-400 text-blue-600 bg-blue-50"
+                              content.status === "declined" ? "border-red-400 text-red-600 bg-red-50" :
+                                content.status === "modification_requested" ? "border-orange-400 text-orange-600 bg-orange-50" :
+                                  "border-blue-400 text-blue-600 bg-blue-50"
                               }`}>
                               {content.status === "accepted" ? "Accepted" :
                                 content.status === "declined" ? "Declined" :
@@ -705,51 +707,51 @@ export default function ProjectDetailsPage() {
                                   }
                                 }
 
-                                 let itemDescription = item.description || item.details || "";
-                                 if (!itemDescription) {
-                                   const normName = (item.name || item.title || "").toLowerCase();
-                                   if (normName.includes("audit") || normName.includes("paid ads")) {
-                                     itemDescription = "Audit of existing ad accounts, conversion tracking setup, and a complete strategy roadmap.";
-                                   } else if (normName.includes("shopping") || normName.includes("ecommerce") || normName.includes("e-commerce")) {
-                                     itemDescription = "End-to-end management of Google Shopping, Meta Product Ads, and e-commerce campaigns.";
-                                   } else if (normName.includes("graphic") || normName.includes("brand") || normName.includes("logo")) {
-                                     itemDescription = "Professional branding, visual assets, logo design, and graphic materials.";
-                                   } else if (normName.includes("development") || normName.includes("website dev")) {
-                                     itemDescription = "Custom modern web development with responsive design and high performance.";
-                                   } else if (normName.includes("maintenance")) {
-                                     itemDescription = "Ongoing security updates, bug fixes, performance monitoring, and backups.";
-                                   } else if (normName.includes("seo") || normName.includes("search engine")) {
-                                     itemDescription = "Complete search engine optimization to boost organic visibility and rankings.";
-                                   } else if (normName.includes("social media") || normName.includes("smm")) {
-                                     itemDescription = "Content creation, campaign management, and audience growth across social channels.";
-                                   } else if (normName.includes("analysis")) {
-                                     itemDescription = "Our standard free analysis offer covering brand, UI/UX, functionalities, AI potentiality, tech stack.";
-                                   } else if (normName.includes("checking")) {
-                                     itemDescription = "An offer to check the completed work of any other web professionals, including your own in-house team.";
-                                   } else {
-                                     itemDescription = "Comprehensive package solution tailored for your business needs.";
-                                   }
-                                 }
-                                 const itemPrice = item.cost || item.amount || item.price || 0;
+                                let itemDescription = item.description || item.details || "";
+                                if (!itemDescription) {
+                                  const normName = (item.name || item.title || "").toLowerCase();
+                                  if (normName.includes("audit") || normName.includes("paid ads")) {
+                                    itemDescription = "Audit of existing ad accounts, conversion tracking setup, and a complete strategy roadmap.";
+                                  } else if (normName.includes("shopping") || normName.includes("ecommerce") || normName.includes("e-commerce")) {
+                                    itemDescription = "End-to-end management of Google Shopping, Meta Product Ads, and e-commerce campaigns.";
+                                  } else if (normName.includes("graphic") || normName.includes("brand") || normName.includes("logo")) {
+                                    itemDescription = "Professional branding, visual assets, logo design, and graphic materials.";
+                                  } else if (normName.includes("development") || normName.includes("website dev")) {
+                                    itemDescription = "Custom modern web development with responsive design and high performance.";
+                                  } else if (normName.includes("maintenance")) {
+                                    itemDescription = "Ongoing security updates, bug fixes, performance monitoring, and backups.";
+                                  } else if (normName.includes("seo") || normName.includes("search engine")) {
+                                    itemDescription = "Complete search engine optimization to boost organic visibility and rankings.";
+                                  } else if (normName.includes("social media") || normName.includes("smm")) {
+                                    itemDescription = "Content creation, campaign management, and audience growth across social channels.";
+                                  } else if (normName.includes("analysis")) {
+                                    itemDescription = "Our standard free analysis offer covering brand, UI/UX, functionalities, AI potentiality, tech stack.";
+                                  } else if (normName.includes("checking")) {
+                                    itemDescription = "An offer to check the completed work of any other web professionals, including your own in-house team.";
+                                  } else {
+                                    itemDescription = "Comprehensive package solution tailored for your business needs.";
+                                  }
+                                }
+                                const itemPrice = item.cost || item.amount || item.price || 0;
 
-                                 const isMonthlyProduct = Boolean(
-                                   item.isMonthly === true ||
-                                   item.paymentType?.toLowerCase() === 'monthly' ||
-                                   item.billingType?.toLowerCase() === 'monthly' ||
-                                   String(item.duration || '').toLowerCase().includes('month') ||
-                                   String(item.priceText || '').toLowerCase().includes('/month') ||
-                                   String(item.priceText || '').toLowerCase().includes('month') ||
-                                   (itemName.toLowerCase().includes('management') && !itemName.toLowerCase().includes('audit')) ||
-                                   itemName.toLowerCase().includes('maintenance') ||
-                                   itemName.toLowerCase().includes('monthly') ||
-                                   itemName.toLowerCase().includes('retainer')
-                                 );
-                                 const suffix = isMonthlyProduct ? '/month' : '';
+                                const isMonthlyProduct = Boolean(
+                                  item.isMonthly === true ||
+                                  item.paymentType?.toLowerCase() === 'monthly' ||
+                                  item.billingType?.toLowerCase() === 'monthly' ||
+                                  String(item.duration || '').toLowerCase().includes('month') ||
+                                  String(item.priceText || '').toLowerCase().includes('/month') ||
+                                  String(item.priceText || '').toLowerCase().includes('month') ||
+                                  (itemName.toLowerCase().includes('management') && !itemName.toLowerCase().includes('audit')) ||
+                                  itemName.toLowerCase().includes('maintenance') ||
+                                  itemName.toLowerCase().includes('monthly') ||
+                                  itemName.toLowerCase().includes('retainer')
+                                );
+                                const suffix = isMonthlyProduct ? '/month' : '';
 
-                                 let priceText = item.priceText ? item.priceText.replace(/\$\s+/g, '$').trim() : `$${itemPrice}${suffix}`;
-                                 if (isMonthlyProduct && item.priceText && !item.priceText.toLowerCase().includes('month')) {
-                                   priceText = `${priceText.replace(/\$\s+/g, '$').trim()}/month`;
-                                 }
+                                let priceText = item.priceText ? item.priceText.replace(/\$\s+/g, '$').trim() : `$${itemPrice}${suffix}`;
+                                if (isMonthlyProduct && item.priceText && !item.priceText.toLowerCase().includes('month')) {
+                                  priceText = `${priceText.replace(/\$\s+/g, '$').trim()}/month`;
+                                }
 
                                 return (
                                   <a
@@ -941,7 +943,7 @@ export default function ProjectDetailsPage() {
                                   onClick={handleActionSubmit}
                                   disabled={isActionLoading || (actionModal.required && !actionComment.trim())}
                                   className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-md text-sm font-bold transition-all shadow-sm ${isActionLoading ? "bg-gray-400 cursor-not-allowed" :
-                                      actionModal.action === "decline" ? "bg-red-700 hover:bg-red-800" : "bg-blue-800 hover:bg-blue-900"
+                                    actionModal.action === "decline" ? "bg-red-700 hover:bg-red-800" : "bg-blue-800 hover:bg-blue-900"
                                     }`}
                                 >
                                   {isActionLoading ? "Processing..." : actionModal.action === "decline" ? "Decline Offer" : "Send Request"}
@@ -1088,10 +1090,23 @@ export default function ProjectDetailsPage() {
             </div>
             <div className="p-6">
               <textarea
-                className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent"
-                placeholder="Type a message..."
+                className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent cursor-pointer"
+                placeholder={currentUser ? "Type a message..." : "Please log in or register to message our team..."}
                 value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
+                onChange={(e) => {
+                  if (!currentUser) {
+                    setShowAuthModal(true);
+                    return;
+                  }
+                  setMessageText(e.target.value);
+                }}
+                onClick={() => {
+                  if (!currentUser) setShowAuthModal(true);
+                }}
+                onFocus={() => {
+                  if (!currentUser) setShowAuthModal(true);
+                }}
+                readOnly={!currentUser}
               />
             </div>
 
@@ -1137,8 +1152,14 @@ export default function ProjectDetailsPage() {
 
             <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
               <button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2.5 rounded-md border-2 border-blue-600 hover:bg-blue-50 shadow-sm"
+                onClick={() => {
+                  if (!currentUser) {
+                    setShowAuthModal(true);
+                  } else {
+                    fileInputRef.current?.click();
+                  }
+                }}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2.5 rounded-md border-2 border-blue-600 hover:bg-blue-50 shadow-sm cursor-pointer"
                 type="button"
                 disabled={isSending}
               >
@@ -1151,16 +1172,30 @@ export default function ProjectDetailsPage() {
 
               <div className="flex gap-3 w-full sm:w-auto">
                 <button
-                  onClick={() => { setMessageText(""); setAttachments([]); }}
-                  className="flex-1 sm:flex-none px-6 py-2.5 bg-[#800020] hover:bg-[#600018] text-white font-bold text-sm rounded-md transition-colors shadow-sm"
+                  onClick={() => {
+                    if (!currentUser) {
+                      setShowAuthModal(true);
+                      return;
+                    }
+                    setMessageText("");
+                    setAttachments([]);
+                  }}
+                  className="flex-1 sm:flex-none px-6 py-2.5 bg-[#800020] hover:bg-[#600018] text-white font-bold text-sm rounded-md transition-colors shadow-sm cursor-pointer"
                   disabled={isSending}
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleSendMessage}
-                  disabled={isSending || isUploading || (!messageText.trim() && attachments.filter(a => a.status === "done").length === 0)}
-                  className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-md text-sm font-bold transition-all shadow-sm ${isSending || isUploading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-800 hover:bg-blue-900"
+                  onClick={(e) => {
+                    if (!currentUser) {
+                      e.preventDefault();
+                      setShowAuthModal(true);
+                      return;
+                    }
+                    handleSendMessage();
+                  }}
+                  disabled={currentUser && (isSending || isUploading || (!messageText.trim() && attachments.filter(a => a.status === "done").length === 0))}
+                  className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-md text-sm font-bold transition-all shadow-sm cursor-pointer ${isSending || isUploading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-800 hover:bg-blue-900"
                     }`}
                 >
                   {isSending ? "Sending..." : isUploading ? "Uploading..." : "Send Message"}
@@ -1172,39 +1207,83 @@ export default function ProjectDetailsPage() {
 
         {/* Sidebar - Project Manager */}
         <div className="lg:col-span-1">
-          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-8 sticky top-28">
-            <div className="text-center">
-              {(() => {
-                const manager = project.assignedManagers?.[0] || project.projectManager;
-                const name = manager?.fullName || "Unassigned";
-                const avatar = manager?.avatar;
-                return (
-                  <>
-                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gray-100 border border-gray-200">
-                      {avatar ? (
-                        <img src={avatar} alt={name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white text-3xl font-bold">
-                          {name === "Unassigned" ? "?" : name[0]}
-                        </div>
-                      )}
-                    </div>
-                    <h4 className="text-lg font-bold text-gray-800 mb-1">{name}</h4>
-                    <p className="text-sm text-gray-500 mb-4 font-medium uppercase tracking-wider text-[10px]">Project Manager</p>
+          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 sm:p-8 sticky top-24">
+            {(() => {
+              const managers = (Array.isArray(project.assignedManagers) && project.assignedManagers.length > 0)
+                ? project.assignedManagers
+                : (project.projectManager ? [project.projectManager] : []);
 
-                    {name !== "Unassigned" && (
-                      <div className="mt-4 pt-4 border-t border-gray-100">
-                        <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1">Status</div>
-                        <div className="text-xs font-semibold text-gray-600">Online & Active</div>
+              if (managers.length > 1) {
+                return (
+                  <div>
+                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 text-center">
+                      Project Managers ({managers.length})
+                    </h3>
+                    <div className="space-y-3">
+                      {managers.map((m: any, idx: number) => {
+                        const name = m?.fullName || "Project Manager";
+                        const avatar = m?.avatar;
+                        return (
+                          <div key={m._id || m.id || idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-sm overflow-hidden bg-gray-200 shrink-0">
+                              {avatar ? (
+                                <img src={avatar} alt={name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-bold text-sm">
+                                  {name[0] || "M"}
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="text-sm font-bold text-gray-800 truncate">{name}</h4>
+                              <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Project Manager</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }
+
+              const manager = managers[0];
+              const name = manager?.fullName || "Unassigned";
+              const avatar = manager?.avatar;
+              return (
+                <div className="text-center">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gray-100 border border-gray-200">
+                    {avatar ? (
+                      <img src={avatar} alt={name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white text-3xl font-bold">
+                        {name === "Unassigned" ? "?" : name[0]}
                       </div>
                     )}
-                  </>
-                );
-              })()}
-            </div>
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-800 mb-1">{name}</h4>
+                  <p className="text-sm text-gray-500 mb-4 font-medium uppercase tracking-wider text-[10px]">Project Manager</p>
+
+                  {name !== "Unassigned" && (
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1">Status</div>
+                      <div className="text-xs font-semibold text-gray-600">Online & Active</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
+
+      {/* Auth Prompt Modal */}
+      <AuthPromptModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        title="Join the Conversation"
+        description="Please log in or register to message our team and upload files for this project."
+        redirectUrl={project?._id ? `/dashboard/my-projects/${project._id}/details` : undefined}
+      />
     </div>
   );
 }

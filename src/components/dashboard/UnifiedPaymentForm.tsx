@@ -19,15 +19,11 @@ import MastercardIcon from "@/components/icons/mastercard";
 import AmexIcon from "@/components/icons/amex";
 import StatusPopup from "@/components/common/StatusPopup";
 import InvoicePreviewModal from "./InvoicePreviewModal";
+import { countryService, Country } from "@/lib/countryService";
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
   : null;
-
-const EUROPEAN_COUNTRIES = [
-  "AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR", "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SI", "SK", "GB", "CH", "NO", "IS", "LI"
-];
-const VAT_RATE = 0.20; // 20% VAT
 
 const stripeElementOptions = {
   disableLink: true,
@@ -117,6 +113,7 @@ function PaymentForm({
   const [saveCard, setSaveCard] = useState(true);
   const [isLoadingMethods, setIsLoadingMethods] = useState(false);
   const [userCountry, setUserCountry] = useState("US");
+  const [countriesList, setCountriesList] = useState<Country[]>([]);
 
   const formatPrice = (amount: number) => {
     let convertedAmount = amount;
@@ -183,8 +180,20 @@ function PaymentForm({
       }
     };
 
+    const fetchCountries = async () => {
+      try {
+        const list = await countryService.getAllCountries();
+        if (list && list.length > 0) {
+          setCountriesList(list);
+        }
+      } catch (err) {
+        console.error("Failed to load countries in UnifiedPaymentForm:", err);
+      }
+    };
+
     fetchCredits();
     initData();
+    fetchCountries();
   }, []);
 
   const [popup, setPopup] = useState({
@@ -195,26 +204,40 @@ function PaymentForm({
   });
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
+  const getActiveCountryCode = () => {
+    return billingSameAsBusiness ? userCountry : billingAddress.country;
+  };
+
+  const getActiveVatRate = () => {
+    const activeCode = getActiveCountryCode();
+    if (!activeCode) return 0;
+    const directRate = countryService.getVatRateSync(activeCode);
+    if (directRate !== undefined && directRate > 0) return directRate;
+    const found = countriesList.find(
+      (c) =>
+        c.iso2?.toUpperCase() === activeCode.toUpperCase() ||
+        c.iso3?.toUpperCase() === activeCode.toUpperCase() ||
+        c.name?.toLowerCase() === activeCode.toLowerCase()
+    );
+    return found ? (Number(found.vatRate) || 0) : 0;
+  };
+
+  const getVatAmount = (baseAmount: number) => {
+    const vatRate = getActiveVatRate();
+    return vatRate > 0 ? (baseAmount * vatRate) / 100 : 0;
+  };
+
   const getPayableAmount = () => {
     let amount = totalCost;
     if (paymentOption === "half") amount = depositAmount;
     else if (paymentOption === "custom" && customAmount) amount = parseFloat(customAmount);
     
-    // Add VAT if applicable
-    const activeCountry = billingSameAsBusiness ? userCountry : billingAddress.country;
-    const isEuropean = EUROPEAN_COUNTRIES.includes(activeCountry?.toUpperCase());
-    
-    if (isEuropean) {
-      return amount * (1 + VAT_RATE);
+    const vatRate = getActiveVatRate();
+    if (vatRate > 0) {
+      return amount * (1 + vatRate / 100);
     }
     
     return amount;
-  };
-
-  const getVatAmount = (baseAmount: number) => {
-    const activeCountry = billingSameAsBusiness ? userCountry : billingAddress.country;
-    const isEuropean = EUROPEAN_COUNTRIES.includes(activeCountry?.toUpperCase());
-    return isEuropean ? baseAmount * VAT_RATE : 0;
   };
 
   const handleSubmit = async () => {
@@ -455,9 +478,9 @@ function PaymentForm({
               </span>
               <span className="text-sm font-bold text-gray-700">{formatPrice(totalCost + amountPaid)}</span>
             </div>
-            {getVatAmount(totalCost + amountPaid) > 0 && (
+            {getActiveVatRate() > 0 && (
               <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8">
-                <span className="text-xs sm:text-sm text-gray-600 font-bold sm:font-semibold">VAT (20%):</span>
+                <span className="text-xs sm:text-sm text-gray-600 font-bold sm:font-semibold">VAT ({getActiveVatRate()}%):</span>
                 <span className="text-sm text-gray-600 font-bold sm:font-semibold">{formatPrice(getVatAmount(totalCost + amountPaid))}</span>
               </div>
             )}
@@ -530,23 +553,33 @@ function PaymentForm({
                 </>
               )}
 
-              {getVatAmount(subtotalRegular + subtotalAddons) > 0 && (
-                <tr className="border-t border-gray-200 bg-gray-50/30">
-                  <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm font-semibold text-gray-600 text-center sm:text-left">
-                    VAT (20%)
-                  </td>
-                  <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm text-gray-400">
-                    -
-                  </td>
-                  <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm font-semibold text-gray-600 text-right">
-                    {formatPrice(getVatAmount(subtotalRegular + subtotalAddons))}
-                  </td>
-                </tr>
-              )}
+              <tr className="border-t border-gray-200 bg-gray-50/10">
+                <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm font-semibold text-gray-600 text-center sm:text-left">
+                  Base Amount
+                </td>
+                <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm text-gray-400">
+                  -
+                </td>
+                <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm font-semibold text-gray-600 text-right">
+                  {formatPrice(subtotalRegular + subtotalAddons)}
+                </td>
+              </tr>
+
+              <tr className="border-t border-gray-200 bg-gray-50/30">
+                <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm font-semibold text-gray-600 text-center sm:text-left">
+                  VAT ({getActiveVatRate()}%):
+                </td>
+                <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm text-gray-400">
+                  -
+                </td>
+                <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm font-semibold text-gray-600 text-right">
+                  {formatPrice(getVatAmount(subtotalRegular + subtotalAddons))}
+                </td>
+              </tr>
 
               <tr className="border-t-2 border-gray-300 bg-gray-50">
                 <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm font-bold text-gray-800 uppercase text-center sm:text-left">
-                  Total
+                  TOTAL PAYABLE:
                 </td>
                 <td className="py-4 px-3 sm:px-6 text-[10px] sm:text-sm font-semibold text-gray-600 whitespace-nowrap">
                   {(() => {
@@ -921,25 +954,21 @@ function PaymentForm({
                       onChange={(e) => setBillingAddress({ ...billingAddress, country: e.target.value })}
                       className="w-full bg-white border border-gray-300 focus:ring-indigo-300 rounded-md px-4 py-2 text-sm text-gray-800 outline-none focus:ring-2"
                     >
-                      <option value="US">United States</option>
-                      <option value="CA">Canada</option>
-                      <option value="GB">United Kingdom</option>
-                      <option value="IE">Ireland</option>
-                      <option value="DE">Germany</option>
-                      <option value="FR">France</option>
-                      <option value="IT">Italy</option>
-                      <option value="ES">Spain</option>
-                      <option value="NL">Netherlands</option>
-                      <option value="BE">Belgium</option>
-                      <option value="AT">Austria</option>
-                      <option value="SE">Sweden</option>
-                      <option value="DK">Denmark</option>
-                      <option value="FI">Finland</option>
-                      <option value="PT">Portugal</option>
-                      <option value="GR">Greece</option>
-                      <option value="CH">Switzerland</option>
-                      <option value="AU">Australia</option>
-                      <option value="IN">India</option>
+                      {countriesList && countriesList.length > 0 ? (
+                        countriesList.map((c) => (
+                          <option key={c.iso2 || c._id} value={c.iso2}>
+                            {c.flagEmoji ? `${c.flagEmoji} ` : ""}{c.name} ({c.iso2}){c.vatRate > 0 ? ` - ${c.vatRate}% VAT` : ""}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="US">United States</option>
+                          <option value="CA">Canada</option>
+                          <option value="GB">United Kingdom</option>
+                          <option value="DE">Germany</option>
+                          <option value="FR">France</option>
+                        </>
+                      )}
                     </select>
                   </div>
                 </div>
@@ -1069,7 +1098,7 @@ function PaymentForm({
         totalCost={totalCost + amountPaid}
         deliverableItems={deliverableItems}
         vatAmount={getVatAmount(totalCost + amountPaid)}
-        vatRate={EUROPEAN_COUNTRIES.includes((billingSameAsBusiness ? userCountry : billingAddress.country)?.toUpperCase()) ? VAT_RATE : 0}
+        vatRate={getActiveVatRate() / 100}
       />
     </div>
   );

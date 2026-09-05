@@ -72,6 +72,40 @@ const stripeElementOptions = {
   },
 };
 
+const EUROPEAN_COUNTRIES = [
+  "AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR", "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SI", "SK", "GB", "CH", "NO", "IS", "LI",
+];
+const VAT_RATE = 0.2;
+
+const CurrencyPillToggle = ({
+  currency,
+  setCurrency,
+}: {
+  currency: string;
+  setCurrency: (c: "usd" | "eur") => void;
+}) => (
+  <div className="flex bg-gray-100 rounded-lg p-0.5">
+    <button
+      type="button"
+      onClick={() => setCurrency("usd")}
+      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
+        currency === "usd" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"
+      }`}
+    >
+      USD
+    </button>
+    <button
+      type="button"
+      onClick={() => setCurrency("eur")}
+      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
+        currency === "eur" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"
+      }`}
+    >
+      EUR
+    </button>
+  </div>
+);
+
 // --- Sub-components ---
 
 const CurrencyDropdown = ({
@@ -299,7 +333,6 @@ const ProposalPreview = ({
   timeline,
   billingType,
   onDownloadPdf,
-  onContinueToPayment,
 }: any) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const { currency, conversionRate } = useCurrency();
@@ -506,16 +539,6 @@ const ProposalPreview = ({
             <span className="text-[16px] font-black tracking-wide uppercase">Email Proposal</span>
           </button>
         </div>
-
-        {onContinueToPayment && (
-          <button
-            type="button"
-            onClick={onContinueToPayment}
-            className="w-full mt-8 bg-[#002E8A] hover:bg-[#001b54] text-white font-black py-4 px-6 rounded-[5px] transition-colors uppercase tracking-widest text-[15px]"
-          >
-            Ready to Begin?
-          </button>
-        )}
       </div>
     </div>
   );
@@ -531,7 +554,15 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
   const [customAmount, setCustomAmount] = useState("");
   const [cardholderName, setCardholderName] = useState("");
   const [billingSameAsBusiness, setBillingSameAsBusiness] = useState(true);
-  const [billingAddress, setBillingAddress] = useState({ street: "", city: "", state: "", zip: "", country: "" });
+  const [billingAddress, setBillingAddress] = useState({
+    street: "",
+    city: "",
+    state: "",
+    zip: "",
+    country: "US",
+  });
+  const [userCountry, setUserCountry] = useState("US");
+  const [isEmailVerified, setIsEmailVerified] = useState(true);
   const [bizInfo, setBizInfo] = useState({
     personName: "",
     personEmail: "",
@@ -542,21 +573,33 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
     businessPhone: "",
     businessAddress: "",
     businessWebsite: "",
-    businessDescription: ""
+    businessDescription: "",
   });
 
   useEffect(() => {
     const user = authService.getUser();
     if (user) {
+      setIsEmailVerified(!!user.isEmailVerified);
       if (user.fullName) {
         setCardholderName(user.fullName);
-        setBizInfo(p => ({ ...p, personName: user.fullName || "" }));
+        setBizInfo((p) => ({ ...p, personName: user.fullName || "" }));
       }
       if (user.email) {
-        setBizInfo(p => ({ ...p, personEmail: user.email || "" }));
+        setBizInfo((p) => ({ ...p, personEmail: user.email || "" }));
       }
+      (async () => {
+        try {
+          const { profileService } = await import("@/lib/profileService");
+          const profile = await profileService.getMyProfile();
+          if (profile?.data) {
+            setUserCountry(profile.data.country || profile.data.billingCountry || (currency === "eur" ? "DE" : "US"));
+          }
+        } catch {
+          setUserCountry(currency === "eur" ? "DE" : "US");
+        }
+      })();
     }
-  }, []);
+  }, [currency]);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState({ isOpen: false, type: "success" as any, title: "", message: "" });
@@ -564,21 +607,48 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
   const [cardStatus, setCardStatus] = useState<any>({
     number: { complete: false, error: null },
     expiry: { complete: false, error: null },
-    cvc: { complete: false, error: null }
+    cvc: { complete: false, error: null },
   });
 
   const handleBizChange = (e: any) => setBizInfo({ ...bizInfo, [e.target.name]: e.target.value });
 
-  const getPayableAmount = () => {
+  const getBaseAmount = () => {
     if (paymentOption === "half") return halfPrice;
     if (paymentOption === "full") return totalPrice;
     if (paymentOption === "custom" && customAmount) return parseFloat(customAmount);
     return totalPrice;
   };
 
+  const getActiveCountry = () =>
+    billingSameAsBusiness ? userCountry : billingAddress.country;
+
+  const getVatAmount = (baseAmount: number) => {
+    const isEuropean = EUROPEAN_COUNTRIES.includes(getActiveCountry()?.toUpperCase());
+    return isEuropean ? baseAmount * VAT_RATE : 0;
+  };
+
+  const getPayableAmount = () => {
+    const base = getBaseAmount();
+    return base + getVatAmount(base);
+  };
+
+  const requiresVerification = !isEmailVerified;
+  const currencyLabel = currency.toUpperCase();
+
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     if (!stripe || !elements) return;
+
+    if (requiresVerification) {
+      setStatus({
+        isOpen: true,
+        type: "error",
+        title: "Email Verification Required",
+        message:
+          "To protect your financial security, payments are restricted for unverified accounts. Please verify your email using the banner at the top of your dashboard to continue.",
+      });
+      return;
+    }
 
     const errs: any = {};
     const amount = getPayableAmount();
@@ -601,13 +671,38 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
     }
 
     if (!cardholderName.trim()) errs.cardHolderName = "Cardholder name is required.";
+    if (!billingSameAsBusiness) {
+      if (!billingAddress.street.trim()) errs.billingStreet = "Address is required.";
+      if (!billingAddress.city.trim()) errs.billingCity = "City is required.";
+      if (!billingAddress.state.trim()) errs.billingState = "State is required.";
+      if (!billingAddress.zip.trim()) errs.billingZip = "ZIP is required.";
+    }
     if (!cardStatus.number.complete) errs.cardNumber = cardStatus.number.error?.message || "Incomplete card number.";
     if (!cardStatus.expiry.complete) errs.cardExpiry = cardStatus.expiry.error?.message || "Incomplete expiry.";
     if (!cardStatus.cvc.complete) errs.cardCvc = cardStatus.cvc.error?.message || "Incomplete CVC.";
 
     setErrors(errs);
     if (Object.keys(errs).length > 0) {
-      setStatus({ isOpen: true, type: "error", title: "Validation Error", message: "Please correct the highlighted fields." });
+      const fieldLabels: Record<string, string> = {
+        personName: "Contact name",
+        personEmail: "Contact email",
+        amount: "Payment amount",
+        cardHolderName: "Name on card",
+        billingStreet: "Billing address",
+        billingCity: "Billing city",
+        billingState: "Billing state",
+        billingZip: "Billing ZIP",
+        cardNumber: "Card number",
+        cardExpiry: "Expiry date",
+        cardCvc: "CVC",
+      };
+      const missing = Object.keys(errs).map((k) => fieldLabels[k] || k).join(", ");
+      setStatus({
+        isOpen: true,
+        type: "error",
+        title: "Validation Error",
+        message: `Fix: ${missing}. Card fields upar white box me check karo.`,
+      });
       return;
     }
 
@@ -618,7 +713,7 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
         selections: Object.values(selections),
         calculatedPrice: totalPrice,
         estimatedTimeline: timeline,
-        ...bizInfo
+        ...bizInfo,
       };
 
       const submitRes = await priceCalculatorService.submitQuote(proposalData);
@@ -637,8 +732,10 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
         metadata: {
           type: "QUOTE",
           quoteId,
-          quoteNumber: quoteNum
-        }
+          quoteNumber: quoteNum,
+          fullAmount: totalPrice,
+          calculatedPrice: totalPrice,
+        },
       });
 
       if (!intentRes.isSuccessful || !intentRes.data) {
@@ -655,15 +752,17 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
           billing_details: {
             name: cardholderName || bizInfo.personName,
             email: bizInfo.personEmail,
-            address: billingSameAsBusiness ? undefined : {
-              line1: billingAddress.street,
-              city: billingAddress.city,
-              state: billingAddress.state,
-              postal_code: billingAddress.zip,
-              country: billingAddress.country
-            }
-          }
-        }
+            address: billingSameAsBusiness
+              ? undefined
+              : {
+                  line1: billingAddress.street,
+                  city: billingAddress.city,
+                  state: billingAddress.state,
+                  postal_code: billingAddress.zip,
+                  country: billingAddress.country,
+                },
+          },
+        },
       });
 
       if (confirmRes.error) throw new Error(confirmRes.error.message);
@@ -685,21 +784,36 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
     }
   };
 
+  const baseAmount = getBaseAmount();
+  const vatAmount = getVatAmount(baseAmount);
+  const totalPayable = baseAmount + vatAmount;
+  const vatPercent = vatAmount > 0 ? 20 : 0;
+
   return (
     <form onSubmit={handleSubmit} className="animate-in fade-in duration-500 w-full flex flex-col gap-8">
       <StatusPopup isOpen={status.isOpen} onClose={() => setStatus({ ...status, isOpen: false })} type={status.type} title={status.title} message={status.message} />
 
+      {!stripePromise && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-2 max-w-[680px] mx-auto w-full">
+          <h4 className="text-amber-800 font-bold mb-1">Payment System Offline</h4>
+          <p className="text-amber-700 text-sm">
+            Secure checkout is being configured. Contact support at{" "}
+            <span className="font-bold">support@society.com</span> to complete payment manually.
+          </p>
+        </div>
+      )}
+
       <div className="text-center mb-2">
         <h2 className="text-[34px] font-normal text-white mb-4 font-manrope uppercase tracking-wide">READY TO BEGIN?</h2>
         <p className="text-gray-100 text-[16px] font-light leading-relaxed">
-          Pay at least 30% of the total amount to have our team<br />begin work on this project.
+          Pay any amount as a deposit to have our team<br />begin work on this project.
         </p>
       </div>
 
       <div className="bg-white rounded-[10px] p-6 md:p-10 shadow-2xl mx-auto w-full max-w-[680px]">
         <div className="flex justify-between items-center mb-8">
           <h3 className="text-black font-bold text-[18px]">Amount:</h3>
-          <CurrencyDropdown currency={currency} setCurrency={setCurrency} size="sm" />
+          <CurrencyPillToggle currency={currency} setCurrency={setCurrency} />
           <div className="flex gap-2 items-center opacity-90 hidden sm:flex">
             <VisaIcon />
             <MastercardIcon />
@@ -707,7 +821,7 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
           </div>
         </div>
 
-        <div className="flex flex-col gap-[18px] text-[16px] mb-8 md:mb-12">
+        <div className="flex flex-col gap-[18px] text-[16px] mb-8">
           <label className="flex items-center gap-[14px] cursor-pointer group">
             <div className={`w-[22px] h-[22px] rounded-full border-[2.5px] flex flex-shrink-0 items-center justify-center transition-colors ${paymentOption === "full" ? "border-black" : "border-gray-400"}`}>
               {paymentOption === "full" && <div className="w-[10px] h-[10px] rounded-full bg-black" />}
@@ -744,6 +858,98 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
           </label>
         </div>
 
+        <div className="bg-gray-50 rounded-lg p-5 mb-8 space-y-3">
+          <div className="flex justify-between text-[15px]">
+            <span className="text-gray-600">Base Amount ({currencyLabel}):</span>
+            <span className="font-medium text-gray-800">{formatPriceLocal(baseAmount)}</span>
+          </div>
+          <div className="flex justify-between text-[15px]">
+            <span className="text-gray-600">VAT ({vatPercent}%):</span>
+            <span className="font-medium text-gray-800">{formatPriceLocal(vatAmount)}</span>
+          </div>
+          <div className="flex justify-between text-[17px] pt-2 border-t border-gray-200">
+            <span className="font-bold text-[#002E8A]">Total Payable:</span>
+            <span className="font-bold text-[#002E8A]">{formatPriceLocal(totalPayable)}</span>
+          </div>
+        </div>
+
+        <label className="flex items-center gap-3 cursor-pointer mb-8">
+          <input
+            type="checkbox"
+            checked={billingSameAsBusiness}
+            onChange={(e) => setBillingSameAsBusiness(e.target.checked)}
+            className="w-4 h-4 text-[#002E8A] rounded focus:ring-[#002E8A]"
+          />
+          <span className="text-[15px] font-medium text-gray-800">Billing address is the same as Business details</span>
+        </label>
+
+        {!billingSameAsBusiness && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 bg-gray-50/50 border border-gray-200 p-4 rounded-lg">
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold text-gray-700 mb-2">Street Address</label>
+              <input
+                type="text"
+                value={billingAddress.street}
+                onChange={(e) => {
+                  setBillingAddress({ ...billingAddress, street: e.target.value });
+                  if (errors.billingStreet) setErrors((p: any) => ({ ...p, billingStreet: "" }));
+                }}
+                className={`w-full border-b ${errors.billingStreet ? "border-red-500" : "border-gray-300"} py-2 bg-transparent outline-none text-[15px]`}
+              />
+              {errors.billingStreet && <span className="text-[10px] text-red-500 font-bold">{errors.billingStreet}</span>}
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-2">City</label>
+              <input
+                type="text"
+                value={billingAddress.city}
+                onChange={(e) => {
+                  setBillingAddress({ ...billingAddress, city: e.target.value });
+                  if (errors.billingCity) setErrors((p: any) => ({ ...p, billingCity: "" }));
+                }}
+                className={`w-full border-b ${errors.billingCity ? "border-red-500" : "border-gray-300"} py-2 bg-transparent outline-none text-[15px]`}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-2">State / Province</label>
+              <input
+                type="text"
+                value={billingAddress.state}
+                onChange={(e) => {
+                  setBillingAddress({ ...billingAddress, state: e.target.value });
+                  if (errors.billingState) setErrors((p: any) => ({ ...p, billingState: "" }));
+                }}
+                className={`w-full border-b ${errors.billingState ? "border-red-500" : "border-gray-300"} py-2 bg-transparent outline-none text-[15px]`}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-2">ZIP / Postal Code</label>
+              <input
+                type="text"
+                value={billingAddress.zip}
+                onChange={(e) => {
+                  setBillingAddress({ ...billingAddress, zip: e.target.value });
+                  if (errors.billingZip) setErrors((p: any) => ({ ...p, billingZip: "" }));
+                }}
+                className={`w-full border-b ${errors.billingZip ? "border-red-500" : "border-gray-300"} py-2 bg-transparent outline-none text-[15px]`}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-2">Country</label>
+              <select
+                value={billingAddress.country}
+                onChange={(e) => setBillingAddress({ ...billingAddress, country: e.target.value })}
+                className="w-full border-b border-gray-300 py-2 bg-transparent outline-none text-[15px]"
+              >
+                <option value="US">United States</option>
+                {EUROPEAN_COUNTRIES.map((code) => (
+                  <option key={code} value={code}>{code}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-8 font-sans">
           <div>
             <label className="block text-[16px] font-bold text-black mb-[10px]">Name on the card:</label>
@@ -778,59 +984,64 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
         </div>
       </div>
 
-      <p className="text-center text-[16px] text-gray-300 mt-10 max-w-[680px] mx-auto font-sans">Please fill out your business information before paying.</p>
+      <p className="text-center text-[16px] text-gray-300 max-w-[680px] mx-auto font-sans">Please fill out your business information before paying.</p>
 
-      <div className="bg-[#001D6E] rounded-lg p-6 md:p-8 text-white space-y-8 max-w-[680px] mx-auto w-full font-sans shadow-2xl">
+      <div className="bg-white rounded-[10px] p-6 md:p-10 text-black space-y-8 max-w-[680px] mx-auto w-full font-sans shadow-2xl">
         <div className="space-y-6">
           <div>
-            <label className="block text-[16px] font-bold mb-2">Contact person&apos;s name: *</label>
-            <input type="text" name="personName" value={bizInfo.personName} onChange={(e) => { handleBizChange(e); if (errors.personName) setErrors((p: any) => ({ ...p, personName: "" })); }} placeholder="Your answer" className={`w-full border-b ${errors.personName ? "border-red-400" : "border-white/30"} py-2 bg-transparent outline-none focus:border-white placeholder-white/40 text-[16px]`} />
-            {errors.personName && <span className="text-[10px] text-red-300 font-bold mt-1 block">{errors.personName}</span>}
+            <label className="block text-[16px] font-bold mb-2 text-black">Contact person&apos;s name: *</label>
+            <input type="text" name="personName" value={bizInfo.personName} onChange={(e) => { handleBizChange(e); if (errors.personName) setErrors((p: any) => ({ ...p, personName: "" })); }} placeholder="Your answer" className={`w-full border-b ${errors.personName ? "border-red-500" : "border-black/80"} py-2 bg-transparent outline-none focus:border-black placeholder-gray-500 text-[16px] text-black`} />
+            {errors.personName && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.personName}</span>}
           </div>
           <div>
-            <label className="block text-[16px] font-bold mb-2">Contact person&apos;s email address: *</label>
-            <input type="email" name="personEmail" value={bizInfo.personEmail} onChange={(e) => { handleBizChange(e); if (errors.personEmail) setErrors((p: any) => ({ ...p, personEmail: "" })); }} placeholder="Your answer" className={`w-full border-b ${errors.personEmail ? "border-red-400" : "border-white/30"} py-2 bg-transparent outline-none focus:border-white placeholder-white/40 text-[16px]`} />
-            {errors.personEmail && <span className="text-[10px] text-red-300 font-bold mt-1 block">{errors.personEmail}</span>}
+            <label className="block text-[16px] font-bold mb-2 text-black">Contact person&apos;s email address: *</label>
+            <input type="email" name="personEmail" value={bizInfo.personEmail} onChange={(e) => { handleBizChange(e); if (errors.personEmail) setErrors((p: any) => ({ ...p, personEmail: "" })); }} placeholder="Your answer" className={`w-full border-b ${errors.personEmail ? "border-red-500" : "border-black/80"} py-2 bg-transparent outline-none focus:border-black placeholder-gray-500 text-[16px] text-black`} />
+            {errors.personEmail && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.personEmail}</span>}
           </div>
           <div>
-            <label className="block text-[16px] font-bold mb-2">Contact person&apos;s phone number:</label>
-            <input type="tel" name="personPhone" value={bizInfo.personPhone} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-white/30 py-2 bg-transparent outline-none focus:border-white placeholder-white/40 text-[16px]" />
-          </div>
-          <div className="pt-2">
-            <label className="block text-[16px] font-bold mb-3">Preferred contact method: *</label>
-            <div className="flex flex-col gap-3 text-[16px]">
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <div className={`w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center transition-all ${bizInfo.preferredContactMethod === "phone" ? "border-white" : "border-white/40 group-hover:border-white"}`}>
-                  {bizInfo.preferredContactMethod === "phone" && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
-                </div>
-                <input type="radio" name="preferredContactMethod" value="phone" className="hidden" checked={bizInfo.preferredContactMethod === "phone"} onChange={handleBizChange} />
-                <span>Phone</span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <div className={`w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center transition-all ${bizInfo.preferredContactMethod === "email" ? "border-white" : "border-white/40 group-hover:border-white"}`}>
-                  {bizInfo.preferredContactMethod === "email" && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
-                </div>
-                <input type="radio" name="preferredContactMethod" value="email" className="hidden" checked={bizInfo.preferredContactMethod === "email"} onChange={handleBizChange} />
-                <span>Email</span>
-              </label>
-            </div>
+            <label className="block text-[16px] font-bold mb-2 text-black">Contact person&apos;s phone number:</label>
+            <input type="tel" name="personPhone" value={bizInfo.personPhone} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-500 text-[16px] text-black" />
           </div>
         </div>
 
         <div className="space-y-6 pt-4">
           <div>
-            <label className="block text-[16px] font-bold mb-2">Business name:</label>
-            <input type="text" name="businessName" value={bizInfo.businessName} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-white/30 py-2 bg-transparent outline-none focus:border-white placeholder-white/40 text-[16px]" />
+            <label className="block text-[16px] font-bold mb-2 text-black">Business name:</label>
+            <input type="text" name="businessName" value={bizInfo.businessName} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-500 text-[16px] text-black" />
           </div>
           <div>
-            <label className="block text-[16px] font-bold mb-2">Business services and description:</label>
-            <textarea name="businessDescription" rows={1} value={bizInfo.businessDescription} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-white/30 py-2 bg-transparent outline-none focus:border-white placeholder-white/40 text-[16px] resize-none" />
+            <label className="block text-[16px] font-bold mb-2 text-black">Business email address:</label>
+            <input type="email" name="businessEmail" value={bizInfo.businessEmail} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-500 text-[16px] text-black" />
+          </div>
+          <div>
+            <label className="block text-[16px] font-bold mb-2 text-black">Business phone number:</label>
+            <input type="tel" name="businessPhone" value={bizInfo.businessPhone} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-500 text-[16px] text-black" />
+          </div>
+          <div>
+            <label className="block text-[16px] font-bold mb-2 text-black">Business address:</label>
+            <input type="text" name="businessAddress" value={bizInfo.businessAddress} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-500 text-[16px] text-black" />
+          </div>
+          <div>
+            <label className="block text-[16px] font-bold mb-2 text-black">Business website:</label>
+            <input type="text" name="businessWebsite" value={bizInfo.businessWebsite} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-500 text-[16px] text-black" />
+          </div>
+          <div>
+            <label className="block text-[16px] font-bold mb-2 text-black">Business services and description:</label>
+            <textarea name="businessDescription" rows={1} value={bizInfo.businessDescription} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-500 text-[16px] text-black resize-none" />
           </div>
         </div>
       </div>
 
-      <button type="submit" disabled={isProcessing || !stripe || !elements} className="w-full max-w-[680px] mx-auto py-5 px-6 rounded bg-white text-[#163659] font-black text-[16px] tracking-widest shadow-xl hover:bg-gray-100 transition-all disabled:opacity-70 disabled:cursor-not-allowed uppercase active:scale-[0.98] mt-4">
-        {isProcessing ? "PROCESSING..." : `PAY ${paymentOption === "full" ? `${formatPriceLocal(totalPrice)} ` : ""}NOW`}
+      <button
+        type="submit"
+        disabled={isProcessing || !stripe || !elements || requiresVerification}
+        className="w-full max-w-[680px] mx-auto py-5 px-6 rounded bg-[#4343F0] text-white font-black text-[16px] tracking-widest shadow-xl hover:bg-[#3535d0] transition-all disabled:opacity-70 disabled:cursor-not-allowed uppercase active:scale-[0.98] mt-4"
+      >
+        {isProcessing
+          ? "PROCESSING..."
+          : requiresVerification
+            ? "VERIFICATION REQUIRED"
+            : `PAY ${formatPriceLocal(totalPayable)} NOW`}
       </button>
     </form>
   );
@@ -858,7 +1069,6 @@ export default function CalculatorPage() {
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
   const [selections, setSelections] = useState<Record<string, CalculatorSelection>>({});
   const [isStickyVisible, setIsStickyVisible] = useState(false);
-  const [showPayment, setShowPayment] = useState(false);
   const stickyRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
 
@@ -1108,7 +1318,6 @@ export default function CalculatorPage() {
                 onSelect={(key) => {
                   setSelectedCategoryKey(key);
                   setSelections({});
-                  setShowPayment(false);
                 }}
               />
             )}
@@ -1153,13 +1362,9 @@ export default function CalculatorPage() {
                     totalPrice={calculation.totalPrice}
                     timeline={calculation.timeline}
                     billingType={isMonthlyBilling ? "monthly" : undefined}
-                    onContinueToPayment={
-                      !showPayment ? () => setShowPayment(true) : undefined
-                    }
                   />
-                  {showPayment && (
-                    <div className="w-full mt-6">
-                      <WrappedPaymentForm
+                  <div className="w-full mt-6">
+                    <WrappedPaymentForm
                         totalPrice={calculation.totalPrice}
                         timeline={calculation.timeline}
                         categoryKey={selectedCategoryKey || selectedCategory.categoryKey}
@@ -1168,8 +1373,7 @@ export default function CalculatorPage() {
                         currency={currency}
                         setCurrency={setCurrency}
                       />
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
             )}

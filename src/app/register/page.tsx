@@ -31,7 +31,7 @@ const Stepper = ({ current, onStepClick }: { current: number; onStepClick: (step
 };
 
 const SocialButton = ({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) => (
-  <button onClick={onClick} className="w-full sm:w-[292px] h-[42px] border-2 border-[#BDBDBD] rounded-[8px] flex items-center overflow-hidden hover:bg-[#F7F7F7] transition active:scale-[0.98]">
+  <button onClick={onClick} className="w-full h-[44px] border-2 border-[#BDBDBD] rounded-[8px] flex items-center overflow-hidden hover:bg-[#F7F7F7] transition active:scale-[0.98]">
     <div className="w-[42px] h-full flex items-center justify-center">{icon}</div>
     <div className="w-px h-full bg-[#BDBDBD]"></div>
     <span className="flex-1 text-center text-[#3A3A3A] text-[15px] font-medium">{label}</span>
@@ -185,7 +185,7 @@ function RegisterForm() {
 
   const handleSocialLogin = (platform: string) => {
     if (platform === "Google") authService.loginWithGoogle();
-    else alert(`${platform} login not implemented yet`);
+    else if (platform === "Facebook") authService.loginWithFacebook();
   };
 
   return (
@@ -236,7 +236,7 @@ function RegisterForm() {
           {step === 1 && (
             <>
               <p className="mb-4 text-[#1a1a40] font-bold text-lg tracking-tight">Choose one below</p>
-              <div className="flex flex-col sm:flex-row gap-4 mb-10">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10 w-full">
                 <SocialButton icon={<GoogleIconLocal />} label="Sign in with Google" onClick={() => handleSocialLogin("Google")} />
                 <SocialButton icon={<FacebookIconLocal className="w-5 h-5 text-primary-300" />} label="Sign in with Facebook" onClick={() => handleSocialLogin("Facebook")} />
               </div>

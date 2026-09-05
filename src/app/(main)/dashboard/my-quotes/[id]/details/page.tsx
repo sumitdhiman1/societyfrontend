@@ -6,7 +6,9 @@ import { toast } from "sonner";
 import { useQuote } from "../layout";
 import { authService } from "@/lib/authService";
 import { quoteService } from "@/lib/quoteService";
+import { mediaService } from "@/lib/mediaService";
 import { downloadFile, isImageUrl } from "@/lib/utils";
+import AuthPromptModal from "@/components/common/AuthPromptModal";
 
 // Helper components
 const TooltipIcon = () => (
@@ -77,18 +79,39 @@ function formatDate(date: string) {
   return date ? new Date(date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "N/A";
 }
 
+function formatDuration(val: any) {
+  if (!val) return "-";
+  const str = String(val).trim();
+  if (
+    str.toLowerCase().includes("day") ||
+    str.toLowerCase().includes("week") ||
+    str.toLowerCase().includes("month") ||
+    str.toLowerCase().includes("hr") ||
+    str.toLowerCase().includes("hour")
+  ) {
+    return str;
+  }
+  return `${str} Days`;
+}
+
 export default function QuoteDetailsPage() {
-  const { quote, refreshQuote } = useQuote();
+  const { quote, setQuote, refreshQuote } = useQuote();
   const router = useRouter();
 
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isAccepting, setIsAccepting] = useState(false);
+  const [isDeclining, setIsDeclining] = useState(false);
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
   const [currentTimeSet, setCurrentTimeSet] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [attachments, setAttachments] = useState<Array<{ id: string; name: string; status: "uploading" | "done" | "error"; url?: string }>>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setCurrentTimeSet(true);
@@ -97,24 +120,81 @@ export default function QuoteDetailsPage() {
   }, []);
 
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    const handleUpdate = (e: any) => {
+      const payload = e?.detail;
+      const targetId = payload?.quoteId || payload?.data?.quoteId || payload?.id;
+      if (!targetId || targetId === quote?._id) {
+        refreshQuote(true);
+      }
+    };
+    window.addEventListener("quote_message", handleUpdate);
+    window.addEventListener("quote_updated", handleUpdate);
+    return () => {
+      window.removeEventListener("quote_message", handleUpdate);
+      window.removeEventListener("quote_updated", handleUpdate);
+    };
+  }, [quote?._id, refreshQuote]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length) return;
+    const files = Array.from(e.target.files);
+    e.target.value = "";
+
+    const newItems = files.map((file) => ({
+      id: Math.random().toString(36).substring(7),
+      name: file.name,
+      status: "uploading" as const,
+      file,
+    }));
+
+    setAttachments((prev) => [...prev, ...newItems.map(({ file, ...rest }) => rest)]);
+
+    for (const item of newItems) {
+      try {
+        const res: any = await mediaService.uploadImage({
+          file: item.file,
+          folder: `quotes/${quote?._id}/messages`,
+        });
+        const url = res.data?.secure_url || res.data?.url || res.secure_url || "";
+        setAttachments((prev) => prev.map((a) => (a.id === item.id ? { ...a, status: "done", url } : a)));
+      } catch (error) {
+        console.error("Upload failed for file:", item.name, error);
+        setAttachments((prev) => prev.map((a) => (a.id === item.id ? { ...a, status: "error" } : a)));
+      }
     }
-  }, [quote?.messages, quote?.conversations]);
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  };
 
   const handleSendMessage = async () => {
-    if (messageText.trim() && quote) {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    if (attachments.some((a) => a.status === "uploading")) return;
+
+    const uploadedUrls = attachments.filter((a) => a.status === "done" && a.url).map((a) => a.url);
+
+    if ((messageText.trim() || uploadedUrls.length > 0) && quote) {
       setIsSending(true);
       try {
         const res = await quoteService.updateQuote(quote._id, {
           action: "message",
           userComments: messageText.trim(),
+          attachedFilesUrl: uploadedUrls.length > 0 ? uploadedUrls : undefined,
           username: user?.fullName,
-          userAvatar: user?.avatar
+          userAvatar: user?.avatar,
         });
         if (res.isSuccessful || res.statusCode === 200) {
           setMessageText("");
-          refreshQuote();
+          setAttachments([]);
+          if (res.data) {
+            setQuote(res.data);
+          } else {
+            refreshQuote(true);
+          }
         }
       } catch (e) {
         console.error("Failed to send message:", e);
@@ -126,24 +206,62 @@ export default function QuoteDetailsPage() {
   };
 
   const handleAcceptQuote = async () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
     if (quote) {
       setIsAccepting(true);
       try {
         const res = await quoteService.updateQuote(quote._id, {
           action: "accept",
           username: user?.fullName,
-          userAvatar: user?.avatar
+          userAvatar: user?.avatar,
         });
         if (res.isSuccessful || res.statusCode === 200) {
-          toast.success("Quote accepted successfully!");
-          refreshQuote();
+          toast.success("Proposal accepted successfully!");
+          if (res.data) setQuote(res.data);
+          else refreshQuote(true);
         }
       } catch (e) {
         console.error("Failed to accept quote:", e);
-        toast.error("Failed to accept quote");
+        toast.error("Failed to accept proposal");
       } finally {
         setIsAccepting(false);
       }
+    }
+  };
+
+  const handleDeclineQuote = async () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    if (!quote) return;
+
+    setIsDeclining(true);
+    try {
+      const res = await quoteService.updateQuote(quote._id, {
+        action: "deny",
+        rejectionReason: declineReason.trim() || undefined,
+        username: user?.fullName,
+        userAvatar: user?.avatar,
+      });
+
+      if (res.isSuccessful || res.statusCode === 200) {
+        toast.success("Proposal declined");
+        setShowDeclineModal(false);
+        setDeclineReason("");
+        if (res.data) setQuote(res.data);
+        else refreshQuote(true);
+      } else {
+        toast.error(res.message || "Failed to decline proposal");
+      }
+    } catch (e: any) {
+      console.error("Failed to decline proposal:", e);
+      toast.error(e?.message || "Failed to decline proposal");
+    } finally {
+      setIsDeclining(false);
     }
   };
 
@@ -151,7 +269,7 @@ export default function QuoteDetailsPage() {
     if (!messageText.trim() || !quote) {
       if (messageInputRef.current) {
         messageInputRef.current.scrollIntoView({ behavior: "smooth" });
-        const textarea = document.querySelector("textarea");
+        const textarea = messageInputRef.current.querySelector("textarea");
         if (textarea) textarea.focus();
       }
       return;
@@ -163,11 +281,12 @@ export default function QuoteDetailsPage() {
         action: "request_modification",
         userComments: messageText.trim(),
         username: user?.fullName,
-        userAvatar: user?.avatar
+        userAvatar: user?.avatar,
       });
       if (res.isSuccessful || res.statusCode === 200) {
         setMessageText("");
-        refreshQuote();
+        if (res.data) setQuote(res.data);
+        else refreshQuote(true);
         toast.success("Modification request sent");
       }
     } catch (e) {
@@ -181,7 +300,7 @@ export default function QuoteDetailsPage() {
   const handleDownloadPDF = async () => {
     if (quote) {
       try {
-        await quoteService.downloadQuotePDF(quote._id);
+        await quoteService.downloadQuotePDF(quote);
       } catch (e) {
         console.error("Failed to download PDF:", e);
         toast.error("Failed to download PDF");
@@ -192,6 +311,16 @@ export default function QuoteDetailsPage() {
   if (!quote) return null;
 
   const manager = quote.assignedManager || (quote.assignedManagers && quote.assignedManagers[0]);
+  const displayItems =
+    quote.lineItems && quote.lineItems.length > 0
+      ? quote.lineItems
+      : quote.deliverableItems && quote.deliverableItems.length > 0
+      ? quote.deliverableItems
+      : [];
+
+  const isProposalActive =
+    quote.status.toLowerCase() === "sent" ||
+    (quote.status.toLowerCase() === "pending" && quote.totalCost && quote.totalCost > 0);
 
   return (
     <div className="flex flex-col gap-10">
@@ -236,15 +365,15 @@ export default function QuoteDetailsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {quote.deliverableItems && quote.deliverableItems.length > 0 ? (
-                      quote.deliverableItems.map((item: any, i: number) => (
+                    {displayItems.length > 0 ? (
+                      displayItems.map((item: any, i: number) => (
                         <tr key={i} className="border-b border-gray-400 last:border-0">
                           <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
-                            <div className="font-medium text-gray-700 mb-1">{item.description}</div>
+                            <div className="font-medium text-gray-700 mb-1">{item.description || item.name}</div>
                             {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
                           </td>
                           <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
-                            {item.duration} {item.unit || "Days"}
+                            {formatDuration(item.duration)}
                           </td>
                           <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top">
                             ${Number(item?.amount || item?.cost || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -257,7 +386,7 @@ export default function QuoteDetailsPage() {
                           <div className="font-medium text-gray-700 mb-1">{quote.projectTitle}</div>
                         </td>
                         <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
-                          {quote.totalDuration || "-"}
+                          {quote.totalDuration ? formatDuration(quote.totalDuration) : "-"}
                         </td>
                         <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top">
                           ${Number(quote?.totalCost || quote?.estimatedPrice || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -272,7 +401,7 @@ export default function QuoteDetailsPage() {
                   <div className="text-gray-500 font-bold mb-1 sm:mb-2 flex items-center justify-center gap-1">
                     Total Duration <TooltipIcon />
                   </div>
-                  <div className="font-medium text-gray-600">{quote.totalDuration || "-"}</div>
+                  <div className="font-medium text-gray-600">{quote.totalDuration ? formatDuration(quote.totalDuration) : "-"}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-gray-500 font-bold mb-1 sm:mb-2">Total Cost</div>
@@ -286,10 +415,10 @@ export default function QuoteDetailsPage() {
                   Expires {quote.expirationDate ? formatDate(quote.expirationDate) : "N/A"}
                 </span>
                 <div className="flex gap-3 w-full sm:w-auto">
-                  <button onClick={handleDownloadPDF} className="flex-1 sm:flex-none px-6 py-2 bg-[#163659] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm hover:bg-[#0a2036] transition-colors">
+                  <button onClick={handleDownloadPDF} className="flex-1 sm:flex-none px-6 py-2 bg-[#163659] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm hover:bg-[#0a2036] transition-colors cursor-pointer">
                     Download PDF
                   </button>
-                  <button onClick={() => window.print()} className="flex-1 sm:flex-none px-6 py-2 bg-[#4343F0] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm hover:bg-[#3232b7] transition-colors">
+                  <button onClick={() => window.print()} className="flex-1 sm:flex-none px-6 py-2 bg-[#4343F0] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm hover:bg-[#3232b7] transition-colors cursor-pointer">
                     Print
                   </button>
                 </div>
@@ -311,22 +440,37 @@ export default function QuoteDetailsPage() {
             </div>
           )}
 
-          {(quote.status.toLowerCase() === "sent" || (quote.status.toLowerCase() === "pending" && quote.totalCost && quote.totalCost > 0)) && (
-            <div className="flex flex-col sm:flex-row gap-4 justify-between w-full">
-              <button onClick={handleAcceptQuote} disabled={isAccepting} className="bg-[#327334] hover:bg-[#285c29] text-white text-sm font-bold py-3.5 px-14 rounded-md shadow-sm transition-all disabled:opacity-50">
-                Accept Quote
+          {isProposalActive && (
+            <div className="flex flex-col sm:flex-row gap-3 justify-between w-full">
+              <button
+                onClick={handleAcceptQuote}
+                disabled={isAccepting || isDeclining}
+                className="flex-1 bg-[#327334] hover:bg-[#285c29] text-white text-xs sm:text-sm font-bold py-3.5 px-6 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
+              >
+                {isAccepting ? <LoadingDots text="Accepting" /> : "Accept Proposal"}
               </button>
-              <button onClick={handleRequestModification} className="bg-[#1C446F] hover:bg-[#153455] text-white text-sm font-bold py-3.5 px-14 rounded-md shadow-sm transition-all">
+              <button
+                onClick={handleRequestModification}
+                disabled={isAccepting || isDeclining}
+                className="flex-1 bg-[#1C446F] hover:bg-[#153455] text-white text-xs sm:text-sm font-bold py-3.5 px-6 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
+              >
                 Request Modifications
+              </button>
+              <button
+                onClick={() => setShowDeclineModal(true)}
+                disabled={isAccepting || isDeclining}
+                className="flex-1 bg-[#7D1A1A] hover:bg-[#651515] text-white text-xs sm:text-sm font-bold py-3.5 px-6 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
+              >
+                Decline Proposal
               </button>
             </div>
           )}
 
           <div ref={messageInputRef} className="flex flex-col gap-6 w-full pt-4">
-            {(quote.messages && quote.messages.length > 0 || quote.conversations && quote.conversations.length > 0) && (
+            {((quote.messages && quote.messages.length > 0) || (quote.conversations && quote.conversations.length > 0)) && (
               <div className="flex flex-col gap-6 w-full">
                 {(quote.messages || quote.conversations || []).map((msg: any, i: number) => {
-                  if (!msg || msg.type === "quote_proposal") return null;
+                  if (!msg) return null;
                   const isLast = i === (quote.messages || quote.conversations || []).length - 1;
 
                   if (msg.type === "system_notification" || msg.isSystemMessage) {
@@ -340,10 +484,159 @@ export default function QuoteDetailsPage() {
                     );
                   }
 
-                  const isMe = msg.senderId === user?._id || msg.role === "client" || msg.senderRole === "client";
-                  const senderName = isMe ? "You" : msg.senderName || manager?.fullName || "Manager";
-                  const avatar = isMe ? user?.avatar : msg.senderAvatar || manager?.avatar;
+                  if (msg.type === "quote_proposal") {
+                    const content = msg.content || {};
+                    const propItems =
+                      content.lineItems && content.lineItems.length > 0
+                        ? content.lineItems
+                        : content.deliverableItems && content.deliverableItems.length > 0
+                        ? content.deliverableItems
+                        : [];
+                    const senderName = msg.username || msg.senderName || manager?.fullName || "Project Manager";
+                    const msgDate = msg.timestamp || msg.createdAt || msg.sentAt;
+                    const isAccepted = quote.status.toLowerCase() === "approved";
+                    const isDeclined = quote.status.toLowerCase() === "rejected";
+                    const canAct = !isAccepted && !isDeclined;
+
+                    return (
+                      <div key={msg.id || msg._id || `msg-${i}`} ref={isLast ? messagesEndRef : null} className="bg-white border border-gray-300 rounded-xl shadow-sm p-4 sm:p-6 md:p-8">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                          <div className="flex items-center gap-3">
+                            <span className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-tight">
+                              Submitted - {formatDate(msgDate)}
+                            </span>
+                            <span
+                              className={`px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border ${
+                                isAccepted
+                                  ? "border-green-400 bg-green-50 text-green-700"
+                                  : isDeclined
+                                  ? "border-red-400 bg-red-50 text-red-700"
+                                  : "border-blue-400 bg-blue-50 text-blue-600"
+                              }`}
+                            >
+                              {isAccepted ? "Accepted" : isDeclined ? "Declined" : "Offer Sent"}
+                            </span>
+                          </div>
+                          <span className="text-[10px] sm:text-xs text-gray-400 font-medium">
+                            From: {senderName}
+                          </span>
+                        </div>
+
+                        <div className="border-t border-gray-200 mb-6" />
+
+                        <h2 className="text-xl sm:text-2xl font-bold text-gray-700 mb-2">Project Proposal</h2>
+                        {content.projectDescription && (
+                          <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+                            {content.projectDescription}
+                          </p>
+                        )}
+
+                        {propItems.length > 0 && (
+                          <div className="border border-gray-300 rounded-lg overflow-x-auto mb-6">
+                            <table className="w-full min-w-[500px] sm:min-w-0">
+                              <thead>
+                                <tr className="border-b border-gray-300 bg-gray-50/50">
+                                  <th className="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-bold text-gray-600 w-1/2">Item</th>
+                                  <th className="px-4 sm:px-6 py-3 text-center text-xs sm:text-sm font-bold text-gray-600">Duration</th>
+                                  <th className="px-4 sm:px-6 py-3 text-right text-xs sm:text-sm font-bold text-gray-600">Amount</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {propItems.map((item: any, idx: number) => (
+                                  <tr key={idx} className="border-b border-gray-200 last:border-0">
+                                    <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-700 font-medium align-top">
+                                      <div>{item.description || item.name}</div>
+                                      {item.details && <div className="text-[10px] text-gray-400 mt-0.5">{item.details}</div>}
+                                    </td>
+                                    <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
+                                      {formatDuration(item.duration)}
+                                    </td>
+                                    <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
+                                      ${Number(item?.amount || item?.cost || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+
+                        <div className="flex flex-row justify-end gap-6 sm:gap-16 text-xs sm:text-sm mb-8">
+                          <div className="text-center">
+                            <div className="text-gray-500 font-bold mb-1">Total Duration</div>
+                            <div className="font-medium text-gray-700">
+                              {content.totalDuration ? formatDuration(content.totalDuration) : "-"}
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-gray-500 font-bold mb-1">Total Cost</div>
+                            <div className="font-medium text-gray-800">
+                              ${Number(content.totalCost ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                        </div>
+
+                        {canAct && (
+                          <div className="flex flex-col sm:flex-row gap-3 justify-between w-full pt-4 border-t border-gray-100">
+                            <button
+                              onClick={handleAcceptQuote}
+                              disabled={isAccepting || isDeclining}
+                              className="flex-1 bg-[#327334] hover:bg-[#285c29] text-white text-xs sm:text-sm font-bold py-3 px-6 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
+                            >
+                              {isAccepting ? <LoadingDots text="Accepting" /> : "Accept Proposal"}
+                            </button>
+                            <button
+                              onClick={handleRequestModification}
+                              disabled={isAccepting || isDeclining}
+                              className="flex-1 bg-[#1C446F] hover:bg-[#153455] text-white text-xs sm:text-sm font-bold py-3 px-6 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
+                            >
+                              Request Modifications
+                            </button>
+                            <button
+                              onClick={() => setShowDeclineModal(true)}
+                              disabled={isAccepting || isDeclining}
+                              className="flex-1 bg-[#7D1A1A] hover:bg-[#651515] text-white text-xs sm:text-sm font-bold py-3 px-6 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
+                            >
+                              Decline Proposal
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  if (msg.type === "system_notification" || msg.isSystemMessage) {
+                    const title = msg.content?.systemText || msg.systemText || "System Notification";
+                    const text = msg.content?.text || msg.text || "";
+                    return (
+                      <div key={msg.id || msg._id || `msg-${i}`} className="text-center py-10" ref={isLast ? messagesEndRef : null}>
+                        <h3 className="text-3xl font-bold text-gray-600 mb-3">{title}</h3>
+                        <p className="text-gray-400 font-medium text-sm">{text}</p>
+                      </div>
+                    );
+                  }
+
+                  const isMe = msg.userId === user?._id || msg.senderId === user?._id || msg.role === "client" || msg.senderRole === "client" || msg.sender === "client";
+                  const senderName = isMe ? "You" : msg.username || msg.senderName || manager?.fullName || "Manager";
+                  const avatar = isMe ? user?.avatar : msg.userAvatar || msg.senderAvatar || manager?.avatar;
                   const initial = senderName.charAt(0).toUpperCase();
+
+                  const msgDate = msg.timestamp || msg.createdAt || msg.sentAt;
+                  const msgText = msg.content?.text || msg.content?.projectDescription || msg.text || msg.message;
+                  const timeFormatted = msgDate ? new Date(msgDate).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+                  const dateFormatted = msgDate ? formatDate(msgDate) : "";
+                  const dateDisplay = timeFormatted && dateFormatted && dateFormatted !== "N/A"
+                    ? `${timeFormatted} - ${dateFormatted}`
+                    : dateFormatted !== "N/A"
+                      ? dateFormatted
+                      : "";
+
+                  const rawAttached = msg.content?.attachedFiles || msg.attachments || msg.attachedFiles || msg.content?.attachedFilesUrl || msg.attachedFilesUrl || [];
+                  const attachedFiles = (Array.isArray(rawAttached) ? rawAttached : []).map((file: any) =>
+                    typeof file === 'string'
+                      ? { url: file, filename: file.split('/').pop()?.split('?')[0] || 'File' }
+                      : { url: file.url, filename: file.filename || file.name || (file.url ? file.url.split('/').pop()?.split('?')[0] : 'File') }
+                  ).filter((f: any) => Boolean(f.url));
 
                   return (
                     <div key={msg.id || msg._id || `msg-${i}`} ref={isLast ? messagesEndRef : null} className="bg-white rounded-xl shadow-sm border border-gray-300 overflow-hidden transition-all duration-300 hover:shadow-md">
@@ -361,27 +654,29 @@ export default function QuoteDetailsPage() {
                               <h4 className="font-bold text-gray-800 text-base sm:text-lg">{senderName}</h4>
                             </div>
                           </div>
-                          <span className="text-[10px] sm:text-sm text-gray-500 font-bold uppercase tracking-wide whitespace-nowrap">
-                            {msg.createdAt || msg.sentAt ? new Date(msg.createdAt || msg.sentAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
-                            {" - "}
-                            {formatDate(msg.createdAt || msg.sentAt)}
-                          </span>
+                          {dateDisplay && (
+                            <span className="text-[10px] sm:text-sm text-gray-500 font-bold uppercase tracking-wide whitespace-nowrap">
+                              {dateDisplay}
+                            </span>
+                          )}
                         </div>
-                        <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap pl-0 md:pl-[64px] mb-6">
-                          {msg.content?.text || msg.text || msg.message}
-                        </div>
-                        {msg.attachedFiles && msg.attachedFiles.length > 0 && (
+                        {msgText && msgText.trim() && (
+                          <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap pl-0 md:pl-[64px] mb-6">
+                            {msgText}
+                          </div>
+                        )}
+                        {attachedFiles.length > 0 && (
                           <div className="pl-0 md:pl-[64px] mb-6">
                             <h5 className="text-sm font-bold text-gray-700 mb-3">Attached Files</h5>
                             <div className="border-t border-gray-200 mb-4" />
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
-                              {msg.attachedFiles.map((file: any, j: number) => {
+                              {attachedFiles.map((file: any, j: number) => {
                                 const url = file.url;
                                 const filename = file.filename || file.name || "file";
                                 const safeUrl = url.startsWith("http:") ? url.replace("http:", "https:") : url;
                                 const isImage = isImageUrl(url);
                                 const isSvg = url.toLowerCase().includes(".svg");
-                                const isPdf = url.toLowerCase().includes(".pdf");
+                                const isPdf = url.toLowerCase().includes(".pdf") || (url || "").split("?")[0].toLowerCase().endsWith(".pdf");
                                 return (
                                   <a
                                     key={j}
@@ -473,15 +768,86 @@ export default function QuoteDetailsPage() {
               </div>
               <div className="p-6">
                 <textarea
-                  className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent"
-                  placeholder="Type a message or request modifications..."
+                  className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent cursor-pointer"
+                  placeholder={user ? "Type a message or request modifications..." : "Please log in or register to message our team..."}
                   value={messageText}
-                  onChange={e => setMessageText(e.target.value)}
+                  onChange={(e) => {
+                    if (!user) {
+                      setShowAuthModal(true);
+                      return;
+                    }
+                    setMessageText(e.target.value);
+                  }}
+                  onClick={() => {
+                    if (!user) setShowAuthModal(true);
+                  }}
+                  onFocus={() => {
+                    if (!user) setShowAuthModal(true);
+                  }}
+                  readOnly={!user}
                 />
               </div>
-              <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-end gap-4">
+
+              {attachments.length > 0 && (
+                <div className="px-6 pb-4 flex flex-wrap gap-2">
+                  {attachments.map((file) => (
+                    <div key={file.id} className="flex items-center gap-2 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-900">
+                      <span>📎</span>
+                      <span className="truncate max-w-[160px]">{file.name}</span>
+                      {file.status === "uploading" ? (
+                        <span className="text-[10px] text-blue-500 italic">uploading...</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(file.id)}
+                          className="text-red-400 hover:text-red-600 font-bold ml-1 cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!user) {
+                        setShowAuthModal(true);
+                        return;
+                      }
+                      fileInputRef.current?.click();
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    <span>📎</span>
+                    Attach Files
+                  </button>
+                </div>
+
                 <div className="flex gap-3 w-full sm:w-auto">
-                  <button onClick={handleSendMessage} disabled={isSending || !messageText.trim()} className="flex-1 sm:flex-none px-10 py-2.5 bg-blue-800 hover:bg-blue-900 text-white rounded-md text-sm font-bold transition-all disabled:bg-gray-400">
+                  <button
+                    onClick={(e) => {
+                      if (!user) {
+                        e.preventDefault();
+                        setShowAuthModal(true);
+                        return;
+                      }
+                      handleSendMessage();
+                    }}
+                    disabled={user && (isSending || (!messageText.trim() && attachments.length === 0) || attachments.some((a) => a.status === "uploading"))}
+                    className="flex-1 sm:flex-none px-10 py-2.5 bg-blue-800 hover:bg-blue-900 text-white rounded-md text-sm font-bold transition-all disabled:bg-gray-400 cursor-pointer"
+                  >
                     {isSending ? <LoadingDots text="Sending" /> : "Send Message"}
                   </button>
                 </div>
@@ -507,6 +873,59 @@ export default function QuoteDetailsPage() {
           </div>
         </div>
       </div>
+
+      {/* Decline Proposal Modal */}
+      {showDeclineModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => !isDeclining && setShowDeclineModal(false)}
+        >
+          <div
+            className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-gray-800 mb-2">Decline Proposal</h3>
+            <p className="text-xs text-gray-500 mb-4">
+              Are you sure you want to decline this proposal? You can optionally provide feedback to our team below.
+            </p>
+            <textarea
+              value={declineReason}
+              onChange={(e) => setDeclineReason(e.target.value)}
+              placeholder="Reason for declining (optional)..."
+              className="w-full h-24 p-3 text-sm border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 mb-5"
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                disabled={isDeclining}
+                onClick={() => setShowDeclineModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeclining}
+                onClick={handleDeclineQuote}
+                className="px-5 py-2 bg-[#7D1A1A] hover:bg-[#651515] text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-60 cursor-pointer"
+              >
+                {isDeclining ? <LoadingDots text="Declining" /> : "Decline Proposal"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Auth Prompt Modal */}
+      <AuthPromptModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        title="Join the Conversation"
+        description="Please log in or register to message our team and collaborate on this quote."
+        redirectUrl={quote?._id ? `/dashboard/my-quotes/${quote._id}/details` : undefined}
+      />
     </div>
   );
 }
