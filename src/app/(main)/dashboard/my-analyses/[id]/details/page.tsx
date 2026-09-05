@@ -38,14 +38,86 @@ const formatStatusTitle = (rawTitle: string): string => {
 const renderStatusMessageText = (text: string, attachments?: any[]) => {
   if (!text) return null;
 
-  const contactRegex = /(click here to contact us for further assistance\.?|click here to contact us\.?|contact us for further assistance\.?|contact us\.?)/i;
-
   const pdfAttachment = attachments?.find((a: any) => {
     const u = typeof a === "string" ? a : a?.url || "";
     return u.toLowerCase().endsWith(".pdf") || a?.type === "pdf";
   });
   const pdfUrl = typeof pdfAttachment === "string" ? pdfAttachment : pdfAttachment?.url;
 
+  const renderPdfButton = () => {
+    if (!pdfUrl) return null;
+    return (
+      <span className="block mt-3">
+        <a
+          href={pdfUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#5356ff]/10 hover:bg-[#5356ff]/20 text-[#5356ff] text-xs font-bold rounded-lg border border-[#5356ff]/30 transition-colors"
+        >
+          📄 View / Download Analysis Report (PDF)
+        </a>
+      </span>
+    );
+  };
+
+  // 1. Markdown link: [Label](url)
+  const markdownRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/;
+  if (markdownRegex.test(text)) {
+    const parts: Array<{ type: "text" | "link"; label?: string; href?: string; content?: string }> = [];
+    const globalMdRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g;
+    let match: RegExpExecArray | null;
+    let lastIndex = 0;
+
+    while ((match = globalMdRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ type: "text", content: text.substring(lastIndex, match.index) });
+      }
+      const label = match[1];
+      let href = match[2];
+      if (href.includes("/help-support/contact-us")) {
+        href = "/help-support/contact-us";
+      }
+      parts.push({ type: "link", label, href });
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < text.length) {
+      parts.push({ type: "text", content: text.substring(lastIndex) });
+    }
+
+    return (
+      <span>
+        {parts.map((part, idx) => {
+          if (part.type === "link" && part.href) {
+            const isInternal = part.href.startsWith("/");
+            return isInternal ? (
+              <Link
+                key={idx}
+                href={part.href}
+                className="text-[#5356ff] underline hover:text-[#3232b7] font-semibold transition-colors"
+              >
+                {part.label}
+              </Link>
+            ) : (
+              <a
+                key={idx}
+                href={part.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#5356ff] underline hover:text-[#3232b7] font-semibold transition-colors"
+              >
+                {part.label}
+              </a>
+            );
+          }
+          return <span key={idx}>{part.content}</span>;
+        })}
+        {renderPdfButton()}
+      </span>
+    );
+  }
+
+  // 2. Contact phrase regex without markdown
+  const contactRegex = /(click here to contact us for further assistance\.?|click here to contact us\.?|contact us for further assistance\.?|contact us\.?)/i;
   if (contactRegex.test(text)) {
     const parts = text.split(contactRegex);
     return (
@@ -55,7 +127,7 @@ const renderStatusMessageText = (text: string, attachments?: any[]) => {
             <Link
               key={i}
               href="/help-support/contact-us"
-              className="text-blue-600 underline hover:text-blue-800 font-semibold transition-colors"
+              className="text-[#5356ff] underline hover:text-[#3232b7] font-semibold transition-colors"
             >
               {part}
             </Link>
@@ -63,22 +135,12 @@ const renderStatusMessageText = (text: string, attachments?: any[]) => {
             <span key={i}>{part}</span>
           )
         )}
-        {pdfUrl && (
-          <span className="block mt-3">
-            <a
-              href={pdfUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-lg border border-blue-200 transition-colors"
-            >
-              📄 View / Download Analysis Report (PDF)
-            </a>
-          </span>
-        )}
+        {renderPdfButton()}
       </span>
     );
   }
 
+  // 3. Raw URL
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   if (urlRegex.test(text)) {
     const parts = text.split(urlRegex);
@@ -91,7 +153,7 @@ const renderStatusMessageText = (text: string, attachments?: any[]) => {
               href={part}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 underline hover:text-blue-800 font-semibold"
+              className="text-[#5356ff] underline hover:text-[#3232b7] font-semibold transition-colors"
             >
               {part}
             </a>
@@ -99,18 +161,7 @@ const renderStatusMessageText = (text: string, attachments?: any[]) => {
             <span key={i}>{part}</span>
           )
         )}
-        {pdfUrl && (
-          <span className="block mt-3">
-            <a
-              href={pdfUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-lg border border-blue-200 transition-colors"
-            >
-              📄 View / Download Analysis Report (PDF)
-            </a>
-          </span>
-        )}
+        {renderPdfButton()}
       </span>
     );
   }
@@ -118,18 +169,7 @@ const renderStatusMessageText = (text: string, attachments?: any[]) => {
   return (
     <span>
       {text}
-      {pdfUrl && (
-        <span className="block mt-3">
-          <a
-            href={pdfUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-lg border border-blue-200 transition-colors"
-          >
-            📄 View / Download Analysis Report (PDF)
-          </a>
-        </span>
-      )}
+      {renderPdfButton()}
     </span>
   );
 };

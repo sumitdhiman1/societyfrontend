@@ -226,7 +226,7 @@ export default function MyAnalysesPage() {
                 {activeTab !== "all" ? activeTab.replace(/_/g, " ") : ""} analysis requests.
               </p>
               <button
-                onClick={() => router.push("/#request-analysis")}
+                onClick={() => router.push("/dashboard/new-project/packages?categorycode=ANALYSIS&sortBy=order_asc")}
                 className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-sm font-bold py-2.5 px-6 rounded-[4px] transition-colors whitespace-nowrap cursor-pointer"
               >
                 Request a New Analysis
@@ -286,7 +286,7 @@ export default function MyAnalysesPage() {
               New Analysis
             </h3>
             <button
-              onClick={() => router.push("/#request-analysis")}
+              onClick={() => router.push("/dashboard/new-project/packages?categorycode=ANALYSIS&sortBy=order_asc")}
               className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-[15px] font-bold py-3.5 px-8 rounded-[7px] transition-all shadow-sm whitespace-nowrap font-sans border-2 border-[#4343F0] cursor-pointer"
             >
               Request a New Analysis
