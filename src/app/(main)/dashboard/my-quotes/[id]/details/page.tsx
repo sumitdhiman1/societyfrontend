@@ -181,7 +181,7 @@ export default function QuoteDetailsPage() {
   const handleDownloadPDF = async () => {
     if (quote) {
       try {
-        await quoteService.downloadQuotePDF(quote._id);
+        await quoteService.downloadQuotePDF(quote);
       } catch (e) {
         console.error("Failed to download PDF:", e);
         toast.error("Failed to download PDF");
