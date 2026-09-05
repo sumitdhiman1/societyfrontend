@@ -6,21 +6,21 @@ import { useQuote } from "../layout";
 import { quoteService } from "@/lib/quoteService";
 import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";
-import { downloadFile } from "@/lib/utils";
+import { downloadFile, isImageUrl } from "@/lib/utils";
 
 function ensureHttps(url: string) {
   return url.startsWith("http://") ? "https://" + url.slice(7) : url;
 }
 
-function getCategory(mimeType: string) {
-  if (mimeType.startsWith("image/")) return "image";
-  if (mimeType.startsWith("video/")) return "video";
-  if (mimeType === "application/pdf" || mimeType.includes("word") || mimeType.includes("spreadsheet") || mimeType.includes("presentation") || mimeType.includes("text")) return "document";
+function getCategory(mimeType: string, url?: string) {
+  if (mimeType?.startsWith("image/") || (url && isImageUrl(url))) return "image";
+  if (mimeType?.startsWith("video/")) return "video";
+  if (mimeType === "application/pdf" || mimeType?.includes("word") || mimeType?.includes("spreadsheet") || mimeType?.includes("presentation") || mimeType?.includes("text")) return "document";
   return "other";
 }
 
-function isImage(mimeType: string) {
-  return mimeType.startsWith("image/");
+function isImage(mimeType: string, url?: string) {
+  return mimeType?.startsWith("image/") || (url ? isImageUrl(url) : false);
 }
 
 const filterCategories = [
@@ -32,7 +32,7 @@ const filterCategories = [
 ];
 
 function FileIcon({ mimeType, url }: { mimeType: string; url: string }) {
-  if (isImage(mimeType)) {
+  if (isImage(mimeType, url)) {
     return (
       <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
         <img src={ensureHttps(url)} alt="" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
@@ -314,9 +314,17 @@ export default function QuoteFilesPage() {
             ) : viewMode === "grid" ? (
               <div className="p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {filteredFiles.map(file => (
-                  <div key={file._id} className="group relative rounded-xl overflow-hidden bg-gray-100 border border-gray-200 aspect-square cursor-pointer hover:border-[#3232b7] transition-all" onClick={() => isImage(file.mimeType) && setPreviewFile(file)}>
-                    {isImage(file.mimeType) ? (
-                      <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
+                  <div key={file._id} className="group relative rounded-xl overflow-hidden bg-gray-100 border border-gray-200 aspect-square cursor-pointer hover:border-[#3232b7] transition-all" onClick={() => isImage(file.mimeType, file.url) && setPreviewFile(file)}>
+                    {isImage(file.mimeType, file.url) ? (
+                      <img
+                        src={file.url?.startsWith("http:") ? file.url.replace("http:", "https:") : file.url}
+                        alt={file.name}
+                        className={`w-full h-full ${file.url?.toLowerCase().includes(".svg") ? "object-contain p-2" : "object-cover"}`}
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (target.src.startsWith("http:")) target.src = target.src.replace("http:", "https:");
+                        }}
+                      />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center">
                         <FileIcon mimeType={file.mimeType} url={file.url} />
@@ -337,7 +345,7 @@ export default function QuoteFilesPage() {
               <div className="divide-y divide-gray-100">
                 {filteredFiles.map(file => (
                   <div key={file._id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors group">
-                    <div onClick={() => isImage(file.mimeType) && setPreviewFile(file)} className={isImage(file.mimeType) ? "cursor-pointer" : ""}>
+                    <div onClick={() => isImage(file.mimeType, file.url) && setPreviewFile(file)} className={isImage(file.mimeType, file.url) ? "cursor-pointer" : ""}>
                       <FileIcon mimeType={file.mimeType} url={file.url} />
                     </div>
                     <div className="flex-1 min-w-0">

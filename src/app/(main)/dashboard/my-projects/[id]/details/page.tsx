@@ -5,7 +5,7 @@ import { useProject } from "@/context/ProjectContext";
 import { projectService } from "@/lib/projectService";
 import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";
-import { downloadFile } from "@/lib/utils";
+import { downloadFile, isImageUrl } from "@/lib/utils";
 import LoadingDots from "@/components/common/LoadingDots";
 
 export default function ProjectDetailsPage() {
@@ -529,7 +529,284 @@ export default function ProjectDetailsPage() {
                           <span className="text-[10px] sm:text-xs text-gray-400 font-medium">From: {msg.username || "Project Manager"}</span>
                         </div>
 
-                        {content.description && <div className="mb-10 text-sm text-gray-500 leading-relaxed font-medium">{content.description}</div>}
+                        {content.description && <div className="mb-6 text-sm text-gray-500 leading-relaxed font-medium">{content.description}</div>}
+
+                        {/* Attachments if any (comes first before Recommended Solutions) */}
+                        {((msg.attachments && msg.attachments.length > 0) || (content.attachedFiles && content.attachedFiles.length > 0)) && (
+                          <div className="mb-6">
+                            <h5 className="text-sm font-bold text-gray-700 mb-3">Attached Files</h5>
+                            <div className="border-t border-gray-200 mb-4" />
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
+                              {(msg.attachments || content.attachedFiles).map((att: any, aIdx: number) => {
+                                const url = typeof att === "string" ? att : att.url;
+                                const filename = (typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "Attachment") : att.filename || att.name || "Attachment");
+                                const safeUrl = url.startsWith("http:") ? url.replace("http:", "https:") : url;
+                                const isImg = isImageUrl(url);
+                                const isSvg = url.toLowerCase().includes(".svg");
+                                const isPdf = url.toLowerCase().includes(".pdf");
+
+                                return (
+                                  <a
+                                    key={aIdx}
+                                    href={safeUrl}
+                                    onClick={(e) => downloadFile(e, safeUrl, filename)}
+                                    download={filename}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
+                                  >
+                                    <div className="flex-grow flex items-center justify-center bg-white relative overflow-hidden">
+                                      {isImg ? (
+                                        <img
+                                          src={safeUrl}
+                                          alt={filename}
+                                          className={
+                                            isSvg
+                                              ? "w-full h-full object-contain p-2.5 group-hover:scale-105 transition-transform duration-300"
+                                              : "w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                          }
+                                          onError={(e) => {
+                                            const target = e.currentTarget;
+                                            if (target.src.startsWith("http:")) {
+                                              target.src = target.src.replace("http:", "https:");
+                                            }
+                                          }}
+                                        />
+                                      ) : isPdf ? (
+                                        <div className="flex flex-col items-center gap-1">
+                                          <svg className="w-12 h-12 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M11.363 2c4.155 0 2.637 6 2.637 6s6-1.518 6 2.638c0 4.155-3.345 7.518-7.5 7.518s-7.5-3.363-7.5-7.518c0-4.155 3.345-7.518 7.5-7.518zm1.5 7h-3v1h3v-1zm0 2h-3v1h3v-1zm0 2h-3v1h3v-1z" />
+                                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM6 4h7v5h5v11H6V4z" />
+                                          </svg>
+                                          <span className="text-[10px] font-bold text-red-600 uppercase">PDF</span>
+                                        </div>
+                                      ) : (
+                                        <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                      )}
+                                      <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
+                                        <div className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center">
+                                          <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                          </svg>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex items-center justify-center h-10 min-h-[40px]">
+                                      <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={filename}>{filename}</span>
+                                    </div>
+                                  </a>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {items.length > 0 && (
+                          <div className="mb-6">
+                            <h5 className="text-sm font-bold text-gray-700 mb-3">Recommended Solutions</h5>
+                            <div className="border-t border-gray-200 mb-4"></div>
+                            <div className="flex flex-nowrap overflow-x-auto pb-4 gap-4 scrollbar-hide" style={{ cursor: "grab" }}>
+                              {items.map((item: any, sIdx: number) => {
+                                const itemName = item.name || item.title || item.description || "Package Solution";
+                                let rawImage = item.imageUrl || item.thumbnailUrl || item.mediumUrl || item.coverImage || item.image;
+                                if (!rawImage) {
+                                  const normName = itemName.toLowerCase();
+                                  if (normName.includes("shopping") || normName.includes("e-commerce") || normName.includes("ecommerce")) {
+                                    rawImage = "https://res.cloudinary.com/dgg6e3flf/image/upload/v1785191252/packages/shopping-ecommerce-ads-management-packages.webp";
+                                  } else if (normName.includes("audit") || normName.includes("paid ads")) {
+                                    rawImage = "https://res.cloudinary.com/dgg6e3flf/image/upload/v1785191377/packages/paid-ads-audit-strategy-setup-packages.webp";
+                                  } else if (normName.includes("graphic") || normName.includes("brand")) {
+                                    rawImage = "https://res.cloudinary.com/dzllquuof/image/upload/v1766925547/Website/Services/q9cdia9ugzrbwqcoshcx.png";
+                                  } else if (normName.includes("development") || normName.includes("website dev")) {
+                                    rawImage = "https://res.cloudinary.com/dzllquuof/image/upload/v1766925656/Website/Services/eka2bc78jzyqc29qgtql.png";
+                                  } else if (normName.includes("maintenance")) {
+                                    rawImage = "https://res.cloudinary.com/dzllquuof/image/upload/v1766925669/Website/Services/o8hx0iuppsqf1jirki0q.png";
+                                  } else if (normName.includes("seo") || normName.includes("search engine")) {
+                                    rawImage = "https://res.cloudinary.com/dzllquuof/image/upload/v1766925617/Website/Services/cfbweuiwymvpzjpcbz6p.png";
+                                  } else if (normName.includes("social media") || normName.includes("smm")) {
+                                    rawImage = "https://res.cloudinary.com/dzllquuof/image/upload/v1766925642/Website/Services/ldi5mje9jw6igxajabmx.png";
+                                  }
+                                }
+                                const itemImage = rawImage ? (rawImage.startsWith("http:") ? rawImage.replace("http:", "https:") : rawImage) : null;
+                                const isPkgSvg = itemImage ? itemImage.toLowerCase().includes(".svg") : false;
+                                const pkgId = item._id || item.id || item.packageId || item.package;
+                                const pkgHref = pkgId ? `/dashboard/new-project/packages/${pkgId}` : "#";
+
+                                const categoryMap: Record<string, string> = {
+                                  // Short auto-generated codes (from initials)
+                                  "PAM": "Paid Ads Marketing",
+                                  "GDB": "Graphic Design & Branding",
+                                  "GD": "Graphic Design & Branding",
+                                  "WD": "Websites Development",
+                                  "WDE": "Websites Development",
+                                  "WM": "Website Maintenance",
+                                  "SMM": "Social Media Marketing",
+                                  "SEO": "SEO",
+                                  "BUN": "Bundles",
+                                  // Full codes with underscores
+                                  "PAID_ADS": "Paid Ads Marketing",
+                                  "PAID_ADS_MARKETING": "Paid Ads Marketing",
+                                  "PAIDADS": "Paid Ads Marketing",
+                                  "PAID ADS MARKETING": "Paid Ads Marketing",
+                                  "PAID ADS": "Paid Ads Marketing",
+                                  "GRAPHIC_DESIGN": "Graphic Design & Branding",
+                                  "GRAPHIC_DESIGN_BRANDING": "Graphic Design & Branding",
+                                  "GRAPHIC DESIGN & BRANDING": "Graphic Design & Branding",
+                                  "GRAPHIC DESIGN": "Graphic Design & Branding",
+                                  "WEBSITES_DEVELOPMENT": "Websites Development",
+                                  "WEBSITE_DEVELOPMENT": "Websites Development",
+                                  "WEBSITES DEVELOPMENT": "Websites Development",
+                                  "WEBSITE MAINTENANCE": "Website Maintenance",
+                                  "WEBSITE_MAINTENANCE": "Website Maintenance",
+                                  "SOCIAL_MEDIA_MARKETING": "Social Media Marketing",
+                                  "SOCIAL MEDIA MARKETING": "Social Media Marketing",
+                                  "BUNDLES": "Bundles",
+                                  "BUNDLE": "Bundles",
+                                  "ANALYSIS": "Analysis",
+                                };
+                                // Strip auto-generated numeric suffix (e.g. "PAM-001" → "PAM")
+                                const stripSuffix = (code: string) => code.replace(/-\d+$/, '').toUpperCase().trim();
+
+                                let resolvedCategory = "";
+                                if (item.category && typeof item.category === 'object' && item.category.name) {
+                                  resolvedCategory = item.category.name;
+                                } else if (item.categoryName) {
+                                  resolvedCategory = item.categoryName;
+                                } else if (item.category && typeof item.category === 'string' && !item.category.match(/^[0-9a-fA-F]{24}$/)) {
+                                  resolvedCategory = item.category;
+                                }
+
+                                const upperCat = (resolvedCategory || item.categorycode || "").toUpperCase().trim();
+                                const strippedCat = stripSuffix(item.categorycode || upperCat);
+                                if (categoryMap[upperCat]) {
+                                  resolvedCategory = categoryMap[upperCat];
+                                } else if (categoryMap[strippedCat]) {
+                                  resolvedCategory = categoryMap[strippedCat];
+                                } else if (!resolvedCategory || resolvedCategory.includes("_") || resolvedCategory.match(/^[A-Z]+-\d+$/i)) {
+                                  const normName = (item.name || item.title || "").toLowerCase();
+                                  if (normName.includes("ads") || normName.includes("shopping") || normName.includes("e-commerce")) {
+                                    resolvedCategory = "Paid Ads Marketing";
+                                  } else if (normName.includes("graphic") || normName.includes("brand") || normName.includes("logo")) {
+                                    resolvedCategory = "Graphic Design & Branding";
+                                  } else if (normName.includes("development") || normName.includes("website dev")) {
+                                    resolvedCategory = "Websites Development";
+                                  } else if (normName.includes("maintenance")) {
+                                    resolvedCategory = "Website Maintenance";
+                                  } else if (normName.includes("seo") || normName.includes("search engine")) {
+                                    resolvedCategory = "SEO";
+                                  } else if (normName.includes("social media") || normName.includes("smm")) {
+                                    resolvedCategory = "Social Media Marketing";
+                                  } else if (item.isBundle || upperCat.includes("BUNDLE")) {
+                                    resolvedCategory = "Bundles";
+                                  } else {
+                                    resolvedCategory = resolvedCategory || "Service Package";
+                                  }
+                                }
+
+                                 let itemDescription = item.description || item.details || "";
+                                 if (!itemDescription) {
+                                   const normName = (item.name || item.title || "").toLowerCase();
+                                   if (normName.includes("audit") || normName.includes("paid ads")) {
+                                     itemDescription = "Audit of existing ad accounts, conversion tracking setup, and a complete strategy roadmap.";
+                                   } else if (normName.includes("shopping") || normName.includes("ecommerce") || normName.includes("e-commerce")) {
+                                     itemDescription = "End-to-end management of Google Shopping, Meta Product Ads, and e-commerce campaigns.";
+                                   } else if (normName.includes("graphic") || normName.includes("brand") || normName.includes("logo")) {
+                                     itemDescription = "Professional branding, visual assets, logo design, and graphic materials.";
+                                   } else if (normName.includes("development") || normName.includes("website dev")) {
+                                     itemDescription = "Custom modern web development with responsive design and high performance.";
+                                   } else if (normName.includes("maintenance")) {
+                                     itemDescription = "Ongoing security updates, bug fixes, performance monitoring, and backups.";
+                                   } else if (normName.includes("seo") || normName.includes("search engine")) {
+                                     itemDescription = "Complete search engine optimization to boost organic visibility and rankings.";
+                                   } else if (normName.includes("social media") || normName.includes("smm")) {
+                                     itemDescription = "Content creation, campaign management, and audience growth across social channels.";
+                                   } else if (normName.includes("analysis")) {
+                                     itemDescription = "Our standard free analysis offer covering brand, UI/UX, functionalities, AI potentiality, tech stack.";
+                                   } else if (normName.includes("checking")) {
+                                     itemDescription = "An offer to check the completed work of any other web professionals, including your own in-house team.";
+                                   } else {
+                                     itemDescription = "Comprehensive package solution tailored for your business needs.";
+                                   }
+                                 }
+                                 const itemPrice = item.cost || item.amount || item.price || 0;
+
+                                 const isMonthlyProduct = Boolean(
+                                   item.isMonthly === true ||
+                                   item.paymentType?.toLowerCase() === 'monthly' ||
+                                   item.billingType?.toLowerCase() === 'monthly' ||
+                                   String(item.duration || '').toLowerCase().includes('month') ||
+                                   String(item.priceText || '').toLowerCase().includes('/month') ||
+                                   String(item.priceText || '').toLowerCase().includes('month') ||
+                                   (itemName.toLowerCase().includes('management') && !itemName.toLowerCase().includes('audit')) ||
+                                   itemName.toLowerCase().includes('maintenance') ||
+                                   itemName.toLowerCase().includes('monthly') ||
+                                   itemName.toLowerCase().includes('retainer')
+                                 );
+                                 const suffix = isMonthlyProduct ? '/month' : '';
+
+                                 let priceText = item.priceText ? item.priceText.replace(/\$\s+/g, '$').trim() : `$${itemPrice}${suffix}`;
+                                 if (isMonthlyProduct && item.priceText && !item.priceText.toLowerCase().includes('month')) {
+                                   priceText = `${priceText.replace(/\$\s+/g, '$').trim()}/month`;
+                                 }
+
+                                return (
+                                  <a
+                                    key={sIdx}
+                                    href={pkgHref}
+                                    target={pkgId ? "_blank" : undefined}
+                                    rel="noopener noreferrer"
+                                    className="flex flex-col bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-all group w-full max-w-[240px] shrink-0"
+                                  >
+                                    <div className="h-32 bg-gray-50 relative overflow-hidden flex items-center justify-center">
+                                      {itemImage ? (
+                                        <img
+                                          alt={itemName}
+                                          className={
+                                            isPkgSvg
+                                              ? "w-full h-full object-contain p-2.5 transition-transform group-hover:scale-105"
+                                              : "w-full h-full object-cover transition-transform group-hover:scale-105"
+                                          }
+                                          src={itemImage}
+                                          onError={(e) => {
+                                            const target = e.currentTarget;
+                                            if (target.src.startsWith("http:")) {
+                                              target.src = target.src.replace("http:", "https:");
+                                            }
+                                          }}
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full flex flex-col items-center justify-center bg-blue-50/70 text-[#4343F0] p-2">
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                          </svg>
+                                        </div>
+                                      )}
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors"></div>
+                                    </div>
+                                    <div className="p-4 flex flex-col flex-1 bg-white">
+                                      <div className="bg-[#EBEBEB] text-[#8C8C8C] text-[8.5px] sm:text-[9px] font-extrabold px-2.5 py-0.5 rounded-full inline-flex items-center w-fit mb-2 tracking-wide uppercase font-sans shrink-0" title={resolvedCategory}>
+                                        {resolvedCategory}
+                                      </div>
+                                      <h4 className="font-bold text-gray-700 text-sm leading-snug mb-1 group-hover:text-blue-600 transition-colors line-clamp-2">
+                                        {itemName}
+                                      </h4>
+                                      {itemDescription && (
+                                        <p className="text-[11px] text-gray-400 font-medium leading-relaxed mb-4 line-clamp-2">
+                                          {itemDescription}
+                                        </p>
+                                      )}
+                                      <div className="mt-auto pt-2">
+                                        <span className="text-gray-500 font-extrabold text-xs">{priceText}</span>
+                                      </div>
+                                    </div>
+                                  </a>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
 
                         <div className="border border-gray-400 rounded-lg overflow-x-auto mb-6">
                           <table className="w-full min-w-[500px] sm:min-w-0">
@@ -718,26 +995,42 @@ export default function ProjectDetailsPage() {
                             {isClient ? "Attached Files" : "Delivered Files"}
                           </h5>
                           <div className="border-t border-gray-200 mb-4" />
-                          <div className="grid grid-cols-1 xs:grid-cols-2 sm:flex sm:flex-wrap gap-4">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
                             {attachmentList.map((att: any, attIdx: number) => {
                               const url = typeof att === "string" ? att : att.url;
                               const name = typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "file") : att.filename || att.name || "file";
-                              const isImg = url.match(/\.(jpeg|jpg|gif|png|svg|webp|avif)$/i);
+                              const safeUrl = url.startsWith("http:") ? url.replace("http:", "https:") : url;
+                              const isImg = isImageUrl(url);
+                              const isSvg = url.toLowerCase().includes(".svg");
                               const isPdf = url.toLowerCase().includes(".pdf");
 
                               return (
                                 <a
                                   key={url + attIdx}
-                                  href={url}
-                                  onClick={(e) => downloadFile(e, url, name)}
+                                  href={safeUrl}
+                                  onClick={(e) => downloadFile(e, safeUrl, name)}
                                   download={name}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="group block border border-gray-300 rounded-lg w-full sm:w-48 h-40 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
+                                  className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
                                 >
-                                  <div className="flex-grow flex items-center justify-center bg-white relative">
+                                  <div className="flex-grow flex items-center justify-center bg-white relative overflow-hidden">
                                     {isImg ? (
-                                      <img src={url} alt={name} className="w-full h-full object-contain" />
+                                      <img
+                                        src={safeUrl}
+                                        alt={name}
+                                        className={
+                                          isSvg
+                                            ? "w-full h-full object-contain p-2.5 group-hover:scale-105 transition-transform duration-300"
+                                            : "w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        }
+                                        onError={(e) => {
+                                          const target = e.currentTarget;
+                                          if (target.src.startsWith("http:")) {
+                                            target.src = target.src.replace("http:", "https:");
+                                          }
+                                        }}
+                                      />
                                     ) : isPdf ? (
                                       <div className="flex flex-col items-center gap-1">
                                         <svg className="w-12 h-12 text-red-500" fill="currentColor" viewBox="0 0 24 24">
@@ -751,15 +1044,15 @@ export default function ProjectDetailsPage() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                       </svg>
                                     )}
-                                    <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                      <div className="bg-white/90 p-2 rounded-full shadow-sm">
-                                        <svg className="w-5 h-5 text-[#5356ff]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
+                                      <div className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                         </svg>
                                       </div>
                                     </div>
                                   </div>
-                                  <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex items-center justify-center gap-2 h-10 min-h-[40px]">
+                                  <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex items-center justify-center h-10 min-h-[40px]">
                                     <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={name}>{name}</span>
                                   </div>
                                 </a>

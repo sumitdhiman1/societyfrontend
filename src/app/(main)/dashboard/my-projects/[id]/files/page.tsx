@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { projectService } from "@/lib/projectService";
 import { mediaService } from "@/lib/mediaService";
-import { downloadFile } from "@/lib/utils";
+import { downloadFile, isImageUrl } from "@/lib/utils";
 
 export default function ProjectFilesPage() {
   const params = useParams();
@@ -179,8 +179,20 @@ export default function ProjectFilesPage() {
                 <tr key={file._id || file.id || file.projectId} className="hover:bg-gray-50 transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <span className="text-xl" aria-hidden="true">{getFileIcon(file.type)}</span>
-                      <div className="flex flex-col">
+                      {isImageUrl(file.url) || file.type?.startsWith("image/") ? (
+                        <img
+                          src={file.url?.startsWith("http:") ? file.url.replace("http:", "https:") : file.url}
+                          alt={file.name}
+                          className={`w-10 h-10 rounded-lg border border-gray-200 shrink-0 ${file.url?.toLowerCase().includes(".svg") ? "object-contain p-1" : "object-cover"}`}
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            if (target.src.startsWith("http:")) target.src = target.src.replace("http:", "https:");
+                          }}
+                        />
+                      ) : (
+                        <span className="text-xl shrink-0" aria-hidden="true">{getFileIcon(file.type)}</span>
+                      )}
+                      <div className="flex flex-col overflow-hidden">
                         <span className="text-sm font-bold text-gray-700 truncate max-w-[200px] sm:max-w-md" title={file.name}>
                           {file.name}
                         </span>

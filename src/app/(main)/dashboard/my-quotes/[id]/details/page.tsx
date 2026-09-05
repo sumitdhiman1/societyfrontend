@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useQuote } from "../layout";
 import { authService } from "@/lib/authService";
 import { quoteService } from "@/lib/quoteService";
-import { downloadFile } from "@/lib/utils";
+import { downloadFile, isImageUrl } from "@/lib/utils";
 
 // Helper components
 const TooltipIcon = () => (
@@ -27,36 +27,51 @@ const LoadingDots = ({ text = "Sending" }) => (
   </span>
 );
 
-const PackageCard = ({ packageId, title, price, imageUrl, link }: any) => (
-  <a href={link || `/dashboard/new-project/packages/${packageId}`} target="_blank" rel="noopener noreferrer" className="flex flex-col bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow group w-full max-w-[240px] shrink-0">
-    <div className="h-32 bg-gray-50 relative overflow-hidden flex items-center justify-center">
-      {imageUrl ? (
-        <img src={imageUrl} alt={title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center text-gray-200">
-          <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-        </div>
-      )}
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
-    </div>
-    <div className="p-4 flex flex-col flex-1 bg-white">
-      <h4 className="font-bold text-gray-700 text-[13px] leading-tight line-clamp-2 min-h-[32px] mb-2 group-hover:text-blue-600 transition-colors">{title}</h4>
-      <div className="mt-auto flex items-end justify-between">
-        <div className="flex flex-col">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter leading-none mb-0.5">Starting at</span>
-          <span className="text-blue-600 font-black text-base leading-none">${Number(price || 0).toLocaleString("en-US", { minimumFractionDigits: 0 })}</span>
-        </div>
-        <div className="bg-gray-100 p-1.5 rounded-full group-hover:bg-blue-600 group-hover:text-white transition-all">
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-          </svg>
+const PackageCard = ({ packageId, title, price, imageUrl, link }: any) => {
+  const safeImg = imageUrl ? (imageUrl.startsWith("http:") ? imageUrl.replace("http:", "https:") : imageUrl) : null;
+  const isSvg = safeImg ? safeImg.toLowerCase().includes(".svg") : false;
+
+  return (
+    <a href={link || `/dashboard/new-project/packages/${packageId}`} target="_blank" rel="noopener noreferrer" className="flex flex-col bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow group w-full max-w-[240px] shrink-0">
+      <div className="h-32 bg-gray-50 relative overflow-hidden flex items-center justify-center">
+        {safeImg ? (
+          <img
+            src={safeImg}
+            alt={title}
+            className={`w-full h-full transition-transform group-hover:scale-105 ${isSvg ? "object-contain p-2.5" : "object-cover"}`}
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (target.src.startsWith("http:")) {
+                target.src = target.src.replace("http:", "https:");
+              }
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-200">
+            <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+        )}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
+      </div>
+      <div className="p-4 flex flex-col flex-1 bg-white">
+        <h4 className="font-bold text-gray-700 text-[13px] leading-tight line-clamp-2 min-h-[32px] mb-2 group-hover:text-blue-600 transition-colors">{title}</h4>
+        <div className="mt-auto flex items-end justify-between">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter leading-none mb-0.5">Starting at</span>
+            <span className="text-blue-600 font-black text-base leading-none">${Number(price || 0).toLocaleString("en-US", { minimumFractionDigits: 0 })}</span>
+          </div>
+          <div className="bg-gray-100 p-1.5 rounded-full group-hover:bg-blue-600 group-hover:text-white transition-all">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </div>
         </div>
       </div>
-    </div>
-  </a>
-);
+    </a>
+  );
+};
 
 function formatDate(date: string) {
   return date ? new Date(date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "N/A";
@@ -359,17 +374,41 @@ export default function QuoteDetailsPage() {
                           <div className="pl-0 md:pl-[64px] mb-6">
                             <h5 className="text-sm font-bold text-gray-700 mb-3">Attached Files</h5>
                             <div className="border-t border-gray-200 mb-4" />
-                            <div className="grid grid-cols-1 xs:grid-cols-2 sm:flex sm:flex-wrap gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
                               {msg.attachedFiles.map((file: any, j: number) => {
                                 const url = file.url;
                                 const filename = file.filename || file.name || "file";
-                                const isImage = url.match(/\.(jpeg|jpg|gif|png|svg|webp|avif)$/i);
+                                const safeUrl = url.startsWith("http:") ? url.replace("http:", "https:") : url;
+                                const isImage = isImageUrl(url);
+                                const isSvg = url.toLowerCase().includes(".svg");
                                 const isPdf = url.toLowerCase().includes(".pdf");
                                 return (
-                                  <a key={j} href={url} onClick={(e) => downloadFile(e as any, url, filename)} target="_blank" rel="noopener noreferrer" className="group block border border-gray-300 rounded-lg w-full sm:w-48 h-40 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col">
-                                    <div className="flex-grow flex items-center justify-center bg-white relative">
+                                  <a
+                                    key={j}
+                                    href={safeUrl}
+                                    onClick={(e) => downloadFile(e as any, safeUrl, filename)}
+                                    download={filename}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
+                                  >
+                                    <div className="flex-grow flex items-center justify-center bg-white relative overflow-hidden">
                                       {isImage ? (
-                                        <img src={url} alt={filename} className="w-full h-full object-contain" />
+                                        <img
+                                          src={safeUrl}
+                                          alt={filename}
+                                          className={
+                                            isSvg
+                                              ? "w-full h-full object-contain p-2.5 group-hover:scale-105 transition-transform duration-300"
+                                              : "w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                          }
+                                          onError={(e) => {
+                                            const target = e.currentTarget;
+                                            if (target.src.startsWith("http:")) {
+                                              target.src = target.src.replace("http:", "https:");
+                                            }
+                                          }}
+                                        />
                                       ) : isPdf ? (
                                         <div className="flex flex-col items-center gap-1">
                                           <span className="text-3xl">📄</span>
@@ -378,8 +417,8 @@ export default function QuoteDetailsPage() {
                                       ) : (
                                         <span className="text-3xl">📎</span>
                                       )}
-                                      <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <div className="bg-white/90 p-2 rounded-full shadow-sm">
+                                      <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
+                                        <div className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center">
                                           <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                           </svg>
@@ -387,7 +426,7 @@ export default function QuoteDetailsPage() {
                                       </div>
                                     </div>
                                     <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex items-center justify-center h-10 min-h-[40px]">
-                                      <span className="text-[10px] font-medium text-gray-600 truncate px-2">{filename}</span>
+                                      <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={filename}>{filename}</span>
                                     </div>
                                   </a>
                                 );
