@@ -403,7 +403,10 @@ export default function AnalysisDetailsPage() {
   const submittedDateStr = formatDateTime(analysis.createdAt || analysis.startDate);
   const deliveryDueStr = analysis.deadline ? formatDateTime(analysis.deadline) : "";
 
-  const manager = analysis.assignedManagers?.[0] || analysis.projectManager;
+  const managers = (Array.isArray(analysis.assignedManagers) && analysis.assignedManagers.length > 0)
+    ? analysis.assignedManagers
+    : (analysis.projectManager ? [analysis.projectManager] : []);
+  const manager = managers[0];
   const managerName = manager?.fullName || "Not assigned yet";
   const managerAvatar = manager?.avatar;
 
@@ -1306,26 +1309,57 @@ export default function AnalysisDetailsPage() {
 
         {/* Right Column / Sidebar (col-span-1) */}
         <div className="lg:col-span-1">
-          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-8">
-            <div className="text-center">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gray-100 border border-gray-200">
-                {managerAvatar ? (
-                  <img src={managerAvatar} alt={managerName} className="w-full h-full object-cover" />
-                ) : manager ? (
-                  <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-3xl font-bold">
-                    {managerName[0]}
-                  </div>
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white text-3xl font-bold">
-                    ?
-                  </div>
-                )}
+          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 sm:p-8">
+            {managers.length <= 1 ? (
+              <div className="text-center">
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gray-100 border border-gray-200">
+                  {managerAvatar ? (
+                    <img src={managerAvatar} alt={managerName} className="w-full h-full object-cover" />
+                  ) : manager ? (
+                    <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-3xl font-bold">
+                      {managerName[0]}
+                    </div>
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white text-3xl font-bold">
+                      ?
+                    </div>
+                  )}
+                </div>
+                <h4 className="text-lg font-bold text-gray-800 mb-1">{managerName}</h4>
+                <p className="text-sm text-gray-500 mb-4 font-medium uppercase tracking-wider text-[10px]">
+                  Project Manager
+                </p>
               </div>
-              <h4 className="text-lg font-bold text-gray-800 mb-1">{managerName}</h4>
-              <p className="text-sm text-gray-500 mb-4 font-medium uppercase tracking-wider text-[10px]">
-                Project Manager
-              </p>
-            </div>
+            ) : (
+              <div>
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 text-center">
+                  Project Managers ({managers.length})
+                </h3>
+                <div className="space-y-3">
+                  {managers.map((m: any, idx: number) => {
+                    const name = m?.fullName || "Project Manager";
+                    const avatar = m?.avatar;
+                    return (
+                      <div key={m._id || m.id || idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-sm overflow-hidden bg-gray-200 shrink-0">
+                          {avatar ? (
+                            <img src={avatar} alt={name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-bold text-sm">
+                              {name[0] || "M"}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-sm font-bold text-gray-800 truncate">{name}</h4>
+                          <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Project Manager</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
