@@ -6,7 +6,7 @@ import { useQuote } from "../layout";
 import { quoteService } from "@/lib/quoteService";
 import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";
-import { downloadFile } from "@/lib/utils";
+import { downloadFile, isImageUrl } from "@/lib/utils";
 
 function ensureHttps(url: string) {
   if (!url) return "";
@@ -16,7 +16,8 @@ function ensureHttps(url: string) {
 
 function isImage(mimeType?: string, url?: string, filename?: string) {
   if (mimeType && mimeType.startsWith("image/")) return true;
-  const str = (url || filename || "").split("?")[0].toLowerCase();
+  if (url && isImageUrl(url)) return true;
+  const str = (filename || "").split("?")[0].toLowerCase();
   return !!str.match(/\.(jpeg|jpg|gif|png|svg|webp|avif)$/i);
 }
 
@@ -352,7 +353,15 @@ export default function QuoteFilesPage() {
                 {filteredFiles.map(file => (
                   <div key={file._id} className="group relative rounded-xl overflow-hidden bg-gray-100 border border-gray-200 aspect-square cursor-pointer hover:border-[#3232b7] transition-all" onClick={() => isImage(file.mimeType, file.url, file.name) && setPreviewFile(file)}>
                     {isImage(file.mimeType, file.url, file.name) ? (
-                      <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
+                      <img
+                        src={file.url?.startsWith("http:") ? file.url.replace("http:", "https:") : file.url}
+                        alt={file.name}
+                        className={`w-full h-full ${file.url?.toLowerCase().includes(".svg") ? "object-contain p-2" : "object-cover"}`}
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (target.src.startsWith("http:")) target.src = target.src.replace("http:", "https:");
+                        }}
+                      />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center">
                         <FileIcon mimeType={file.mimeType} url={file.url} filename={file.name} />
