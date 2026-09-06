@@ -55,6 +55,7 @@ export default function StatusPopup({
           }`}
       >
         <button
+          type="button"
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-gray-100 rounded-full"
           aria-label="Close"
@@ -98,6 +99,7 @@ export default function StatusPopup({
           <h3 className="text-2xl font-bold mb-3 text-[#363636]">{title}</h3>
           <p className="text-gray-500 mb-8 leading-relaxed px-4">{message}</p>
           <button
+            type="button"
             onClick={actionButton?.onClick || onClose}
             className={`w-full py-3.5 rounded-xl font-bold text-white transition-all shadow-lg hover:shadow-xl active:scale-[0.98] cursor-pointer ${isSuccess ? "bg-[#5356ff] hover:bg-[#3232b7]" : "bg-red-500 hover:bg-red-600"
               }`}
