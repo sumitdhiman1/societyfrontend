@@ -640,6 +640,47 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
     expiry: { complete: false, error: null },
     cvc: { complete: false, error: null },
   });
+  const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  const focusFirstFieldError = (errs: Record<string, string>) => {
+    const order = [
+      "amount",
+      "cardHolderName",
+      "cardNumber",
+      "cardExpiry",
+      "cardCvc",
+      "personName",
+      "personEmail",
+      "billingStreet",
+      "billingCity",
+      "billingState",
+      "billingZip",
+    ];
+    const firstKey = order.find((key) => errs[key]);
+    if (!firstKey) return;
+
+    fieldRefs.current[firstKey]?.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    if (elements) {
+      if (firstKey === "cardNumber") {
+        elements.getElement(CardNumberElement)?.focus();
+        return;
+      }
+      if (firstKey === "cardExpiry") {
+        elements.getElement(CardExpiryElement)?.focus();
+        return;
+      }
+      if (firstKey === "cardCvc") {
+        elements.getElement(CardCvcElement)?.focus();
+        return;
+      }
+    }
+
+    const input = fieldRefs.current[firstKey];
+    if (input && "focus" in input) {
+      (input as HTMLInputElement).focus();
+    }
+  };
 
   const handleBizChange = (e: any) => setBizInfo({ ...bizInfo, [e.target.name]: e.target.value });
 
@@ -715,26 +756,7 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
 
     setErrors(errs);
     if (Object.keys(errs).length > 0) {
-      const fieldLabels: Record<string, string> = {
-        personName: "Contact name",
-        personEmail: "Contact email",
-        amount: "Payment amount",
-        cardHolderName: "Name on card",
-        billingStreet: "Billing address",
-        billingCity: "Billing city",
-        billingState: "Billing state",
-        billingZip: "Billing ZIP",
-        cardNumber: "Card number",
-        cardExpiry: "Expiry date",
-        cardCvc: "CVC",
-      };
-      const missing = Object.keys(errs).map((k) => fieldLabels[k] || k).join(", ");
-      setStatus({
-        isOpen: true,
-        type: "error",
-        title: "Validation Error",
-        message: `Fix: ${missing}. Card fields upar white box me check karo.`,
-      });
+      requestAnimationFrame(() => focusFirstFieldError(errs));
       return;
     }
 
@@ -887,12 +909,19 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
             <input type="radio" name="paymentOption" className="hidden" checked={paymentOption === "custom"} onChange={() => setPaymentOption("custom")} />
             <span className={`transition-colors font-normal text-[16px] ${paymentOption === "custom" ? "text-black" : "text-[#475569]"}`}>Other</span>
             {paymentOption === "custom" && (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1" ref={(el) => { fieldRefs.current.amount = el; }} data-field="amount">
                 <div className="relative w-28 ml-2">
                   <span className={`absolute left-0 top-1/2 -translate-y-1/2 font-medium ${errors.amount ? "text-red-500" : "text-[#475569]"}`}>{currency === "eur" ? "€" : "$"}</span>
-                  <input type="number" min="1" value={customAmount} onChange={(e) => { setCustomAmount(e.target.value); if (errors.amount) setErrors((p: any) => ({ ...p, amount: "" })); }} className={`w-full border-b ${errors.amount ? "border-red-500" : "border-black"} py-0.5 pl-4 pr-1 text-[16px] font-medium outline-none bg-transparent`} placeholder="Amount" />
+                  <input
+                    type="number"
+                    min="1"
+                    value={customAmount}
+                    onChange={(e) => { setCustomAmount(e.target.value); if (errors.amount) setErrors((p: any) => ({ ...p, amount: "" })); }}
+                    className={`w-full border-b ${errors.amount ? "border-red-500" : "border-black"} py-0.5 pl-4 pr-1 text-[16px] font-medium outline-none bg-transparent`}
+                    placeholder="Amount"
+                  />
                 </div>
-                {errors.amount && <span className="text-[10px] text-red-500 font-bold ml-2">{errors.amount}</span>}
+                {errors.amount && <span className="text-xs text-red-600 font-medium ml-2">{errors.amount}</span>}
               </div>
             )}
           </label>
@@ -923,35 +952,42 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
           <span className="text-sm text-gray-700">Billing address is the same as Business details</span>
         </label>
 
-        <div className="space-y-6 font-sans opacity-60 cursor-pointer">
-          <div>
+        <div className="space-y-6 font-sans">
+          <div data-field="cardHolderName">
             <label className="block text-[15px] font-medium text-[#111827] mb-2">Name on the card:</label>
-            <input type="text" value={cardholderName} onChange={(e) => { setCardholderName(e.target.value); if (errors.cardHolderName) setErrors((p: any) => ({ ...p, cardHolderName: "" })); }} placeholder="Name on the card" className={`w-full border-b ${errors.cardHolderName ? "border-red-500" : "border-gray-200 border-b"} py-2.5 bg-transparent outline-none placeholder-gray-400 focus:border-[#4F46E5] text-[15px] transition-all`} />
-            {errors.cardHolderName && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.cardHolderName}</span>}
+            <input
+              ref={(el) => { fieldRefs.current.cardHolderName = el; }}
+              type="text"
+              value={cardholderName}
+              onChange={(e) => { setCardholderName(e.target.value); if (errors.cardHolderName) setErrors((p: any) => ({ ...p, cardHolderName: "" })); }}
+              placeholder="Name on the card"
+              className={`w-full border-b ${errors.cardHolderName ? "border-red-500" : "border-gray-200"} py-2.5 bg-transparent outline-none placeholder-gray-400 focus:border-[#4F46E5] text-[15px] transition-all`}
+            />
+            {errors.cardHolderName && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardHolderName}</span>}
           </div>
 
-          <div>
+          <div ref={(el) => { fieldRefs.current.cardNumber = el; }} data-field="cardNumber">
             <label className="block text-[15px] font-medium text-[#111827] mb-2">Card number:</label>
-            <div className={`w-full border-b ${errors.cardNumber ? "border-red-500" : "border-gray-200 border-b"} py-2.5 focus-within:border-[#4F46E5] transition-all`}>
+            <div className={`w-full border-b ${errors.cardNumber ? "border-red-500" : "border-gray-200"} py-2.5 focus-within:border-[#4F46E5] transition-all`}>
               <CardNumberElement options={stripeCardNumberOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, number: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardNumber: "" })); }} />
             </div>
-            {errors.cardNumber && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.cardNumber}</span>}
+            {errors.cardNumber && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardNumber}</span>}
           </div>
 
           <div className="grid grid-cols-2 gap-10">
-            <div>
+            <div ref={(el) => { fieldRefs.current.cardExpiry = el; }} data-field="cardExpiry">
               <label className="block text-[15px] font-medium text-[#111827] mb-2">Expiry date:</label>
               <div className={`w-full border-b ${errors.cardExpiry ? "border-red-500" : "border-black/80"} py-2.5 focus-within:border-black transition-all`}>
                 <CardExpiryElement options={stripeCardExpiryOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, expiry: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardExpiry: "" })); }} />
               </div>
-              {errors.cardExpiry && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.cardExpiry}</span>}
+              {errors.cardExpiry && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardExpiry}</span>}
             </div>
-            <div>
+            <div ref={(el) => { fieldRefs.current.cardCvc = el; }} data-field="cardCvc">
               <label className="block text-[15px] font-medium text-[#111827] mb-2">CVC:</label>
               <div className={`w-full border-b ${errors.cardCvc ? "border-red-500" : "border-black/80"} py-2.5 focus-within:border-black transition-all`}>
                 <CardCvcElement options={stripeCardCvcOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, cvc: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardCvc: "" })); }} />
               </div>
-              {errors.cardCvc && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.cardCvc}</span>}
+              {errors.cardCvc && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardCvc}</span>}
             </div>
           </div>
         </div>
@@ -960,15 +996,19 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
       <p className="text-center text-[16px] text-gray-300 max-w-[680px] mx-auto font-sans">Please fill out your business information before paying.</p>
 
       <div className="bg-white rounded-[10px] p-6 md:p-10 text-black space-y-6 max-w-[680px] mx-auto w-full font-sans shadow-2xl">
-        <div>
+        <div data-field="personName">
           <label className="block text-[16px] font-bold mb-2">Contact person&apos;s name: *</label>
-          <input type="text" name="personName" value={bizInfo.personName} onChange={(e) => { handleBizChange(e); if (errors.personName) setErrors((p: any) => ({ ...p, personName: "" })); }} placeholder="Your answer" className={`w-full border-b ${errors.personName ? "border-red-500" : "border-black/80"} py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]`} />
-          {errors.personName && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.personName}</span>}
+          <input
+            ref={(el) => { fieldRefs.current.personName = el; }}
+            type="text" name="personName" value={bizInfo.personName} onChange={(e) => { handleBizChange(e); if (errors.personName) setErrors((p: any) => ({ ...p, personName: "" })); }} placeholder="Your answer" className={`w-full border-b ${errors.personName ? "border-red-500" : "border-black/80"} py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]`} />
+          {errors.personName && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.personName}</span>}
         </div>
-        <div>
+        <div data-field="personEmail">
           <label className="block text-[16px] font-bold mb-2">Contact person&apos;s email address: *</label>
-          <input type="email" name="personEmail" value={bizInfo.personEmail} onChange={(e) => { handleBizChange(e); if (errors.personEmail) setErrors((p: any) => ({ ...p, personEmail: "" })); }} placeholder="Your answer" className={`w-full border-b ${errors.personEmail ? "border-red-500" : "border-black/80"} py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]`} />
-          {errors.personEmail && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.personEmail}</span>}
+          <input
+            ref={(el) => { fieldRefs.current.personEmail = el; }}
+            type="email" name="personEmail" value={bizInfo.personEmail} onChange={(e) => { handleBizChange(e); if (errors.personEmail) setErrors((p: any) => ({ ...p, personEmail: "" })); }} placeholder="Your answer" className={`w-full border-b ${errors.personEmail ? "border-red-500" : "border-black/80"} py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]`} />
+          {errors.personEmail && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.personEmail}</span>}
         </div>
         <div>
           <label className="block text-[16px] font-bold mb-2">Contact person&apos;s phone number:</label>
