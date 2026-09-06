@@ -107,22 +107,20 @@ const CurrencyPillToggle = ({
   currency: string;
   setCurrency: (c: "usd" | "eur") => void;
 }) => (
-  <div className="flex bg-gray-100 rounded-lg p-0.5">
+  <div className="flex bg-gray-100 rounded-lg p-1  mx-2">
     <button
       type="button"
       onClick={() => setCurrency("usd")}
-      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
-        currency === "usd" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"
-      }`}
+      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "usd" ? "text-gray-500 hover:text-gray-700 " : "text-gray-500 hover:text-gray-700"
+        }`}
     >
       USD
     </button>
     <button
       type="button"
       onClick={() => setCurrency("eur")}
-      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
-        currency === "eur" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"
-      }`}
+      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "eur" ? "text-gray-500 hover:text-gray-700" : "text-gray-500 hover:text-gray-700"
+        }`}
     >
       EUR
     </button>
@@ -142,12 +140,13 @@ const CurrencyDropdown = ({
 }) => {
   const labelClass =
     size === "sm"
-      ? "text-[16px] font-bold text-[#002E8A] uppercase tracking-wide font-sans"
-      : "text-sm md:text-[18px] font-bold text-[#002E8A] uppercase tracking-wide font-sans";
+      ? "text-[16px] font-bold text-[#002E8A] uppercase tracking-wide font-sans "
+      : "text-sm text-[12px] md:text-[14px] font-bold text-[#002e8a] uppercase tracking-wide ";
+  // text-[12px] md:text-[14px] font-black text-[#002e8a] uppercase tracking-[0.1em]
   const valueClass =
     size === "sm"
       ? "text-[16px] font-bold text-black uppercase font-sans"
-      : "text-lg md:text-xl font-bold text-black uppercase font-sans";
+      : "font-bold text-[14px] font-black text-black uppercase tracking-wide font-sans";
 
   return (
     <div className="flex items-center gap-2 md:gap-3">
@@ -178,36 +177,35 @@ const CurrencyDropdown = ({
 };
 
 const CategoryGrid = ({ categories, selectedCategoryKey, onSelect }: { categories: CalculatorCategory[], selectedCategoryKey: string | null, onSelect: (key: string) => void }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8 items-stretch">
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8 items-start">
     {categories.map((cat: CalculatorCategory) => {
       const isSelected = selectedCategoryKey === cat.categoryKey;
       return (
-      <button
-        key={cat.categoryKey}
-        onClick={() => onSelect(cat.categoryKey)}
-        className={`group relative bg-white rounded-[4px] shadow-[0px_10px_30px_rgba(0,0,0,0.1)] border-0 transition-all duration-300 transform hover:-translate-y-1 flex flex-col w-full h-full focus:outline-none focus:ring-2 focus:ring-white/20 ${
-          isSelected ? "pb-[26px]" : ""
-        }`}
-      >
-        <div className="w-full flex-1 flex items-center justify-center px-6 pt-8 pb-4 bg-white min-h-[190px] rounded-t-[4px]">
-          <img
-            src={getCategoryIllustration(cat.categoryKey, cat.image)}
-            alt={cat.categoryName}
-            className="max-w-full max-h-[150px] w-auto object-contain transition-transform duration-500 group-hover:scale-105"
-          />
-        </div>
-        <div className="w-full px-4 pt-2 pb-5 bg-white min-h-[88px] flex items-start">
-          <h3 className="font-black text-[#002E8A] uppercase tracking-tight text-[15px] leading-[1.3] text-left">
-            {getCategoryDisplayName(cat.categoryKey, cat.categoryName)}
-          </h3>
-        </div>
-        {isSelected && (
-          <div className="absolute bottom-0 left-0 right-0 h-[26px] flex items-center px-4 text-[9px] font-black uppercase tracking-[0.2em] bg-[#334155] text-white rounded-b-[4px]">
-            SELECTED
+        <button
+          key={cat.categoryKey}
+          onClick={() => onSelect(cat.categoryKey)}
+          className={`group relative bg-white rounded-[6px] shadow-[0px_10px_30px_rgba(0,0,0,0.1)] border-0 transition-all duration-300 transform hover:-translate-y-1 flex flex-col w-full  focus:outline-none focus:ring-2 focus:ring-white/20 ${isSelected ? "" : ""
+            }`}
+        >
+          <div className="w-full border-rs-cs flex-1 flex items-center justify-center px-6 pt-4 pb-4 bg-white min-h-[160px] rounded-t-[4px]">
+            <img
+              src={getCategoryIllustration(cat.categoryKey, cat.image)}
+              alt={cat.categoryName}
+              className="max-w-full max-h-[130px] w-auto object-contain transition-transform duration-500 group-hover:scale-105"
+            />
           </div>
-        )}
-      </button>
-    );
+          <div className="w-full border-rs-cs min-h-[65px] px-6 pb-4 flex items-center justify-start bg-white">
+            <h3 className="font-extrabold text-[#1F2937] uppercase tracking-[0.01em] text-[14px] md:text-[15px] leading-snug text-left">
+              {getCategoryDisplayName(cat.categoryKey, cat.categoryName)}
+            </h3>
+          </div>
+          {isSelected && (
+            <div className="w-full selected-cs bg-[#4A5568] text-white py-2.5 text-center text-[11px] font-bold uppercase tracking-[0.2em] transition-all duration-300">
+              SELECTED
+            </div>
+          )}
+        </button>
+      );
     })}
   </div>
 );
@@ -311,19 +309,19 @@ const QuestionCard = ({
                     key={ans.key}
                     type="button"
                     onClick={() => onToggleAnswer(question.key, ans.key, question.type)}
-                    className="w-full flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 transition-all outline-none text-left"
+                    className="w-full flex items-center gap-4 cursor-pointer group outline-none text-left py-1.5 mb-3 transition-colors"
                   >
                     <div className="flex-shrink-0">
                       {question.type === "multi" ? (
                         <div
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                            isSelected ? "bg-[#5356ff] border-[#5356ff]" : "border-gray-300 bg-white"
-                          }`}
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${isSelected ? "bg-[#5356ff] border-[#5356ff]" : "border-gray-300 bg-white"
+                            }`}
                         >
                           {isSelected && (
-                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
-                            </svg>
+                            // <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            //   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
+                            // </svg>
+                            <div className="w-2.5 h-2.5 rounded-full bg-[#4F46E5]"></div>
                           )}
                         </div>
                       ) : (
@@ -488,13 +486,13 @@ const ProposalPreview = ({
 
   return (
     <div className="w-full max-w-[680px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 my-6">
-      <h2 className="text-[34px] font-normal text-white text-center mb-8 tracking-wide font-manrope">YOUR PROPOSAL</h2>
+      <h2 className="text-[24px] md:text-[26px] font-medium text-white text-center mb-8 tracking-normal">YOUR PROPOSAL</h2>
       <div className="bg-white rounded-[10px] p-8 md:p-10 shadow-2xl text-left border border-white">
         <h3 className="text-[#363636] font-bold text-[26px] md:text-[28px] mb-2 tracking-tight leading-none">
           {displayName}
         </h3>
         {subtitle && (
-          <p className="text-[#5a6a7a] text-[15px] md:text-[16px] font-normal mb-10 leading-snug">
+          <p className="text-[#64748B] text-[15px] font-normal mb-8 leading-normal font-sans">
             {subtitle}
           </p>
         )}
@@ -503,11 +501,11 @@ const ProposalPreview = ({
         <div className="space-y-7">
           {breakdown.map((item, idx) => (
             <div key={idx} className="font-sans">
-              <h4 className="text-[#002E8A] font-bold text-[17px] md:text-[18px] mb-1.5 leading-snug">
+              <h4 className="text-[#334155] font-bold text-[17px] mb-2">
                 {item.question}
               </h4>
               {item.answers.length === 1 ? (
-                <p className="text-[#5a6a7a] text-[16px] md:text-[17px] font-normal leading-relaxed">
+                <p className="text-[#475569] text-[16px] font-normal leading-relaxed pl-5">
                   {item.answers[0]}
                 </p>
               ) : (
@@ -562,14 +560,14 @@ const ProposalPreview = ({
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            <span className="text-[16px] font-black tracking-wide uppercase">Download PDF</span>
+            <span className="text-[16px] font-semibold tracking-normal">Download PDF</span>
           </button>
           <button onClick={handleEmail} className="w-full bg-white border-2 border-[#5356ff] hover:bg-gray-50 text-[#5356ff] font-bold py-4 px-6 rounded-[5px] transition-colors flex items-center justify-center gap-2 group">
             <svg className="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1 0.9-2 2-2z" />
               <polyline points="22,6 12,13 2,6" />
             </svg>
-            <span className="text-[16px] font-black tracking-wide uppercase">Email Proposal</span>
+            <span className="text-[16px] font-semibold text-[#374151] tracking-normal">Email Proposal</span>
           </button>
         </div>
       </div>
@@ -790,12 +788,12 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
             address: billingSameAsBusiness
               ? undefined
               : {
-                  line1: billingAddress.street,
-                  city: billingAddress.city,
-                  state: billingAddress.state,
-                  postal_code: billingAddress.zip,
-                  country: billingAddress.country,
-                },
+                line1: billingAddress.street,
+                city: billingAddress.city,
+                state: billingAddress.state,
+                postal_code: billingAddress.zip,
+                country: billingAddress.country,
+              },
           },
         },
       });
@@ -830,25 +828,23 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
         </p>
       </div>
 
-      <div className="bg-white rounded-[10px] p-6 md:p-10 shadow-2xl mx-auto w-full max-w-[680px]">
+      <div className="bg-white rounded-2xl p-6 md:p-10 shadow-2xl mx-auto w-full max-w-[680px] border border-white">
         <div className="flex justify-between items-center mb-8">
           <h3 className="text-black font-bold text-[18px]">Amount:</h3>
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
               type="button"
               onClick={() => setCurrency("usd")}
-              className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
-                currency === "usd" ? "bg-white shadow text-gray-800" : "text-gray-500"
-              }`}
+              className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "usd" ? "bg-white shadow text-gray-800" : "text-gray-500"
+                }`}
             >
               USD
             </button>
             <button
               type="button"
               onClick={() => setCurrency("eur")}
-              className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
-                currency === "eur" ? "bg-white shadow text-gray-800" : "text-gray-500"
-              }`}
+              className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "eur" ? "bg-white shadow text-gray-800" : "text-gray-500"
+                }`}
             >
               EUR
             </button>
@@ -860,10 +856,12 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
           </div>
         </div>
 
-        <div className="flex flex-col gap-[18px] text-[16px] mb-8">
-          <label className="flex items-center gap-[14px] cursor-pointer group">
-            <div className={`w-[22px] h-[22px] rounded-full border-[2.5px] flex flex-shrink-0 items-center justify-center transition-colors ${paymentOption === "full" ? "border-black" : "border-gray-400"}`}>
-              {paymentOption === "full" && <div className="w-[10px] h-[10px] rounded-full bg-black" />}
+        <div className="flex flex-col gap-4 text-[16px] mb-8 md:mb-10">
+          <label className="flex items-center gap-3.5 cursor-pointer group">
+            <div className={`w-[20px] h-[20px] rounded-full border-2 flex flex-shrink-0 items-center justify-center transition-all ${paymentOption === "full" ? "border-[#4F46E5] " : "border-[#CBD5E1] group-hover:border-[#4F46E5]"}`}>
+              {paymentOption === "full" && (
+                <div className={`w-[10px] h-[10px] rounded-full transition-colors ${paymentOption === "full" ? "bg-[#4F46E5]" : "bg-black"}`} />
+              )}
             </div>
             <input type="radio" name="paymentOption" className="hidden" checked={paymentOption === "full"} onChange={() => setPaymentOption("full")} />
             <span className={`transition-colors font-medium ${paymentOption === "full" ? "text-black" : "text-gray-800"}`}>Full {formatPaymentLine(payableTotal)}</span>
@@ -871,8 +869,10 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
 
           {halfPrice > 0 && (
             <label className="flex items-center gap-[14px] cursor-pointer group">
-              <div className={`w-[22px] h-[22px] rounded-full border-[2.5px] flex flex-shrink-0 items-center justify-center transition-colors ${paymentOption === "half" ? "border-black" : "border-gray-400"}`}>
-                {paymentOption === "half" && <div className="w-[10px] h-[10px] rounded-full bg-black" />}
+              <div className={`w-[20px] h-[20px] rounded-full border-2 flex flex-shrink-0 items-center justify-center transition-all  ${paymentOption === "half" ? "border-[#4F46E5]" : "border-[#CBD5E1] group-hover:border-[#4F46E5]"}`}>
+                {paymentOption === "half" && (
+                  <div className={`w-[10px] h-[10px] rounded-full transition-colors ${paymentOption === "half" ? "bg-[#4F46E5]" : "bg-black"}`} />
+                )}
               </div>
               <input type="radio" name="paymentOption" className="hidden" checked={paymentOption === "half"} onChange={() => setPaymentOption("half")} />
               <span className={`transition-colors font-medium ${paymentOption === "half" ? "text-black" : "text-gray-800"}`}>50% {formatPaymentLine(halfPrice)}</span>
@@ -880,15 +880,17 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
           )}
 
           <label className="flex flex-wrap items-center gap-[14px] cursor-pointer group">
-            <div className={`w-[22px] h-[22px] rounded-full border-[2.5px] flex flex-shrink-0 items-center justify-center transition-colors ${paymentOption === "custom" ? "border-black" : "border-gray-400"}`}>
-              {paymentOption === "custom" && <div className="w-[10px] h-[10px] rounded-full bg-black" />}
+            <div className={`w-[20px] h-[20px] rounded-full border-2 flex flex-shrink-0 items-center justify-center transition-all  ${paymentOption === "custom" ? "border-[#4F46E5]" : "border-[#CBD5E1] group-hover:border-[#4F46E5]"}`}>
+              {paymentOption === "custom" && (
+                <div className={`w-[10px] h-[10px] rounded-full transition-colors ${paymentOption === "custom" ? "bg-[#4F46E5]" : "bg-black"}`} />
+              )}
             </div>
             <input type="radio" name="paymentOption" className="hidden" checked={paymentOption === "custom"} onChange={() => setPaymentOption("custom")} />
-            <span className={`transition-colors font-medium ${paymentOption === "custom" ? "text-black" : "text-gray-800"}`}>Other</span>
+            <span className={`transition-colors font-normal text-[16px] ${paymentOption === "custom" ? "text-black" : "text-[#475569]"}`}>Other</span>
             {paymentOption === "custom" && (
               <div className="flex flex-col gap-1">
                 <div className="relative w-28 ml-2">
-                  <span className={`absolute left-0 top-1/2 -translate-y-1/2 font-medium ${errors.amount ? "text-red-500" : "text-black"}`}>{currency === "eur" ? "€" : "$"}</span>
+                  <span className={`absolute left-0 top-1/2 -translate-y-1/2 font-medium ${errors.amount ? "text-red-500" : "text-[#475569]"}`}>{currency === "eur" ? "€" : "$"}</span>
                   <input type="number" min="1" value={customAmount} onChange={(e) => { setCustomAmount(e.target.value); if (errors.amount) setErrors((p: any) => ({ ...p, amount: "" })); }} className={`w-full border-b ${errors.amount ? "border-red-500" : "border-black"} py-0.5 pl-4 pr-1 text-[16px] font-medium outline-none bg-transparent`} placeholder="Amount" />
                 </div>
                 {errors.amount && <span className="text-[10px] text-red-500 font-bold ml-2">{errors.amount}</span>}
@@ -1178,24 +1180,24 @@ export default function CalculatorPage() {
     <div className="bg-[#00102E] min-h-screen flex flex-col font-sans relative">
 
       {/* Hero Section */}
-      <div className="relative text-white overflow-hidden w-full min-h-[280px] md:min-h-[360px]">
+      <div className="relative flex items-center text-white overflow-hidden w-full min-h-[280px] md:min-h-[406px]">
         <Image
-          src="/images/home-hero-bg.jpg"
+          src="/images/calculator_hero.jpg"
           alt="Price calculator hero background"
           fill
           priority
           className="object-cover object-center"
         />
-        <div className="relative z-10 w-full max-w-[1600px] mx-auto px-6 sm:px-5 md:px-8 lg:px-[54px] py-10 sm:py-10 md:py-[40px]">
+        <div className="absolute inset-0 z-0 bg-gradient-to-r from-[#00102E] via-[#00102E]/60 to-transparent"></div>
+        <div className="mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] text-left relative z-10 max-w-[1536px] w-full">
           <div className="flex flex-row justify-center items-center">
             <div className="w-full text-center md:text-left">
-              <h1 className="text-[30px] sm:text-[28px] md:text-[36px] font-semibold mt-6 md:mt-8 mb-[25px] text-white leading-tight md:leading-[2] [font-family:var(--font-poppins)]">
+              <p className="text-gray-300 text-sm md:text-base font-medium mb-3">Calculator</p>
+              <h1 className="text-4xl md:text-[52px] font-extrabold mb-4 leading-tight tracking-tight text-white">
                 Instantly create your price quote.
               </h1>
-              <p className="text-left text-[14px] sm:text-[16px] md:text-[18px] font-light text-white leading-[1.6] md:leading-relaxed tracking-normal [font-family:var(--font-poppins)] pb-6 md:pb-0">
+              <p className="text-base md:text-xl text-gray-200 font-normal leading-relaxed max-w-2xl">
                 Already know the details of your project? There&apos;s an easy way to get started!{" "}
-                <span className="hidden md:inline"><br /></span>
-                Select your web project below, then fill out the requirements to calculate your price.
               </p>
             </div>
           </div>
@@ -1206,17 +1208,16 @@ export default function CalculatorPage() {
 
         {/* Category Selection Section */}
         <div
-          className={`calculator-category-section w-full transition-colors duration-300 ${
-            selectedCategoryKey ? "py-6 md:py-10" : "bg-[#002E8A] py-8 md:py-16"
-          }`}
+          className={`calculator-category-section w-full transition-colors duration-300 ${selectedCategoryKey ? "py-6 md:py-10" : "bg-[#00102E] py-8 md:py-16"
+            }`}
           style={selectedCategoryKey ? calculatorDarkBg : undefined}
         >
-          <div className="container mx-auto px-[34px] md:px-8 lg:px-[54px] max-w-[1600px]">
-            <div className="mb-12 text-left ms-[-8px] mt-2">
-              <h2 className="text-[20px] md:text-[24px] pl-[0px] md:pl-0 font-normal leading-none tracking-[0px] mb-0 text-[#f2f2f2] [font-family:var(--font-poppins)]">
+          <div className="mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] max-w-[1536px] w-full">
+            <div className="mb-8 text-left">
+              <h2 className="text-[24px] md:text-[28px] font-semibold text-white mb-1.5 leading-snug">
                 What would you like to create?
               </h2>
-              <p className="text-[14px] md:text-[16px] pl-[0px] md:pl-0 font-medium leading-[23px] mt-[15px] uppercase text-white [font-family:var(--font-poppins)]">CLICK ON AN OPTION BELOW</p>
+              <p className="text-[11px] font-black text-white/70 uppercase tracking-[0.2em]">CLICK ON AN OPTION BELOW</p>
             </div>
             {config && (
               <CategoryGrid
@@ -1260,7 +1261,7 @@ export default function CalculatorPage() {
                   backgroundSize: "30px 30px",
                 }}
               >
-                <div className="container mx-auto px-4 md:px-8 lg:px-[54px] max-w-[1600px] pt-8 md:pt-12 flex flex-col items-center w-full">
+                <div className="mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] max-w-[1536px] w-full pt-8 md:pt-12 flex flex-col items-center">
                   <ProposalPreview
                     category={selectedCategory}
                     selections={selections}
@@ -1270,14 +1271,14 @@ export default function CalculatorPage() {
                   />
                   <div className="w-full mt-6">
                     <WrappedPaymentForm
-                        totalPrice={calculation.totalPrice}
-                        timeline={calculation.timeline}
-                        categoryKey={selectedCategoryKey || selectedCategory.categoryKey}
-                        selections={selections}
-                        formatPriceLocal={formatPriceLocal}
-                        currency={currency}
-                        setCurrency={setCurrency}
-                        conversionRate={conversionRate}
+                      totalPrice={calculation.totalPrice}
+                      timeline={calculation.timeline}
+                      categoryKey={selectedCategoryKey || selectedCategory.categoryKey}
+                      selections={selections}
+                      formatPriceLocal={formatPriceLocal}
+                      currency={currency}
+                      setCurrency={setCurrency}
+                      conversionRate={conversionRate}
                     />
                   </div>
                 </div>
@@ -1292,8 +1293,8 @@ export default function CalculatorPage() {
         <div className="fixed bottom-0 left-0 right-0 py-4 md:h-[100px] bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.05)] border-t border-gray-100 flex items-center z-[100]">
           <div className="container mx-auto flex flex-col md:flex-row justify-center items-center gap-4 md:gap-10 px-4">
             <div className="flex items-center gap-4">
-              <span className="text-sm md:text-[18px] font-bold text-[#002E8A] uppercase tracking-wide font-sans whitespace-nowrap">PROJECT TOTAL COST:</span>
-              <span className="text-2xl md:text-[34px] font-black text-black tracking-tighter">
+              <span className="text-[12px] md:text-[14px] uppercase text-[#002e8a] tracking-[0.1em] font-semibold">PROJECT TOTAL COST:</span>
+              <span className="text-2xl md:text-3xl font-black text-black font-bold">
                 {formatPriceLocal(calculation.totalPrice)}
               </span>
             </div>
