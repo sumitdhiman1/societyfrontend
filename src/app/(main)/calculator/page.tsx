@@ -36,7 +36,6 @@ import {
 } from "@/lib/calculatorUtils";
 import { downloadCalculatorPdf, getCalculatorPdfBase64 } from "@/lib/calculatorPdfService";
 import StatusPopup from "@/components/common/StatusPopup";
-import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import Footer from "@/components/dashboard/Footer";
 import VisaIcon from "@/components/icons/visa";
 import MastercardIcon from "@/components/icons/mastercard";

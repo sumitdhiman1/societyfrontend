@@ -6,7 +6,7 @@ import { useQuote } from "../layout";
 import { quoteService } from "@/lib/quoteService";
 import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";
-import { downloadFile, isImageUrl } from "@/lib/utils";
+import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
 
 function ensureHttps(url: string) {
   if (!url) return "";
@@ -354,12 +354,14 @@ export default function QuoteFilesPage() {
                   <div key={file._id} className="group relative rounded-xl overflow-hidden bg-gray-100 border border-gray-200 aspect-square cursor-pointer hover:border-[#3232b7] transition-all" onClick={() => isImage(file.mimeType, file.url, file.name) && setPreviewFile(file)}>
                     {isImage(file.mimeType, file.url, file.name) ? (
                       <img
-                        src={file.url?.startsWith("http:") ? file.url.replace("http:", "https:") : file.url}
+                        src={getSafeUrl(file.url)}
                         alt={file.name}
                         className={`w-full h-full ${file.url?.toLowerCase().includes(".svg") ? "object-contain p-2" : "object-cover"}`}
                         onError={(e) => {
                           const target = e.currentTarget;
-                          if (target.src.startsWith("http:")) target.src = target.src.replace("http:", "https:");
+                          if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
+                            target.src = target.src.replace("http:", "https:");
+                          }
                         }}
                       />
                     ) : (

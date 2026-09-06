@@ -9,7 +9,6 @@ import { authService } from "@/lib/authService";
 import { paymentService } from "@/lib/paymentService";
 import { profileService } from "@/lib/profileService";
 import StatusPopup from "@/components/common/StatusPopup";
-import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 import { countryService, Country } from "@/lib/countryService";
 
@@ -303,7 +302,6 @@ function BundleDetailsContent() {
 
   return (
     <div className="bg-white min-h-screen flex flex-col font-sans text-[#404040]">
-      <DashboardSubNav />
       <StatusPopup
         isOpen={status.isOpen}
         onClose={() => setStatus({ ...status, isOpen: false })}

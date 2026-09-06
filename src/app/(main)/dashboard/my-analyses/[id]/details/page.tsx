@@ -1,15 +1,333 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { useAnalysis } from "@/context/AnalysisContext";
 import { projectService } from "@/lib/projectService";
 import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";
 import { packagesService } from "@/lib/packagesService";
-import { downloadFile, isImageUrl } from "@/lib/utils";
+import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
 import { io, Socket } from "socket.io-client";
+
+const formatStatusTitle = (rawTitle: string): string => {
+  if (!rawTitle) return "System Notification";
+  let clean = rawTitle
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}👤🚀📌✅🔔]/gu, "")
+    .trim();
+
+  const lower = clean.toLowerCase();
+  if (lower === "project manager assigned" || lower === "project manager assigned!") {
+    return "Project manager assigned";
+  }
+  if (lower === "order completed" || lower === "order completed!") {
+    return "Order completed!";
+  }
+  if (lower === "bundle project starting" || lower === "bundle project starting!") {
+    return "Bundle project starting";
+  }
+
+  if (clean.length > 1 && clean === clean.toUpperCase()) {
+    clean = clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
+  }
+  return clean;
+};
+
+const renderStatusMessageText = (text: string, attachments?: any[]) => {
+  if (!text) return null;
+
+  const pdfAttachment = attachments?.find((a: any) => {
+    const u = typeof a === "string" ? a : a?.url || "";
+    return u.toLowerCase().endsWith(".pdf") || a?.type === "pdf";
+  });
+  const pdfUrl = typeof pdfAttachment === "string" ? pdfAttachment : pdfAttachment?.url;
+
+  const renderPdfButton = () => {
+    if (!pdfUrl) return null;
+    return (
+      <span className="block mt-3">
+        <a
+          href={pdfUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#5356ff]/10 hover:bg-[#5356ff]/20 text-[#5356ff] text-xs font-bold rounded-lg border border-[#5356ff]/30 transition-colors"
+        >
+          📄 View / Download Analysis Report (PDF)
+        </a>
+      </span>
+    );
+  };
+
+  // 1. Markdown link: [Label](url)
+  const markdownRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/;
+  if (markdownRegex.test(text)) {
+    const parts: Array<{ type: "text" | "link"; label?: string; href?: string; content?: string }> = [];
+    const globalMdRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g;
+    let match: RegExpExecArray | null;
+    let lastIndex = 0;
+
+    while ((match = globalMdRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ type: "text", content: text.substring(lastIndex, match.index) });
+      }
+      const label = match[1];
+      let href = match[2];
+      if (href.includes("/help-support/contact-us")) {
+        href = "/help-support/contact-us";
+      }
+      parts.push({ type: "link", label, href });
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < text.length) {
+      parts.push({ type: "text", content: text.substring(lastIndex) });
+    }
+
+    return (
+      <span>
+        {parts.map((part, idx) => {
+          if (part.type === "link" && part.href) {
+            const isInternal = part.href.startsWith("/");
+            return isInternal ? (
+              <Link
+                key={idx}
+                href={part.href}
+                className="text-[#5356ff] underline hover:text-[#3232b7] font-semibold transition-colors"
+              >
+                {part.label}
+              </Link>
+            ) : (
+              <a
+                key={idx}
+                href={part.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#5356ff] underline hover:text-[#3232b7] font-semibold transition-colors"
+              >
+                {part.label}
+              </a>
+            );
+          }
+          return <span key={idx}>{part.content}</span>;
+        })}
+        {renderPdfButton()}
+      </span>
+    );
+  }
+
+  // 2. Contact phrase regex without markdown
+  const contactRegex = /(click here to contact us for further assistance\.?|click here to contact us\.?|contact us for further assistance\.?|contact us\.?)/i;
+  if (contactRegex.test(text)) {
+    const parts = text.split(contactRegex);
+    return (
+      <span>
+        {parts.map((part, i) =>
+          contactRegex.test(part) ? (
+            <Link
+              key={i}
+              href="/help-support/contact-us"
+              className="text-[#5356ff] underline hover:text-[#3232b7] font-semibold transition-colors"
+            >
+              {part}
+            </Link>
+          ) : (
+            <span key={i}>{part}</span>
+          )
+        )}
+        {renderPdfButton()}
+      </span>
+    );
+  }
+
+  // 3. Raw URL
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  if (urlRegex.test(text)) {
+    const parts = text.split(urlRegex);
+    return (
+      <span>
+        {parts.map((part, i) =>
+          urlRegex.test(part) ? (
+            <a
+              key={i}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#5356ff] underline hover:text-[#3232b7] font-semibold transition-colors"
+            >
+              {part}
+            </a>
+          ) : (
+            <span key={i}>{part}</span>
+          )
+        )}
+        {renderPdfButton()}
+      </span>
+    );
+  }
+
+  return (
+    <span>
+      {text}
+      {renderPdfButton()}
+    </span>
+  );
+};
+
+// Helper components
+const categoryMap: Record<string, string> = {
+  // Short auto-generated codes (from initials)
+  PAM: "Paid Ads Marketing",
+  GDB: "Graphic Design & Branding",
+  GD: "Graphic Design & Branding",
+  WD: "Websites Development",
+  WDE: "Websites Development",
+  WM: "Website Maintenance",
+  SMM: "Social Media Marketing",
+  SEO: "SEO",
+  BUN: "Bundles",
+  // Full codes with underscores
+  PAID_ADS: "Paid Ads Marketing",
+  PAID_ADS_MARKETING: "Paid Ads Marketing",
+  PAIDADS: "Paid Ads Marketing",
+  "PAID ADS MARKETING": "Paid Ads Marketing",
+  "PAID ADS": "Paid Ads Marketing",
+  GRAPHIC_DESIGN: "Graphic Design & Branding",
+  GRAPHIC_DESIGN_BRANDING: "Graphic Design & Branding",
+  "GRAPHIC DESIGN & BRANDING": "Graphic Design & Branding",
+  "GRAPHIC DESIGN": "Graphic Design & Branding",
+  WEBSITES_DEVELOPMENT: "Websites Development",
+  WEBSITE_DEVELOPMENT: "Websites Development",
+  "WEBSITES DEVELOPMENT": "Websites Development",
+  "WEBSITE MAINTENANCE": "Website Maintenance",
+  WEBSITE_MAINTENANCE: "Website Maintenance",
+  SOCIAL_MEDIA_MARKETING: "Social Media Marketing",
+  "SOCIAL MEDIA MARKETING": "Social Media Marketing",
+  BUNDLES: "Bundles",
+  BUNDLE: "Bundles",
+  ANALYSIS: "Analysis",
+};
+
+const formatCategoryName = (cat: any, title?: string): string => {
+  if (!cat && !title) return "";
+  let raw = "";
+  if (cat && typeof cat === "object") {
+    raw = cat.name || cat.title || cat.categorycode || cat.code || "";
+  } else if (cat) {
+    raw = String(cat).trim();
+  }
+
+  // If raw is an ObjectId or empty, fallback to title matching
+  if (!raw || raw.match(/^[0-9a-fA-F]{24}$/)) {
+    if (title) {
+      const norm = title.toLowerCase();
+      if (norm.includes("ads") || norm.includes("shopping") || norm.includes("audit")) return "Paid Ads Marketing";
+      if (norm.includes("graphic") || norm.includes("brand") || norm.includes("logo")) return "Graphic Design & Branding";
+      if (norm.includes("development") || norm.includes("website dev")) return "Websites Development";
+      if (norm.includes("maintenance")) return "Website Maintenance";
+      if (norm.includes("seo") || norm.includes("search engine")) return "SEO";
+      if (norm.includes("social media") || norm.includes("smm")) return "Social Media Marketing";
+    }
+    return "";
+  }
+
+  const upper = raw.toUpperCase().trim();
+  const stripped = upper.replace(/-\d+$/, "").trim();
+
+  if (categoryMap[upper]) return categoryMap[upper];
+  if (categoryMap[stripped]) return categoryMap[stripped];
+
+  if (upper.includes("_")) {
+    const spaced = upper.replace(/_/g, " ");
+    if (categoryMap[spaced]) return categoryMap[spaced];
+    return spaced
+      .toLowerCase()
+      .split(" ")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  }
+
+  return raw;
+};
+
+const PackageCard = ({
+  packageId,
+  title,
+  price,
+  imageUrl,
+  category,
+  description,
+  link,
+}: any) => {
+  const safeImg = imageUrl ? getSafeUrl(imageUrl) : null;
+  const isSvg = safeImg ? safeImg.toLowerCase().includes(".svg") : false;
+
+  const displayPrice =
+    typeof price === "number"
+      ? `$${price.toLocaleString("en-US")}`
+      : price
+      ? String(price).startsWith("$") || String(price).startsWith("€")
+        ? String(price)
+        : `$ ${price}`
+      : "";
+
+  const resolvedCat = formatCategoryName(category, title);
+
+  return (
+    <a
+      href={link || `/dashboard/new-project/packages/${packageId}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex flex-col bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition-all group w-full sm:w-[260px] md:w-[280px] shrink-0 no-underline text-left"
+    >
+      <div className="h-36 sm:h-40 bg-gray-100 relative overflow-hidden flex items-center justify-center">
+        {safeImg ? (
+          <img
+            src={safeImg}
+            alt={title}
+            className={`w-full h-full transition-transform duration-300 group-hover:scale-105 ${
+              isSvg ? "object-contain p-2.5" : "object-cover"
+            }`}
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
+                target.src = target.src.replace("http:", "https:");
+              }
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-300">
+            <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+        )}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
+      </div>
+
+      <div className="p-4 flex flex-col flex-1 bg-white">
+        {resolvedCat && (
+          <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2.5 py-0.5 rounded-full uppercase tracking-wider w-fit mb-2">
+            {resolvedCat}
+          </span>
+        )}
+        <h4 className="font-bold text-gray-800 text-sm leading-snug mb-1.5 group-hover:text-blue-600 transition-colors line-clamp-2">
+          {title}
+        </h4>
+        {description && (
+          <p className="text-xs text-gray-500 leading-relaxed mb-3 line-clamp-2">
+            {description}
+          </p>
+        )}
+        <div className="mt-auto pt-2 flex items-center justify-between border-t border-gray-100">
+          <span className="font-bold text-gray-800 text-xs sm:text-sm">
+            {displayPrice}
+          </span>
+        </div>
+      </div>
+    </a>
+  );
+};
 
 export default function AnalysisDetailsPage() {
   const { analysis, refreshAnalysis } = useAnalysis();
@@ -73,6 +391,9 @@ export default function AnalysisDetailsPage() {
     fetchAllPackages();
   }, []);
 
+  const refreshAnalysisRef = useRef(refreshAnalysis);
+  refreshAnalysisRef.current = refreshAnalysis;
+
   // Real-time socket for project/analysis messages
   useEffect(() => {
     let activeSocket: Socket | null = null;
@@ -133,7 +454,7 @@ export default function AnalysisDetailsPage() {
       const handleMessageUpdate = (data: any) => {
         const incomingId = data?.projectId || data?.project?._id || data?.project?.id;
         if (!incomingId || String(incomingId) === String(aId)) {
-          refreshAnalysis();
+          refreshAnalysisRef.current();
         }
       };
 
@@ -143,7 +464,7 @@ export default function AnalysisDetailsPage() {
       sock.on("notification", (notif: any) => {
         const pId = notif?.data?.projectId || notif?.projectId;
         if (!pId || String(pId) === String(aId)) {
-          refreshAnalysis();
+          refreshAnalysisRef.current();
         }
       });
     };
@@ -159,7 +480,7 @@ export default function AnalysisDetailsPage() {
         } catch {}
       }
     };
-  }, [analysis?._id, analysis?.id, refreshAnalysis]);
+  }, [analysis?._id, analysis?.id]);
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.hash === "#messages") {
@@ -234,7 +555,12 @@ export default function AnalysisDetailsPage() {
       setIsSending(true);
       try {
         const aId = analysis._id || analysis.id;
-        const res = await projectService.addMessage(aId, messageText, false, uploadedUrls);
+        const res = await projectService.addMessage(
+          aId,
+          messageText,
+          false,
+          uploadedUrls
+        );
         if (res && (res.isSuccessful || res.success || res.statusCode === 200 || res.statusCode === 201 || res.data)) {
           setMessageText("");
           setAttachments([]);
@@ -406,12 +732,14 @@ export default function AnalysisDetailsPage() {
                 const msgId = msg.id || `msg-${idx}`;
 
                 if (msg.type === "system_notification") {
-                  const title = msg.content?.systemText || msg.message || "System Notification";
+                  const rawTitle = msg.content?.systemText || msg.message || "System Notification";
+                  const title = formatStatusTitle(rawTitle);
                   const text = msg.content?.text || "";
+                  const attachments = msg.attachments || [];
                   return (
                     <div key={msgId} className="text-center py-6 px-4 bg-white/70 rounded-xl border border-gray-200">
                       <h3 className="text-xl font-bold text-gray-700 mb-1">{title}</h3>
-                      <p className="text-sm font-medium text-gray-500">{text}</p>
+                      <div className="text-sm font-medium text-gray-500">{renderStatusMessageText(text, attachments)}</div>
                     </div>
                   );
                 }
@@ -486,7 +814,7 @@ export default function AnalysisDetailsPage() {
                               {attachmentList.map((att: any, aIdx: number) => {
                                 const url = typeof att === "string" ? att : att.url;
                                 const filename = (typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "Attachment") : att.filename || att.name || "Attachment");
-                                const safeUrl = url.startsWith("http:") ? url.replace("http:", "https:") : url;
+                                const safeUrl = getSafeUrl(url);
                                 const isImg = isImageUrl(url);
                                 const isSvg = url.toLowerCase().includes(".svg");
                                 const isPdf = url.toLowerCase().includes(".pdf");
@@ -513,7 +841,7 @@ export default function AnalysisDetailsPage() {
                                           }
                                           onError={(e) => {
                                             const target = e.currentTarget;
-                                            if (target.src.startsWith("http:")) {
+                                            if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
                                               target.src = target.src.replace("http:", "https:");
                                             }
                                           }}
@@ -599,7 +927,7 @@ export default function AnalysisDetailsPage() {
                                 }
 
                                 const itemImage = rawImage
-                                  ? (rawImage.startsWith("http:") ? rawImage.replace("http:", "https:") : rawImage)
+                                  ? getSafeUrl(rawImage)
                                   : "https://res.cloudinary.com/dgg6e3flf/image/upload/v1785191377/packages/paid-ads-audit-strategy-setup-packages.webp";
 
                                 const isBundle = match?.isBundle || item.isBundle || match?.categorycode?.toUpperCase() === 'BUNDLES';
@@ -818,65 +1146,7 @@ export default function AnalysisDetailsPage() {
                           </div>
                         )}
 
-                        {!isAccepted && !actionModal.isOpen && (
-                          <div className="flex flex-wrap gap-4 mt-6 pl-0 md:pl-[64px]">
-                            <button
-                              onClick={() => {
-                                if (!currentUser) {
-                                  setShowAuthModal(true);
-                                  return;
-                                }
-                                handleAcceptProposal(msg.id);
-                              }}
-                              disabled={isActionLoading}
-                              className="px-8 py-3 bg-[#327334] hover:bg-[#2a5f2b] text-white text-xs font-bold rounded-md shadow-sm transition-colors cursor-pointer"
-                            >
-                              Accept Offer
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (!currentUser) {
-                                  setShowAuthModal(true);
-                                  return;
-                                }
-                                setActionModal({
-                                  isOpen: true,
-                                  action: "request_modification",
-                                  proposalId: msg.id,
-                                  title: "Request Modifications",
-                                  description: "Please describe what changes you would like to request.",
-                                  placeholder: "Type requested modifications...",
-                                  required: true,
-                                });
-                              }}
-                              disabled={isActionLoading}
-                              className="px-8 py-3 bg-[#1C446F] hover:bg-[#163659] text-white text-xs font-bold rounded-md shadow-sm transition-colors cursor-pointer"
-                            >
-                              Request Modifications
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (!currentUser) {
-                                  setShowAuthModal(true);
-                                  return;
-                                }
-                                setActionModal({
-                                  isOpen: true,
-                                  action: "decline",
-                                  proposalId: msg.id,
-                                  title: "Decline Offer",
-                                  description: "Are you sure you want to decline this offer?",
-                                  placeholder: "Reason (optional)...",
-                                  required: false,
-                                });
-                              }}
-                              disabled={isActionLoading}
-                              className="px-8 py-3 bg-[#7D1A1A] hover:bg-[#651515] text-white text-xs font-bold rounded-md shadow-sm transition-colors cursor-pointer"
-                            >
-                              Decline Offer
-                            </button>
-                          </div>
-                        )}
+
 
                         {actionModal.isOpen && actionModal.proposalId === msg.id && (
                           <div className="mt-6 p-6 bg-gray-50 rounded-xl border border-gray-300">
@@ -913,7 +1183,7 @@ export default function AnalysisDetailsPage() {
                 const clientName = currentUser?.fullName || (currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim() : '') || currentUser?.username;
                 const senderName = msg.username || (isClient ? (clientName || "You") : "Analysis Team");
                 const senderAvatar = msg.userAvatar || (isClient ? currentUser?.avatar : undefined);
-                const rawAttachments = msg.attachments || msg.content?.attachedFiles || [];
+                const rawAttachments = msg.attachments || msg.content?.attachedFiles || msg.attachedFiles || (msg.content as any)?.attachedFilesUrl || msg.attachedFilesUrl || [];
                 const attachmentList = Array.isArray(rawAttachments) ? rawAttachments : [];
 
                 return (
@@ -953,10 +1223,10 @@ export default function AnalysisDetailsPage() {
                         <div className="border-t border-gray-200 mb-4" />
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
                           {attachmentList.map((att: any, attIdx: number) => {
-                            const url = typeof att === "string" ? att : (att.url || att.secure_url);
+                            const url = typeof att === "string" ? att : (att.url || att.secure_url || att.path);
                             const name = typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "file") : (att.name || att.filename || decodeURIComponent((url || "").split("/").pop() || "file"));
                             if (!url) return null;
-                            const safeUrl = url.startsWith("http:") ? url.replace("http:", "https:") : url;
+                            const safeUrl = getSafeUrl(url);
                             const isImg = isImageUrl(url);
                             const isSvg = url.toLowerCase().includes(".svg");
                             const isPdf = url.toLowerCase().includes(".pdf");
@@ -983,7 +1253,7 @@ export default function AnalysisDetailsPage() {
                                       }
                                       onError={(e) => {
                                         const target = e.currentTarget;
-                                        if (target.src.startsWith("http:")) {
+                                        if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
                                           target.src = target.src.replace("http:", "https:");
                                         }
                                       }}
@@ -1018,6 +1288,38 @@ export default function AnalysisDetailsPage() {
                         </div>
                       </div>
                     )}
+                    {/* Recommended Solutions if any */}
+                    {(() => {
+                      const recs =
+                        (msg.recommendedSolutions && msg.recommendedSolutions.length > 0 ? msg.recommendedSolutions : null) ||
+                        (msg.content?.recommendedSolutions && msg.content.recommendedSolutions.length > 0 ? msg.content.recommendedSolutions : null) ||
+                        (msg.content?.deliverableItems && msg.content.deliverableItems.length > 0 ? msg.content.deliverableItems : null) ||
+                        (msg.content?.lineItems && msg.content.lineItems.length > 0 ? msg.content.lineItems : null) ||
+                        [];
+                      if (recs.length === 0) return null;
+                      return (
+                        <div className="pl-0 sm:pl-16 mb-6">
+                          <h5 className="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">
+                            Recommended Solutions
+                          </h5>
+                          <div className="border-t border-gray-200 mb-4" />
+                          <div className="flex flex-wrap sm:flex-nowrap sm:overflow-x-auto pb-2 gap-4 scrollbar-hide">
+                            {recs.map((sol: any, j: number) => (
+                              <PackageCard
+                                key={(sol.packageId || sol._id || j) + "-" + j}
+                                packageId={sol.packageId || sol._id || sol.id}
+                                title={sol.title || sol.name}
+                                price={sol.price || sol.cost || sol.amount}
+                                imageUrl={sol.imageUrl || sol.mediumUrl || sol.thumbnailUrl}
+                                category={sol.category || sol.categorycode}
+                                description={sol.description}
+                                link={sol.link || `/dashboard/new-project/packages/${sol.packageId || sol._id || sol.id}`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}
@@ -1079,44 +1381,57 @@ export default function AnalysisDetailsPage() {
               </div>
 
               {attachments.length > 0 && (
-                <div className="px-6 pb-2">
+                <div className="px-6 pb-3">
                   <div className="flex flex-wrap gap-3">
                     {attachments.map((att) => {
-                      const isImg = att.type?.startsWith("image/") || (att.file && att.file.type?.startsWith("image/")) || isImageUrl(att.url);
+                      const isImg = isImageUrl(att.url) || att.type?.startsWith("image/") || (att.file && att.file.type?.startsWith("image/")) || /\.(svg|png|jpg|jpeg|webp|gif|bmp|ico|avif)$/i.test(att.name);
+                      const displayUrl = getSafeUrl(att.url || (att.file ? URL.createObjectURL(att.file) : ""));
                       return (
                         <div
                           key={att.id}
-                          className={`relative group border border-gray-200 rounded-lg p-2 w-28 bg-white shadow-sm flex flex-col items-center ${att.status === "uploading" ? "opacity-70" : ""} ${att.status === "error" ? "border-red-400 bg-red-50" : ""}`}
+                          className={`relative group border border-gray-200 rounded-xl p-2 w-24 h-24 sm:w-28 sm:h-28 bg-white shadow-sm flex flex-col items-center justify-between hover:border-gray-300 transition-all ${
+                            att.status === "uploading" ? "opacity-70" : ""
+                          } ${att.status === "error" ? "border-red-400 bg-red-50" : ""}`}
                         >
-                          <div className="mb-2 h-16 w-full flex items-center justify-center bg-gray-100 rounded overflow-hidden relative">
-                            {att.status === "uploading" && (
-                              <div className="absolute inset-0 z-10 bg-black/10 flex items-center justify-center">
-                                <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                              </div>
-                            )}
-                            {isImg ? (
-                              <img src={att.url || (att.file ? URL.createObjectURL(att.file) : "")} className="h-full w-full object-cover" alt="preview" />
-                            ) : (
-                              <svg className="text-gray-400 w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                            )}
-                          </div>
-                          <span className="text-[10px] font-medium text-gray-600 truncate w-full text-center">
-                            {att.name}
-                          </span>
-                          <div className="text-[10px] text-gray-400 capitalize">
-                            {att.status === "uploading" ? "Uploading" : att.status === "done" ? "Ready" : att.status}
-                          </div>
                           <button
                             type="button"
                             onClick={() => removeAttachment(att.id)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 shadow hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow cursor-pointer hover:bg-red-600"
+                            title="Remove file"
                           >
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            ×
                           </button>
+                          <div className="w-full flex-1 flex items-center justify-center overflow-hidden">
+                            {att.status === "uploading" ? (
+                              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                            ) : isImg && displayUrl ? (
+                              <img
+                                src={displayUrl}
+                                alt={att.name}
+                                className="w-full h-full object-contain"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
+                                    target.src = target.src.replace("http:", "https:");
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center text-gray-400">
+                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                          <div className="w-full text-center mt-1">
+                            <p className="text-[11px] font-medium text-gray-700 truncate w-full" title={att.name}>
+                              {att.name}
+                            </p>
+                            <p className="text-[10px] text-gray-400 font-medium capitalize">
+                              {att.status === "uploading" ? "Uploading..." : att.status === "done" ? "Ready" : att.status}
+                            </p>
+                          </div>
                         </div>
                       );
                     })}
@@ -1125,27 +1440,34 @@ export default function AnalysisDetailsPage() {
               )}
 
               <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!currentUser) {
-                      setShowAuthModal(true);
-                      return;
-                    }
-                    fileInputRef.current?.click();
-                  }}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2.5 rounded-md border-2 border-blue-600 hover:bg-blue-50 shadow-sm cursor-pointer"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                    />
-                  </svg>
-                  Attach Files
-                </button>
+                <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!currentUser) {
+                        setShowAuthModal(true);
+                        return;
+                      }
+                      fileInputRef.current?.click();
+                    }}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2 rounded-lg border-2 border-blue-600 hover:bg-blue-50 shadow-sm cursor-pointer"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                      />
+                    </svg>
+                    Attach Files
+                    {attachments.length > 0 && (
+                      <span className="inline-flex items-center justify-center w-5 h-5 bg-[#4343F0] text-white text-[11px] font-bold rounded-full ml-1">
+                        {attachments.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
                 <input ref={fileInputRef} hidden multiple type="file" onChange={handleFileUpload} />
 
                 <div className="flex gap-3 w-full sm:w-auto">
@@ -1159,7 +1481,7 @@ export default function AnalysisDetailsPage() {
                       setMessageText("");
                       setAttachments([]);
                     }}
-                    className="flex-1 sm:flex-none px-6 py-2.5 bg-[#800020] hover:bg-[#600018] text-white font-bold text-sm rounded-md transition-colors shadow-sm cursor-pointer"
+                    className="flex-1 sm:flex-none px-6 py-2.5 bg-[#800020] hover:bg-[#600018] text-white font-bold text-xs rounded-lg transition-colors shadow-sm cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -1175,9 +1497,10 @@ export default function AnalysisDetailsPage() {
                       currentUser &&
                       (isSending ||
                         isUploading ||
-                        (!messageText.trim() && attachments.filter((a) => a.status === "done").length === 0))
+                        (!messageText.trim() &&
+                          attachments.filter((a) => a.status === "done").length === 0))
                     }
-                    className="flex-1 sm:flex-none px-8 py-2.5 bg-[#4343F0] hover:bg-[#3333D0] text-white rounded-[8px] text-sm font-bold transition-all disabled:opacity-50 cursor-pointer shadow-md"
+                    className="flex-1 sm:flex-none px-7 py-2.5 bg-[#7B8BF5] hover:bg-[#5356ff] text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-sm"
                   >
                     {isSending ? "Sending..." : "Send Message"}
                   </button>

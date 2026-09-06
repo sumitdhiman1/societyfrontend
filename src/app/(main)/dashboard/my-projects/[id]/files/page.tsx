@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { projectService } from "@/lib/projectService";
 import { mediaService } from "@/lib/mediaService";
-import { downloadFile, isImageUrl } from "@/lib/utils";
+import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
 
 export default function ProjectFilesPage() {
   const params = useParams();
@@ -181,12 +181,14 @@ export default function ProjectFilesPage() {
                     <div className="flex items-center gap-3">
                       {isImageUrl(file.url) || file.type?.startsWith("image/") ? (
                         <img
-                          src={file.url?.startsWith("http:") ? file.url.replace("http:", "https:") : file.url}
+                          src={getSafeUrl(file.url)}
                           alt={file.name}
                           className={`w-10 h-10 rounded-lg border border-gray-200 shrink-0 ${file.url?.toLowerCase().includes(".svg") ? "object-contain p-1" : "object-cover"}`}
                           onError={(e) => {
                             const target = e.currentTarget;
-                            if (target.src.startsWith("http:")) target.src = target.src.replace("http:", "https:");
+                            if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
+                              target.src = target.src.replace("http:", "https:");
+                            }
                           }}
                         />
                       ) : (

@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { requestAnalysisService } from "@/lib/requestAnalysisService";
-import { authService } from "@/lib/authService";
 
 interface AnalysisContextType {
   analysis: any | null;
@@ -44,16 +43,15 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
     }
   }, [analysisId]);
 
+  const refreshAnalysis = useCallback(() => {
+    fetchAnalysis(true);
+  }, [fetchAnalysis]);
+
   useEffect(() => {
     if (analysisId && isInitialMount.current) {
       isInitialMount.current = false;
       fetchAnalysis(false);
     }
-
-    // Set up active silent background polling (every 3 seconds) for live chat updates
-    const pollInterval = setInterval(() => {
-      fetchAnalysis(true);
-    }, 3000);
 
     // Listen to window custom events from sockets
     const handleRealtimeMessage = (e: any) => {
@@ -78,7 +76,6 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       isInitialMount.current = true;
-      clearInterval(pollInterval);
       window.removeEventListener("notification:new", handleRealtimeMessage);
       window.removeEventListener("project_message", handleRealtimeMessage);
       window.removeEventListener("project_updated", handleRealtimeMessage);
@@ -91,9 +88,9 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
     () => ({
       analysis,
       isLoading,
-      refreshAnalysis: () => fetchAnalysis(true),
+      refreshAnalysis,
     }),
-    [analysis, isLoading, fetchAnalysis],
+    [analysis, isLoading, refreshAnalysis],
   );
 
   return <AnalysisContext.Provider value={value}>{children}</AnalysisContext.Provider>;
