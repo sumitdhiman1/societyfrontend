@@ -14,7 +14,7 @@ function LoginForm() {
   const redirect = searchParams.get("redirect");
   
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(searchParams.get("error") || "");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -92,8 +92,12 @@ function LoginForm() {
           )}
 
           {/* Social Login Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-10">
-            <button className="social-button">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10 w-full">
+            <button
+              type="button"
+              onClick={() => authService.loginWithGoogle()}
+              className="social-button cursor-pointer hover:bg-gray-50 transition-colors"
+            >
               <div className="social-icon-wrapper">
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path
@@ -117,7 +121,11 @@ function LoginForm() {
               <div className="social-divider"></div>
               <span className="social-text">Sign in with Google</span>
             </button>
-            <button className="social-button">
+            <button
+              type="button"
+              onClick={() => authService.loginWithFacebook()}
+              className="social-button cursor-pointer hover:bg-gray-50 transition-colors"
+            >
               <div className="social-icon-wrapper">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"

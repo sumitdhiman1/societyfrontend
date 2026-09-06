@@ -215,6 +215,27 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
           return prev + 1;
         });
         window.dispatchEvent(new CustomEvent("notification:received", { detail: notif }));
+        window.dispatchEvent(new CustomEvent("notification:new", { detail: notif }));
+      });
+
+      sock.on("project_message", (data: any) => {
+        console.log("[Frontend Navbar Socket] 💬 project_message received:", data);
+        window.dispatchEvent(new CustomEvent("project_message", { detail: data }));
+      });
+
+      sock.on("project_updated", (data: any) => {
+        console.log("[Frontend Navbar Socket] 🔄 project_updated received:", data);
+        window.dispatchEvent(new CustomEvent("project_updated", { detail: data }));
+      });
+
+      sock.on("quote_message", (data: any) => {
+        console.log("[Frontend Navbar Socket] 💬 quote_message received:", data);
+        window.dispatchEvent(new CustomEvent("quote_message", { detail: data }));
+      });
+
+      sock.on("quote_updated", (data: any) => {
+        console.log("[Frontend Navbar Socket] 🔄 quote_updated received:", data);
+        window.dispatchEvent(new CustomEvent("quote_updated", { detail: data }));
       });
     };
 

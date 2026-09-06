@@ -5,7 +5,6 @@ import { useParams, usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProjectProvider, useProject } from "@/context/ProjectContext";
 import DeadlineTooltip from "@/components/common/DeadlineTooltip";
-import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 
 function ProjectLayoutContent({ children }: { children: React.ReactNode }) {
   const { project, isLoading } = useProject();
@@ -42,7 +41,6 @@ function ProjectLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="bg-white min-h-screen flex flex-col font-sans" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
-      <DashboardSubNav />
       <main className="flex-grow w-full max-w-[1600px] mx-auto px-4 md:px-8 lg:px-[54px] pt-8 md:pt-12 pb-12">
         <div className="mb-10">
           <h1 className="text-[28px] md:text-[32px] font-bold text-[#1A202C] mb-8 md:mb-12">
@@ -62,7 +60,7 @@ function ProjectLayoutContent({ children }: { children: React.ReactNode }) {
                 >
                   {tab}
                   {activeTab === tab && (
-                    <div className="absolute bottom-0 left-0 w-full h-[4px] bg-[#5356ff] rounded-t-[2px]" />
+                    <div className="absolute bottom-0 left-0 w-full h-[4px] bg-[#4343F0] rounded-t-[2px]" />
                   )}
                 </Link>
               ))}

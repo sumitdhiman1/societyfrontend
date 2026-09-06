@@ -59,8 +59,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid URL encoding" }, { status: 400 });
   }
 
-  // Force HTTPS
-  let targetUrl = decodedUrl.replace(/^http:\/\//i, "https://");
+  // Force HTTPS for external URLs, preserve HTTP for local development
+  let targetUrl = decodedUrl;
+  if (!decodedUrl.includes('localhost') && !decodedUrl.includes('127.0.0.1')) {
+    targetUrl = decodedUrl.replace(/^http:\/\//i, "https://");
+  }
 
   // Handle Cloudinary private downloads if secret is configured
   if (process.env.CLOUDINARY_API_SECRET) {

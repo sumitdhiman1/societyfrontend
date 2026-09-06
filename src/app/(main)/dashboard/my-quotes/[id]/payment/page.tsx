@@ -292,7 +292,7 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
             <div className="text-2xl font-bold text-gray-600">{formatCurrency(totalCost)}</div>
           </div>
           
-          {quoteDetails.deliverableItems && quoteDetails.deliverableItems.length > 0 && (
+          {((quoteDetails.lineItems && quoteDetails.lineItems.length > 0) || (quoteDetails.deliverableItems && quoteDetails.deliverableItems.length > 0)) && (
             <div className="border border-gray-200 rounded-lg overflow-hidden mb-10">
               <table className="w-full">
                 <thead>
@@ -303,7 +303,7 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
                   </tr>
                 </thead>
                 <tbody>
-                  {quoteDetails.deliverableItems.map((item: any, i: number) => (
+                  {(quoteDetails.lineItems || quoteDetails.deliverableItems).map((item: any, i: number) => (
                     <tr key={i} className="border-b border-gray-100 last:border-0">
                       <td className="py-4 px-6 text-sm text-gray-600">
                         <div className="font-medium mb-1">{item.description || item.name}</div>
@@ -392,7 +392,7 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
         </div>
       </div>
       
-      <InvoicePreview isOpen={showInvoice} onClose={() => setShowInvoice(false)} quoteNumber={`#${quoteDetails.quoteNumber}`} totalCost={totalCost} deliverableItems={quoteDetails.deliverableItems} description={quoteDetails.projectDescription || quoteDetails.projectTitle} />
+      <InvoicePreview isOpen={showInvoice} onClose={() => setShowInvoice(false)} quoteNumber={`#${quoteDetails.quoteNumber}`} totalCost={totalCost} deliverableItems={quoteDetails.lineItems || quoteDetails.deliverableItems} description={quoteDetails.projectDescription || quoteDetails.projectTitle} />
     </div>
   );
 }

@@ -52,7 +52,7 @@
 
 /* Social Buttons */
 .social-button {
-  @apply w-full sm:w-[292px] h-[42px] border-2 border-border-medium rounded-[8px] flex items-center overflow-hidden hover:bg-bg-hover transition active:scale-[0.98];
+  @apply w-full h-[44px] border-2 border-border-medium rounded-[8px] flex items-center overflow-hidden hover:bg-bg-hover transition active:scale-[0.98];
 }
 
 .social-icon-wrapper {

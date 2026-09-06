@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { requestAnalysisService } from "@/lib/requestAnalysisService";
+import { authService } from "@/lib/authService";
 import StatusPopup from "@/components/common/StatusPopup";
 
 export default function FreeAnalysis() {
@@ -10,6 +11,22 @@ export default function FreeAnalysis() {
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<any>(null);
   const [status, setStatus] = useState<{ type: "success" | "error"; title: string; message: string } | null>(null);
+
+  useEffect(() => {
+    const syncUserEmail = () => {
+      const user = authService.getUser();
+      if (user?.email) {
+        setEmail(user.email);
+      }
+    };
+    syncUserEmail();
+    window.addEventListener("auth:login", syncUserEmail);
+    window.addEventListener("auth:logout", () => setEmail(""));
+    return () => {
+      window.removeEventListener("auth:login", syncUserEmail);
+      window.removeEventListener("auth:logout", () => setEmail(""));
+    };
+  }, []);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -39,7 +56,8 @@ export default function FreeAnalysis() {
           message: "We've received your request and will email you the analysis soon!",
         });
         setWebsite("");
-        setEmail("");
+        const user = authService.getUser();
+        setEmail(user?.email || "");
       } else {
         setStatus({
           type: "error",

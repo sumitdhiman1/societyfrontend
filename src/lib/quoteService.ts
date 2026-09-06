@@ -34,18 +34,9 @@ export class QuoteService {
     return await this.client.patch(`/quotes/rename/${id}`, { projectTitle: title });
   }
 
-  async downloadQuotePDF(id: string) {
-    const response = await fetch(`/api-gateway/quotes/${id}/pdf`);
-    if (!response.ok) throw new Error("Failed to download PDF");
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Proposal-${id}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+  async downloadQuotePDF(quote: { _id?: string; quoteNumber?: string; [key: string]: any }) {
+    const { generateQuotePDF } = await import("./generateQuotePDF");
+    await generateQuotePDF(quote);
   }
 
   async getQuoteFiles(id: string) {
