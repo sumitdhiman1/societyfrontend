@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/lib/authService";
 import { requestAnalysisService, claimPendingAnalyses } from "@/lib/requestAnalysisService";
-import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 export default function MyAnalysesPage() {
@@ -157,8 +156,6 @@ export default function MyAnalysesPage() {
       className="bg-white min-h-screen flex flex-col font-sans"
       style={{ fontFamily: "var(--font-inter), sans-serif" }}
     >
-      <DashboardSubNav />
-
       <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-6 md:pb-8 flex flex-col justify-between">
         {/* Top Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-6 md:gap-0">
@@ -229,7 +226,7 @@ export default function MyAnalysesPage() {
                 {activeTab !== "all" ? activeTab.replace(/_/g, " ") : ""} analysis requests.
               </p>
               <button
-                onClick={() => router.push("/#request-analysis")}
+                onClick={() => router.push("/dashboard/new-project/packages?categorycode=ANALYSIS&sortBy=order_asc")}
                 className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-sm font-bold py-2.5 px-6 rounded-[4px] transition-colors whitespace-nowrap cursor-pointer"
               >
                 Request a New Analysis
@@ -289,7 +286,7 @@ export default function MyAnalysesPage() {
               New Analysis
             </h3>
             <button
-              onClick={() => router.push("/#request-analysis")}
+              onClick={() => router.push("/dashboard/new-project/packages?categorycode=ANALYSIS&sortBy=order_asc")}
               className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-[15px] font-bold py-3.5 px-8 rounded-[7px] transition-all shadow-sm whitespace-nowrap font-sans border-2 border-[#4343F0] cursor-pointer"
             >
               Request a New Analysis

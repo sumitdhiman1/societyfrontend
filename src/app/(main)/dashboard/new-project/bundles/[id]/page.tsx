@@ -9,13 +9,8 @@ import { authService } from "@/lib/authService";
 import { paymentService } from "@/lib/paymentService";
 import { profileService } from "@/lib/profileService";
 import StatusPopup from "@/components/common/StatusPopup";
-import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
-
-const EUROPEAN_COUNTRIES = [
-  "AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR", "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SI", "SK", "GB", "CH", "NO", "IS", "LI"
-];
-const VAT_RATE = 0.20;
+import { countryService, Country } from "@/lib/countryService";
 
 
 const CheckIcon = () => (
@@ -86,6 +81,7 @@ function BundleDetailsContent() {
   const [status, setStatus] = useState({ isOpen: false, type: "success" as "success" | "error", title: "", message: "" });
   const [email, setEmail] = useState("");
   const [country, setCountry] = useState("US");
+  const [countriesList, setCountriesList] = useState<Country[]>([]);
 
   useEffect(() => {
     setProjectNo(Math.random().toString(36).substring(2, 9).toUpperCase());
@@ -109,7 +105,20 @@ function BundleDetailsContent() {
         }
       }
     };
+
+    const fetchCountries = async () => {
+      try {
+        const list = await countryService.getAllCountries();
+        if (list && list.length > 0) {
+          setCountriesList(list);
+        }
+      } catch (err) {
+        console.error("Failed to load countries:", err);
+      }
+    };
+
     initUser();
+    fetchCountries();
   }, []);
 
   useEffect(() => {
@@ -179,9 +188,22 @@ function BundleDetailsContent() {
     }).format(amount);
   };
 
+  const getVatRate = () => {
+    if (!country) return 0;
+    const directRate = countryService.getVatRateSync(country);
+    if (directRate !== undefined && directRate > 0) return directRate;
+    const found = countriesList.find(
+      (c) =>
+        c.iso2?.toUpperCase() === country.toUpperCase() ||
+        c.iso3?.toUpperCase() === country.toUpperCase() ||
+        c.name?.toLowerCase() === country.toLowerCase()
+    );
+    return found ? (Number(found.vatRate) || 0) : 0;
+  };
+
   const getVatAmount = (amount: number) => {
-    const isEuropean = EUROPEAN_COUNTRIES.includes(country?.toUpperCase());
-    return isEuropean ? amount * VAT_RATE : 0;
+    const rate = getVatRate();
+    return rate > 0 ? (amount * rate) / 100 : 0;
   };
 
   const parsePrice = (p: any) => {
@@ -280,7 +302,6 @@ function BundleDetailsContent() {
 
   return (
     <div className="bg-white min-h-screen flex flex-col font-sans text-[#404040]">
-      <DashboardSubNav />
       <StatusPopup
         isOpen={status.isOpen}
         onClose={() => setStatus({ ...status, isOpen: false })}
@@ -494,7 +515,7 @@ function BundleDetailsContent() {
                       </div>
                       {getVatAmount(parsePrice(selectedTier.price)) > 0 && (
                         <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                          Inc. 20% VAT ({formatPrice(getVatAmount(parsePrice(selectedTier.price)))})
+                          Inc. {getVatRate()}% VAT ({formatPrice(getVatAmount(parsePrice(selectedTier.price)))})
                         </div>
                       )}
                     </div>
