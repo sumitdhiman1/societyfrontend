@@ -275,7 +275,7 @@ const QuestionCard = ({
   return (
     <div className="animate-in fade-in duration-700 bg-white p-6 md:p-10 rounded-[10px] shadow-2xl">
       <h2 className="text-xl md:text-2xl font-semibold text-[#363636] mb-6 md:mb-8 tracking-tight font-manrope">
-        {formatCalculatorQuestionText(question.text, question.isRequired, question.type)}
+        {formatCalculatorQuestionText(question.text, question.isRequired, question.type, categoryKey ?? undefined)}
       </h2>
 
       {question.type === "text" && (
@@ -332,7 +332,13 @@ const QuestionCard = ({
                         </div>
                       )}
                     </div>
-                    <div className="text-[17px] font-normal text-[#5a6a7a] tracking-wide">{formatCalculatorAnswerLabel(ans.text, question.key)}</div>
+                    <div className="text-[17px] font-normal text-[#5a6a7a] tracking-wide">
+                      {formatCalculatorAnswerLabel(ans.text, question.key, {
+                        categoryKey: categoryKey ?? undefined,
+                        roleId: question.roleId,
+                        metadata: ans.metadata,
+                      })}
+                    </div>
                   </button>
                 );
               })}
@@ -386,12 +392,23 @@ const ProposalPreview = ({
     } else if (sel.answerKeys?.length) {
       sel.answerKeys.forEach((k: string) => {
         const ans = q.answers.find((a: any) => a.key === k);
-        if (ans) ansTexts.push(formatCalculatorAnswerLabel(ans.text, q.key));
+        if (ans) {
+          ansTexts.push(
+            formatCalculatorAnswerLabel(ans.text, q.key, {
+              categoryKey: category.categoryKey,
+              roleId: q.roleId,
+              metadata: ans.metadata,
+            })
+          );
+        }
       });
     }
 
     if (ansTexts.length > 0) {
-      breakdown.push({ question: formatCalculatorQuestionText(q.text, q.isRequired, q.type), answers: ansTexts });
+      breakdown.push({
+        question: formatCalculatorQuestionText(q.text, q.isRequired, q.type, category.categoryKey),
+        answers: ansTexts,
+      });
     }
   });
 

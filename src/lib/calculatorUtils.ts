@@ -245,21 +245,64 @@ export function getDefaultCategoryTimeline(categoryKey: string, categoryTimeline
   return DEFAULT_CATEGORY_TIMELINES[categoryKey] || "2 weeks";
 }
 
-/** Strip rush-fee suffix from timeline labels except graphics (live shows fees there). */
-export function formatCalculatorAnswerLabel(text: string, questionKey?: string): string {
-  if (questionKey === "GFX_TIMELINE" || questionKey === "SEO_TIMELINE") return text;
+function isTimelineWithRushFees(
+  categoryKey?: string,
+  questionKey?: string,
+  roleId?: number
+): boolean {
+  if (
+    questionKey === "GFX_TIMELINE" ||
+    questionKey === "SEO_TIMELINE" ||
+    questionKey === "GD_TIMELINE"
+  ) {
+    return true;
+  }
+  if (categoryKey === "graphics" && (roleId === 13 || roleId === 14)) return true;
+  if (categoryKey === "seo" && roleId === 13) return true;
+  return false;
+}
+
+function appendRushFeeLabel(text: string, fee?: number): string {
+  if (!fee || fee <= 0 || /\+\d+% rush fee/i.test(text) || /no extra fee/i.test(text)) {
+    return text;
+  }
+  const pct = Math.round(fee * 100);
+  const base = text.replace(/:\s*$/, "").trim();
+  return `${base}: +${pct}% rush fee`;
+}
+
+/** Strip rush-fee suffix from timeline labels except graphics/SEO (live may use numeric keys). */
+export function formatCalculatorAnswerLabel(
+  text: string,
+  questionKey?: string,
+  options?: { categoryKey?: string; roleId?: number; metadata?: { fee?: number } }
+): string {
+  const { categoryKey, roleId, metadata } = options ?? {};
+
+  if (isTimelineWithRushFees(categoryKey, questionKey, roleId)) {
+    let label = appendRushFeeLabel(text, metadata?.fee);
+    if (!/\+\d+% rush fee/i.test(label) && !/no extra fee/i.test(label)) {
+      if (/super rushed/i.test(label)) label = appendRushFeeLabel(label, 0.5);
+      else if (/\(rushed\)/i.test(label)) label = appendRushFeeLabel(label, 0.25);
+    }
+    return label;
+  }
+
   return text.replace(/:\s*\+\d+% rush fee/i, "").trim();
 }
 
-/** Append (Optional) for optional text/number questions (live parity). */
+/** Append (Optional) for optional text/number on marketing, SEO, and graphics. */
 export function formatCalculatorQuestionText(
   text: string,
   isRequired?: boolean,
-  questionType?: string
+  questionType?: string,
+  categoryKey?: string
 ): string {
   const trimmed = text.replace(/\s*\(Optional\)/gi, "").trim();
   const supportsOptionalLabel = questionType === "text" || questionType === "number";
-  if (supportsOptionalLabel && isRequired === false) {
+  const showOptional =
+    categoryKey === "marketing" || categoryKey === "seo" || categoryKey === "graphics";
+  if (showOptional && supportsOptionalLabel && isRequired !== true) {
     return `${trimmed} (Optional)`;
   }
   return trimmed;
