@@ -324,8 +324,10 @@ export function getCalculatorDisplayAmount(
   conversionRate = 1,
   categoryKey?: string
 ): number {
-  const inCurrency = currency === "eur" ? amountUsd / conversionRate : amountUsd;
-  return roundCalculatorPrice(inCurrency, categoryKey);
+  if (currency === "eur") {
+    return getCalculatorPayableAmount(amountUsd, currency, conversionRate);
+  }
+  return roundCalculatorPrice(amountUsd, categoryKey);
 }
 
 /** Exact payable amount in display currency (2dp) for payment form — live parity. */
@@ -361,12 +363,17 @@ export function formatCalculatorDisplayAmount(
   currency: string,
   categoryKey?: string
 ): string {
+  const normalizedCurrency = currency.toUpperCase();
+  const rounded =
+    currency === "eur"
+      ? Math.round(amountInCurrency * 100) / 100
+      : roundCalculatorPrice(amountInCurrency, categoryKey);
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: currency.toUpperCase(),
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(roundCalculatorPrice(amountInCurrency, categoryKey));
+    currency: normalizedCurrency,
+    minimumFractionDigits: currency === "eur" ? 2 : 0,
+    maximumFractionDigits: currency === "eur" ? 2 : 0,
+  }).format(rounded);
 }
 
 export function pruneHiddenSelections(
