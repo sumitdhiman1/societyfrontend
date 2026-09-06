@@ -764,9 +764,11 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
     try {
       const proposalData = {
         categoryKey,
-        selections: Object.values(selections),
+        selections: selectionsToArray(selections),
         calculatedPrice: totalPrice,
+        totalPrice,
         estimatedTimeline: timeline,
+        timeline,
         ...bizInfo,
       };
 
