@@ -418,10 +418,13 @@ function PaymentForm({
     }
   };
 
-  const regularItems = deliverableItems.filter((item) => !item.isAddOn);
-  const addonItems = deliverableItems.filter((item) => item.isAddOn);
-  const subtotalRegular = regularItems.reduce((acc, item) => acc + (item.amount || 0), 0);
-  const subtotalAddons = addonItems.reduce((acc, item) => acc + (item.amount || 0), 0);
+  const regularItems = (deliverableItems || []).filter((item) => !item.isAddOn);
+  const addonItems = (deliverableItems || []).filter((item) => item.isAddOn);
+  const subtotalRegular = regularItems.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+  const subtotalAddons = addonItems.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+  const deliverablesSum = subtotalRegular + subtotalAddons;
+  const projectSubtotal = deliverablesSum > 0 ? deliverablesSum : (totalCost + amountPaid);
+  const pendingAmount = deliverablesSum > 0 ? Math.max(0, deliverablesSum - amountPaid) : totalCost;
 
   return (
     <div className="bg-white border border-gray-300 rounded-lg p-4 sm:p-6 md:p-8">
@@ -501,19 +504,19 @@ function PaymentForm({
               <span className="text-xs sm:text-sm text-gray-600 uppercase sm:capitalize font-bold sm:font-normal">
                 Subtotal:
               </span>
-              <span className="text-sm font-bold text-gray-700">{formatPrice(totalCost + amountPaid)}</span>
+              <span className="text-sm font-bold text-gray-700">{formatPrice(projectSubtotal)}</span>
             </div>
             {getActiveVatRate() > 0 && (
               <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8">
                 <span className="text-xs sm:text-sm text-gray-600 font-bold sm:font-semibold">VAT ({getActiveVatRate()}%):</span>
-                <span className="text-sm text-gray-600 font-bold sm:font-semibold">{formatPrice(getVatAmount(totalCost + amountPaid))}</span>
+                <span className="text-sm text-gray-600 font-bold sm:font-semibold">{formatPrice(getVatAmount(projectSubtotal))}</span>
               </div>
             )}
             <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8 border-t border-gray-100 pt-2">
               <span className="text-xs sm:text-sm text-gray-800 uppercase sm:capitalize font-bold">
                 Total Cost:
               </span>
-              <span className="text-lg sm:text-xl font-bold text-gray-800">{formatPrice((totalCost + amountPaid) + getVatAmount(totalCost + amountPaid))}</span>
+              <span className="text-lg sm:text-xl font-bold text-gray-800">{formatPrice(projectSubtotal + getVatAmount(projectSubtotal))}</span>
             </div>
             <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8">
               <span className="text-xs sm:text-sm text-green-600 font-bold sm:font-semibold">Paid:</span>
@@ -521,7 +524,7 @@ function PaymentForm({
             </div>
             <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8">
               <span className="text-xs sm:text-sm text-red-600 font-bold sm:font-semibold">Pending Balance:</span>
-              <span className="text-sm text-red-600 font-bold sm:font-semibold">{formatPrice(totalCost + getVatAmount(totalCost))}</span>
+              <span className="text-sm text-red-600 font-bold sm:font-semibold">{formatPrice(pendingAmount + getVatAmount(pendingAmount))}</span>
             </div>
           </div>
         </div>
@@ -1117,9 +1120,9 @@ function PaymentForm({
         isOpen={showInvoiceModal}
         onClose={() => setShowInvoiceModal(false)}
         projectNumber={entityNumber}
-        totalCost={totalCost + amountPaid}
+        totalCost={projectSubtotal}
         deliverableItems={deliverableItems}
-        vatAmount={getVatAmount(totalCost + amountPaid)}
+        vatAmount={getVatAmount(projectSubtotal)}
         vatRate={getActiveVatRate() / 100}
       />
     </div>

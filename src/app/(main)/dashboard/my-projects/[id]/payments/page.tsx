@@ -283,7 +283,7 @@ export default function ProjectPaymentsPage() {
   const baseCost = Number(activeProject.price ?? activeProject.totalCost ?? 0);
   const addonsTotal = allAddonItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
   const deliverablesTotal = deliverableItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
-  const totalProjectCost = Math.max(baseCost + addonsTotal, deliverablesTotal);
+  const totalProjectCost = deliverablesTotal > 0 ? deliverablesTotal : (baseCost > 0 ? baseCost : addonsTotal);
 
   const pendingBalance = Math.max(0, totalProjectCost - amountPaid);
   const payableAmount = pendingBalance;
