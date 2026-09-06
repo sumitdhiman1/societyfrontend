@@ -146,6 +146,7 @@ export function filterQuestionAnswers(
   tier: string
 ): CalculatorQuestion {
   if (!question.answers?.length) return question;
+  if (question.roleId === 2) return question;
   return {
     ...question,
     answers: question.answers.filter((a) => isAnswerVisible(a as TierScopedAnswer, tier)),
