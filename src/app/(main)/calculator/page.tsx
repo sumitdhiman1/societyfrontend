@@ -142,7 +142,6 @@ const CurrencyDropdown = ({
     size === "sm"
       ? "text-[16px] font-bold text-[#002E8A] uppercase tracking-wide font-sans "
       : "text-sm text-[12px] md:text-[14px] font-bold text-[#002e8a] uppercase tracking-wide ";
-  // text-[12px] md:text-[14px] font-black text-[#002e8a] uppercase tracking-[0.1em]
   const valueClass =
     size === "sm"
       ? "text-[16px] font-bold text-black uppercase font-sans"
@@ -219,22 +218,24 @@ const NumberStepper = ({
   onChange: (n: number) => void;
   min?: number;
 }) => (
-  <div className="inline-flex items-center gap-3 rounded-full bg-gray-100 px-3 py-2">
-    <button
-      type="button"
-      onClick={() => onChange(Math.max(min, value - 1))}
-      className="w-10 h-10 rounded-full text-gray-600 text-xl font-normal flex items-center justify-center hover:bg-white transition-colors"
-    >
-      −
-    </button>
-    <div className="min-w-[48px] text-center text-2xl font-semibold text-[#363636]">{value}</div>
-    <button
-      type="button"
-      onClick={() => onChange(value + 1)}
-      className="w-10 h-10 rounded-full text-gray-600 text-xl font-normal flex items-center justify-center hover:bg-white transition-colors"
-    >
-      +
-    </button>
+  <div className="flex items-center gap-6 flex-wrap">
+    <div className="flex items-center gap-0 bg-gray-50 border border-gray-300 rounded-xl overflow-hidden shadow-sm">
+      <button
+        type="button"
+        onClick={() => onChange(Math.max(min, value - 1))}
+        className="w-12 h-14 flex items-center justify-center text-gray-600 hover:text-[#4F46E5] hover:bg-gray-200/60 transition-all text-xl font-bold select-none"
+      >
+        −
+      </button>
+      <div className="w-20 h-14 bg-white text-[#334155] text-2xl font-bold flex items-center justify-center outline-none focus:bg-blue-50/50 transition-all border-x border-gray-200 tabular-nums">{value}</div>
+      <button
+        type="button"
+        onClick={() => onChange(value + 1)}
+        className="w-12 h-14 flex items-center justify-center text-gray-600 hover:text-[#4F46E5] hover:bg-gray-200/60 transition-all text-xl font-bold select-none"
+      >
+        +
+      </button>
+    </div>
   </div>
 );
 
@@ -271,8 +272,8 @@ const QuestionCard = ({
   const answerGroups = [{ heading: null, answers: visibleAnswers }];
 
   return (
-    <div className="animate-in fade-in duration-700 bg-white p-6 md:p-10 rounded-[10px] shadow-2xl">
-      <h2 className="text-xl md:text-2xl font-semibold text-[#363636] mb-6 md:mb-8 tracking-tight font-manrope">
+    <div className="animate-in fade-in duration-700 bg-white p-8 md:p-12 rounded-2xl shadow-xl border border-gray-100/80 text-left max-w-[680px] mx-auto">
+      <h2 className="text-[20px] md:text-[22px] font-medium text-[#475569] mb-6 md:mb-8 tracking-normal leading-snug">
         {formatCalculatorQuestionText(question.text, question.isRequired, question.type, categoryKey ?? undefined)}
       </h2>
 
@@ -282,7 +283,7 @@ const QuestionCard = ({
           onChange={(e) => setTextVal(e.target.value)}
           onBlur={() => onToggleAnswer(question.key, textVal, "text")}
           placeholder="Enter your response here..."
-          className="w-full p-4 bg-white border border-gray-200 rounded-lg text-[#002E8A] focus:border-[#002E8A] focus:ring-1 focus:ring-[#002E8A] focus:outline-none min-h-[120px] resize-vertical placeholder:text-gray-400 transition-all"
+          className="w-full p-4 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:border-[#4F46E5] focus:bg-white focus:outline-none min-h-[120px] resize-vertical placeholder:text-gray-400 font-sans text-[16px]"
         />
       )}
 
@@ -301,7 +302,7 @@ const QuestionCard = ({
       {(question.type === "single" || question.type === "multi") &&
         answerGroups.map((group, gIdx) => (
           <div key={gIdx} className={gIdx > 0 ? "mt-6" : ""}>
-            <div className="grid grid-cols-1 gap-1">
+            <div className="grid grid-cols-1 gap-1 multiple-radio">
               {group.answers.map((ans: any) => {
                 const isSelected = activeKeys.includes(ans.key);
                 return (
@@ -314,23 +315,21 @@ const QuestionCard = ({
                     <div className="flex-shrink-0">
                       {question.type === "multi" ? (
                         <div
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${isSelected ? "bg-[#5356ff] border-[#5356ff]" : "border-gray-300 bg-white"
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? "bg-[#4F46E5] border-[#4F46E5] bg-white" : "border-[#CBD5E1] bg-white group-hover:border-[#4F46E5]"
                             }`}
                         >
                           {isSelected && (
-                            // <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            //   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
-                            // </svg>
                             <div className="w-2.5 h-2.5 rounded-full bg-[#4F46E5]"></div>
                           )}
                         </div>
                       ) : (
-                        <div className="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center">
-                          {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#5356ff]" />}
+                        <div className={`w-5 h-5 rounded-full border-2 border-[#4F46E5] flex items-center justify-center  ${isSelected ? "bg-[#4F46E5] border-[#4F46E5] bg-white" : "border-[#CBD5E1] bg-white group-hover:border-[#4F46E5]"
+                          }`}>
+                          {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#4F46E5]" />}
                         </div>
                       )}
                     </div>
-                    <div className="text-[17px] font-normal text-[#5a6a7a] tracking-wide">
+                    <div className="text-[16px] md:text-[17px] leading-relaxed transition-colors text-[#475569] font-normal group-hover:text-[#334155]">
                       {formatCalculatorAnswerLabel(ans.text, question.key, {
                         categoryKey: categoryKey ?? undefined,
                         roleId: question.roleId,
@@ -488,7 +487,7 @@ const ProposalPreview = ({
     <div className="w-full max-w-[680px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 my-6">
       <h2 className="text-[24px] md:text-[26px] font-medium text-white text-center mb-8 tracking-normal">YOUR PROPOSAL</h2>
       <div className="bg-white rounded-[10px] p-8 md:p-10 shadow-2xl text-left border border-white">
-        <h3 className="text-[#363636] font-bold text-[26px] md:text-[28px] mb-2 tracking-tight leading-none">
+        <h3 className="text-[#111827] font-bold text-[24px] md:text-[26px] mb-1 leading-tight">
           {displayName}
         </h3>
         {subtitle && (
@@ -519,23 +518,23 @@ const ProposalPreview = ({
           ))}
         </div>
 
-        <div className="mt-12 mb-6">
-          <h3 className="text-[#363636] text-[28px] md:text-[32px] font-black tracking-tighter">
+        <div className="mt-10 mb-6">
+          <h3 className="text-[#111827] text-[24px] md:text-[26px] font-bold tracking-tight mb-1">
             PROJECT TOTAL COST:{" "}
-            <span className="text-[#5356ff]">{formatPriceLocal(totalPrice)}</span>
+            <span className="text-[#4F46E5] font-black font-bold">{formatPriceLocal(totalPrice)}</span>
           </h3>
           {isMonthly && <p className="text-[#363636] text-[13px] font-medium mt-1 opacity-75">First month billed on start. Then auto-renewed monthly.</p>}
         </div>
 
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[#363636] text-[18px] font-bold">Estimated Deadline</span>
+            <span className="text-[#374151] text-[16px] font-medium">Estimated Deadline</span>
             <div className="relative">
               <button
                 type="button"
                 onMouseEnter={() => setShowTooltip(true)}
                 onMouseLeave={() => setShowTooltip(false)}
-                className="w-5 h-5 rounded-full bg-gray-400 text-white text-[11px] font-bold flex items-center justify-center cursor-help leading-none"
+                className="w-4 h-4 rounded-full bg-gray-300 text-gray-700 text-[11px] font-bold flex items-center justify-center cursor-help leading-none"
               >
                 ?
               </button>
@@ -546,15 +545,15 @@ const ProposalPreview = ({
               )}
             </div>
           </div>
-          <p className="text-[#363636] text-[16px] font-bold">{displayTimeline}</p>
+          <p className="text-[#111827] text-[16px] font-bold">{displayTimeline}</p>
         </div>
 
-        <div className="bg-[#F3F0FF] border border-[#E0DBFF] rounded-lg p-4 mb-8 text-sm text-[#5356ff] leading-relaxed">
+        <div className="bg-[#EEF2FF] border border-[#C7D2FE] rounded-xl p-4 mb-8 text-sm text-[#4338CA] leading-relaxed">
           <strong>📋 Timeline Note:</strong> The estimated deadline does not count time when your response is pending — including approvals, content submissions, or payment deadlines. Your project manager will notify you if the project timeline is paused.
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 mt-4">
-          <button onClick={handleDownload} className="w-full bg-[#5356ff] hover:bg-[#4346DD] text-white font-bold py-4 px-6 rounded-[5px] transition-colors flex items-center justify-center gap-2 shadow-[0px_4px_10px_rgba(0,0,0,0.1)] group">
+          <button onClick={handleDownload} className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-semibold py-3.5 px-6 rounded-[6px] transition-all flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg cursor-pointer">
             <svg className="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4" />
               <polyline points="7 10 12 15 17 10" />
@@ -562,7 +561,7 @@ const ProposalPreview = ({
             </svg>
             <span className="text-[16px] font-semibold tracking-normal">Download PDF</span>
           </button>
-          <button onClick={handleEmail} className="w-full bg-white border-2 border-[#5356ff] hover:bg-gray-50 text-[#5356ff] font-bold py-4 px-6 rounded-[5px] transition-colors flex items-center justify-center gap-2 group">
+          <button onClick={handleEmail} className="w-full bg-white border border-gray-300 hover:bg-gray-50 text-[#374151] font-semibold py-3.5 px-6 rounded-[6px] transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer">
             <svg className="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1 0.9-2 2-2z" />
               <polyline points="22,6 12,13 2,6" />
@@ -821,16 +820,16 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
     <form onSubmit={handleSubmit} className="animate-in fade-in duration-500 w-full flex flex-col gap-8">
       <StatusPopup isOpen={status.isOpen} onClose={() => setStatus({ ...status, isOpen: false })} type={status.type} title={status.title} message={status.message} />
 
-      <div className="text-center mb-2">
-        <h2 className="text-[34px] font-normal text-white mb-4 font-manrope uppercase tracking-wide">READY TO BEGIN?</h2>
-        <p className="text-gray-100 text-[16px] font-light leading-relaxed">
+      <div className="text-center mb-6">
+        <h2 className="text-[24px] md:text-[26px] font-medium text-white mb-3 tracking-normal">READY TO BEGIN?</h2>
+        <p className="text-gray-300 text-[15px] font-light leading-relaxed max-w-[450px] mx-auto">
           Pay any amount as a deposit to have our team<br />begin work on this project.
         </p>
       </div>
 
       <div className="bg-white rounded-2xl p-6 md:p-10 shadow-2xl mx-auto w-full max-w-[680px] border border-white">
         <div className="flex justify-between items-center mb-8">
-          <h3 className="text-black font-bold text-[18px]">Amount:</h3>
+          <h3 className="text-[#111827] font-bold text-[18px]">Amount:</h3>
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
               type="button"
@@ -864,7 +863,7 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
               )}
             </div>
             <input type="radio" name="paymentOption" className="hidden" checked={paymentOption === "full"} onChange={() => setPaymentOption("full")} />
-            <span className={`transition-colors font-medium ${paymentOption === "full" ? "text-black" : "text-gray-800"}`}>Full {formatPaymentLine(payableTotal)}</span>
+            <span className={`transition-colors font-normal text-[16px] ${paymentOption === "full" ? "text-black" : "text-[#475569]"}`}>Full {formatPaymentLine(payableTotal)}</span>
           </label>
 
           {halfPrice > 0 && (
@@ -875,7 +874,7 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
                 )}
               </div>
               <input type="radio" name="paymentOption" className="hidden" checked={paymentOption === "half"} onChange={() => setPaymentOption("half")} />
-              <span className={`transition-colors font-medium ${paymentOption === "half" ? "text-black" : "text-gray-800"}`}>50% {formatPaymentLine(halfPrice)}</span>
+              <span className={`transition-colors font-normal text-[16px] ${paymentOption === "half" ? "text-black" : "text-[#475569]"}`}>50% {formatPaymentLine(halfPrice)}</span>
             </label>
           )}
 
@@ -899,19 +898,18 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
           </label>
         </div>
 
-        <div className="border border-gray-200 rounded-lg p-4 mb-8 space-y-3">
-          <div className="flex justify-between items-center text-sm text-gray-600">
-            <span>Base Amount ({currencyLabel}):</span>
-            <span>{formatPaymentLine(baseAmount)}</span>
+        <div className="mt-4 mb-8 p-5 bg-gray-50/80 rounded-xl border border-gray-200 text-sm font-sans space-y-2.5">
+          <div className="flex justify-between text-[15px]">
+            <span className="text-gray-600">Base Amount ({currencyLabel}):</span>
+            <span className="font-semibold text-gray-800">{formatPaymentLine(baseAmount)}</span>
           </div>
-          <div className="flex justify-between items-center text-sm text-gray-600">
-            <span>VAT ({Math.round(vatRate * 100)}%):</span>
-            <span>{formatPaymentLine(vatAmount)}</span>
+          <div className="flex justify-between text-[15px]">
+            <span className="text-gray-600">VAT ({Math.round(vatRate * 100)}%):</span>
+            <span className="font-semibold text-gray-800">{formatPaymentLine(vatAmount)}</span>
           </div>
-          <hr className="border-gray-200" />
-          <div className="flex justify-between items-center text-sm font-bold">
-            <span className="text-[#5356ff]">Total Payable:</span>
-            <span className="text-[#5356ff]">{formatPaymentLine(totalPayable)}</span>
+          <div className="pt-2 border-t border-gray-200 flex justify-between items-center text-base font-bold text-gray-900">
+            <span className="">Total Payable:</span>
+            <span className="text-[#4F46E5] text-lg font-black">{formatPaymentLine(totalPayable)}</span>
           </div>
         </div>
 
@@ -925,16 +923,16 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
           <span className="text-sm text-gray-700">Billing address is the same as Business details</span>
         </label>
 
-        <div className="space-y-8 font-sans">
+        <div className="space-y-6 font-sans opacity-60 cursor-pointer">
           <div>
-            <label className="block text-[16px] font-bold text-black mb-[10px]">Name on the card:</label>
-            <input type="text" value={cardholderName} onChange={(e) => { setCardholderName(e.target.value); if (errors.cardHolderName) setErrors((p: any) => ({ ...p, cardHolderName: "" })); }} placeholder="Name on the card" className={`w-full border-b ${errors.cardHolderName ? "border-red-500" : "border-black/80"} py-2.5 bg-transparent outline-none text-black placeholder:text-gray-400 focus:border-black text-[16px] transition-all`} />
+            <label className="block text-[15px] font-medium text-[#111827] mb-2">Name on the card:</label>
+            <input type="text" value={cardholderName} onChange={(e) => { setCardholderName(e.target.value); if (errors.cardHolderName) setErrors((p: any) => ({ ...p, cardHolderName: "" })); }} placeholder="Name on the card" className={`w-full border-b ${errors.cardHolderName ? "border-red-500" : "border-gray-200 border-b"} py-2.5 bg-transparent outline-none placeholder-gray-400 focus:border-[#4F46E5] text-[15px] transition-all`} />
             {errors.cardHolderName && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.cardHolderName}</span>}
           </div>
 
           <div>
-            <label className="block text-[16px] font-bold text-black mb-[10px]">Card number:</label>
-            <div className={`w-full border-b ${errors.cardNumber ? "border-red-500" : "border-black/80"} py-2.5 min-h-[40px] focus-within:border-black transition-all`}>
+            <label className="block text-[15px] font-medium text-[#111827] mb-2">Card number:</label>
+            <div className={`w-full border-b ${errors.cardNumber ? "border-red-500" : "border-gray-200 border-b"} py-2.5 focus-within:border-[#4F46E5] transition-all`}>
               <CardNumberElement options={stripeCardNumberOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, number: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardNumber: "" })); }} />
             </div>
             {errors.cardNumber && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.cardNumber}</span>}
@@ -942,15 +940,15 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
 
           <div className="grid grid-cols-2 gap-10">
             <div>
-              <label className="block text-[16px] font-bold text-black mb-[10px]">Expiry date:</label>
-              <div className={`w-full border-b ${errors.cardExpiry ? "border-red-500" : "border-black/80"} py-2.5 min-h-[40px] focus-within:border-black transition-all`}>
+              <label className="block text-[15px] font-medium text-[#111827] mb-2">Expiry date:</label>
+              <div className={`w-full border-b ${errors.cardExpiry ? "border-red-500" : "border-black/80"} py-2.5 focus-within:border-black transition-all`}>
                 <CardExpiryElement options={stripeCardExpiryOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, expiry: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardExpiry: "" })); }} />
               </div>
               {errors.cardExpiry && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.cardExpiry}</span>}
             </div>
             <div>
-              <label className="block text-[16px] font-bold text-black mb-[10px]">CVC:</label>
-              <div className={`w-full border-b ${errors.cardCvc ? "border-red-500" : "border-black/80"} py-2.5 min-h-[40px] focus-within:border-black transition-all`}>
+              <label className="block text-[15px] font-medium text-[#111827] mb-2">CVC:</label>
+              <div className={`w-full border-b ${errors.cardCvc ? "border-red-500" : "border-black/80"} py-2.5 focus-within:border-black transition-all`}>
                 <CardCvcElement options={stripeCardCvcOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, cvc: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardCvc: "" })); }} />
               </div>
               {errors.cardCvc && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.cardCvc}</span>}
@@ -1002,7 +1000,11 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
         </div>
       </div>
 
-      <button type="submit" disabled={isProcessing || !stripe || !elements} className="w-full max-w-[680px] mx-auto py-5 px-6 rounded bg-white text-[#163659] font-black text-[16px] tracking-widest shadow-xl hover:bg-gray-100 transition-all disabled:opacity-70 disabled:cursor-not-allowed uppercase active:scale-[0.98] mt-4">
+      <button
+        type="submit"
+        disabled={isProcessing || !stripe || !elements}
+        className="w-full max-w-[680px] mx-auto py-4 px-6 rounded-[6px] bg-[#4343F0] text-white font-extrabold text-[16px] tracking-widest shadow-xl hover:bg-[#3232b7] transition-all  disabled:cursor-not-allowed uppercase active:scale-[0.98] mt-4"
+      >
         {isProcessing ? "PROCESSING..." : `PAY ${paymentOption === "full" ? `${formatPaymentLine(payableTotal)} ` : ""}NOW`}
       </button>
     </form>
@@ -1236,7 +1238,7 @@ export default function CalculatorPage() {
         {selectedCategoryKey && (
           <>
             <div className="w-full" style={calculatorDarkBg}>
-              <div className="container mx-auto px-4 md:px-8 lg:px-[54px] max-w-[1600px] pt-2 md:pt-4 pb-10 md:pb-16 flex flex-col items-center gap-8">
+              <div className="mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] max-w-[1536px] w-full py-10 md:py-16 flex flex-col items-center gap-10 min-h-[480px]">
                 {visibleQuestions.map((q: any) => (
                   <div key={q.key} className="w-full max-w-[680px]">
                     <QuestionCard
@@ -1255,7 +1257,7 @@ export default function CalculatorPage() {
 
             {selectedCategory && (
               <div
-                className="w-full bg-[#001b54] pb-10 md:pb-20"
+                className="w-full bg-[#00102e] pb-10 md:pb-20"
                 style={{
                   backgroundImage: "radial-gradient(circle, #00287a 1%, transparent 1%)",
                   backgroundSize: "30px 30px",
@@ -1288,10 +1290,10 @@ export default function CalculatorPage() {
         )}
       </main>
 
-      {/* Reverted Sticky Bottom Bar to centered production style */}
+      {/* Sticky Bottom Bar */}
       {showStickyPriceBar && (
-        <div className="fixed bottom-0 left-0 right-0 py-4 md:h-[100px] bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.05)] border-t border-gray-100 flex items-center z-[100]">
-          <div className="container mx-auto flex flex-col md:flex-row justify-center items-center gap-4 md:gap-10 px-4">
+        <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 shadow-lg z-[100] h-20 bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.05)] flex items-center transition-transform duration-500 ease-in-out translate-y-0">
+          <div className="mx-auto max-w-[1536px] flex flex-col md:flex-row justify-center items-center gap-4 md:gap-10 px-4">
             <div className="flex items-center gap-4">
               <span className="text-[12px] md:text-[14px] uppercase text-[#002e8a] tracking-[0.1em] font-semibold">PROJECT TOTAL COST:</span>
               <span className="text-2xl md:text-3xl font-black text-black font-bold">
