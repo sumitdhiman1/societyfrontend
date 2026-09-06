@@ -355,18 +355,19 @@ export default function QuoteDetailsPage() {
   if (!quote) return null;
 
   // Format Helpers
-  const currency = (quote.currency || "eur").toUpperCase();
-  const formatCurrency = (amt: any) => {
+  const currency = (quote.currency || "USD").toUpperCase();
+  const formatCurrency = (amt: any, customCurrency?: string) => {
     const num = Number(amt || 0);
+    const curr = (customCurrency || quote.currency || "USD").toUpperCase();
     try {
       return new Intl.NumberFormat("en-US", {
         style: "currency",
-        currency: currency,
+        currency: curr,
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(num);
     } catch {
-      return `€${num.toFixed(2)}`;
+      return curr === "EUR" ? `€${num.toFixed(2)}` : `$${num.toFixed(2)}`;
     }
   };
 
@@ -929,6 +930,7 @@ export default function QuoteDetailsPage() {
                 : [];
             const senderName = msg.username || msg.senderName || managerName;
             const proposalDesc = content.projectDescription || content.text || msg.message || "";
+            const proposalCurrency = (content.currency || quote.currency || "USD").toUpperCase();
             const totalDuration = content.totalDuration || quote.totalDuration || "-";
             const totalCost = content.totalCost ?? quote.totalCost ?? 0;
 
@@ -1051,7 +1053,7 @@ export default function QuoteDetailsPage() {
                                 {formatDuration(item.duration)}
                               </td>
                               <td className="px-6 py-4 text-xs text-gray-900 font-bold text-right align-middle">
-                                {formatCurrency(item.amount ?? item.cost ?? 0)}
+                                {formatCurrency(item.amount ?? item.cost ?? 0, proposalCurrency)}
                               </td>
                             </tr>
                           ))}
@@ -1068,7 +1070,7 @@ export default function QuoteDetailsPage() {
                     </div>
                     <div className="text-center">
                       <div className="text-gray-400 font-bold text-[11px] uppercase tracking-wider mb-1">Total Cost</div>
-                      <div className="text-gray-900 font-extrabold text-sm sm:text-base">{formatCurrency(totalCost)}</div>
+                      <div className="text-gray-900 font-extrabold text-sm sm:text-base">{formatCurrency(totalCost, proposalCurrency)}</div>
                     </div>
                   </div>
 

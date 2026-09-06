@@ -76,7 +76,7 @@ export default function SupportNewsletter() {
   };
 
   return (
-    <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:px-[54px] w-full">
+    <div className="max-w-[1536px] mx-auto w-full">
       <StatusPopup
         isOpen={popup.isOpen}
         onClose={() => setPopup({ ...popup, isOpen: false })}

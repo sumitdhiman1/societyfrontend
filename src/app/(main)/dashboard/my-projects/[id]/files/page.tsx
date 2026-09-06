@@ -108,6 +108,16 @@ export default function ProjectFilesPage() {
     return "📁";
   };
 
+  const formatDate = (date: any) => {
+    if (!date) return "";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "";
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${mm}/${dd}/${yy}`;
+  };
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
@@ -206,7 +216,7 @@ export default function ProjectFilesPage() {
                     {formatSize(file.size)}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500 font-medium">
-                    {new Date(file.uploadedAt).toLocaleDateString()}
+                    {formatDate(file.uploadedAt)}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
