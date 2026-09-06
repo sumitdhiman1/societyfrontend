@@ -12,7 +12,7 @@ import {
 } from "@stripe/react-stripe-js";
 import { paymentService } from "@/lib/paymentService";
 import { authService } from "@/lib/authService";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCurrency } from "@/context/CurrencyContext";
 import VisaIcon from "@/components/icons/visa";
 import MastercardIcon from "@/components/icons/mastercard";
@@ -94,10 +94,22 @@ function PaymentForm({
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
+  const searchParams = useSearchParams();
   
+  const queryAmount = searchParams?.get("amount");
+  const hasQueryAmount = !!(queryAmount && !isNaN(Number(queryAmount)) && Number(queryAmount) > 0);
   const hasAlreadyPaid = amountPaid > 0;
-  const [paymentOption, setPaymentOption] = useState<string>(hasAlreadyPaid ? "custom" : "full");
-  const [customAmount, setCustomAmount] = useState<string>(hasAlreadyPaid ? totalCost.toFixed(2) : "");
+  
+  const [paymentOption, setPaymentOption] = useState<string>(
+    hasQueryAmount || hasAlreadyPaid ? "custom" : "full"
+  );
+  const [customAmount, setCustomAmount] = useState<string>(
+    hasQueryAmount
+      ? Number(queryAmount).toFixed(2)
+      : hasAlreadyPaid
+      ? totalCost.toFixed(2)
+      : ""
+  );
   const [cardholderName, setCardholderName] = useState("");
   const { currency, setCurrency, conversionRate } = useCurrency();
   const [billingSameAsBusiness, setBillingSameAsBusiness] = useState(true);
@@ -196,6 +208,17 @@ function PaymentForm({
     fetchCountries();
   }, []);
 
+  useEffect(() => {
+    const paramAmount = searchParams?.get("amount");
+    if (paramAmount && !isNaN(Number(paramAmount)) && Number(paramAmount) > 0) {
+      setPaymentOption("custom");
+      setCustomAmount(Number(paramAmount).toFixed(2));
+    } else if (amountPaid > 0 && totalCost > 0) {
+      setPaymentOption("custom");
+      setCustomAmount(totalCost.toFixed(2));
+    }
+  }, [searchParams, amountPaid, totalCost]);
+
   const [popup, setPopup] = useState({
     isOpen: false,
     type: "success" as "success" | "error",
@@ -263,7 +286,7 @@ function PaymentForm({
       if (!customAmount || parseFloat(customAmount) <= 0) {
         errors.amount = "Please enter a valid amount.";
       } else if (parseFloat(customAmount) > totalCost) {
-        errors.amount = `Amount cannot exceed pending balance ($${totalCost.toFixed(2)}).`;
+        errors.amount = `Amount cannot exceed pending balance (${formatPrice(totalCost)}).`;
       }
     }
 
@@ -288,19 +311,21 @@ function PaymentForm({
 
     setIsProcessing(true);
     try {
+      const effectiveInvoiceId = invoiceId || searchParams?.get("invoiceId") || undefined;
       const intentResponse = await paymentService.createPaymentIntent({
         amount: finalAmount,
         currency,
         useCredits,
         paymentMethodId: selectedMethod !== "new" ? selectedMethod : undefined,
         saveCard: selectedMethod === "new" && saveCard,
-        invoiceId,
+        invoiceId: effectiveInvoiceId,
         metadata: {
           ...extraMetadata,
           type,
           [`${type.toLowerCase()}Id`]: entityId,
           [`${type.toLowerCase()}Number`]: entityNumber,
           billingComponentId,
+          invoiceId: effectiveInvoiceId,
         },
       });
 
@@ -645,7 +670,7 @@ function PaymentForm({
                   onChange={() => setPaymentOption("half")}
                 />
                 <span className="text-gray-600 text-sm">
-                  Deposit half: <span className="font-medium">${depositAmount.toFixed(2)}</span>
+                  Deposit half: <span className="font-medium">{formatPrice(depositAmount)}</span>
                 </span>
               </label>
             )}
@@ -666,7 +691,7 @@ function PaymentForm({
                 onChange={() => setPaymentOption("full")}
               />
               <span className="text-gray-600 text-sm">
-                Pay the full amount: <span className="font-medium">${totalCost.toFixed(2)}</span>
+                Pay the full amount: <span className="font-medium">{formatPrice(totalCost)}</span>
               </span>
             </label>
 
@@ -740,7 +765,7 @@ function PaymentForm({
                       <p className="text-xs text-gray-500">
                         {availableCredits > 0 ? (
                           <span className="flex items-center gap-1">
-                            Apply your balance of <span className="font-bold text-gray-800">${availableCredits.toFixed(2)}</span> to
+                            Apply your balance of <span className="font-bold text-gray-800">{formatPrice(availableCredits)}</span> to
                             this payment.
                           </span>
                         ) : (
@@ -1082,10 +1107,7 @@ function PaymentForm({
                 Processing...
               </div>
             ) : (
-              `Pay $${(getPayableAmount() - (useCredits ? Math.min(availableCredits, getPayableAmount()) : 0)).toLocaleString(
-                "en-US",
-                { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-              )} now`
+              `Pay ${formatPrice(getPayableAmount() - (useCredits ? Math.min(availableCredits, getPayableAmount()) : 0))} now`
             )}
           </button>
         </div>

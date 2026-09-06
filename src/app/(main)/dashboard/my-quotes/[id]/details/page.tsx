@@ -928,8 +928,21 @@ export default function QuoteDetailsPage() {
                       : [];
                 const senderName = msg.username || msg.senderName || managerName;
                 const proposalDesc = content.projectDescription || content.text || msg.message || "";
-                const totalDuration = content.totalDuration || quote.totalDuration || "-";
-                const totalCost = content.totalCost ?? quote.totalCost ?? 0;
+                const proposalCurrency = (content.currency || quote.currency || "USD").toUpperCase();
+                const calculatedDurationDays = propItems.reduce((sum: number, it: any) => {
+                  const dur = String(it.duration || "").toLowerCase();
+                  const match = dur.match(/(\d+(\.\d+)?)/);
+                  const val = match ? parseFloat(match[0]) : 0;
+                  if (dur.includes("week")) return sum + val * 7;
+                  if (dur.includes("month")) return sum + val * 30;
+                  return sum + val;
+                }, 0);
+                const totalDuration =
+                  calculatedDurationDays > 0
+                    ? `${calculatedDurationDays} Day${calculatedDurationDays > 1 ? "s" : ""}`
+                    : content.totalDuration || quote.totalDuration || "-";
+                const calculatedTotalCost = propItems.reduce((sum: number, it: any) => sum + (Number(it.amount ?? it.cost) || 0), 0);
+                const totalCost = content.totalCost ?? (calculatedTotalCost > 0 ? calculatedTotalCost : (quote.totalCost ?? 0));
 
                 // Check subsequent messages to track actions on this proposal
                 const subsequentMessages = allMessages.slice(i + 1);
@@ -1050,7 +1063,7 @@ export default function QuoteDetailsPage() {
                                     {formatDuration(item.duration)}
                                   </td>
                                   <td className="px-6 py-4 text-xs text-gray-900 font-bold text-right align-middle">
-                                    {formatCurrency(item.amount ?? item.cost ?? 0)}
+                                    {formatCurrency(item.amount ?? item.cost ?? 0, proposalCurrency)}
                                   </td>
                                 </tr>
                               ))}
@@ -1067,7 +1080,7 @@ export default function QuoteDetailsPage() {
                         </div>
                         <div className="text-center">
                           <div className="text-gray-400 font-bold text-[11px] uppercase tracking-wider mb-1">Total Cost</div>
-                          <div className="text-gray-900 font-extrabold text-sm sm:text-base">{formatCurrency(totalCost)}</div>
+                          <div className="text-gray-900 font-extrabold text-sm sm:text-base">{formatCurrency(totalCost, proposalCurrency)}</div>
                         </div>
                       </div>
 

@@ -21,12 +21,13 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   
   const [project, setProject] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const isInitialMount = useRef(true);
 
-  const fetchProject = useCallback(async () => {
+  const fetchProject = useCallback(async (silent = false) => {
     if (!projectId) return null;
     
-    setIsLoading(true);
+    if (!silent) {
+      setIsLoading(true);
+    }
     try {
       const res = await projectService.getProjectById(projectId);
       if (res?.data) {
@@ -48,22 +49,21 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (projectId && isInitialMount.current) {
-      isInitialMount.current = false;
+    if (projectId) {
       fetchProject();
     }
-    
-    return () => {
-      isInitialMount.current = true;
-    };
-  }, [projectId, fetchProject, router]);
+  }, [projectId, router]);
+
+  const refreshProject = useCallback(() => {
+    return fetchProject(true);
+  }, [fetchProject]);
 
   const value = useMemo(() => ({
     project,
     isLoading,
-    refreshProject: fetchProject,
+    refreshProject,
     setProject
-  }), [project, isLoading, fetchProject]);
+  }), [project, isLoading, refreshProject]);
 
   return (
     <ProjectContext.Provider value={value}>

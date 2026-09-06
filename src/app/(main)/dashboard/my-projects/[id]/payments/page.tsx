@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useProject } from "@/context/ProjectContext";
 import { paymentService } from "@/lib/paymentService";
@@ -182,32 +182,36 @@ export default function ProjectPaymentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showReceipt, setShowReceipt] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  const hasRefreshedRef = useRef(false);
 
-  useEffect(() => {
-    const fetchPayments = async () => {
-      setIsLoading(true);
-      try {
-        const res = await paymentService.getTransactionsByProject(projectId);
-        if (res?.data) {
-          setPayments(res.data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch project payments:", error);
-      } finally {
-        setIsLoading(false);
+  const fetchPayments = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await paymentService.getTransactionsByProject(projectId);
+      if (res?.data) {
+        setPayments(res.data);
       }
-    };
-
-    if (projectId) {
-      fetchPayments();
+    } catch (error) {
+      console.error("Failed to fetch project payments:", error);
+    } finally {
+      setIsLoading(false);
     }
   }, [projectId]);
 
   useEffect(() => {
-    if (searchParams?.get("success") === "true") {
-      refreshProject();
+    if (projectId) {
+      fetchPayments();
     }
-  }, [searchParams, refreshProject]);
+  }, [projectId, fetchPayments]);
+
+  useEffect(() => {
+    if (searchParams?.get("success") === "true" && !hasRefreshedRef.current) {
+      hasRefreshedRef.current = true;
+      refreshProject();
+      fetchPayments();
+      window.history.replaceState(null, "", `/dashboard/my-projects/${projectId}/payments`);
+    }
+  }, [searchParams, projectId, refreshProject, fetchPayments]);
 
   if (projectLoading && !project) {
     return (
@@ -269,33 +273,22 @@ export default function ProjectPaymentsPage() {
   const allAddonItems = addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages;
 
   // Combine deliverable items
-  const deliverableItems = allAddonItems.length > 0 && Number(activeProject.amountPaid || 0) >= Number(activeProject.price || 0)
-    ? allAddonItems
-    : (allAddonItems.length > 0 ? [...regularItems, ...allAddonItems] : regularItems);
+  const deliverableItems = allAddonItems.length > 0 ? [...regularItems, ...allAddonItems] : regularItems;
 
-  const amountPaid = Number(activeProject.amountPaid || 0);
+  const totalPaidFromTransactions = (payments || [])
+    .filter((p: any) => ["succeeded", "paid", "completed"].includes(p.status?.toLowerCase()))
+    .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+
+  const amountPaid = Math.max(Number(activeProject.amountPaid || 0), totalPaidFromTransactions);
   const baseCost = Number(activeProject.price ?? activeProject.totalCost ?? 0);
   const addonsTotal = allAddonItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
-  const totalProjectCost = baseCost + addonsTotal;
+  const deliverablesTotal = deliverableItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
+  const totalProjectCost = Math.max(baseCost + addonsTotal, deliverablesTotal);
 
-  let payableAmount = 0;
-  if (activeProject.amountDue !== undefined && Number(activeProject.amountDue) > 0) {
-    payableAmount = Number(activeProject.amountDue);
-  } else if (allAddonItems.length > 0 && amountPaid >= baseCost) {
-    payableAmount = addonsTotal > 0 ? addonsTotal : (baseCost > 0 ? baseCost : 5);
-  } else {
-    payableAmount = Math.max(0, totalProjectCost - amountPaid);
-    if (payableAmount === 0 && !activeProject.isPaid && (activeProject.paymentStatus === "pending" || activeProject.status === "pending")) {
-      payableAmount = baseCost > 0 ? baseCost : 5;
-    }
-  }
+  const pendingBalance = Math.max(0, totalProjectCost - amountPaid);
+  const payableAmount = pendingBalance;
 
-  if (payableAmount === 0 && (allAddonItems.length > 0 || (activeProject.deliverableItems && activeProject.deliverableItems.length > 0))) {
-    const totalDeliverablesCost = deliverableItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
-    payableAmount = totalDeliverablesCost > 0 ? totalDeliverablesCost : (baseCost > 0 ? baseCost : 5);
-  }
-
-  const isFullyPaid = payableAmount <= 0 && amountPaid > 0 && activeProject.paymentStatus !== "pending";
+  const isFullyPaid = pendingBalance <= 0 && amountPaid > 0 && activeProject.paymentStatus !== "pending";
 
   const handleDownloadProject = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -353,7 +346,7 @@ export default function ProjectPaymentsPage() {
             date={activeProject.createdAt}
             startDate={activeProject.startDate}
             deadline={activeProject.deadline}
-            totalCost={payableAmount > 0 ? payableAmount : totalProjectCost}
+            totalCost={pendingBalance}
             deliverableItems={deliverableItems}
             clientEmail={currentUser?.email || activeProject.clientEmail || ""}
             successRedirectUrl={`/dashboard/my-projects/${projectId}/payments?success=true`}

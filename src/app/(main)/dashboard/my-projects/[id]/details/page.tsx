@@ -913,7 +913,7 @@ export default function ProjectDetailsPage() {
                     </div>
                     <div className="shrink-0">
                       <Link
-                        href={`/dashboard/my-projects/${pId}/payments`}
+                        href={`/dashboard/my-projects/${pId}/payments${amount > 0 ? `?amount=${amount}` : ""}`}
                         className="inline-block w-full sm:w-auto px-8 py-2.5 bg-[#4343F0] hover:bg-[#3232b7] text-white font-bold text-sm rounded-xl shadow-md shadow-[#4343F0]/20 transition-all text-center"
                       >
                         Pay Now
