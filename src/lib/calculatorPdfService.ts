@@ -2,6 +2,8 @@
  * Utility to generate a PDF proposal from calculator data.
  */
 
+import { getCalculatorDisplayAmount } from "./calculatorUtils";
+
 export interface PdfProposalData {
   categoryName: string;
   subtitle?: string;
@@ -9,6 +11,8 @@ export interface PdfProposalData {
   totalPrice: number;
   timeline?: string;
   currency?: string;
+  conversionRate?: number;
+  categoryKey?: string;
 }
 
 export async function downloadCalculatorPdf(data: PdfProposalData): Promise<void> {
@@ -31,6 +35,12 @@ export async function getCalculatorPdfBase64(data: PdfProposalData): Promise<str
 
 function generateCalculatorHtml(data: PdfProposalData): string {
   const currencySymbol = data.currency?.toLowerCase() === "eur" ? "€" : "$";
+  const displayTotal = getCalculatorDisplayAmount(
+    data.totalPrice,
+    data.currency ?? "usd",
+    data.conversionRate ?? 1,
+    data.categoryKey
+  );
 
   return `
 <!DOCTYPE html>
@@ -63,7 +73,7 @@ function generateCalculatorHtml(data: PdfProposalData): string {
   `).join("")}
   
   <div class="total-box">
-    <div class="total-price">PROJECT TOTAL COST: ${currencySymbol}${data.totalPrice.toLocaleString()}</div>
+    <div class="total-price">PROJECT TOTAL COST: ${currencySymbol}${displayTotal.toLocaleString()}</div>
     <div class="timeline">Estimated Deadline: ${data.timeline || "TBA"}</div>
   </div>
   
