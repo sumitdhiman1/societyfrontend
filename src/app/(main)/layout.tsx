@@ -10,10 +10,12 @@ export default function MainLayout({
 }) {
   return (
     <div className="bg-[#F3F4F6] min-h-screen flex flex-col font-sans">
-      <Suspense fallback={null}>
-        <VerificationBanner />
-      </Suspense>
-      <Navbar />
+      <header className="sticky top-0 z-50 w-full">
+        <Suspense fallback={null}>
+          <VerificationBanner />
+        </Suspense>
+        <Navbar />
+      </header>
       <main className="flex-grow flex flex-col">
         {children}
       </main>

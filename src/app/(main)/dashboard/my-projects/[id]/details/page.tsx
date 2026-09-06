@@ -690,9 +690,9 @@ export default function ProjectDetailsPage() {
                           <div className="flex flex-wrap items-center gap-3">
                             <span className="text-[10px] sm:text-xs text-gray-500 font-bold">Submitted - {formatDate(msg.createdAt)}</span>
                             <span className={`px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border ${content.status === "accepted" ? "border-green-400 text-green-600 bg-green-50" :
-                                content.status === "declined" ? "border-red-400 text-red-600 bg-red-50" :
-                                  content.status === "modification_requested" ? "border-orange-400 text-orange-600 bg-orange-50" :
-                                    "border-blue-400 text-blue-600 bg-blue-50"
+                              content.status === "declined" ? "border-red-400 text-red-600 bg-red-50" :
+                                content.status === "modification_requested" ? "border-orange-400 text-orange-600 bg-orange-50" :
+                                  "border-blue-400 text-blue-600 bg-blue-50"
                               }`}>
                               {content.status === "accepted" ? "Accepted" :
                                 content.status === "declined" ? "Declined" :
@@ -891,51 +891,51 @@ export default function ProjectDetailsPage() {
                                   }
                                 }
 
-                                 let itemDescription = item.description || item.details || "";
-                                 if (!itemDescription) {
-                                   const normName = (item.name || item.title || "").toLowerCase();
-                                   if (normName.includes("audit") || normName.includes("paid ads")) {
-                                     itemDescription = "Audit of existing ad accounts, conversion tracking setup, and a complete strategy roadmap.";
-                                   } else if (normName.includes("shopping") || normName.includes("ecommerce") || normName.includes("e-commerce")) {
-                                     itemDescription = "End-to-end management of Google Shopping, Meta Product Ads, and e-commerce campaigns.";
-                                   } else if (normName.includes("graphic") || normName.includes("brand") || normName.includes("logo")) {
-                                     itemDescription = "Professional branding, visual assets, logo design, and graphic materials.";
-                                   } else if (normName.includes("development") || normName.includes("website dev")) {
-                                     itemDescription = "Custom modern web development with responsive design and high performance.";
-                                   } else if (normName.includes("maintenance")) {
-                                     itemDescription = "Ongoing security updates, bug fixes, performance monitoring, and backups.";
-                                   } else if (normName.includes("seo") || normName.includes("search engine")) {
-                                     itemDescription = "Complete search engine optimization to boost organic visibility and rankings.";
-                                   } else if (normName.includes("social media") || normName.includes("smm")) {
-                                     itemDescription = "Content creation, campaign management, and audience growth across social channels.";
-                                   } else if (normName.includes("analysis")) {
-                                     itemDescription = "Our standard free analysis offer covering brand, UI/UX, functionalities, AI potentiality, tech stack.";
-                                   } else if (normName.includes("checking")) {
-                                     itemDescription = "An offer to check the completed work of any other web professionals, including your own in-house team.";
-                                   } else {
-                                     itemDescription = "Comprehensive package solution tailored for your business needs.";
-                                   }
-                                 }
-                                 const itemPrice = item.cost || item.amount || item.price || 0;
+                                let itemDescription = item.description || item.details || "";
+                                if (!itemDescription) {
+                                  const normName = (item.name || item.title || "").toLowerCase();
+                                  if (normName.includes("audit") || normName.includes("paid ads")) {
+                                    itemDescription = "Audit of existing ad accounts, conversion tracking setup, and a complete strategy roadmap.";
+                                  } else if (normName.includes("shopping") || normName.includes("ecommerce") || normName.includes("e-commerce")) {
+                                    itemDescription = "End-to-end management of Google Shopping, Meta Product Ads, and e-commerce campaigns.";
+                                  } else if (normName.includes("graphic") || normName.includes("brand") || normName.includes("logo")) {
+                                    itemDescription = "Professional branding, visual assets, logo design, and graphic materials.";
+                                  } else if (normName.includes("development") || normName.includes("website dev")) {
+                                    itemDescription = "Custom modern web development with responsive design and high performance.";
+                                  } else if (normName.includes("maintenance")) {
+                                    itemDescription = "Ongoing security updates, bug fixes, performance monitoring, and backups.";
+                                  } else if (normName.includes("seo") || normName.includes("search engine")) {
+                                    itemDescription = "Complete search engine optimization to boost organic visibility and rankings.";
+                                  } else if (normName.includes("social media") || normName.includes("smm")) {
+                                    itemDescription = "Content creation, campaign management, and audience growth across social channels.";
+                                  } else if (normName.includes("analysis")) {
+                                    itemDescription = "Our standard free analysis offer covering brand, UI/UX, functionalities, AI potentiality, tech stack.";
+                                  } else if (normName.includes("checking")) {
+                                    itemDescription = "An offer to check the completed work of any other web professionals, including your own in-house team.";
+                                  } else {
+                                    itemDescription = "Comprehensive package solution tailored for your business needs.";
+                                  }
+                                }
+                                const itemPrice = item.cost || item.amount || item.price || 0;
 
-                                 const isMonthlyProduct = Boolean(
-                                   item.isMonthly === true ||
-                                   item.paymentType?.toLowerCase() === 'monthly' ||
-                                   item.billingType?.toLowerCase() === 'monthly' ||
-                                   String(item.duration || '').toLowerCase().includes('month') ||
-                                   String(item.priceText || '').toLowerCase().includes('/month') ||
-                                   String(item.priceText || '').toLowerCase().includes('month') ||
-                                   (itemName.toLowerCase().includes('management') && !itemName.toLowerCase().includes('audit')) ||
-                                   itemName.toLowerCase().includes('maintenance') ||
-                                   itemName.toLowerCase().includes('monthly') ||
-                                   itemName.toLowerCase().includes('retainer')
-                                 );
-                                 const suffix = isMonthlyProduct ? '/month' : '';
+                                const isMonthlyProduct = Boolean(
+                                  item.isMonthly === true ||
+                                  item.paymentType?.toLowerCase() === 'monthly' ||
+                                  item.billingType?.toLowerCase() === 'monthly' ||
+                                  String(item.duration || '').toLowerCase().includes('month') ||
+                                  String(item.priceText || '').toLowerCase().includes('/month') ||
+                                  String(item.priceText || '').toLowerCase().includes('month') ||
+                                  (itemName.toLowerCase().includes('management') && !itemName.toLowerCase().includes('audit')) ||
+                                  itemName.toLowerCase().includes('maintenance') ||
+                                  itemName.toLowerCase().includes('monthly') ||
+                                  itemName.toLowerCase().includes('retainer')
+                                );
+                                const suffix = isMonthlyProduct ? '/month' : '';
 
-                                 let priceText = item.priceText ? item.priceText.replace(/\$\s+/g, '$').trim() : `$${itemPrice}${suffix}`;
-                                 if (isMonthlyProduct && item.priceText && !item.priceText.toLowerCase().includes('month')) {
-                                   priceText = `${priceText.replace(/\$\s+/g, '$').trim()}/month`;
-                                 }
+                                let priceText = item.priceText ? item.priceText.replace(/\$\s+/g, '$').trim() : `$${itemPrice}${suffix}`;
+                                if (isMonthlyProduct && item.priceText && !item.priceText.toLowerCase().includes('month')) {
+                                  priceText = `${priceText.replace(/\$\s+/g, '$').trim()}/month`;
+                                }
 
                                 return (
                                   <a
@@ -1127,7 +1127,7 @@ export default function ProjectDetailsPage() {
                                   onClick={handleActionSubmit}
                                   disabled={isActionLoading || (actionModal.required && !actionComment.trim())}
                                   className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-md text-sm font-bold transition-all shadow-sm ${isActionLoading ? "bg-gray-400 cursor-not-allowed" :
-                                      actionModal.action === "decline" ? "bg-red-700 hover:bg-red-800" : "bg-blue-800 hover:bg-blue-900"
+                                    actionModal.action === "decline" ? "bg-red-700 hover:bg-red-800" : "bg-blue-800 hover:bg-blue-900"
                                     }`}
                                 >
                                   {isActionLoading ? "Processing..." : actionModal.action === "decline" ? "Decline Offer" : "Send Request"}
@@ -1421,7 +1421,7 @@ export default function ProjectDetailsPage() {
               const managers = (Array.isArray(project.assignedManagers) && project.assignedManagers.length > 0)
                 ? project.assignedManagers
                 : (project.projectManager ? [project.projectManager] : []);
-              
+
               if (managers.length > 1) {
                 return (
                   <div>
