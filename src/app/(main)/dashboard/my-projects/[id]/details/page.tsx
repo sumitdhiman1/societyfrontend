@@ -433,8 +433,22 @@ export default function ProjectDetailsPage() {
   // Date for delivery due divider
   const deliveryDueStr = project.deadline ? formatSubmittedDate(project.deadline) : "";
 
-  // Display all project messages and action notifications
-  const displayMessages = project.messages || [];
+  // Display all project messages and action notifications (filter out initial project creation/requirements/scope overview boilerplate)
+  const displayMessages = (project.messages || []).filter((msg: any) => {
+    const rawTitle = (msg.content?.systemText || msg.message || "").toLowerCase();
+    const cleanTitle = rawTitle
+      .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}⏸▶️💳🛠️🎉✅🔄👤🚀📌🔔]/gu, "")
+      .trim();
+    if (
+      cleanTitle === "project created" ||
+      cleanTitle === "project requirements" ||
+      cleanTitle === "financial & scope overview" ||
+      cleanTitle === "scope of work"
+    ) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className="flex flex-col gap-8 w-full font-sans">
@@ -828,9 +842,7 @@ export default function ProjectDetailsPage() {
                 msg.type === "payment_request" ||
                 msg.content?.type === "payment_request" ||
                 (msg.content?.systemText?.toLowerCase().includes("payment request") ||
-                  msg.message?.toLowerCase().includes("payment request") ||
-                  msg.content?.systemText?.toLowerCase().includes("action required: payment") ||
-                  msg.message?.toLowerCase().includes("action required: payment"));
+                  msg.message?.toLowerCase().includes("payment request"));
 
               if (isPaymentRequest) {
                 const content = typeof msg.content === 'object' && msg.content !== null ? msg.content : {};
@@ -930,19 +942,30 @@ export default function ProjectDetailsPage() {
 
               if (isSystemMsg && !hasFileAttachments && !hasRecs && !isQuoteProposal) {
                 const rawTitle = msg.content?.systemText || msg.message || "Notification";
-                const cleanTitle = rawTitle.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}⏸▶️💳🛠️🎉✅🔄👤🚀📌🔔]/gu, "").trim();
-                const rawText = msg.content?.text || msg.text || (msg.message !== rawTitle && msg.message !== cleanTitle ? msg.message : "");
+                let cleanTitle = rawTitle.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}⏸▶️💳🛠️🎉✅🔄👤🚀📌🔔]/gu, "").trim();
+                if (cleanTitle.toLowerCase() === "action required: payment" || cleanTitle.toLowerCase() === "payment required") {
+                  cleanTitle = "Project Paused";
+                } else if (cleanTitle.toLowerCase().startsWith("project status updated to active") || cleanTitle.toLowerCase() === "active") {
+                  cleanTitle = "Project Resumed";
+                }
+
+                const rawTextCandidate = msg.content?.text || msg.text || (msg.message !== rawTitle && msg.message !== cleanTitle ? msg.message : "");
+                const isDuplicate =
+                  rawTextCandidate.trim().toLowerCase() === cleanTitle.trim().toLowerCase() ||
+                  rawTextCandidate.trim().toLowerCase() === rawTitle.trim().toLowerCase() ||
+                  rawTextCandidate.trim().toLowerCase().startsWith("project status updated to active");
+                const rawText = isDuplicate ? "" : rawTextCandidate;
 
                 return (
                   <div key={msgId} className="text-center py-6 px-4 my-2">
                     <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
                       {cleanTitle}
                     </h3>
-                    {rawText && (
+                    {rawText ? (
                       <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
                         {rawText}
                       </p>
-                    )}
+                    ) : null}
                   </div>
                 );
               }
