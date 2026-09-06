@@ -20,6 +20,8 @@ import { priceCalculatorService, CalculatorCategory, CalculatorConfig, Calculato
 import {
   getSelectedTier,
   getTierQuestionKey,
+  findTimelineQuestionKey,
+  isTierSourceQuestion,
   getGraphicsCategoryKeys,
   shouldShowPriceBar,
   selectionsToArray,
@@ -75,6 +77,22 @@ const stripeElementOptions = {
       iconColor: "#ef4444",
     },
   },
+};
+
+const stripeCardNumberOptions = {
+  ...stripeElementOptions,
+  showIcon: false,
+  placeholder: "1234 1234 1234 1234",
+};
+
+const stripeCardExpiryOptions = {
+  ...stripeElementOptions,
+  placeholder: "MM / YY",
+};
+
+const stripeCardCvcOptions = {
+  ...stripeElementOptions,
+  placeholder: "CVC",
 };
 
 const EUROPEAN_COUNTRIES = [
@@ -614,7 +632,6 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
   const vatRate = 0;
   const currencyLabel = currency.toUpperCase();
   const requiresVerification = !isEmailVerified;
-
   const getBasePayableAmount = () => {
     if (paymentOption === "half") return halfPrice;
     if (paymentOption === "full") return payableTotal;
@@ -789,16 +806,6 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
     <form onSubmit={handleSubmit} className="animate-in fade-in duration-500 w-full flex flex-col gap-8">
       <StatusPopup isOpen={status.isOpen} onClose={() => setStatus({ ...status, isOpen: false })} type={status.type} title={status.title} message={status.message} />
 
-      {!stripePromise && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-2 max-w-[680px] mx-auto w-full">
-          <h4 className="text-amber-800 font-bold mb-1">Payment System Offline</h4>
-          <p className="text-amber-700 text-sm">
-            Secure checkout is being configured. Contact support at{" "}
-            <span className="font-bold">support@society.com</span> to complete payment manually.
-          </p>
-        </div>
-      )}
-
       <div className="text-center mb-2">
         <h2 className="text-[34px] font-normal text-white mb-4 font-manrope uppercase tracking-wide">READY TO BEGIN?</h2>
         <p className="text-gray-100 text-[16px] font-light leading-relaxed">
@@ -908,8 +915,8 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
 
           <div>
             <label className="block text-[16px] font-bold text-black mb-[10px]">Card number:</label>
-            <div className={`w-full border-b ${errors.cardNumber ? "border-red-500" : "border-black/80"} py-2.5 focus-within:border-black transition-all`}>
-              <CardNumberElement options={{ ...stripeElementOptions, showIcon: false }} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, number: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardNumber: "" })); }} />
+            <div className={`w-full border-b ${errors.cardNumber ? "border-red-500" : "border-black/80"} py-2.5 min-h-[40px] focus-within:border-black transition-all`}>
+              <CardNumberElement options={stripeCardNumberOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, number: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardNumber: "" })); }} />
             </div>
             {errors.cardNumber && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.cardNumber}</span>}
           </div>
@@ -917,15 +924,15 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
           <div className="grid grid-cols-2 gap-10">
             <div>
               <label className="block text-[16px] font-bold text-black mb-[10px]">Expiry date:</label>
-              <div className={`w-full border-b ${errors.cardExpiry ? "border-red-500" : "border-black/80"} py-2.5 focus-within:border-black transition-all`}>
-                <CardExpiryElement options={stripeElementOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, expiry: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardExpiry: "" })); }} />
+              <div className={`w-full border-b ${errors.cardExpiry ? "border-red-500" : "border-black/80"} py-2.5 min-h-[40px] focus-within:border-black transition-all`}>
+                <CardExpiryElement options={stripeCardExpiryOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, expiry: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardExpiry: "" })); }} />
               </div>
               {errors.cardExpiry && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.cardExpiry}</span>}
             </div>
             <div>
               <label className="block text-[16px] font-bold text-black mb-[10px]">CVC:</label>
-              <div className={`w-full border-b ${errors.cardCvc ? "border-red-500" : "border-black/80"} py-2.5 focus-within:border-black transition-all`}>
-                <CardCvcElement options={stripeElementOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, cvc: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardCvc: "" })); }} />
+              <div className={`w-full border-b ${errors.cardCvc ? "border-red-500" : "border-black/80"} py-2.5 min-h-[40px] focus-within:border-black transition-all`}>
+                <CardCvcElement options={stripeCardCvcOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, cvc: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardCvc: "" })); }} />
               </div>
               {errors.cardCvc && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.cardCvc}</span>}
             </div>
@@ -1030,8 +1037,13 @@ export default function CalculatorPage() {
     [selectedCategory]
   );
   const tier = useMemo(
-    () => getSelectedTier(selections, getTierQuestionKey(selectedCategoryKey || "")),
-    [selections, selectedCategoryKey]
+    () =>
+      getSelectedTier(
+        selections,
+        getTierQuestionKey(selectedCategoryKey || ""),
+        sortedQuestions
+      ),
+    [selections, selectedCategoryKey, sortedQuestions]
   );
   const graphicsCategoryKeys = useMemo(
     () => getGraphicsCategoryKeys(selections),
@@ -1109,8 +1121,10 @@ export default function CalculatorPage() {
         },
       };
 
-      if (questionKey === "WEB_TIER") {
-        delete next.WEB_TIMELINE;
+      const changedQuestion = sortedQuestions.find((q) => q.key === questionKey);
+      if (changedQuestion && isTierSourceQuestion(changedQuestion, selectedCategoryKey)) {
+        const timelineKey = findTimelineQuestionKey(sortedQuestions);
+        if (timelineKey) delete next[timelineKey];
       }
       if (questionKey === "SEO_ITEMS") {
         const keys = next.SEO_ITEMS?.answerKeys || [];

@@ -1,14 +1,58 @@
 import { CalculatorQuestion, CalculatorSelection } from "./priceCalculatorService";
 
+type TierScopedAnswer = {
+  key?: string;
+  visibleIf?: { tier?: string };
+  metadata?: { tierKey?: string; tier?: string };
+};
+
+export function getAnswerTierScope(answer: TierScopedAnswer): string | undefined {
+  return answer.visibleIf?.tier ?? answer.metadata?.tierKey ?? answer.metadata?.tier;
+}
+
+export function findQuestionByRoleId(
+  questions: CalculatorQuestion[],
+  roleId: number
+): CalculatorQuestion | undefined {
+  return questions.find((q) => q.roleId === roleId);
+}
+
+export function findTimelineQuestionKey(questions: CalculatorQuestion[]): string | undefined {
+  const known = questions.find((q) =>
+    ["WEB_TIMELINE", "GFX_TIMELINE", "SEO_TIMELINE"].includes(q.key || "")
+  );
+  if (known?.key) return known.key;
+  return questions.find((q) => q.roleId === 13 || q.roleId === 14)?.key;
+}
+
+export function isTierSourceQuestion(
+  question: Pick<CalculatorQuestion, "key" | "roleId">,
+  categoryKey?: string | null
+): boolean {
+  if (question.roleId === 2) return true;
+  return question.key === getTierQuestionKey(categoryKey || "");
+}
+
 export function getSelectedTier(
   selections: Record<string, CalculatorSelection>,
-  tierQuestionKey = "WEB_TIER"
+  tierQuestionKey = "WEB_TIER",
+  questions?: CalculatorQuestion[]
 ): string {
-  const tierSel = selections[tierQuestionKey];
+  const tierQuestion =
+    questions?.find((q) => q.key === tierQuestionKey) ??
+    (questions ? findQuestionByRoleId(questions, 2) : undefined);
+
+  const selectionKey = tierQuestion?.key ?? tierQuestionKey;
+  const tierSel = selections[selectionKey];
   if (!tierSel?.answerKeys?.[0]) return "starter";
-  const key = tierSel.answerKeys[0];
-  if (key.includes("PREMIUM")) return "premium";
-  if (key.includes("STANDARD")) return "standard";
+
+  const answerKey = tierSel.answerKeys[0];
+  const answer = tierQuestion?.answers?.find((a) => a.key === answerKey);
+  const tierFromMeta = answer ? getAnswerTierScope(answer as TierScopedAnswer) : undefined;
+  if (tierFromMeta) return tierFromMeta;
+
+  if (answerKey.includes("PREMIUM")) return "premium";
+  if (answerKey.includes("STANDARD")) return "standard";
   return "starter";
 }
 
@@ -42,12 +86,10 @@ export function filterGraphicsAnswers(answers: any[], categoryKeys: string[]) {
   return answers.filter((a) => isGraphicsItemVisible(a, categoryKeys));
 }
 
-export function isAnswerVisible(
-  answer: { visibleIf?: { tier?: string } },
-  tier: string
-): boolean {
-  if (!answer.visibleIf?.tier) return true;
-  return answer.visibleIf.tier === tier;
+export function isAnswerVisible(answer: TierScopedAnswer, tier: string): boolean {
+  const answerTier = getAnswerTierScope(answer);
+  if (!answerTier) return true;
+  return answerTier === tier;
 }
 
 export function groupAnswersByHeading(answers: any[]) {
@@ -106,9 +148,7 @@ export function filterQuestionAnswers(
   if (!question.answers?.length) return question;
   return {
     ...question,
-    answers: question.answers.filter((a) =>
-      isAnswerVisible(a as { visibleIf?: { tier?: string } }, tier)
-    ),
+    answers: question.answers.filter((a) => isAnswerVisible(a as TierScopedAnswer, tier)),
   };
 }
 
@@ -211,17 +251,15 @@ export function formatCalculatorAnswerLabel(text: string, questionKey?: string):
   return text.replace(/:\s*\+\d+% rush fee/i, "").trim();
 }
 
-/** Optional marker only on text questions; multi/single/number stay plain (live UI). */
+/** Append (Optional) for optional text/number questions (live parity). */
 export function formatCalculatorQuestionText(
   text: string,
   isRequired?: boolean,
   questionType?: string
 ): string {
   const trimmed = text.replace(/\s*\(Optional\)/gi, "").trim();
-  if (questionType !== "text") {
-    return trimmed;
-  }
-  if (isRequired === false && !/\(Optional\)/i.test(text)) {
+  const supportsOptionalLabel = questionType === "text" || questionType === "number";
+  if (supportsOptionalLabel && isRequired === false) {
     return `${trimmed} (Optional)`;
   }
   return trimmed;
