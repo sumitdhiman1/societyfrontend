@@ -613,6 +613,7 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
 
   const vatRate = 0;
   const currencyLabel = currency.toUpperCase();
+  const requiresVerification = !isEmailVerified;
 
   const getBasePayableAmount = () => {
     if (paymentOption === "half") return halfPrice;
@@ -783,11 +784,6 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
       setIsProcessing(false);
     }
   };
-
-  const baseAmount = getBaseAmount();
-  const vatAmount = getVatAmount(baseAmount);
-  const totalPayable = baseAmount + vatAmount;
-  const vatPercent = vatAmount > 0 ? 20 : 0;
 
   return (
     <form onSubmit={handleSubmit} className="animate-in fade-in duration-500 w-full flex flex-col gap-8">
