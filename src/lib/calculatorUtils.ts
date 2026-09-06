@@ -1,14 +1,58 @@
 import { CalculatorQuestion, CalculatorSelection } from "./priceCalculatorService";
 
+type TierScopedAnswer = {
+  key?: string;
+  visibleIf?: { tier?: string };
+  metadata?: { tierKey?: string; tier?: string };
+};
+
+export function getAnswerTierScope(answer: TierScopedAnswer): string | undefined {
+  return answer.visibleIf?.tier ?? answer.metadata?.tierKey ?? answer.metadata?.tier;
+}
+
+export function findQuestionByRoleId(
+  questions: CalculatorQuestion[],
+  roleId: number
+): CalculatorQuestion | undefined {
+  return questions.find((q) => q.roleId === roleId);
+}
+
+export function findTimelineQuestionKey(questions: CalculatorQuestion[]): string | undefined {
+  const known = questions.find((q) =>
+    ["WEB_TIMELINE", "GFX_TIMELINE", "SEO_TIMELINE"].includes(q.key || "")
+  );
+  if (known?.key) return known.key;
+  return questions.find((q) => q.roleId === 13 || q.roleId === 14)?.key;
+}
+
+export function isTierSourceQuestion(
+  question: Pick<CalculatorQuestion, "key" | "roleId">,
+  categoryKey?: string | null
+): boolean {
+  if (question.roleId === 2) return true;
+  return question.key === getTierQuestionKey(categoryKey || "");
+}
+
 export function getSelectedTier(
   selections: Record<string, CalculatorSelection>,
-  tierQuestionKey = "WEB_TIER"
+  tierQuestionKey = "WEB_TIER",
+  questions?: CalculatorQuestion[]
 ): string {
-  const tierSel = selections[tierQuestionKey];
+  const tierQuestion =
+    questions?.find((q) => q.key === tierQuestionKey) ??
+    (questions ? findQuestionByRoleId(questions, 2) : undefined);
+
+  const selectionKey = tierQuestion?.key ?? tierQuestionKey;
+  const tierSel = selections[selectionKey];
   if (!tierSel?.answerKeys?.[0]) return "starter";
-  const key = tierSel.answerKeys[0];
-  if (key.includes("PREMIUM")) return "premium";
-  if (key.includes("STANDARD")) return "standard";
+
+  const answerKey = tierSel.answerKeys[0];
+  const answer = tierQuestion?.answers?.find((a) => a.key === answerKey);
+  const tierFromMeta = answer ? getAnswerTierScope(answer as TierScopedAnswer) : undefined;
+  if (tierFromMeta) return tierFromMeta;
+
+  if (answerKey.includes("PREMIUM")) return "premium";
+  if (answerKey.includes("STANDARD")) return "standard";
   return "starter";
 }
 
@@ -38,16 +82,14 @@ export function isGraphicsItemVisible(
 }
 
 export function filterGraphicsAnswers(answers: any[], categoryKeys: string[]) {
-  if (!categoryKeys.length) return [];
+  if (!categoryKeys.length) return answers;
   return answers.filter((a) => isGraphicsItemVisible(a, categoryKeys));
 }
 
-export function isAnswerVisible(
-  answer: { visibleIf?: { tier?: string } },
-  tier: string
-): boolean {
-  if (!answer.visibleIf?.tier) return true;
-  return answer.visibleIf.tier === tier;
+export function isAnswerVisible(answer: TierScopedAnswer, tier: string): boolean {
+  const answerTier = getAnswerTierScope(answer);
+  if (!answerTier) return true;
+  return answerTier === tier;
 }
 
 export function groupAnswersByHeading(answers: any[]) {
@@ -85,12 +127,18 @@ export function shouldShowPriceBar(
 export function selectionsToArray(
   selections: Record<string, CalculatorSelection>
 ): CalculatorSelection[] {
-  return Object.values(selections).filter(
-    (s) =>
-      (s.answerKeys && s.answerKeys.length > 0) ||
-      s.numericValue !== undefined ||
-      (s.textValue !== undefined && s.textValue !== "")
-  );
+  return Object.values(selections)
+    .filter(
+      (s) =>
+        (s.answerKeys && s.answerKeys.length > 0) ||
+        s.numericValue !== undefined ||
+        (s.textValue !== undefined && s.textValue !== "")
+    )
+    .map((s) =>
+      s.answerKeys?.length
+        ? { ...s, answerKeys: [...new Set(s.answerKeys)] }
+        : s
+    );
 }
 
 export function filterQuestionAnswers(
@@ -98,11 +146,10 @@ export function filterQuestionAnswers(
   tier: string
 ): CalculatorQuestion {
   if (!question.answers?.length) return question;
+  if (question.roleId === 2) return question;
   return {
     ...question,
-    answers: question.answers.filter((a) =>
-      isAnswerVisible(a as { visibleIf?: { tier?: string } }, tier)
-    ),
+    answers: question.answers.filter((a) => isAnswerVisible(a as TierScopedAnswer, tier)),
   };
 }
 
@@ -112,10 +159,24 @@ export type ConditionalOn = {
   answerKeys?: string[];
 };
 
+const SEO_ALWAYS_VISIBLE_KEYS = new Set([
+  "SEO_WORDS",
+  "SEO_BACKLINKS",
+  "SEO_MONTHS",
+  "SEO_TIMELINE",
+]);
+
+const MARKETING_ALWAYS_VISIBLE_KEYS = new Set([
+  "MKT_PAID_PLATFORMS",
+  "MKT_AD_SPEND",
+]);
+
 export function isQuestionVisible(
-  question: { conditionalOn?: ConditionalOn },
+  question: { key?: string; conditionalOn?: ConditionalOn },
   selections: Record<string, CalculatorSelection>
 ): boolean {
+  if (question.key && SEO_ALWAYS_VISIBLE_KEYS.has(question.key)) return true;
+  if (question.key && MARKETING_ALWAYS_VISIBLE_KEYS.has(question.key)) return true;
   const cond = question.conditionalOn;
   if (!cond) return true;
   const dep = selections[cond.questionKey];
@@ -164,6 +225,155 @@ export function getCategoryIllustration(categoryKey: string, imageUrl?: string):
 export function getCategoryDisplayName(categoryKey: string, categoryName?: string): string {
   if (categoryName?.trim()) return categoryName.trim().toUpperCase();
   return categoryKey.toUpperCase();
+}
+
+export function getCategoryProposalName(categoryKey: string, categoryName?: string): string {
+  if (categoryName?.trim()) return categoryName.trim();
+  return categoryKey
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+const DEFAULT_CATEGORY_TIMELINES: Record<string, string> = {
+  website: "2 weeks",
+  graphics: "2 weeks",
+  seo: "2 weeks",
+  marketing: "Monthly Service",
+};
+
+export function getDefaultCategoryTimeline(categoryKey: string, categoryTimeline?: string): string {
+  if (categoryTimeline?.trim()) return categoryTimeline.trim();
+  return DEFAULT_CATEGORY_TIMELINES[categoryKey] || "2 weeks";
+}
+
+function isTimelineWithRushFees(
+  categoryKey?: string,
+  questionKey?: string,
+  roleId?: number
+): boolean {
+  if (
+    questionKey === "GFX_TIMELINE" ||
+    questionKey === "SEO_TIMELINE" ||
+    questionKey === "GD_TIMELINE"
+  ) {
+    return true;
+  }
+  if (categoryKey === "graphics" && (roleId === 13 || roleId === 14)) return true;
+  if (categoryKey === "seo" && roleId === 13) return true;
+  return false;
+}
+
+function appendRushFeeLabel(text: string, fee?: number): string {
+  if (!fee || fee <= 0 || /\+\d+% rush fee/i.test(text) || /no extra fee/i.test(text)) {
+    return text;
+  }
+  const pct = Math.round(fee * 100);
+  const base = text.replace(/:\s*$/, "").trim();
+  return `${base}: +${pct}% rush fee`;
+}
+
+/** Strip rush-fee suffix from timeline labels except graphics/SEO (live may use numeric keys). */
+export function formatCalculatorAnswerLabel(
+  text: string,
+  questionKey?: string,
+  options?: { categoryKey?: string; roleId?: number; metadata?: { fee?: number } }
+): string {
+  const { categoryKey, roleId, metadata } = options ?? {};
+
+  if (isTimelineWithRushFees(categoryKey, questionKey, roleId)) {
+    let label = appendRushFeeLabel(text, metadata?.fee);
+    if (!/\+\d+% rush fee/i.test(label) && !/no extra fee/i.test(label)) {
+      if (/super rushed/i.test(label)) label = appendRushFeeLabel(label, 0.5);
+      else if (/\(rushed\)/i.test(label)) label = appendRushFeeLabel(label, 0.25);
+    }
+    return label;
+  }
+
+  return text.replace(/:\s*\+\d+% rush fee/i, "").trim();
+}
+
+/** Append (Optional) for optional text/number on marketing, SEO, and graphics. */
+export function formatCalculatorQuestionText(
+  text: string,
+  isRequired?: boolean,
+  questionType?: string,
+  categoryKey?: string
+): string {
+  const trimmed = text.replace(/\s*\(Optional\)/gi, "").trim();
+  const supportsOptionalLabel = questionType === "text" || questionType === "number";
+  const showOptional =
+    categoryKey === "marketing" || categoryKey === "seo" || categoryKey === "graphics";
+  if (showOptional && supportsOptionalLabel && isRequired !== true) {
+    return `${trimmed} (Optional)`;
+  }
+  return trimmed;
+}
+
+/** Nearest 5 for most categories; SEO uses nearest $1 (live parity). */
+export function roundCalculatorPrice(amount: number, categoryKey?: string): number {
+  if (!Number.isFinite(amount)) return 0;
+  if (categoryKey === "seo") {
+    return Math.round(amount);
+  }
+  return 5 * Math.round(amount / 5);
+}
+
+export function getCalculatorDisplayAmount(
+  amountUsd: number,
+  currency: string,
+  conversionRate = 1,
+  categoryKey?: string
+): number {
+  if (currency === "eur") {
+    return getCalculatorPayableAmount(amountUsd, currency, conversionRate);
+  }
+  return roundCalculatorPrice(amountUsd, categoryKey);
+}
+
+/** Exact payable amount in display currency (2dp) for payment form — live parity. */
+export function getCalculatorPayableAmount(
+  amountUsd: number,
+  currency: string,
+  conversionRate = 1
+): number {
+  const inCurrency = currency === "eur" ? amountUsd / conversionRate : amountUsd;
+  return Math.round(inCurrency * 100) / 100;
+}
+
+/** 50% deposit uses floor to cents (live: $787.95 → $393.97). */
+export function getCalculatorHalfPayableAmount(payableTotal: number): number {
+  return Math.floor((payableTotal / 2) * 100) / 100;
+}
+
+export function formatCalculatorPrice(
+  amountUsd: number,
+  currency: string,
+  conversionRate = 1,
+  categoryKey?: string
+): string {
+  return formatCalculatorDisplayAmount(
+    getCalculatorDisplayAmount(amountUsd, currency, conversionRate, categoryKey),
+    currency,
+    categoryKey
+  );
+}
+
+export function formatCalculatorDisplayAmount(
+  amountInCurrency: number,
+  currency: string,
+  categoryKey?: string
+): string {
+  const normalizedCurrency = currency.toUpperCase();
+  const rounded =
+    currency === "eur"
+      ? Math.round(amountInCurrency * 100) / 100
+      : roundCalculatorPrice(amountInCurrency, categoryKey);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: normalizedCurrency,
+    minimumFractionDigits: currency === "eur" ? 2 : 0,
+    maximumFractionDigits: currency === "eur" ? 2 : 0,
+  }).format(rounded);
 }
 
 export function pruneHiddenSelections(

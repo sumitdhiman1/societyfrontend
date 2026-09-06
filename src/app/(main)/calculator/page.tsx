@@ -20,23 +20,31 @@ import { priceCalculatorService, CalculatorCategory, CalculatorConfig, Calculato
 import {
   getSelectedTier,
   getTierQuestionKey,
+  findTimelineQuestionKey,
+  isTierSourceQuestion,
   getGraphicsCategoryKeys,
-  filterGraphicsAnswers,
-  groupAnswersByHeading,
   shouldShowPriceBar,
   selectionsToArray,
   filterQuestionAnswers,
   isQuestionVisible,
   getSeoServiceMode,
-  filterSeoAnswers,
   isMonthlyBillingCategory,
   pruneHiddenSelections,
   getCategoryDisplayName,
+  getCategoryProposalName,
+  getDefaultCategoryTimeline,
   getCategoryIllustration,
+  formatCalculatorAnswerLabel,
+  formatCalculatorQuestionText,
+  formatCalculatorPrice,
+  getCalculatorDisplayAmount,
+  getCalculatorPayableAmount,
+  getCalculatorHalfPayableAmount,
+  roundCalculatorPrice,
 } from "@/lib/calculatorUtils";
 import { downloadCalculatorPdf, getCalculatorPdfBase64 } from "@/lib/calculatorPdfService";
 import StatusPopup from "@/components/common/StatusPopup";
-import Footer from "@/components/dashboard/Footer";
+import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import VisaIcon from "@/components/icons/visa";
 import MastercardIcon from "@/components/icons/mastercard";
 import AmexIcon from "@/components/icons/amex";
@@ -56,10 +64,10 @@ const stripeElementOptions = {
   disableLink: true,
   style: {
     base: {
-      color: "#1f2937",
+      color: "#000000",
       fontFamily: "system-ui, -apple-system, sans-serif",
       fontSmoothing: "antialiased",
-      fontSize: "15px",
+      fontSize: "16px",
       "::placeholder": {
         color: "#9ca3af",
       },
@@ -69,6 +77,22 @@ const stripeElementOptions = {
       iconColor: "#ef4444",
     },
   },
+};
+
+const stripeCardNumberOptions = {
+  ...stripeElementOptions,
+  showIcon: false,
+  placeholder: "1234 1234 1234 1234",
+};
+
+const stripeCardExpiryOptions = {
+  ...stripeElementOptions,
+  placeholder: "MM / YY",
+};
+
+const stripeCardCvcOptions = {
+  ...stripeElementOptions,
+  placeholder: "CVC",
 };
 
 const EUROPEAN_COUNTRIES = [
@@ -83,22 +107,20 @@ const CurrencyPillToggle = ({
   currency: string;
   setCurrency: (c: "usd" | "eur") => void;
 }) => (
-  <div className="flex bg-gray-100 rounded-lg p-0.5">
+  <div className="flex bg-gray-100 rounded-lg p-1  mx-2">
     <button
       type="button"
       onClick={() => setCurrency("usd")}
-      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
-        currency === "usd" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"
-      }`}
+      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "usd" ? "text-gray-500 hover:text-gray-700 " : "text-gray-500 hover:text-gray-700"
+        }`}
     >
       USD
     </button>
     <button
       type="button"
       onClick={() => setCurrency("eur")}
-      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
-        currency === "eur" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"
-      }`}
+      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "eur" ? "text-gray-500 hover:text-gray-700" : "text-gray-500 hover:text-gray-700"
+        }`}
     >
       EUR
     </button>
@@ -118,12 +140,12 @@ const CurrencyDropdown = ({
 }) => {
   const labelClass =
     size === "sm"
-      ? "text-[16px] font-bold text-[#002E8A] uppercase tracking-wide font-sans"
-      : "text-sm md:text-[18px] font-bold text-[#002E8A] uppercase tracking-wide font-sans";
+      ? "text-[16px] font-bold text-[#002E8A] uppercase tracking-wide font-sans "
+      : "text-sm text-[12px] md:text-[14px] font-bold text-[#002e8a] uppercase tracking-wide ";
   const valueClass =
     size === "sm"
       ? "text-[16px] font-bold text-black uppercase font-sans"
-      : "text-lg md:text-xl font-bold text-black uppercase font-sans";
+      : "font-bold text-[14px] font-black text-black uppercase tracking-wide font-sans";
 
   return (
     <div className="flex items-center gap-2 md:gap-3">
@@ -154,36 +176,35 @@ const CurrencyDropdown = ({
 };
 
 const CategoryGrid = ({ categories, selectedCategoryKey, onSelect }: { categories: CalculatorCategory[], selectedCategoryKey: string | null, onSelect: (key: string) => void }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8 items-stretch">
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8 items-start">
     {categories.map((cat: CalculatorCategory) => {
       const isSelected = selectedCategoryKey === cat.categoryKey;
       return (
-      <button
-        key={cat.categoryKey}
-        onClick={() => onSelect(cat.categoryKey)}
-        className={`group relative bg-white rounded-[4px] shadow-[0px_10px_30px_rgba(0,0,0,0.1)] border-0 transition-all duration-300 transform hover:-translate-y-1 flex flex-col w-full h-full focus:outline-none focus:ring-2 focus:ring-white/20 ${
-          isSelected ? "pb-[26px]" : ""
-        }`}
-      >
-        <div className="w-full flex-1 flex items-center justify-center px-6 pt-8 pb-4 bg-white min-h-[190px] rounded-t-[4px]">
-          <img
-            src={getCategoryIllustration(cat.categoryKey, cat.image)}
-            alt={cat.categoryName}
-            className="max-w-full max-h-[150px] w-auto object-contain transition-transform duration-500 group-hover:scale-105"
-          />
-        </div>
-        <div className="w-full px-4 pt-2 pb-5 bg-white min-h-[88px] flex items-start">
-          <h3 className="font-black text-[#002E8A] uppercase tracking-tight text-[15px] leading-[1.3] text-left">
-            {getCategoryDisplayName(cat.categoryKey, cat.categoryName)}
-          </h3>
-        </div>
-        {isSelected && (
-          <div className="absolute bottom-0 left-0 right-0 h-[26px] flex items-center px-4 text-[9px] font-black uppercase tracking-[0.2em] bg-[#334155] text-white rounded-b-[4px]">
-            SELECTED
+        <button
+          key={cat.categoryKey}
+          onClick={() => onSelect(cat.categoryKey)}
+          className={`group relative bg-white rounded-[6px] shadow-[0px_10px_30px_rgba(0,0,0,0.1)] border-0 transition-all duration-300 transform hover:-translate-y-1 flex flex-col w-full  focus:outline-none focus:ring-2 focus:ring-white/20 ${isSelected ? "" : ""
+            }`}
+        >
+          <div className="w-full border-rs-cs flex-1 flex items-center justify-center px-6 pt-4 pb-4 bg-white min-h-[160px] rounded-t-[4px]">
+            <img
+              src={getCategoryIllustration(cat.categoryKey, cat.image)}
+              alt={cat.categoryName}
+              className="max-w-full max-h-[130px] w-auto object-contain transition-transform duration-500 group-hover:scale-105"
+            />
           </div>
-        )}
-      </button>
-    );
+          <div className="w-full border-rs-cs min-h-[65px] px-6 pb-4 flex items-center justify-start bg-white">
+            <h3 className="font-extrabold text-[#1F2937] uppercase tracking-[0.01em] text-[14px] md:text-[15px] leading-snug text-left">
+              {getCategoryDisplayName(cat.categoryKey, cat.categoryName)}
+            </h3>
+          </div>
+          {isSelected && (
+            <div className="w-full selected-cs bg-[#4A5568] text-white py-2.5 text-center text-[11px] font-bold uppercase tracking-[0.2em] transition-all duration-300">
+              SELECTED
+            </div>
+          )}
+        </button>
+      );
     })}
   </div>
 );
@@ -197,22 +218,24 @@ const NumberStepper = ({
   onChange: (n: number) => void;
   min?: number;
 }) => (
-  <div className="flex items-center gap-4">
-    <button
-      type="button"
-      onClick={() => onChange(Math.max(min, value - 1))}
-      className="w-12 h-12 rounded-lg border-2 border-[#002E8A] text-[#002E8A] text-2xl font-bold flex items-center justify-center hover:bg-[#002E8A]/5 transition-colors"
-    >
-      −
-    </button>
-    <div className="min-w-[64px] text-center text-3xl font-bold text-[#002E8A]">{value}</div>
-    <button
-      type="button"
-      onClick={() => onChange(value + 1)}
-      className="w-12 h-12 rounded-lg border-2 border-[#002E8A] text-[#002E8A] text-2xl font-bold flex items-center justify-center hover:bg-[#002E8A]/5 transition-colors"
-    >
-      +
-    </button>
+  <div className="flex items-center gap-6 flex-wrap">
+    <div className="flex items-center gap-0 bg-gray-50 border border-gray-300 rounded-xl overflow-hidden shadow-sm">
+      <button
+        type="button"
+        onClick={() => onChange(Math.max(min, value - 1))}
+        className="w-12 h-14 flex items-center justify-center text-gray-600 hover:text-[#4F46E5] hover:bg-gray-200/60 transition-all text-xl font-bold select-none"
+      >
+        −
+      </button>
+      <div className="w-20 h-14 bg-white text-[#334155] text-2xl font-bold flex items-center justify-center outline-none focus:bg-blue-50/50 transition-all border-x border-gray-200 tabular-nums">{value}</div>
+      <button
+        type="button"
+        onClick={() => onChange(value + 1)}
+        className="w-12 h-14 flex items-center justify-center text-gray-600 hover:text-[#4F46E5] hover:bg-gray-200/60 transition-all text-xl font-bold select-none"
+      >
+        +
+      </button>
+    </div>
   </div>
 );
 
@@ -220,7 +243,6 @@ const QuestionCard = ({
   question,
   selection,
   onToggleAnswer,
-  index,
   tier,
   categoryKey,
   categorySelections,
@@ -229,7 +251,6 @@ const QuestionCard = ({
   question: any;
   selection: any;
   onToggleAnswer: any;
-  index?: number;
   tier: string;
   categoryKey?: string | null;
   categorySelections?: string[];
@@ -245,21 +266,15 @@ const QuestionCard = ({
   const activeKeys = selection?.answerKeys || [];
   const filteredQuestion = filterQuestionAnswers(question, tier);
   let visibleAnswers = filteredQuestion.answers || [];
-  if (question.key === "GFX_ITEMS" && categorySelections) {
-    visibleAnswers = filterGraphicsAnswers(visibleAnswers, categorySelections);
+  if (question.key === "SEO_SERVICE_TYPE") {
+    visibleAnswers = visibleAnswers.filter((a: any) => a.key !== "SEO_TYPE_COMBO");
   }
-  if (question.key === "SEO_ITEMS" && seoServiceMode) {
-    visibleAnswers = filterSeoAnswers(visibleAnswers, seoServiceMode);
-  }
-  const answerGroups =
-    question.type === "multi" && visibleAnswers.some((a: any) => a.metadata?.heading)
-      ? groupAnswersByHeading(visibleAnswers)
-      : [{ heading: null, answers: visibleAnswers }];
+  const answerGroups = [{ heading: null, answers: visibleAnswers }];
 
   return (
-    <div className="animate-in fade-in duration-700 bg-white p-6 md:p-10 rounded-[10px] shadow-2xl">
-      <h2 className="text-xl md:text-2xl font-bold text-[#002E8A] mb-6 md:mb-8 tracking-tight font-manrope">
-        {index !== undefined ? `${index + 1}. ` : ""}{question.text}
+    <div className="animate-in fade-in duration-700 bg-white p-8 md:p-12 rounded-2xl shadow-xl border border-gray-100/80 text-left max-w-[680px] mx-auto">
+      <h2 className="text-[20px] md:text-[22px] font-medium text-[#475569] mb-6 md:mb-8 tracking-normal leading-snug">
+        {formatCalculatorQuestionText(question.text, question.isRequired, question.type, categoryKey ?? undefined)}
       </h2>
 
       {question.type === "text" && (
@@ -267,15 +282,19 @@ const QuestionCard = ({
           value={textVal}
           onChange={(e) => setTextVal(e.target.value)}
           onBlur={() => onToggleAnswer(question.key, textVal, "text")}
-          placeholder={question.config?.placeholder || "Enter your response here..."}
-          className="w-full p-4 bg-white border border-gray-200 rounded-lg text-[#002E8A] focus:border-[#002E8A] focus:ring-1 focus:ring-[#002E8A] focus:outline-none min-h-[120px] resize-vertical placeholder:text-gray-400 transition-all"
+          placeholder="Enter your response here..."
+          className="w-full p-4 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:border-[#4F46E5] focus:bg-white focus:outline-none min-h-[120px] resize-vertical placeholder:text-gray-400 font-sans text-[16px]"
         />
       )}
 
       {question.type === "number" && (
         <NumberStepper
           value={numVal}
-          min={question.config?.minValue ?? 1}
+          min={
+            question.key === "SEO_WORDS" || question.key === "SEO_BACKLINKS" || question.key === "SEO_MONTHS"
+              ? 0
+              : (question.config?.minValue ?? 1)
+          }
           onChange={(n) => onToggleAnswer(question.key, n, "number")}
         />
       )}
@@ -283,10 +302,7 @@ const QuestionCard = ({
       {(question.type === "single" || question.type === "multi") &&
         answerGroups.map((group, gIdx) => (
           <div key={gIdx} className={gIdx > 0 ? "mt-6" : ""}>
-            {group.heading && (
-              <h3 className="text-[#002E8A] font-bold text-lg mb-3">{group.heading}</h3>
-            )}
-            <div className="grid grid-cols-1 gap-1">
+            <div className="grid grid-cols-1 gap-1 multiple-radio">
               {group.answers.map((ans: any) => {
                 const isSelected = activeKeys.includes(ans.key);
                 return (
@@ -294,28 +310,32 @@ const QuestionCard = ({
                     key={ans.key}
                     type="button"
                     onClick={() => onToggleAnswer(question.key, ans.key, question.type)}
-                    className="w-full flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 transition-all outline-none text-left"
+                    className="w-full flex items-center gap-4 cursor-pointer group outline-none text-left py-1.5 mb-3 transition-colors"
                   >
                     <div className="flex-shrink-0">
                       {question.type === "multi" ? (
                         <div
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                            isSelected ? "bg-[#002E8A] border-[#002E8A]" : "border-gray-400 bg-white"
-                          }`}
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? "bg-[#4F46E5] border-[#4F46E5] bg-white" : "border-[#CBD5E1] bg-white group-hover:border-[#4F46E5]"
+                            }`}
                         >
                           {isSelected && (
-                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
-                            </svg>
+                            <div className="w-2.5 h-2.5 rounded-full bg-[#4F46E5]"></div>
                           )}
                         </div>
                       ) : (
-                        <div className="w-5 h-5 rounded-full border-2 border-[#002E8A] flex items-center justify-center">
-                          {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#002E8A]" />}
+                        <div className={`w-5 h-5 rounded-full border-2 border-[#4F46E5] flex items-center justify-center  ${isSelected ? "bg-[#4F46E5] border-[#4F46E5] bg-white" : "border-[#CBD5E1] bg-white group-hover:border-[#4F46E5]"
+                          }`}>
+                          {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#4F46E5]" />}
                         </div>
                       )}
                     </div>
-                    <div className="text-[17px] font-medium text-[#002E8A] tracking-wide">{ans.text}</div>
+                    <div className="text-[16px] md:text-[17px] leading-relaxed transition-colors text-[#475569] font-normal group-hover:text-[#334155]">
+                      {formatCalculatorAnswerLabel(ans.text, question.key, {
+                        categoryKey: categoryKey ?? undefined,
+                        roleId: question.roleId,
+                        metadata: ans.metadata,
+                      })}
+                    </div>
                   </button>
                 );
               })}
@@ -337,13 +357,8 @@ const ProposalPreview = ({
   const [showTooltip, setShowTooltip] = useState(false);
   const { currency, conversionRate } = useCurrency();
 
-  const formatPriceLocal = (amt: number) => {
-    const converted = currency === "eur" ? amt / conversionRate : amt;
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency.toUpperCase(),
-    }).format(converted);
-  };
+  const formatPriceLocal = (amt: number) =>
+    formatCalculatorPrice(amt, currency, conversionRate, category.categoryKey);
 
   const isMonthly = billingType === "monthly";
 
@@ -374,16 +389,28 @@ const ProposalPreview = ({
     } else if (sel.answerKeys?.length) {
       sel.answerKeys.forEach((k: string) => {
         const ans = q.answers.find((a: any) => a.key === k);
-        if (ans) ansTexts.push(ans.text);
+        if (ans) {
+          ansTexts.push(
+            formatCalculatorAnswerLabel(ans.text, q.key, {
+              categoryKey: category.categoryKey,
+              roleId: q.roleId,
+              metadata: ans.metadata,
+            })
+          );
+        }
       });
     }
 
     if (ansTexts.length > 0) {
-      breakdown.push({ question: q.text, answers: ansTexts });
+      breakdown.push({
+        question: formatCalculatorQuestionText(q.text, q.isRequired, q.type, category.categoryKey),
+        answers: ansTexts,
+      });
     }
   });
 
-  const displayName = getCategoryDisplayName(category.categoryKey, category.categoryName);
+  const displayName = getCategoryProposalName(category.categoryKey, category.categoryName);
+  const displayTimeline = timeline || getDefaultCategoryTimeline(category.categoryKey, category.timeline);
 
   const handleDownload = async () => {
     try {
@@ -393,7 +420,9 @@ const ProposalPreview = ({
         breakdownItems: breakdown,
         totalPrice,
         timeline: timeline || category.timeline,
-        currency: currency
+        currency: currency,
+        conversionRate,
+        categoryKey: category.categoryKey,
       });
       if (onDownloadPdf) onDownloadPdf();
     } catch (err) {
@@ -417,7 +446,7 @@ const ProposalPreview = ({
         body += `\n- ${item.question}:\n  ${item.answers.join(", ")}`;
       });
 
-      body += `\n\nTotal Price: ${formatPriceLocal(totalPrice)}\nTimeline: ${timeline || category.timeline || "TBA"}\n\nAttached is your detailed proposal PDF.\n\nGenerated via Society Web Solutions Calculator.`;
+      body += `\n\nTotal Price: ${formatPriceLocal(totalPrice)}\nTimeline: ${displayTimeline || "TBA"}\n\nAttached is your detailed proposal PDF.\n\nGenerated via Society Web Solutions Calculator.`;
 
       alert("Generating PDF and sending email... Please wait a moment.");
 
@@ -427,7 +456,9 @@ const ProposalPreview = ({
         breakdownItems: breakdown,
         totalPrice,
         timeline: timeline || category.timeline,
-        currency: currency
+        currency: currency,
+        conversionRate,
+        categoryKey: category.categoryKey,
       });
 
       const res = await fetch("/api-gateway/quotes/email-calculator-proposal", {
@@ -454,13 +485,13 @@ const ProposalPreview = ({
 
   return (
     <div className="w-full max-w-[680px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 my-6">
-      <h2 className="text-[34px] font-normal text-white text-center mb-8 tracking-wide font-manrope">YOUR PROPOSAL</h2>
+      <h2 className="text-[24px] md:text-[26px] font-medium text-white text-center mb-8 tracking-normal">YOUR PROPOSAL</h2>
       <div className="bg-white rounded-[10px] p-8 md:p-10 shadow-2xl text-left border border-white">
-        <h3 className="text-[#002E8A] font-extrabold text-[26px] md:text-[28px] mb-2 uppercase tracking-tight leading-none">
+        <h3 className="text-[#111827] font-bold text-[24px] md:text-[26px] mb-1 leading-tight">
           {displayName}
         </h3>
         {subtitle && (
-          <p className="text-[#5a6a7a] text-[15px] md:text-[16px] font-normal mb-10 leading-snug">
+          <p className="text-[#64748B] text-[15px] font-normal mb-8 leading-normal font-sans">
             {subtitle}
           </p>
         )}
@@ -469,11 +500,11 @@ const ProposalPreview = ({
         <div className="space-y-7">
           {breakdown.map((item, idx) => (
             <div key={idx} className="font-sans">
-              <h4 className="text-[#002E8A] font-bold text-[17px] md:text-[18px] mb-1.5 leading-snug">
+              <h4 className="text-[#334155] font-bold text-[17px] mb-2">
                 {item.question}
               </h4>
               {item.answers.length === 1 ? (
-                <p className="text-[#5a6a7a] text-[16px] md:text-[17px] font-normal leading-relaxed">
+                <p className="text-[#475569] text-[16px] font-normal leading-relaxed pl-5">
                   {item.answers[0]}
                 </p>
               ) : (
@@ -487,24 +518,23 @@ const ProposalPreview = ({
           ))}
         </div>
 
-        <div className="mt-12 mb-6">
-          <h3 className="text-[#002E8A] text-[28px] md:text-[32px] font-black tracking-tighter">
+        <div className="mt-10 mb-6">
+          <h3 className="text-[#111827] text-[24px] md:text-[26px] font-bold tracking-tight mb-1">
             PROJECT TOTAL COST:{" "}
-            <span className="text-[#4B4DED]">{formatPriceLocal(totalPrice)}</span>
-            {isMonthly && <span className="text-[15px] font-normal ml-2 text-[#002E8A]">/month</span>}
+            <span className="text-[#4F46E5] font-black font-bold">{formatPriceLocal(totalPrice)}</span>
           </h3>
-          {isMonthly && <p className="text-[#002E8A] text-[13px] font-medium mt-1 opacity-75">First month billed on start. Then auto-renewed monthly.</p>}
+          {isMonthly && <p className="text-[#363636] text-[13px] font-medium mt-1 opacity-75">First month billed on start. Then auto-renewed monthly.</p>}
         </div>
 
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[#002E8A] text-[18px] font-bold">Estimated Deadline</span>
+            <span className="text-[#374151] text-[16px] font-medium">Estimated Deadline</span>
             <div className="relative">
               <button
                 type="button"
                 onMouseEnter={() => setShowTooltip(true)}
                 onMouseLeave={() => setShowTooltip(false)}
-                className="w-5 h-5 rounded-full bg-[#002E8A] text-white text-[11px] font-bold flex items-center justify-center cursor-help leading-none"
+                className="w-4 h-4 rounded-full bg-gray-300 text-gray-700 text-[11px] font-bold flex items-center justify-center cursor-help leading-none"
               >
                 ?
               </button>
@@ -515,28 +545,28 @@ const ProposalPreview = ({
               )}
             </div>
           </div>
-          <p className="text-[#002E8A] text-[16px] font-normal">{timeline || category.timeline || "To be determined based on scope"}</p>
+          <p className="text-[#111827] text-[16px] font-bold">{displayTimeline}</p>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8 text-sm text-blue-700 leading-relaxed">
+        <div className="bg-[#EEF2FF] border border-[#C7D2FE] rounded-xl p-4 mb-8 text-sm text-[#4338CA] leading-relaxed">
           <strong>📋 Timeline Note:</strong> The estimated deadline does not count time when your response is pending — including approvals, content submissions, or payment deadlines. Your project manager will notify you if the project timeline is paused.
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 mt-4">
-          <button onClick={handleDownload} className="w-full bg-[#002E8A] hover:bg-[#001b54] text-white font-bold py-4 px-6 rounded-[5px] transition-colors flex items-center justify-center gap-2 shadow-[0px_4px_10px_rgba(0,0,0,0.1)] group">
+          <button onClick={handleDownload} className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-semibold py-3.5 px-6 rounded-[6px] transition-all flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg cursor-pointer">
             <svg className="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            <span className="text-[16px] font-black tracking-wide uppercase">Download PDF</span>
+            <span className="text-[16px] font-semibold tracking-normal">Download PDF</span>
           </button>
-          <button onClick={handleEmail} className="w-full bg-white border-2 border-[#002E8A] hover:bg-gray-50 text-[#002E8A] font-bold py-4 px-6 rounded-[5px] transition-colors flex items-center justify-center gap-2 group">
+          <button onClick={handleEmail} className="w-full bg-white border border-gray-300 hover:bg-gray-50 text-[#374151] font-semibold py-3.5 px-6 rounded-[6px] transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer">
             <svg className="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1 0.9-2 2-2z" />
               <polyline points="22,6 12,13 2,6" />
             </svg>
-            <span className="text-[16px] font-black tracking-wide uppercase">Email Proposal</span>
+            <span className="text-[16px] font-semibold text-[#374151] tracking-normal">Email Proposal</span>
           </button>
         </div>
       </div>
@@ -544,11 +574,12 @@ const ProposalPreview = ({
   );
 };
 
-const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, formatPriceLocal, currency, setCurrency }: any) => {
+const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, formatPriceLocal, currency, setCurrency, conversionRate }: any) => {
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
-  const halfPrice = totalPrice * 0.5;
+  const payableTotal = getCalculatorPayableAmount(totalPrice, currency, conversionRate);
+  const halfPrice = getCalculatorHalfPayableAmount(payableTotal);
 
   const [paymentOption, setPaymentOption] = useState("full");
   const [customAmount, setCustomAmount] = useState("");
@@ -609,31 +640,73 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
     expiry: { complete: false, error: null },
     cvc: { complete: false, error: null },
   });
+  const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  const focusFirstFieldError = (errs: Record<string, string>) => {
+    const order = [
+      "amount",
+      "cardHolderName",
+      "cardNumber",
+      "cardExpiry",
+      "cardCvc",
+      "personName",
+      "personEmail",
+      "billingStreet",
+      "billingCity",
+      "billingState",
+      "billingZip",
+    ];
+    const firstKey = order.find((key) => errs[key]);
+    if (!firstKey) return;
+
+    fieldRefs.current[firstKey]?.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    if (elements) {
+      if (firstKey === "cardNumber") {
+        elements.getElement(CardNumberElement)?.focus();
+        return;
+      }
+      if (firstKey === "cardExpiry") {
+        elements.getElement(CardExpiryElement)?.focus();
+        return;
+      }
+      if (firstKey === "cardCvc") {
+        elements.getElement(CardCvcElement)?.focus();
+        return;
+      }
+    }
+
+    const input = fieldRefs.current[firstKey];
+    if (input && "focus" in input) {
+      (input as HTMLInputElement).focus();
+    }
+  };
 
   const handleBizChange = (e: any) => setBizInfo({ ...bizInfo, [e.target.name]: e.target.value });
 
-  const getBaseAmount = () => {
-    if (paymentOption === "half") return halfPrice;
-    if (paymentOption === "full") return totalPrice;
-    if (paymentOption === "custom" && customAmount) return parseFloat(customAmount);
-    return totalPrice;
-  };
-
-  const getActiveCountry = () =>
-    billingSameAsBusiness ? userCountry : billingAddress.country;
-
-  const getVatAmount = (baseAmount: number) => {
-    const isEuropean = EUROPEAN_COUNTRIES.includes(getActiveCountry()?.toUpperCase());
-    return isEuropean ? baseAmount * VAT_RATE : 0;
-  };
-
-  const getPayableAmount = () => {
-    const base = getBaseAmount();
-    return base + getVatAmount(base);
-  };
-
-  const requiresVerification = !isEmailVerified;
+  const vatRate = 0;
   const currencyLabel = currency.toUpperCase();
+  const requiresVerification = !isEmailVerified;
+  const getBasePayableAmount = () => {
+    if (paymentOption === "half") return halfPrice;
+    if (paymentOption === "full") return payableTotal;
+    if (paymentOption === "custom" && customAmount) return parseFloat(customAmount) || 0;
+    return payableTotal;
+  };
+
+  const baseAmount = getBasePayableAmount();
+  const vatAmount = Math.round(baseAmount * vatRate * 100) / 100;
+  const totalPayable = Math.round((baseAmount + vatAmount) * 100) / 100;
+
+  const formatPaymentLine = (amt: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currencyLabel,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amt);
+
+  const getPayableAmount = () => totalPayable;
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
@@ -663,10 +736,10 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
     if (paymentOption === "custom") {
       if (!customAmount || parseFloat(customAmount) <= 0) {
         errs.amount = "Enter a valid amount.";
-      } else if (parseFloat(customAmount) > totalPrice) {
+      } else if (parseFloat(customAmount) > payableTotal) {
         errs.amount = "Cannot exceed total price.";
-      } else if (parseFloat(customAmount) < totalPrice * 0.1) {
-        errs.amount = `Min ${formatPriceLocal(totalPrice * 0.1)}.`;
+      } else if (parseFloat(customAmount) < payableTotal * 0.1) {
+        errs.amount = `Min ${formatPaymentLine(payableTotal * 0.1)}.`;
       }
     }
 
@@ -683,26 +756,7 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
 
     setErrors(errs);
     if (Object.keys(errs).length > 0) {
-      const fieldLabels: Record<string, string> = {
-        personName: "Contact name",
-        personEmail: "Contact email",
-        amount: "Payment amount",
-        cardHolderName: "Name on card",
-        billingStreet: "Billing address",
-        billingCity: "Billing city",
-        billingState: "Billing state",
-        billingZip: "Billing ZIP",
-        cardNumber: "Card number",
-        cardExpiry: "Expiry date",
-        cardCvc: "CVC",
-      };
-      const missing = Object.keys(errs).map((k) => fieldLabels[k] || k).join(", ");
-      setStatus({
-        isOpen: true,
-        type: "error",
-        title: "Validation Error",
-        message: `Fix: ${missing}. Card fields upar white box me check karo.`,
-      });
+      requestAnimationFrame(() => focusFirstFieldError(errs));
       return;
     }
 
@@ -710,9 +764,11 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
     try {
       const proposalData = {
         categoryKey,
-        selections: Object.values(selections),
+        selections: selectionsToArray(selections),
         calculatedPrice: totalPrice,
+        totalPrice,
         estimatedTimeline: timeline,
+        timeline,
         ...bizInfo,
       };
 
@@ -755,12 +811,12 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
             address: billingSameAsBusiness
               ? undefined
               : {
-                  line1: billingAddress.street,
-                  city: billingAddress.city,
-                  state: billingAddress.state,
-                  postal_code: billingAddress.zip,
-                  country: billingAddress.country,
-                },
+                line1: billingAddress.street,
+                city: billingAddress.city,
+                state: billingAddress.state,
+                postal_code: billingAddress.zip,
+                country: billingAddress.country,
+              },
           },
         },
       });
@@ -784,36 +840,38 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
     }
   };
 
-  const baseAmount = getBaseAmount();
-  const vatAmount = getVatAmount(baseAmount);
-  const totalPayable = baseAmount + vatAmount;
-  const vatPercent = vatAmount > 0 ? 20 : 0;
-
   return (
     <form onSubmit={handleSubmit} className="animate-in fade-in duration-500 w-full flex flex-col gap-8">
       <StatusPopup isOpen={status.isOpen} onClose={() => setStatus({ ...status, isOpen: false })} type={status.type} title={status.title} message={status.message} />
 
-      {!stripePromise && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-2 max-w-[680px] mx-auto w-full">
-          <h4 className="text-amber-800 font-bold mb-1">Payment System Offline</h4>
-          <p className="text-amber-700 text-sm">
-            Secure checkout is being configured. Contact support at{" "}
-            <span className="font-bold">support@society.com</span> to complete payment manually.
-          </p>
-        </div>
-      )}
-
-      <div className="text-center mb-2">
-        <h2 className="text-[34px] font-normal text-white mb-4 font-manrope uppercase tracking-wide">READY TO BEGIN?</h2>
-        <p className="text-gray-100 text-[16px] font-light leading-relaxed">
+      <div className="text-center mb-6">
+        <h2 className="text-[24px] md:text-[26px] font-medium text-white mb-3 tracking-normal">READY TO BEGIN?</h2>
+        <p className="text-gray-300 text-[15px] font-light leading-relaxed max-w-[450px] mx-auto">
           Pay any amount as a deposit to have our team<br />begin work on this project.
         </p>
       </div>
 
-      <div className="bg-white rounded-[10px] p-6 md:p-10 shadow-2xl mx-auto w-full max-w-[680px]">
+      <div className="bg-white rounded-2xl p-6 md:p-10 shadow-2xl mx-auto w-full max-w-[680px] border border-white">
         <div className="flex justify-between items-center mb-8">
-          <h3 className="text-black font-bold text-[18px]">Amount:</h3>
-          <CurrencyPillToggle currency={currency} setCurrency={setCurrency} />
+          <h3 className="text-[#111827] font-bold text-[18px]">Amount:</h3>
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              type="button"
+              onClick={() => setCurrency("usd")}
+              className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "usd" ? "bg-white shadow text-gray-800" : "text-gray-500"
+                }`}
+            >
+              USD
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrency("eur")}
+              className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "eur" ? "bg-white shadow text-gray-800" : "text-gray-500"
+                }`}
+            >
+              EUR
+            </button>
+          </div>
           <div className="flex gap-2 items-center opacity-90 hidden sm:flex">
             <VisaIcon />
             <MastercardIcon />
@@ -821,164 +879,117 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
           </div>
         </div>
 
-        <div className="flex flex-col gap-[18px] text-[16px] mb-8">
-          <label className="flex items-center gap-[14px] cursor-pointer group">
-            <div className={`w-[22px] h-[22px] rounded-full border-[2.5px] flex flex-shrink-0 items-center justify-center transition-colors ${paymentOption === "full" ? "border-black" : "border-gray-400"}`}>
-              {paymentOption === "full" && <div className="w-[10px] h-[10px] rounded-full bg-black" />}
+        <div className="flex flex-col gap-4 text-[16px] mb-8 md:mb-10">
+          <label className="flex items-center gap-3.5 cursor-pointer group">
+            <div className={`w-[20px] h-[20px] rounded-full border-2 flex flex-shrink-0 items-center justify-center transition-all ${paymentOption === "full" ? "border-[#4F46E5] " : "border-[#CBD5E1] group-hover:border-[#4F46E5]"}`}>
+              {paymentOption === "full" && (
+                <div className={`w-[10px] h-[10px] rounded-full transition-colors ${paymentOption === "full" ? "bg-[#4F46E5]" : "bg-black"}`} />
+              )}
             </div>
             <input type="radio" name="paymentOption" className="hidden" checked={paymentOption === "full"} onChange={() => setPaymentOption("full")} />
-            <span className={`transition-colors font-medium ${paymentOption === "full" ? "text-black" : "text-gray-800"}`}>Full {formatPriceLocal(totalPrice)}</span>
+            <span className={`transition-colors font-normal text-[16px] ${paymentOption === "full" ? "text-black" : "text-[#475569]"}`}>Full {formatPaymentLine(payableTotal)}</span>
           </label>
 
           {halfPrice > 0 && (
             <label className="flex items-center gap-[14px] cursor-pointer group">
-              <div className={`w-[22px] h-[22px] rounded-full border-[2.5px] flex flex-shrink-0 items-center justify-center transition-colors ${paymentOption === "half" ? "border-black" : "border-gray-400"}`}>
-                {paymentOption === "half" && <div className="w-[10px] h-[10px] rounded-full bg-black" />}
+              <div className={`w-[20px] h-[20px] rounded-full border-2 flex flex-shrink-0 items-center justify-center transition-all  ${paymentOption === "half" ? "border-[#4F46E5]" : "border-[#CBD5E1] group-hover:border-[#4F46E5]"}`}>
+                {paymentOption === "half" && (
+                  <div className={`w-[10px] h-[10px] rounded-full transition-colors ${paymentOption === "half" ? "bg-[#4F46E5]" : "bg-black"}`} />
+                )}
               </div>
               <input type="radio" name="paymentOption" className="hidden" checked={paymentOption === "half"} onChange={() => setPaymentOption("half")} />
-              <span className={`transition-colors font-medium ${paymentOption === "half" ? "text-black" : "text-gray-800"}`}>50% {formatPriceLocal(halfPrice)}</span>
+              <span className={`transition-colors font-normal text-[16px] ${paymentOption === "half" ? "text-black" : "text-[#475569]"}`}>50% {formatPaymentLine(halfPrice)}</span>
             </label>
           )}
 
           <label className="flex flex-wrap items-center gap-[14px] cursor-pointer group">
-            <div className={`w-[22px] h-[22px] rounded-full border-[2.5px] flex flex-shrink-0 items-center justify-center transition-colors ${paymentOption === "custom" ? "border-black" : "border-gray-400"}`}>
-              {paymentOption === "custom" && <div className="w-[10px] h-[10px] rounded-full bg-black" />}
+            <div className={`w-[20px] h-[20px] rounded-full border-2 flex flex-shrink-0 items-center justify-center transition-all  ${paymentOption === "custom" ? "border-[#4F46E5]" : "border-[#CBD5E1] group-hover:border-[#4F46E5]"}`}>
+              {paymentOption === "custom" && (
+                <div className={`w-[10px] h-[10px] rounded-full transition-colors ${paymentOption === "custom" ? "bg-[#4F46E5]" : "bg-black"}`} />
+              )}
             </div>
             <input type="radio" name="paymentOption" className="hidden" checked={paymentOption === "custom"} onChange={() => setPaymentOption("custom")} />
-            <span className={`transition-colors font-medium ${paymentOption === "custom" ? "text-black" : "text-gray-800"}`}>Other</span>
+            <span className={`transition-colors font-normal text-[16px] ${paymentOption === "custom" ? "text-black" : "text-[#475569]"}`}>Other</span>
             {paymentOption === "custom" && (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1" ref={(el) => { fieldRefs.current.amount = el; }} data-field="amount">
                 <div className="relative w-28 ml-2">
-                  <span className={`absolute left-0 top-1/2 -translate-y-1/2 font-medium ${errors.amount ? "text-red-500" : "text-black"}`}>{currency === "eur" ? "€" : "$"}</span>
-                  <input type="number" min="1" value={customAmount} onChange={(e) => { setCustomAmount(e.target.value); if (errors.amount) setErrors((p: any) => ({ ...p, amount: "" })); }} className={`w-full border-b ${errors.amount ? "border-red-500" : "border-black"} py-0.5 pl-4 pr-1 text-[16px] font-medium outline-none bg-transparent`} placeholder="Amount" />
+                  <span className={`absolute left-0 top-1/2 -translate-y-1/2 font-medium ${errors.amount ? "text-red-500" : "text-[#475569]"}`}>{currency === "eur" ? "€" : "$"}</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={customAmount}
+                    onChange={(e) => { setCustomAmount(e.target.value); if (errors.amount) setErrors((p: any) => ({ ...p, amount: "" })); }}
+                    className={`w-full border-b ${errors.amount ? "border-red-500" : "border-black"} py-0.5 pl-4 pr-1 text-[16px] font-medium outline-none bg-transparent`}
+                    placeholder="Amount"
+                  />
                 </div>
-                {errors.amount && <span className="text-[10px] text-red-500 font-bold ml-2">{errors.amount}</span>}
+                {errors.amount && <span className="text-xs text-red-600 font-medium ml-2">{errors.amount}</span>}
               </div>
             )}
           </label>
         </div>
 
-        <div className="bg-gray-50 rounded-lg p-5 mb-8 space-y-3">
+        <div className="mt-4 mb-8 p-5 bg-gray-50/80 rounded-xl border border-gray-200 text-sm font-sans space-y-2.5">
           <div className="flex justify-between text-[15px]">
             <span className="text-gray-600">Base Amount ({currencyLabel}):</span>
-            <span className="font-medium text-gray-800">{formatPriceLocal(baseAmount)}</span>
+            <span className="font-semibold text-gray-800">{formatPaymentLine(baseAmount)}</span>
           </div>
           <div className="flex justify-between text-[15px]">
-            <span className="text-gray-600">VAT ({vatPercent}%):</span>
-            <span className="font-medium text-gray-800">{formatPriceLocal(vatAmount)}</span>
+            <span className="text-gray-600">VAT ({Math.round(vatRate * 100)}%):</span>
+            <span className="font-semibold text-gray-800">{formatPaymentLine(vatAmount)}</span>
           </div>
-          <div className="flex justify-between text-[17px] pt-2 border-t border-gray-200">
-            <span className="font-bold text-[#002E8A]">Total Payable:</span>
-            <span className="font-bold text-[#002E8A]">{formatPriceLocal(totalPayable)}</span>
+          <div className="pt-2 border-t border-gray-200 flex justify-between items-center text-base font-bold text-gray-900">
+            <span className="">Total Payable:</span>
+            <span className="text-[#4F46E5] text-lg font-black">{formatPaymentLine(totalPayable)}</span>
           </div>
         </div>
 
-        <label className="flex items-center gap-3 cursor-pointer mb-8">
+        <label className="flex items-center gap-3 mb-8 cursor-pointer">
           <input
             type="checkbox"
             checked={billingSameAsBusiness}
             onChange={(e) => setBillingSameAsBusiness(e.target.checked)}
-            className="w-4 h-4 text-[#002E8A] rounded focus:ring-[#002E8A]"
+            className="w-4 h-4 rounded border-gray-300 text-[#5356ff] focus:ring-[#5356ff]"
           />
-          <span className="text-[15px] font-medium text-gray-800">Billing address is the same as Business details</span>
+          <span className="text-sm text-gray-700">Billing address is the same as Business details</span>
         </label>
 
-        {!billingSameAsBusiness && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 bg-gray-50/50 border border-gray-200 p-4 rounded-lg">
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-gray-700 mb-2">Street Address</label>
-              <input
-                type="text"
-                value={billingAddress.street}
-                onChange={(e) => {
-                  setBillingAddress({ ...billingAddress, street: e.target.value });
-                  if (errors.billingStreet) setErrors((p: any) => ({ ...p, billingStreet: "" }));
-                }}
-                className={`w-full border-b ${errors.billingStreet ? "border-red-500" : "border-gray-300"} py-2 bg-transparent outline-none text-[15px]`}
-              />
-              {errors.billingStreet && <span className="text-[10px] text-red-500 font-bold">{errors.billingStreet}</span>}
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-2">City</label>
-              <input
-                type="text"
-                value={billingAddress.city}
-                onChange={(e) => {
-                  setBillingAddress({ ...billingAddress, city: e.target.value });
-                  if (errors.billingCity) setErrors((p: any) => ({ ...p, billingCity: "" }));
-                }}
-                className={`w-full border-b ${errors.billingCity ? "border-red-500" : "border-gray-300"} py-2 bg-transparent outline-none text-[15px]`}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-2">State / Province</label>
-              <input
-                type="text"
-                value={billingAddress.state}
-                onChange={(e) => {
-                  setBillingAddress({ ...billingAddress, state: e.target.value });
-                  if (errors.billingState) setErrors((p: any) => ({ ...p, billingState: "" }));
-                }}
-                className={`w-full border-b ${errors.billingState ? "border-red-500" : "border-gray-300"} py-2 bg-transparent outline-none text-[15px]`}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-2">ZIP / Postal Code</label>
-              <input
-                type="text"
-                value={billingAddress.zip}
-                onChange={(e) => {
-                  setBillingAddress({ ...billingAddress, zip: e.target.value });
-                  if (errors.billingZip) setErrors((p: any) => ({ ...p, billingZip: "" }));
-                }}
-                className={`w-full border-b ${errors.billingZip ? "border-red-500" : "border-gray-300"} py-2 bg-transparent outline-none text-[15px]`}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-2">Country</label>
-              <select
-                value={billingAddress.country}
-                onChange={(e) => setBillingAddress({ ...billingAddress, country: e.target.value })}
-                className="w-full border-b border-gray-300 py-2 bg-transparent outline-none text-[15px]"
-              >
-                <option value="US">United States</option>
-                {EUROPEAN_COUNTRIES.map((code) => (
-                  <option key={code} value={code}>{code}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-8 font-sans">
-          <div>
-            <label className="block text-[16px] font-bold text-black mb-[10px]">Name on the card:</label>
-            <input type="text" value={cardholderName} onChange={(e) => { setCardholderName(e.target.value); if (errors.cardHolderName) setErrors((p: any) => ({ ...p, cardHolderName: "" })); }} placeholder="Name on the card" className={`w-full border-b ${errors.cardHolderName ? "border-red-500" : "border-black/80"} py-2.5 bg-transparent outline-none placeholder-gray-600 focus:border-black text-[16px] transition-all`} />
-            {errors.cardHolderName && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.cardHolderName}</span>}
+        <div className="space-y-6 font-sans">
+          <div data-field="cardHolderName">
+            <label className="block text-[15px] font-medium text-[#111827] mb-2">Name on the card:</label>
+            <input
+              ref={(el) => { fieldRefs.current.cardHolderName = el; }}
+              type="text"
+              value={cardholderName}
+              onChange={(e) => { setCardholderName(e.target.value); if (errors.cardHolderName) setErrors((p: any) => ({ ...p, cardHolderName: "" })); }}
+              placeholder="Name on the card"
+              className={`w-full border-b ${errors.cardHolderName ? "border-red-500" : "border-gray-200"} py-2.5 bg-transparent outline-none placeholder-gray-400 focus:border-[#4F46E5] text-[15px] transition-all`}
+            />
+            {errors.cardHolderName && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardHolderName}</span>}
           </div>
 
-          <div>
-            <label className="block text-[16px] font-bold text-black mb-[10px]">Card number:</label>
-            <div className={`w-full border-b ${errors.cardNumber ? "border-red-500" : "border-black/80"} py-2.5 focus-within:border-black transition-all`}>
-              <CardNumberElement options={{ ...stripeElementOptions, showIcon: false }} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, number: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardNumber: "" })); }} />
+          <div ref={(el) => { fieldRefs.current.cardNumber = el; }} data-field="cardNumber">
+            <label className="block text-[15px] font-medium text-[#111827] mb-2">Card number:</label>
+            <div className={`w-full border-b ${errors.cardNumber ? "border-red-500" : "border-gray-200"} py-2.5 focus-within:border-[#4F46E5] transition-all`}>
+              <CardNumberElement options={stripeCardNumberOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, number: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardNumber: "" })); }} />
             </div>
-            {errors.cardNumber && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.cardNumber}</span>}
+            {errors.cardNumber && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardNumber}</span>}
           </div>
 
           <div className="grid grid-cols-2 gap-10">
-            <div>
-              <label className="block text-[16px] font-bold text-black mb-[10px]">Expiry date:</label>
+            <div ref={(el) => { fieldRefs.current.cardExpiry = el; }} data-field="cardExpiry">
+              <label className="block text-[15px] font-medium text-[#111827] mb-2">Expiry date:</label>
               <div className={`w-full border-b ${errors.cardExpiry ? "border-red-500" : "border-black/80"} py-2.5 focus-within:border-black transition-all`}>
-                <CardExpiryElement options={stripeElementOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, expiry: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardExpiry: "" })); }} />
+                <CardExpiryElement options={stripeCardExpiryOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, expiry: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardExpiry: "" })); }} />
               </div>
-              {errors.cardExpiry && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.cardExpiry}</span>}
+              {errors.cardExpiry && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardExpiry}</span>}
             </div>
-            <div>
-              <label className="block text-[16px] font-bold text-black mb-[10px]">CVC:</label>
+            <div ref={(el) => { fieldRefs.current.cardCvc = el; }} data-field="cardCvc">
+              <label className="block text-[15px] font-medium text-[#111827] mb-2">CVC:</label>
               <div className={`w-full border-b ${errors.cardCvc ? "border-red-500" : "border-black/80"} py-2.5 focus-within:border-black transition-all`}>
-                <CardCvcElement options={stripeElementOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, cvc: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardCvc: "" })); }} />
+                <CardCvcElement options={stripeCardCvcOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, cvc: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardCvc: "" })); }} />
               </div>
-              {errors.cardCvc && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.cardCvc}</span>}
+              {errors.cardCvc && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardCvc}</span>}
             </div>
           </div>
         </div>
@@ -986,62 +997,57 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
 
       <p className="text-center text-[16px] text-gray-300 max-w-[680px] mx-auto font-sans">Please fill out your business information before paying.</p>
 
-      <div className="bg-white rounded-[10px] p-6 md:p-10 text-black space-y-8 max-w-[680px] mx-auto w-full font-sans shadow-2xl">
-        <div className="space-y-6">
-          <div>
-            <label className="block text-[16px] font-bold mb-2 text-black">Contact person&apos;s name: *</label>
-            <input type="text" name="personName" value={bizInfo.personName} onChange={(e) => { handleBizChange(e); if (errors.personName) setErrors((p: any) => ({ ...p, personName: "" })); }} placeholder="Your answer" className={`w-full border-b ${errors.personName ? "border-red-500" : "border-black/80"} py-2 bg-transparent outline-none focus:border-black placeholder-gray-500 text-[16px] text-black`} />
-            {errors.personName && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.personName}</span>}
-          </div>
-          <div>
-            <label className="block text-[16px] font-bold mb-2 text-black">Contact person&apos;s email address: *</label>
-            <input type="email" name="personEmail" value={bizInfo.personEmail} onChange={(e) => { handleBizChange(e); if (errors.personEmail) setErrors((p: any) => ({ ...p, personEmail: "" })); }} placeholder="Your answer" className={`w-full border-b ${errors.personEmail ? "border-red-500" : "border-black/80"} py-2 bg-transparent outline-none focus:border-black placeholder-gray-500 text-[16px] text-black`} />
-            {errors.personEmail && <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.personEmail}</span>}
-          </div>
-          <div>
-            <label className="block text-[16px] font-bold mb-2 text-black">Contact person&apos;s phone number:</label>
-            <input type="tel" name="personPhone" value={bizInfo.personPhone} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-500 text-[16px] text-black" />
-          </div>
+      <div className="bg-white rounded-[10px] p-6 md:p-10 text-black space-y-6 max-w-[680px] mx-auto w-full font-sans shadow-2xl">
+        <div data-field="personName">
+          <label className="block text-[16px] font-bold mb-2">Contact person&apos;s name: *</label>
+          <input
+            ref={(el) => { fieldRefs.current.personName = el; }}
+            type="text" name="personName" value={bizInfo.personName} onChange={(e) => { handleBizChange(e); if (errors.personName) setErrors((p: any) => ({ ...p, personName: "" })); }} placeholder="Your answer" className={`w-full border-b ${errors.personName ? "border-red-500" : "border-black/80"} py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]`} />
+          {errors.personName && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.personName}</span>}
         </div>
-
-        <div className="space-y-6 pt-4">
-          <div>
-            <label className="block text-[16px] font-bold mb-2 text-black">Business name:</label>
-            <input type="text" name="businessName" value={bizInfo.businessName} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-500 text-[16px] text-black" />
-          </div>
-          <div>
-            <label className="block text-[16px] font-bold mb-2 text-black">Business email address:</label>
-            <input type="email" name="businessEmail" value={bizInfo.businessEmail} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-500 text-[16px] text-black" />
-          </div>
-          <div>
-            <label className="block text-[16px] font-bold mb-2 text-black">Business phone number:</label>
-            <input type="tel" name="businessPhone" value={bizInfo.businessPhone} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-500 text-[16px] text-black" />
-          </div>
-          <div>
-            <label className="block text-[16px] font-bold mb-2 text-black">Business address:</label>
-            <input type="text" name="businessAddress" value={bizInfo.businessAddress} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-500 text-[16px] text-black" />
-          </div>
-          <div>
-            <label className="block text-[16px] font-bold mb-2 text-black">Business website:</label>
-            <input type="text" name="businessWebsite" value={bizInfo.businessWebsite} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-500 text-[16px] text-black" />
-          </div>
-          <div>
-            <label className="block text-[16px] font-bold mb-2 text-black">Business services and description:</label>
-            <textarea name="businessDescription" rows={1} value={bizInfo.businessDescription} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-500 text-[16px] text-black resize-none" />
-          </div>
+        <div data-field="personEmail">
+          <label className="block text-[16px] font-bold mb-2">Contact person&apos;s email address: *</label>
+          <input
+            ref={(el) => { fieldRefs.current.personEmail = el; }}
+            type="email" name="personEmail" value={bizInfo.personEmail} onChange={(e) => { handleBizChange(e); if (errors.personEmail) setErrors((p: any) => ({ ...p, personEmail: "" })); }} placeholder="Your answer" className={`w-full border-b ${errors.personEmail ? "border-red-500" : "border-black/80"} py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]`} />
+          {errors.personEmail && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.personEmail}</span>}
+        </div>
+        <div>
+          <label className="block text-[16px] font-bold mb-2">Contact person&apos;s phone number:</label>
+          <input type="tel" name="personPhone" value={bizInfo.personPhone} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]" />
+        </div>
+        <div>
+          <label className="block text-[16px] font-bold mb-2">Business name:</label>
+          <input type="text" name="businessName" value={bizInfo.businessName} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]" />
+        </div>
+        <div>
+          <label className="block text-[16px] font-bold mb-2">Business email address:</label>
+          <input type="email" name="businessEmail" value={bizInfo.businessEmail} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]" />
+        </div>
+        <div>
+          <label className="block text-[16px] font-bold mb-2">Business phone number:</label>
+          <input type="tel" name="businessPhone" value={bizInfo.businessPhone} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]" />
+        </div>
+        <div>
+          <label className="block text-[16px] font-bold mb-2">Business address:</label>
+          <input type="text" name="businessAddress" value={bizInfo.businessAddress} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]" />
+        </div>
+        <div>
+          <label className="block text-[16px] font-bold mb-2">Business website:</label>
+          <input type="url" name="businessWebsite" value={bizInfo.businessWebsite} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]" />
+        </div>
+        <div>
+          <label className="block text-[16px] font-bold mb-2">Business services and description:</label>
+          <textarea name="businessDescription" rows={1} value={bizInfo.businessDescription} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px] resize-none" />
         </div>
       </div>
 
       <button
         type="submit"
-        disabled={isProcessing || !stripe || !elements || requiresVerification}
-        className="w-full max-w-[680px] mx-auto py-5 px-6 rounded bg-[#4343F0] text-white font-black text-[16px] tracking-widest shadow-xl hover:bg-[#3535d0] transition-all disabled:opacity-70 disabled:cursor-not-allowed uppercase active:scale-[0.98] mt-4"
+        disabled={isProcessing || !stripe || !elements}
+        className="w-full max-w-[680px] mx-auto py-4 px-6 rounded-[6px] bg-[#4343F0] text-white font-extrabold text-[16px] tracking-widest shadow-xl hover:bg-[#3232b7] transition-all  disabled:cursor-not-allowed uppercase active:scale-[0.98] mt-4"
       >
-        {isProcessing
-          ? "PROCESSING..."
-          : requiresVerification
-            ? "VERIFICATION REQUIRED"
-            : `PAY ${formatPriceLocal(totalPayable)} NOW`}
+        {isProcessing ? "PROCESSING..." : `PAY ${formatPaymentLine(totalPayable)} NOW`}
       </button>
     </form>
   );
@@ -1056,22 +1062,13 @@ const WrappedPaymentForm = (props: any) => (
 export default function CalculatorPage() {
   const { currency, setCurrency, conversionRate } = useCurrency();
 
-  const formatPriceLocal = (amt: number) => {
-    const converted = currency === "eur" ? amt / conversionRate : amt;
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency.toUpperCase()
-    }).format(converted);
-  };
+  const formatPriceLocal = (amt: number) =>
+    formatCalculatorPrice(amt, currency, conversionRate, selectedCategoryKey ?? undefined);
 
   const [config, setConfig] = useState<CalculatorConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
   const [selections, setSelections] = useState<Record<string, CalculatorSelection>>({});
-  const [isStickyVisible, setIsStickyVisible] = useState(false);
-  const stickyRef = useRef<HTMLDivElement>(null);
-  const footerRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     (async () => {
       try {
@@ -1084,36 +1081,6 @@ export default function CalculatorPage() {
       }
     })();
   }, []);
-
-  useEffect(() => {
-    setIsStickyVisible(!!selectedCategoryKey);
-  }, [selectedCategoryKey]);
-
-  useEffect(() => {
-    const stickyEl = stickyRef.current;
-    const footerEl = footerRef.current;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setIsStickyVisible(false);
-          } else if (selectedCategoryKey && entry.boundingClientRect.top > 0) {
-            setIsStickyVisible(true);
-          }
-        });
-      },
-      { threshold: 0 }
-    );
-
-    if (stickyEl) observer.observe(stickyEl);
-    if (footerEl) observer.observe(footerEl);
-
-    return () => {
-      if (stickyEl) observer.unobserve(stickyEl);
-      if (footerEl) observer.unobserve(footerEl);
-    };
-  }, [selectedCategoryKey]);
 
   const [calculation, setCalculation] = useState<{ totalPrice: number; timeline?: string }>({
     totalPrice: 0,
@@ -1133,8 +1100,13 @@ export default function CalculatorPage() {
     [selectedCategory]
   );
   const tier = useMemo(
-    () => getSelectedTier(selections, getTierQuestionKey(selectedCategoryKey || "")),
-    [selections, selectedCategoryKey]
+    () =>
+      getSelectedTier(
+        selections,
+        getTierQuestionKey(selectedCategoryKey || ""),
+        sortedQuestions
+      ),
+    [selections, selectedCategoryKey, sortedQuestions]
   );
   const graphicsCategoryKeys = useMemo(
     () => getGraphicsCategoryKeys(selections),
@@ -1149,13 +1121,18 @@ export default function CalculatorPage() {
     [sortedQuestions, selections]
   );
   const isMonthlyBilling = isMonthlyBillingCategory(selectedCategoryKey);
+  const hasUserSelections = useMemo(
+    () => selectionsToArray(selections).length > 0,
+    [selections]
+  );
   const showPriceBar = useMemo(
     () => (selectedCategory ? shouldShowPriceBar(selectedCategory, selections) : false),
     [selectedCategory, selections]
   );
+  const showStickyPriceBar = !!(selectedCategoryKey && showPriceBar && calculation.totalPrice > 0);
 
   useEffect(() => {
-    if (!selectedCategoryKey || !showPriceBar) {
+    if (!selectedCategoryKey || !hasUserSelections) {
       setCalculation({ totalPrice: 0, timeline: undefined });
       return;
     }
@@ -1174,7 +1151,7 @@ export default function CalculatorPage() {
     return () => {
       if (calcTimerRef.current) clearTimeout(calcTimerRef.current);
     };
-  }, [selectedCategoryKey, selections, showPriceBar]);
+  }, [selectedCategoryKey, selections, hasUserSelections]);
 
   const handleToggleAnswer = (questionKey: string, value: any, type: string) => {
     setSelections(prev => {
@@ -1187,7 +1164,10 @@ export default function CalculatorPage() {
       if (type === "single") {
         nextKeys = [value];
       } else if (type === "multi") {
-        nextKeys = currentKeys.includes(value) ? currentKeys.filter(k => k !== value) : [...currentKeys, value];
+        const keySet = new Set(currentKeys);
+        if (keySet.has(value)) keySet.delete(value);
+        else keySet.add(value);
+        nextKeys = [...keySet];
       } else if (type === "text") {
         textValue = value;
       } else if (type === "number") {
@@ -1204,38 +1184,10 @@ export default function CalculatorPage() {
         },
       };
 
-      if (questionKey === "WEB_TIER") {
-        delete next.WEB_TIMELINE;
-      }
-      if (questionKey === "GFX_CATEGORIES") {
-        const gfxItems = next.GFX_ITEMS;
-        if (gfxItems?.answerKeys?.length) {
-          const allowed = new Set(
-            filterGraphicsAnswers(
-              selectedCategory?.questions.find((q) => q.key === "GFX_ITEMS")?.answers || [],
-              next.GFX_CATEGORIES?.answerKeys || []
-            ).map((a: any) => a.key)
-          );
-          next.GFX_ITEMS = {
-            ...gfxItems,
-            answerKeys: gfxItems.answerKeys.filter((k: string) => allowed.has(k)),
-          };
-          if (!next.GFX_ITEMS.answerKeys.length) delete next.GFX_ITEMS;
-        }
-      }
-      if (questionKey === "SEO_SERVICE_TYPE" && next.SEO_ITEMS?.answerKeys?.length) {
-        const mode = getSeoServiceMode(next);
-        const allowed = new Set(
-          filterSeoAnswers(
-            selectedCategory?.questions.find((q) => q.key === "SEO_ITEMS")?.answers || [],
-            mode
-          ).map((a: any) => a.key)
-        );
-        next.SEO_ITEMS = {
-          ...next.SEO_ITEMS,
-          answerKeys: next.SEO_ITEMS.answerKeys.filter((k: string) => allowed.has(k)),
-        };
-        if (!next.SEO_ITEMS.answerKeys.length) delete next.SEO_ITEMS;
+      const changedQuestion = sortedQuestions.find((q) => q.key === questionKey);
+      if (changedQuestion && isTierSourceQuestion(changedQuestion, selectedCategoryKey)) {
+        const timelineKey = findTimelineQuestionKey(sortedQuestions);
+        if (timelineKey) delete next[timelineKey];
       }
       if (questionKey === "SEO_ITEMS") {
         const keys = next.SEO_ITEMS?.answerKeys || [];
@@ -1249,13 +1201,13 @@ export default function CalculatorPage() {
 
   const { setBottomOffset } = useChatWidget();
   useEffect(() => {
-    if (isStickyVisible && selectedCategoryKey && showPriceBar && calculation.totalPrice > 0) {
+    if (showStickyPriceBar) {
       setBottomOffset(100);
     } else {
       setBottomOffset(0);
     }
     return () => setBottomOffset(0);
-  }, [isStickyVisible, selectedCategoryKey, calculation.totalPrice, setBottomOffset]);
+  }, [showStickyPriceBar, setBottomOffset]);
 
   if (loading) {
     return (
@@ -1272,24 +1224,24 @@ export default function CalculatorPage() {
     <div className="bg-[#00102E] min-h-screen flex flex-col font-sans relative">
 
       {/* Hero Section */}
-      <div className="relative text-white overflow-hidden w-full min-h-[280px] md:min-h-[360px]">
+      <div className="relative flex items-center text-white overflow-hidden w-full min-h-[280px] md:min-h-[406px]">
         <Image
-          src="/images/home-hero-bg.jpg"
+          src="/images/calculator_hero.jpg"
           alt="Price calculator hero background"
           fill
           priority
           className="object-cover object-center"
         />
-        <div className="relative z-10 w-full max-w-[1600px] mx-auto px-6 sm:px-5 md:px-8 lg:px-[54px] py-10 sm:py-10 md:py-[40px]">
+        <div className="absolute inset-0 z-0 bg-gradient-to-r from-[#00102E] via-[#00102E]/60 to-transparent"></div>
+        <div className="mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] text-left relative z-10 max-w-[1536px] w-full">
           <div className="flex flex-row justify-center items-center">
             <div className="w-full text-center md:text-left">
-              <h1 className="text-[30px] sm:text-[28px] md:text-[36px] font-semibold mt-6 md:mt-8 mb-[25px] text-white leading-tight md:leading-[2] [font-family:var(--font-poppins)]">
+              <p className="text-gray-300 text-sm md:text-base font-medium mb-3">Calculator</p>
+              <h1 className="text-4xl md:text-[52px] font-extrabold mb-4 leading-tight tracking-tight text-white">
                 Instantly create your price quote.
               </h1>
-              <p className="text-left text-[14px] sm:text-[16px] md:text-[18px] font-light text-white leading-[1.6] md:leading-relaxed tracking-normal [font-family:var(--font-poppins)] pb-6 md:pb-0">
+              <p className="text-base md:text-xl text-gray-200 font-normal leading-relaxed max-w-2xl">
                 Already know the details of your project? There&apos;s an easy way to get started!{" "}
-                <span className="hidden md:inline"><br /></span>
-                Select your web project below, then fill out the requirements to calculate your price.
               </p>
             </div>
           </div>
@@ -1300,17 +1252,16 @@ export default function CalculatorPage() {
 
         {/* Category Selection Section */}
         <div
-          className={`calculator-category-section w-full transition-colors duration-300 ${
-            selectedCategoryKey ? "py-6 md:py-10" : "bg-[#002E8A] py-8 md:py-16"
-          }`}
+          className={`calculator-category-section w-full transition-colors duration-300 ${selectedCategoryKey ? "py-6 md:py-10" : "bg-[#00102E] py-8 md:py-16"
+            }`}
           style={selectedCategoryKey ? calculatorDarkBg : undefined}
         >
-          <div className="container mx-auto px-[34px] md:px-8 lg:px-[54px] max-w-[1600px]">
-            <div className="mb-12 text-left ms-[-8px] mt-2">
-              <h2 className="text-[20px] md:text-[24px] pl-[0px] md:pl-0 font-normal leading-none tracking-[0px] mb-0 text-[#f2f2f2] [font-family:var(--font-poppins)]">
+          <div className="mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] max-w-[1536px] w-full">
+            <div className="mb-8 text-left">
+              <h2 className="text-[24px] md:text-[28px] font-semibold text-white mb-1.5 leading-snug">
                 What would you like to create?
               </h2>
-              <p className="text-[14px] md:text-[16px] pl-[0px] md:pl-0 font-medium leading-[23px] mt-[15px] uppercase text-white [font-family:var(--font-poppins)]">CLICK ON AN OPTION BELOW</p>
+              <p className="text-[11px] font-black text-white/70 uppercase tracking-[0.2em]">CLICK ON AN OPTION BELOW</p>
             </div>
             {config && (
               <CategoryGrid
@@ -1329,14 +1280,13 @@ export default function CalculatorPage() {
         {selectedCategoryKey && (
           <>
             <div className="w-full" style={calculatorDarkBg}>
-              <div className="container mx-auto px-4 md:px-8 lg:px-[54px] max-w-[1600px] pt-2 md:pt-4 pb-10 md:pb-16 flex flex-col items-center gap-8">
-                {visibleQuestions.map((q: any, index: number) => (
+              <div className="mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] max-w-[1536px] w-full py-10 md:py-16 flex flex-col items-center gap-10 min-h-[480px]">
+                {visibleQuestions.map((q: any) => (
                   <div key={q.key} className="w-full max-w-[680px]">
                     <QuestionCard
                       question={q}
                       selection={selections[q.key]}
                       onToggleAnswer={handleToggleAnswer}
-                      index={index}
                       tier={tier}
                       categoryKey={selectedCategoryKey}
                       categorySelections={graphicsCategoryKeys}
@@ -1347,16 +1297,15 @@ export default function CalculatorPage() {
               </div>
             </div>
 
-            {showPriceBar && selectedCategory && (
+            {selectedCategory && (
               <div
-                ref={stickyRef}
-                className="w-full bg-[#001b54] pb-10 md:pb-20"
+                className="w-full bg-[#00102e] pb-10 md:pb-20"
                 style={{
                   backgroundImage: "radial-gradient(circle, #00287a 1%, transparent 1%)",
                   backgroundSize: "30px 30px",
                 }}
               >
-                <div className="container mx-auto px-4 md:px-8 lg:px-[54px] max-w-[1600px] pt-8 md:pt-12 flex flex-col items-center w-full">
+                <div className="mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] max-w-[1536px] w-full pt-8 md:pt-12 flex flex-col items-center">
                   <ProposalPreview
                     category={selectedCategory}
                     selections={selections}
@@ -1366,14 +1315,15 @@ export default function CalculatorPage() {
                   />
                   <div className="w-full mt-6">
                     <WrappedPaymentForm
-                        totalPrice={calculation.totalPrice}
-                        timeline={calculation.timeline}
-                        categoryKey={selectedCategoryKey || selectedCategory.categoryKey}
-                        selections={selections}
-                        formatPriceLocal={formatPriceLocal}
-                        currency={currency}
-                        setCurrency={setCurrency}
-                      />
+                      totalPrice={calculation.totalPrice}
+                      timeline={calculation.timeline}
+                      categoryKey={selectedCategoryKey || selectedCategory.categoryKey}
+                      selections={selections}
+                      formatPriceLocal={formatPriceLocal}
+                      currency={currency}
+                      setCurrency={setCurrency}
+                      conversionRate={conversionRate}
+                    />
                   </div>
                 </div>
               </div>
@@ -1382,15 +1332,14 @@ export default function CalculatorPage() {
         )}
       </main>
 
-      {/* Reverted Sticky Bottom Bar to centered production style */}
-      {selectedCategoryKey && showPriceBar && calculation.totalPrice > 0 && (
-        <div className={`fixed bottom-0 left-0 right-0 py-4 md:h-[100px] bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.05)] border-t border-gray-100 flex items-center z-[100] transition-transform duration-500 ease-in-out ${isStickyVisible ? "translate-y-0" : "translate-y-full"}`}>
-          <div className="container mx-auto flex flex-col md:flex-row justify-center items-center gap-4 md:gap-10 px-4">
+      {/* Sticky Bottom Bar */}
+      {showStickyPriceBar && (
+        <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 shadow-lg z-[100] h-20 bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.05)] flex items-center transition-transform duration-500 ease-in-out translate-y-0">
+          <div className="mx-auto max-w-[1536px] flex flex-col md:flex-row justify-center items-center gap-4 md:gap-10 px-4">
             <div className="flex items-center gap-4">
-              <span className="text-sm md:text-[18px] font-bold text-[#002E8A] uppercase tracking-wide font-sans whitespace-nowrap">PROJECT TOTAL COST:</span>
-              <span className="text-2xl md:text-[34px] font-black text-black tracking-tighter">
+              <span className="text-[12px] md:text-[14px] uppercase text-[#002e8a] tracking-[0.1em] font-semibold">PROJECT TOTAL COST:</span>
+              <span className="text-2xl md:text-3xl font-black text-black font-bold">
                 {formatPriceLocal(calculation.totalPrice)}
-                {isMonthlyBilling && <span className="text-sm md:text-lg font-bold ml-1">/month</span>}
               </span>
             </div>
             <div className="md:pl-8">
@@ -1399,12 +1348,6 @@ export default function CalculatorPage() {
           </div>
         </div>
       )}
-
-      <div ref={footerRef} className="bg-[#F3F4F6] w-full pt-10 md:pt-16 px-4 md:px-8 lg:px-[54px]">
-        <div className="max-w-[1600px] mx-auto">
-          <Footer />
-        </div>
-      </div>
     </div>
   );
 }

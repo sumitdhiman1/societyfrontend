@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useChatWidget } from "@/context/ChatWidgetContext";
 import { useCurrency } from "@/context/CurrencyContext";
 import { authService } from "@/lib/authService";
@@ -100,9 +100,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   const router = useRouter();
-  const pathname = usePathname();
-  const isCalculatorPage = pathname === "/calculator";
-  const shouldHideMenu = hideMenu || isCalculatorPage;
+  const shouldHideMenu = hideMenu;
   const notificationRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);

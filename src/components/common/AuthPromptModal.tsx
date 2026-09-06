@@ -59,6 +59,7 @@ export default function AuthPromptModal({
       >
         {/* Close Button */}
         <button
+          type="button"
           onClick={onClose}
           className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-colors p-1.5 hover:bg-gray-100 rounded-full cursor-pointer"
           aria-label="Close"
@@ -91,6 +92,7 @@ export default function AuthPromptModal({
         {/* Action Buttons */}
         <div className="space-y-3 w-full">
           <button
+            type="button"
             onClick={() => {
               onClose();
               router.push(loginUrl);
@@ -101,6 +103,7 @@ export default function AuthPromptModal({
           </button>
 
           <button
+            type="button"
             onClick={() => {
               onClose();
               router.push(registerUrl);
