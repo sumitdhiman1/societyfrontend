@@ -612,6 +612,7 @@ export default function QuoteDetailsPage() {
   };
 
   const handleRequestModification = async () => {
+    
     if (!messageText.trim() || !quote) {
       if (messageInputRef.current) {
         messageInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
