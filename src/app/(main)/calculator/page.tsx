@@ -1005,7 +1005,7 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
         disabled={isProcessing || !stripe || !elements}
         className="w-full max-w-[680px] mx-auto py-4 px-6 rounded-[6px] bg-[#4343F0] text-white font-extrabold text-[16px] tracking-widest shadow-xl hover:bg-[#3232b7] transition-all  disabled:cursor-not-allowed uppercase active:scale-[0.98] mt-4"
       >
-        {isProcessing ? "PROCESSING..." : `PAY ${paymentOption === "full" ? `${formatPaymentLine(payableTotal)} ` : ""}NOW`}
+        {isProcessing ? "PROCESSING..." : `PAY ${formatPaymentLine(totalPayable)} NOW`}
       </button>
     </form>
   );
