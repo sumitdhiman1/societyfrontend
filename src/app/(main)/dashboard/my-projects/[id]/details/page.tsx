@@ -11,6 +11,8 @@ import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generatePr
 import LoadingDots from "@/components/common/LoadingDots";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
 import DeadlineTooltip from "@/components/common/DeadlineTooltip";
+import RecommendedSolutions from "@/components/common/RecommendedSolutions";
+import { toast } from "sonner";
 
 const renderStatusMessageText = (text: string, attachments?: any[]) => {
   if (!text) return null;
@@ -152,12 +154,13 @@ const renderStatusMessageText = (text: string, attachments?: any[]) => {
 };
 
 export default function ProjectDetailsPage() {
-  const { project, refreshProject } = useProject();
+  const { project, refreshProject, setProject } = useProject();
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [attachments, setAttachments] = useState<any[]>([]);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isTogglingRenewal, setIsTogglingRenewal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [actionModal, setActionModal] = useState<{
@@ -337,15 +340,53 @@ export default function ProjectDetailsPage() {
     if (pId) {
       setIsRestarting(true);
       try {
-        const res = await projectService.restartMonthlyProject(pId);
-        if (res && (res.statusCode === 200 || res.statusCode === 201)) {
-          refreshProject();
+        const res: any = await projectService.restartMonthlyProject(pId);
+        if (res && (res.isSuccessful || res.statusCode === 200 || res.statusCode === 201 || res.data)) {
+          if (res.data) {
+            setProject(res.data);
+          } else {
+            setProject((prev: any) => prev ? ({ ...prev, status: "active" }) : prev);
+          }
+          toast.success("Project restarted successfully!");
+          await refreshProject();
+        } else {
+          toast.error(res?.message || "Failed to restart project");
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to restart project:", error);
+        toast.error(error?.message || "Failed to restart project");
       } finally {
         setIsRestarting(false);
       }
+    }
+  };
+
+  const handleToggleAutoRenewal = async (enable: boolean) => {
+    const pId = project?._id || project?.id || project?.projectId || project?.project_id || project?.orderId || project?.uuid || project?.uid || project?.project?._id || project?.project?.id;
+    if (!pId) return;
+
+    setIsTogglingRenewal(true);
+    try {
+      // Optimistic state update
+      setProject((prev: any) => prev ? ({ ...prev, autoRenewal: enable }) : prev);
+
+      const res: any = await projectService.toggleAutoRenewal(pId, enable);
+      if (res && (res.isSuccessful || res.statusCode === 200 || res.data)) {
+        if (res.data) {
+          setProject(res.data);
+        }
+        toast.success(enable ? "Auto-renewal enabled successfully!" : "Auto-renewal disabled successfully.");
+        await refreshProject();
+      } else {
+        toast.error(res?.message || "Failed to update auto-renewal");
+        await refreshProject();
+      }
+    } catch (err: any) {
+      console.error("Auto-renewal error:", err);
+      toast.error(err?.message || "Failed to update auto-renewal");
+      await refreshProject();
+    } finally {
+      setIsTogglingRenewal(false);
     }
   };
 
@@ -364,13 +405,17 @@ export default function ProjectDetailsPage() {
           res = await projectService.requestProposalModification(pId, actionModal.proposalId, actionComment, username, avatar);
         }
 
-        if (res && (res.statusCode === 200 || res.statusCode === 201)) {
+        if (res && (res.statusCode === 200 || res.statusCode === 201 || res.isSuccessful || res.data)) {
+          toast.success(actionModal.action === "decline" ? "Offer declined successfully" : "Modification request sent");
           setActionModal({ ...actionModal, isOpen: false });
           setActionComment("");
           refreshProject();
+        } else {
+          toast.error(res?.message || `Failed to ${actionModal.action} offer`);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Failed to handle ${actionModal.action}:`, error);
+        toast.error(error?.message || `Failed to ${actionModal.action} offer`);
       } finally {
         setIsActionLoading(false);
       }
@@ -388,16 +433,8 @@ export default function ProjectDetailsPage() {
   // Date for delivery due divider
   const deliveryDueStr = project.deadline ? formatSubmittedDate(project.deadline) : "";
 
-  // Filter messages for display: remove ALL auto-generated system messages unless they have an actual deliverable attachment
-  const displayMessages = (project.messages || []).filter((msg: any) => {
-    if (msg.type === "system_notification" || msg.isSystem || msg.sender === "system" || msg.role === "system") {
-      const hasAttachment = (Array.isArray(msg.attachments) && msg.attachments.length > 0) ||
-        (Array.isArray(msg.content?.attachedFiles) && msg.content.attachedFiles.length > 0) ||
-        Boolean(msg.content?.pdfUrl || msg.pdfUrl);
-      return hasAttachment;
-    }
-    return true;
-  });
+  // Display all project messages and action notifications
+  const displayMessages = project.messages || [];
 
   return (
     <div className="flex flex-col gap-8 w-full font-sans">
@@ -452,10 +489,12 @@ export default function ProjectDetailsPage() {
               <span className={`w-fit px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider border ${(project.status || "").toLowerCase() === "active" || (project.status || "").toLowerCase() === "in_progress"
                 ? "border-green-300 text-green-700 bg-green-50"
                 : (project.status || "").toLowerCase() === "completed"
-                  ? "border-green-300 text-green-700 bg-green-50"
+                  ? "border-blue-300 text-blue-700 bg-blue-50"
                   : (project.status || "").toLowerCase() === "paused"
                     ? "border-amber-300 text-amber-800 bg-amber-50"
-                    : "border-blue-300 text-blue-700 bg-blue-50"
+                    : (project.status || "").toLowerCase() === "canceled" || (project.status || "").toLowerCase() === "cancelled"
+                      ? "border-red-300 text-red-700 bg-red-50"
+                      : "border-gray-300 text-gray-700 bg-gray-50"
                 }`}>
                 {project.status || "ACTIVE"}
               </span>
@@ -473,7 +512,6 @@ export default function ProjectDetailsPage() {
                 </h2>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {project.type === "bundle" && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded uppercase border border-purple-200">Bundle</span>}
-                  {project.type === "analysis" && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded uppercase border border-amber-200">Analysis</span>}
                   {project.type === "custom" && <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded uppercase border border-blue-200">Custom Quote</span>}
                   {project.type === "package" && <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase border border-green-200">Standard Package</span>}
                 </div>
@@ -704,6 +742,55 @@ export default function ProjectDetailsPage() {
               );
             })()}
           </div>
+
+          {/* Subscription & Auto-Renewal Card */}
+          {project.billingType === "monthly" && (
+            <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 sm:p-7 mt-8">
+              <h3 className="text-xs font-bold text-[#1E293B] uppercase tracking-wider mb-2 font-sans">
+                SUBSCRIPTION &amp; AUTO-RENEWAL
+              </h3>
+              <p className="text-xs text-gray-500 leading-relaxed mb-4">
+                This is a monthly subscription project. When auto-renewal is enabled, your project renews automatically each month.
+              </p>
+
+              <div className="bg-[#F8FAFC] border border-gray-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-bold text-[#1E293B]">Auto-Renewal</h4>
+                  {project.autoRenewal ? (
+                    <div className="flex items-center gap-1.5 text-xs text-[#00875A] font-medium mt-0.5">
+                      <span className="w-2 h-2 rounded-full bg-[#00875A] inline-block" />
+                      Enabled
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium mt-0.5">
+                      <span className="w-2 h-2 rounded-full border border-gray-400 inline-block" />
+                      Disabled
+                    </div>
+                  )}
+                </div>
+
+                {project.autoRenewal ? (
+                  <button
+                    type="button"
+                    onClick={() => handleToggleAutoRenewal(false)}
+                    disabled={isTogglingRenewal}
+                    className="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 active:bg-gray-100 text-gray-700 text-xs font-bold rounded-lg transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
+                  >
+                    {isTogglingRenewal ? "Updating..." : "Disable Auto-Renewal"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleToggleAutoRenewal(true)}
+                    disabled={isTogglingRenewal}
+                    className="px-4 py-2 bg-[#00875A] hover:bg-[#00704a] active:bg-[#005c3d] text-white text-xs font-bold rounded-lg transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
+                  >
+                    {isTogglingRenewal ? "Updating..." : "Enable Auto-Renewal"}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -724,49 +811,244 @@ export default function ProjectDetailsPage() {
             {displayMessages.map((msg: any, idx: number) => {
               const msgId = msg.id || `msg-${idx}`;
 
-              // Quote Proposals (Add-ons)
-              if (msg.type === "quote_proposal") {
+              // Check for quote proposal in this message
+              const isQuoteProposal = msg.type === "quote_proposal" || msg.content?.type === "quote_proposal";
+
+              // Check for recommended solutions in this message (ONLY when not a quote proposal)
+              const recSolutions = !isQuoteProposal
+                ? (msg.recommendedSolutions && msg.recommendedSolutions.length > 0 ? msg.recommendedSolutions : null) ||
+                (msg.content?.recommendedSolutions && msg.content.recommendedSolutions.length > 0 ? msg.content.recommendedSolutions : null) ||
+                (msg.type === "recommended_solutions" && msg.content?.packages ? msg.content.packages : null) ||
+                []
+                : [];
+              const hasRecs = recSolutions.length > 0;
+
+              // Check for Payment Request in this message
+              const isPaymentRequest =
+                msg.type === "payment_request" ||
+                msg.content?.type === "payment_request" ||
+                (msg.content?.systemText?.toLowerCase().includes("payment request") ||
+                  msg.message?.toLowerCase().includes("payment request") ||
+                  msg.content?.systemText?.toLowerCase().includes("action required: payment") ||
+                  msg.message?.toLowerCase().includes("action required: payment"));
+
+              if (isPaymentRequest) {
+                const content = typeof msg.content === 'object' && msg.content !== null ? msg.content : {};
+                let rawAmount =
+                  content.amount ??
+                  msg.amount ??
+                  content.total ??
+                  content.price ??
+                  content.invoice?.amount ??
+                  content.invoice?.totalAmount;
+
+                if (rawAmount === undefined || rawAmount === null || rawAmount === "" || Number(rawAmount) === 0) {
+                  const textSearch = `${content.text || ''} ${content.systemText || ''} ${msg.message || ''} ${msg.text || ''}`;
+                  const match =
+                    textSearch.match(/(?:due:\s*\$|request:\s*|\$|amount:\s*|payment:\s*)(\d+(?:\.\d+)?)/i) ||
+                    textSearch.match(/\$(\d+(?:\.\d+)?)/) ||
+                    textSearch.match(/(\d+(?:\.\d+)?)\s*(?:USD|EUR|GBP|\$)/i) ||
+                    textSearch.match(/(\d+(?:\.\d+)?)/);
+                  if (match && match[1]) {
+                    rawAmount = Number(match[1]);
+                  } else if (project?.amountDue) {
+                    rawAmount = project.amountDue;
+                  }
+                }
+
+                const amount = Number(rawAmount || 0);
+                const currency = (content.currency || msg.currency || project?.currency || "USD").toUpperCase();
+
+                let description =
+                  content.description ||
+                  msg.description ||
+                  content.note ||
+                  content.message;
+
+                if (!description && content.text) {
+                  const t = content.text;
+                  if (
+                    !t.toLowerCase().includes("payment is requested") &&
+                    !t.toLowerCase().includes("remaining amount due") &&
+                    !t.toLowerCase().includes("payment request:")
+                  ) {
+                    description = t;
+                  }
+                }
+
+                const pId =
+                  project._id ||
+                  project.id ||
+                  project.projectId ||
+                  project.project_id ||
+                  project.orderId ||
+                  project.uuid ||
+                  project.uid ||
+                  project.project?._id ||
+                  project.project?.id;
+
+                return (
+                  <div
+                    key={msgId}
+                    className="w-full bg-[#F4F8FF] border border-[#DCE8FE] rounded-2xl p-5 sm:p-6 my-3 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  >
+                    <div className="flex items-start sm:items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-[#DBEAFE] text-[#2563EB] flex items-center justify-center shrink-0">
+                        <svg className="w-6 h-6 text-[#2563EB]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <rect x="2" y="7" width="14" height="11" rx="2.5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          <circle cx="6.5" cy="12.5" r="1.5" strokeWidth="2" />
+                          <path d="M7 4h11.5A2.5 2.5 0 0121 6.5V14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-[#1E3A8A] text-base mb-0.5">Payment Request</h4>
+                        {description ? (
+                          <p className="text-xs sm:text-sm text-[#3B82F6] font-medium mb-1.5">{description}</p>
+                        ) : null}
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-xl sm:text-2xl font-black text-[#1E3A8A]">${amount.toFixed(0)}</span>
+                          <span className="text-[11px] font-bold text-[#3B82F6] uppercase">{currency}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="shrink-0">
+                      <Link
+                        href={`/dashboard/my-projects/${pId}/payments`}
+                        className="inline-block w-full sm:w-auto px-8 py-2.5 bg-[#4343F0] hover:bg-[#3232b7] text-white font-bold text-sm rounded-xl shadow-md shadow-[#4343F0]/20 transition-all text-center"
+                      >
+                        Pay Now
+                      </Link>
+                    </div>
+                  </div>
+                );
+              }
+
+              // System notifications & Actions (Project Resumed, Action Required: Approval, etc.)
+              const isSystemMsg = msg.type === "system_notification" || msg.isSystem || msg.sender === "system" || msg.role === "system";
+              const messageAttachments = (msg.attachments && msg.attachments.length > 0) ? msg.attachments : (msg.content?.attachedFiles || msg.attachedFiles || (msg.content as any)?.attachedFilesUrl || msg.attachedFilesUrl || []);
+              const hasFileAttachments = Array.isArray(messageAttachments) && messageAttachments.length > 0;
+
+              if (isSystemMsg && !hasFileAttachments && !hasRecs && !isQuoteProposal) {
+                const rawTitle = msg.content?.systemText || msg.message || "Notification";
+                const cleanTitle = rawTitle.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}⏸▶️💳🛠️🎉✅🔄👤🚀📌🔔]/gu, "").trim();
+                const rawText = msg.content?.text || msg.text || (msg.message !== rawTitle && msg.message !== cleanTitle ? msg.message : "");
+
+                return (
+                  <div key={msgId} className="text-center py-6 px-4 my-2">
+                    <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
+                      {cleanTitle}
+                    </h3>
+                    {rawText && (
+                      <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
+                        {rawText}
+                      </p>
+                    )}
+                  </div>
+                );
+              }
+
+              // Formal Quote Proposals (Add-ons with action buttons / deliverables table)
+              if (isQuoteProposal) {
                 const content = msg.content || {};
-                const items = content.deliverableItems || content.items || [];
-                const actions = content.actionsAvailable || [];
-                const isLatest = project.messages.map((m: any, i: number) => m.type === "quote_proposal" ? i : -1).findLast((i: number) => i !== -1) === idx;
-                const canAct = isLatest && actions.length > 0;
-                const isAcceptedBySystem = project.messages?.some((m: any) => m.type === "system_notification" && (m.content?.systemText?.includes("Add-on Proposal Accepted") || m.message?.includes("Add-on Proposal Accepted")));
-                const isAccepted = content.status === "accepted" || isAcceptedBySystem;
+                const items = (content.deliverableItems && content.deliverableItems.length > 0)
+                  ? content.deliverableItems
+                  : (content.items && content.items.length > 0)
+                    ? content.items
+                    : (msg.deliverableItems && msg.deliverableItems.length > 0)
+                      ? msg.deliverableItems
+                      : [];
+                const actions = (content.actionsAvailable && content.actionsAvailable.length > 0)
+                  ? content.actionsAvailable
+                  : ["accept", "request_modification", "decline"];
+
+                const subsequentMessages = displayMessages.slice(idx + 1);
+                const nextProposalIdx = subsequentMessages.findIndex((m: any) => m.type === "quote_proposal" || m.content?.type === "quote_proposal");
+                const relevantSubsequent = nextProposalIdx !== -1 ? subsequentMessages.slice(0, nextProposalIdx) : subsequentMessages;
+
+                const wasAcceptedAfterThis = relevantSubsequent.some((m: any) => {
+                  const text = `${m.message || ""} ${m.content?.systemText || ""} ${m.content?.text || ""}`.toLowerCase();
+                  return (
+                    (m.type === "system_notification" || m.isSystem || m.type === "quote_action") &&
+                    (text.includes("accepted") || text.includes("add-on proposal accepted") || text.includes("offer was accepted"))
+                  );
+                });
+
+                const wasDeclinedAfterThis = relevantSubsequent.some((m: any) => {
+                  const text = `${m.message || ""} ${m.content?.systemText || ""} ${m.content?.text || ""}`.toLowerCase();
+                  return (
+                    (m.type === "system_notification" || m.isSystem || m.type === "quote_action") &&
+                    (text.includes("declined") || text.includes("proposal declined") || text.includes("offer was declined"))
+                  );
+                });
+
+                const wasModRequestedAfterThis = relevantSubsequent.some((m: any) => {
+                  const text = `${m.message || ""} ${m.content?.systemText || ""} ${m.content?.text || ""}`.toLowerCase();
+                  return (
+                    (m.type === "system_notification" || m.isSystem || m.type === "quote_action") &&
+                    (text.includes("modification") || text.includes("requested modification"))
+                  );
+                });
+
+                const hasLaterProposal = subsequentMessages.some(
+                  (m: any) => m.type === "quote_proposal" || m.content?.type === "quote_proposal"
+                );
+
+                const isAccepted = content.status === "accepted" || wasAcceptedAfterThis;
+                const isDeclined = content.status === "declined" || wasDeclinedAfterThis;
+                const isModRequested = content.status === "modification_requested" || wasModRequestedAfterThis;
+
+                const hasExplicitlyNoActions = Array.isArray(content.actionsAvailable) && content.actionsAvailable.length === 0;
+
+                const isPending = !isAccepted && !isDeclined && !isModRequested && !hasLaterProposal && !hasExplicitlyNoActions;
+                const canAct = isPending;
+                const targetProposalId = msg._id || msg.id;
+
+                const baseAmount = items.reduce((sum: number, it: any) => sum + (Number(it.amount) || 0), 0) || Number(content.total || 0);
+                const vatRate = content.vatRate ?? 0;
+                const vatAmount = content.vatAmount ?? ((baseAmount * vatRate) / 100);
+                const totalCost = content.total ?? (baseAmount + vatAmount);
+
+                const expiresStr = content.expires
+                  ? (isNaN(new Date(content.expires).getTime()) ? content.expires : formatSubmittedDate(content.expires))
+                  : "N/A";
 
                 return (
                   <div key={msgId} className="w-full">
-                    <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-4 sm:p-6 md:p-8">
+                    <div className="bg-white border border-gray-200 rounded-2xl shadow-xs p-6 sm:p-8 md:p-10">
+                      {/* Top Meta: Submitted date & Add-On Offer badge */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                         <div className="flex flex-wrap items-center gap-3">
-                          <span className="text-[10px] sm:text-xs text-gray-500 font-bold">Submitted - {formatSubmittedDate(msg.createdAt)}</span>
-                          <span className={`px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border ${content.status === "accepted" ? "border-green-400 text-green-600 bg-green-50" :
-                            content.status === "declined" ? "border-red-400 text-red-600 bg-red-50" :
-                              content.status === "modification_requested" ? "border-orange-400 text-orange-600 bg-orange-50" :
-                                "border-blue-400 text-blue-600 bg-blue-50"
+                          <span className="text-xs sm:text-sm text-gray-500 font-medium">
+                            Submitted - {formatSubmittedDate(msg.createdAt)}
+                          </span>
+                          <span className={`px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold border ${isAccepted ? "border-green-400 text-green-600 bg-green-50" :
+                            isDeclined ? "border-red-400 text-red-600 bg-red-50" :
+                              isModRequested ? "border-orange-400 text-orange-600 bg-orange-50" :
+                                "border-blue-400 text-blue-600 bg-blue-50/60"
                             }`}>
-                            {content.status === "accepted" ? "Accepted" :
-                              content.status === "declined" ? "Declined" :
-                                content.status === "modification_requested" ? "Modification Requested" : "Add-On Offer"}
+                            {isAccepted ? "Accepted" :
+                              isDeclined ? "Declined" :
+                                isModRequested ? "Modification Requested" : "Add-On Offer"}
                           </span>
                         </div>
                         {content.status && content.status !== "pending" && (
-                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                            {content.status === "accepted" && content.acceptedAt ? `Accepted on ${formatSubmittedDate(content.acceptedAt)}` :
-                              content.status === "declined" && content.declinedAt ? `Declined on ${formatSubmittedDate(content.declinedAt)}` :
-                                content.status === "modification_requested" && content.modificationRequestedAt ? `Requested on ${formatSubmittedDate(content.modificationRequestedAt)}` : ""}
+                          <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">
+                            {isAccepted && content.acceptedAt ? `Accepted on ${formatSubmittedDate(content.acceptedAt)}` :
+                              isDeclined && content.declinedAt ? `Declined on ${formatSubmittedDate(content.declinedAt)}` :
+                                isModRequested && content.modificationRequestedAt ? `Requested on ${formatSubmittedDate(content.modificationRequestedAt)}` : ""}
                           </span>
                         )}
                       </div>
 
                       <div className="border-t border-gray-200 mb-6 sm:mb-8" />
 
+                      {/* Header: Title and From */}
                       <div className="pb-4 sm:pb-6 flex flex-col sm:flex-row justify-between items-start gap-2">
-                        <h2 className="text-xl sm:text-2xl font-bold text-gray-600">Add-On Proposal</h2>
-                        <span className="text-[10px] sm:text-xs text-gray-400 font-medium">From: {msg.username || "Project Manager"}</span>
+                        <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Add-On Proposal</h2>
+                        <span className="text-xs sm:text-sm text-gray-400 font-medium">From: {msg.username || "Project Manager"}</span>
                       </div>
 
-                      {content.description && <div className="mb-6 text-sm text-gray-500 leading-relaxed font-medium">{content.description}</div>}
+                      {content.description && <div className="mb-6 text-sm text-gray-600 leading-relaxed font-medium">{content.description}</div>}
 
                       {/* Attachments */}
                       {((msg.attachments && msg.attachments.length > 0) || (content.attachedFiles && content.attachedFiles.length > 0)) && (
@@ -840,162 +1122,188 @@ export default function ProjectDetailsPage() {
                         </div>
                       )}
 
-                      <div className="border border-gray-400 rounded-lg overflow-x-auto mb-6">
+                      {/* Deliverables Table (Inner bordered box matching screenshot) */}
+                      <div className="border border-gray-300 rounded-xl overflow-hidden mb-6">
                         <table className="w-full min-w-[500px] sm:min-w-0">
                           <thead>
-                            <tr className="border-b border-gray-400">
-                              <th className="px-3 sm:px-6 py-4 text-left text-xs sm:text-sm font-bold text-gray-600 bg-white w-1/2">Item</th>
-                              <th className="px-3 sm:px-6 py-4 text-center text-xs sm:text-sm font-bold text-gray-600 bg-white">Duration</th>
-                              <th className="px-3 sm:px-6 py-4 text-right text-xs sm:text-sm font-bold text-gray-600 bg-white">Amount</th>
+                            <tr className="border-b border-gray-300 bg-white">
+                              <th className="px-6 py-4 text-left text-xs sm:text-sm font-bold text-gray-700 bg-white w-1/2">Item</th>
+                              <th className="px-6 py-4 text-center text-xs sm:text-sm font-bold text-gray-700 bg-white">Duration</th>
+                              <th className="px-6 py-4 text-right text-xs sm:text-sm font-bold text-gray-700 bg-white">Amount</th>
                             </tr>
                           </thead>
                           <tbody>
                             {items.map((item: any, sIdx: number) => (
-                              <tr key={item.description + sIdx} className={sIdx < items.length - 1 ? "border-b border-gray-400" : ""}>
-                                <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
-                                  <div className="font-medium text-gray-700 mb-1">{item.description}</div>
-                                  {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
+                              <tr key={sIdx} className={sIdx < items.length - 1 ? "border-b border-gray-200" : ""}>
+                                <td className="px-6 py-5 text-xs sm:text-sm text-gray-700 align-middle">
+                                  <div className="font-semibold text-gray-800">{item.description || item.name || item.title}</div>
+                                  {item.details && <div className="text-[11px] text-gray-400 mt-0.5">{item.details}</div>}
                                 </td>
-                                <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">{item.duration} Days</td>
-                                <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top">{formatCurrency(item.amount ?? 0)}</td>
+                                <td className="px-6 py-5 text-xs sm:text-sm text-gray-600 font-medium text-center align-middle whitespace-nowrap">
+                                  {item.duration ? `${item.duration} Days` : "-"}
+                                </td>
+                                <td className="px-6 py-5 text-xs sm:text-sm text-gray-900 text-right font-bold align-middle">
+                                  {formatCurrency(item.amount ?? 0)}
+                                </td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
 
-                      <div className="flex flex-row justify-end gap-6 sm:gap-16 text-xs sm:text-sm mb-12">
-                        {content.duration && (
-                          <div className="text-center">
-                            <div className="text-gray-500 font-bold mb-1 sm:mb-2">Total Duration</div>
-                            <div className="font-medium text-gray-600">{content.duration}</div>
+                      {/* Totals & Expiration Row */}
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 pt-2 pb-2">
+                        <div>
+                          <span className="text-xs sm:text-sm text-gray-600 font-bold">
+                            Expires {expiresStr}
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-end gap-2 text-xs sm:text-sm min-w-[220px]">
+                          <div className="flex justify-between w-full gap-8">
+                            <span className="text-gray-500 font-medium">Base Amount:</span>
+                            <span className="font-bold text-gray-700">{formatCurrency(baseAmount)}</span>
                           </div>
-                        )}
-                        <div className="text-center">
-                          <div className="text-gray-500 font-bold mb-1 sm:mb-2">Total Cost</div>
-                          <div className="font-medium text-gray-600">{formatCurrency(content.total ?? 0)}</div>
+                          <div className="flex justify-between w-full gap-8">
+                            <span className="text-gray-500 font-medium">VAT ({vatRate}%):</span>
+                            <span className="font-bold text-gray-700">{formatCurrency(vatAmount)}</span>
+                          </div>
+                          <div className="border-t border-gray-200 w-full my-1" />
+                          <div className="flex justify-between w-full gap-8">
+                            <span className="text-gray-800 font-bold text-sm">Total Cost:</span>
+                            <span className="font-extrabold text-gray-900 text-sm sm:text-base">{formatCurrency(totalCost)}</span>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] sm:text-sm text-gray-500 font-bold">Expires {content.expires ? formatSubmittedDate(content.expires) : "N/A"}</span>
-                      </div>
-                    </div>
-
-                    {canAct && !actionModal.isOpen && (
-                      <div className={`flex flex-col sm:flex-row gap-4 w-full mt-6 ${isAccepted ? "justify-center" : "justify-between"}`}>
-                        {actions.includes("accept") && !isAccepted && (
-                          <button
-                            onClick={() => msg.id && handleAcceptProposal(msg.id)}
-                            disabled={isActionLoading}
-                            className="bg-[#327334] hover:bg-[#2a5f2b] text-white text-sm font-bold py-3.5 px-14 rounded-md transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
-                          >
-                            Accept Offer
-                          </button>
-                        )}
-                        {actions.includes("request_modification") && (
-                          <button
-                            onClick={() => msg.id && setActionModal({
-                              isOpen: true,
-                              action: "request_modification",
-                              proposalId: msg.id,
-                              title: "Request Modifications",
-                              description: "Please describe the modifications you would like for this offer.",
-                              placeholder: "Describe your requested changes...",
-                              required: true
-                            })}
-                            disabled={isActionLoading}
-                            className="bg-[#1C446F] hover:bg-[#163659] text-white text-sm font-bold py-3.5 px-14 rounded-md transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
-                          >
-                            Request Modifications
-                          </button>
-                        )}
-                        {actions.includes("decline") && !isAccepted && (
-                          <button
-                            onClick={() => msg.id && setActionModal({
-                              isOpen: true,
-                              action: "decline",
-                              proposalId: msg.id,
-                              title: "Decline Add-On Offer",
-                              description: "Are you sure you want to decline this offer? You can provide a reason below.",
-                              placeholder: "Reason for declining (optional)...",
-                              required: false
-                            })}
-                            disabled={isActionLoading}
-                            className="bg-[#7D1A1A] hover:bg-[#651515] text-white text-sm font-bold py-3.5 px-14 rounded-md transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
-                          >
-                            Decline Offer
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Inline Action Modal for Proposal */}
-                    {actionModal.isOpen && actionModal.proposalId === msg.id && (
-                      <div className="w-full mt-6 animate-in fade-in slide-in-from-top-4 duration-300">
-                        <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-                          <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100 bg-gray-50/50">
-                            <div className="flex items-center gap-4">
-                              {currentUser?.avatar ? (
-                                <img src={currentUser.avatar} alt="User" className="w-12 h-12 rounded-full object-cover shadow-sm ring-2 ring-white" />
-                              ) : (
-                                <div className="w-12 h-12 rounded-full bg-blue-900 flex items-center justify-center text-white font-bold text-base shadow-sm ring-2 ring-white">
-                                  {(currentUser?.fullName || currentUser?.username || "U").charAt(0).toUpperCase()}
-                                </div>
+                      {/* Action Buttons INSIDE the box (Accept, Request Modifications, Decline) with top border */}
+                      {canAct && !actionModal.isOpen && (
+                        <>
+                          <div className="border-t border-gray-200 mt-8 mb-6" />
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full">
+                            <div className="w-full sm:w-auto flex justify-start">
+                              {actions.includes("accept") && (
+                                <button
+                                  onClick={() => targetProposalId && handleAcceptProposal(targetProposalId)}
+                                  disabled={isActionLoading}
+                                  className="w-full sm:w-auto min-w-[160px] bg-[#317336] hover:bg-[#285d2c] text-white text-sm font-bold py-3 px-8 rounded-lg transition-colors shadow-sm disabled:opacity-50 cursor-pointer text-center"
+                                >
+                                  Accept Offer
+                                </button>
                               )}
-                              <div>
-                                <h3 className="font-bold text-gray-800 text-base">{currentUser?.fullName || currentUser?.username || "User"}</h3>
-                                <p className="text-xs text-gray-500">{actionModal.title}</p>
+                            </div>
+                            <div className="w-full sm:w-auto flex justify-center">
+                              {actions.includes("request_modification") && (
+                                <button
+                                  onClick={() => targetProposalId && setActionModal({
+                                    isOpen: true,
+                                    action: "request_modification",
+                                    proposalId: targetProposalId,
+                                    title: "Request Modifications",
+                                    description: "Please describe the modifications you would like for this offer.",
+                                    placeholder: "Describe your requested changes...",
+                                    required: true
+                                  })}
+                                  disabled={isActionLoading}
+                                  className="w-full sm:w-auto min-w-[190px] bg-[#3B4BEF] hover:bg-[#2F3EC4] text-white text-sm font-bold py-3 px-8 rounded-lg transition-colors shadow-sm disabled:opacity-50 cursor-pointer text-center"
+                                >
+                                  Request Modifications
+                                </button>
+                              )}
+                            </div>
+                            <div className="w-full sm:w-auto flex justify-end">
+                              {actions.includes("decline") && (
+                                <button
+                                  onClick={() => targetProposalId && setActionModal({
+                                    isOpen: true,
+                                    action: "decline",
+                                    proposalId: targetProposalId,
+                                    title: "Decline Add-On Offer",
+                                    description: "Are you sure you want to decline this offer? You can provide a reason below.",
+                                    placeholder: "Reason for declining (optional)...",
+                                    required: false
+                                  })}
+                                  disabled={isActionLoading}
+                                  className="w-full sm:w-auto min-w-[160px] bg-[#7A1C1C] hover:bg-[#631616] text-white text-sm font-bold py-3 px-8 rounded-lg transition-colors shadow-sm disabled:opacity-50 cursor-pointer text-center"
+                                >
+                                  Decline Offer
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Inline Action Modal for Proposal */}
+                      {actionModal.isOpen && actionModal.proposalId === targetProposalId && (
+                        <div className="w-full mt-6 animate-in fade-in slide-in-from-top-4 duration-300">
+                          <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                            <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100 bg-gray-50/50">
+                              <div className="flex items-center gap-4">
+                                {currentUser?.avatar ? (
+                                  <img src={currentUser.avatar} alt="User" className="w-12 h-12 rounded-full object-cover shadow-sm ring-2 ring-white" />
+                                ) : (
+                                  <div className="w-12 h-12 rounded-full bg-blue-900 flex items-center justify-center text-white font-bold text-base shadow-sm ring-2 ring-white">
+                                    {(currentUser?.fullName || currentUser?.username || "U").charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                <div>
+                                  <h3 className="font-bold text-gray-800 text-base">{currentUser?.fullName || currentUser?.username || "User"}</h3>
+                                  <p className="text-xs text-gray-500">{actionModal.title}</p>
+                                </div>
+                              </div>
+                              <span className="text-xs text-gray-400 font-medium">{formatSubmittedDate(new Date())}</span>
+                            </div>
+                            <div className="p-6">
+                              {actionModal.description && <p className="text-gray-600 text-sm mb-3 font-medium">{actionModal.description}</p>}
+                              <textarea
+                                className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent"
+                                placeholder={actionModal.placeholder}
+                                value={actionComment}
+                                onChange={(e) => setActionComment(e.target.value)}
+                                autoFocus
+                              />
+                            </div>
+                            <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-end gap-3">
+                              <div className="flex gap-3 w-full sm:w-auto">
+                                <button
+                                  onClick={() => setActionModal({ ...actionModal, isOpen: false })}
+                                  className="flex-1 sm:flex-none px-6 py-2.5 bg-[#7A1C1C] hover:bg-[#631616] text-white font-bold text-sm rounded-md transition-colors shadow-sm cursor-pointer"
+                                  disabled={isActionLoading}
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={handleActionSubmit}
+                                  disabled={isActionLoading || (actionModal.required && !actionComment.trim())}
+                                  className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-md text-sm font-bold transition-all shadow-sm cursor-pointer ${isActionLoading
+                                    ? "bg-gray-400 cursor-not-allowed"
+                                    : actionModal.action === "decline"
+                                      ? "bg-[#C62828] hover:bg-[#B71C1C]"
+                                      : "bg-[#3B4BEF] hover:bg-[#2F3EC4]"
+                                    }`}
+                                >
+                                  {isActionLoading ? "Processing..." : actionModal.action === "decline" ? "Decline Offer" : "Send Request"}
+                                </button>
                               </div>
                             </div>
-                            <span className="text-xs text-gray-400 font-medium">{formatSubmittedDate(new Date())}</span>
-                          </div>
-                          <div className="p-6">
-                            {actionModal.description && <p className="text-gray-600 text-sm mb-3 font-medium">{actionModal.description}</p>}
-                            <textarea
-                              className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent"
-                              placeholder={actionModal.placeholder}
-                              value={actionComment}
-                              onChange={(e) => setActionComment(e.target.value)}
-                              autoFocus
-                            />
-                          </div>
-                          <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-end gap-3">
-                            <div className="flex gap-3 w-full sm:w-auto">
-                              <button
-                                onClick={() => setActionModal({ ...actionModal, isOpen: false })}
-                                className="flex-1 sm:flex-none px-6 py-2.5 bg-[#800020] hover:bg-[#600018] text-white font-bold text-sm rounded-md transition-colors shadow-sm cursor-pointer"
-                                disabled={isActionLoading}
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                onClick={handleActionSubmit}
-                                disabled={isActionLoading || (actionModal.required && !actionComment.trim())}
-                                className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-md text-sm font-bold transition-all shadow-sm cursor-pointer ${isActionLoading ? "bg-gray-400 cursor-not-allowed" :
-                                  actionModal.action === "decline" ? "bg-red-700 hover:bg-red-800" : "bg-blue-800 hover:bg-blue-900"
-                                  }`}
-                              >
-                                {isActionLoading ? "Processing..." : actionModal.action === "decline" ? "Decline Offer" : "Send Request"}
-                              </button>
-                            </div>
                           </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 );
               }
 
-              // Regular Messages
+              // Regular Messages & Recommended Solutions Messages
               const isClient = msg.sender === "client" || msg.role === "client" || msg.role === "CLIENT";
               const manager = project.assignedManagers?.[0] || project.projectManager || {};
-              const senderName = msg.username || (isClient ? project.client?.fullName || "Client" : manager?.fullName || "Project Manager");
+              const senderName = msg.username || msg.senderName || (isClient ? project.client?.fullName || "Client" : manager?.fullName || "Staff");
               const senderAvatar = msg.userAvatar || (isClient ? project.client?.avatar : manager?.avatar);
-              const initial = senderName.charAt(0).toUpperCase();
+              const initial = (senderName || "U").charAt(0).toUpperCase();
               const attachmentList = (msg.attachments && msg.attachments.length > 0) ? msg.attachments : (msg.content?.attachedFiles || msg.attachedFiles || (msg.content as any)?.attachedFilesUrl || msg.attachedFilesUrl || []);
               const hasAttachments = Array.isArray(attachmentList) && attachmentList.length > 0;
               const isLast = idx === displayMessages.length - 1;
+              const messageBody = msg.message || msg.content?.text || msg.content?.projectDescription || msg.content?.description || "";
 
               return (
                 <div key={msgId} ref={isLast ? messagesEndRef : null} className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden w-full">
@@ -1005,7 +1313,7 @@ export default function ProjectDetailsPage() {
                         {senderAvatar ? (
                           <img src={senderAvatar} alt={senderName} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover shadow-sm bg-gray-100" />
                         ) : (
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-sm bg-gray-800">
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-sm bg-[#0D1939]">
                             {initial}
                           </div>
                         )}
@@ -1017,9 +1325,11 @@ export default function ProjectDetailsPage() {
                         {formatMessageTimestamp(msg.createdAt)}
                       </span>
                     </div>
-                    <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap pl-0 md:pl-[64px] mb-6">
-                      {msg.message}
-                    </div>
+                    {messageBody && messageBody.trim() && (
+                      <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap pl-0 md:pl-[64px] mb-6">
+                        {messageBody}
+                      </div>
+                    )}
 
                     {hasAttachments && (
                       <div className="pl-0 md:pl-[64px]">
@@ -1091,6 +1401,13 @@ export default function ProjectDetailsPage() {
                             );
                           })}
                         </div>
+                      </div>
+                    )}
+
+                    {/* Recommended Solutions if any */}
+                    {hasRecs && (
+                      <div className="pl-0 md:pl-[64px] mt-6">
+                        <RecommendedSolutions solutions={recSolutions} />
                       </div>
                     )}
                   </div>

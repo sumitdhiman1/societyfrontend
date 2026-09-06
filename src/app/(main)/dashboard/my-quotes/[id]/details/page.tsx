@@ -864,14 +864,12 @@ export default function QuoteDetailsPage() {
           if (msg.type === "system_notification" || msg.isSystemMessage) {
             const title = msg.content?.systemText || msg.systemText || msg.message || "System Notification";
             const text = msg.content?.text || msg.text || "";
-            // If a quote_proposal card is already displaying the Project Created or Offer header, skip system notification
-            const hasAcceptedProposal = allMessages.some((m: any) => m.type === "quote_proposal" && (m.content?.status === "accepted" || quote.status?.toLowerCase() === "approved"));
+            // Skip redundant generic offer notifications since quote_proposal card renders its own header
             if (
               title.toLowerCase().includes("offer") ||
               title.toLowerCase().includes("proposal") ||
               text.toLowerCase().includes("sent you a new offer") ||
-              text.toLowerCase().includes("prepared a custom proposal") ||
-              (hasAcceptedProposal && (title.toLowerCase().includes("project created") || text.toLowerCase().includes("active project")))
+              text.toLowerCase().includes("prepared a custom proposal")
             ) {
               return null;
             }

@@ -8,7 +8,8 @@ import { authService } from "@/lib/authService";
 interface ProjectContextType {
   project: any | null;
   isLoading: boolean;
-  refreshProject: () => void;
+  refreshProject: () => Promise<any>;
+  setProject: React.Dispatch<React.SetStateAction<any | null>>;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -23,16 +24,19 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const isInitialMount = useRef(true);
 
   const fetchProject = useCallback(async () => {
-    if (!projectId) return;
+    if (!projectId) return null;
     
     setIsLoading(true);
     try {
       const res = await projectService.getProjectById(projectId);
       if (res?.data) {
         setProject(res.data);
+        return res.data;
       }
+      return null;
     } catch (error) {
       console.error("Failed to fetch project:", error);
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -57,7 +61,8 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(() => ({
     project,
     isLoading,
-    refreshProject: fetchProject
+    refreshProject: fetchProject,
+    setProject
   }), [project, isLoading, fetchProject]);
 
   return (

@@ -189,11 +189,12 @@ export default function MyProjectsPage() {
                         {formatDate(project.createdAt)}
                       </span>
                       <span className={`px-4 py-1 rounded-[4px] text-xs font-bold uppercase border ${(() => {
-                          const status = project.status.toLowerCase();
-                          if (status === "active" || status === "paused") return "bg-[#E1FCEF] text-[#14804A] border-[#E1FCEF]";
-                          if (status === "completed") return "bg-blue-100 text-blue-800 border-blue-200";
-                          if (status === "canceled" || status === "cancelled") return "bg-red-100 text-red-800 border-red-200";
-                          return "bg-gray-100 text-gray-800 border-gray-200";
+                          const status = (project.status || "").toLowerCase();
+                          if (status === "active" || status === "in_progress") return "bg-[#E1FCEF] text-[#14804A] border-[#E1FCEF]";
+                          if (status === "paused") return "bg-[#FEF3C7] text-[#D97706] border-[#FEF3C7]";
+                          if (status === "completed") return "bg-[#EBF5FF] text-[#2563EB] border-[#EBF5FF]";
+                          if (status === "canceled" || status === "cancelled") return "bg-[#FEE2E2] text-[#B91C1C] border-[#FEE2E2]";
+                          return "bg-gray-100 text-gray-700 border-gray-200";
                         })()
                         }`}>
                         {project.status}
