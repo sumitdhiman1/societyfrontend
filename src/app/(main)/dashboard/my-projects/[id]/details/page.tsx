@@ -12,6 +12,8 @@ import LoadingDots from "@/components/common/LoadingDots";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
 import DeadlineTooltip from "@/components/common/DeadlineTooltip";
 import RecommendedSolutions from "@/components/common/RecommendedSolutions";
+import CalculatorSpecsCard from "@/components/common/CalculatorSpecsCard";
+import { getMainCalculatorCategory } from "@/lib/calculatorUtils";
 import { toast } from "sonner";
 
 const renderStatusMessageText = (text: string, attachments?: any[]) => {
@@ -471,7 +473,7 @@ export default function ProjectDetailsPage() {
         </div>
       )}
 
-      {project.status === "completed" && project.billingType === "monthly" && (
+      {project.status === "completed" && project.billingType === "monthly" && !project.calculatorSpecs && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <span className="text-2xl" aria-hidden="true">🔄</span>
           <div className="flex-1">
@@ -491,9 +493,9 @@ export default function ProjectDetailsPage() {
       )}
 
       {/* Top 2-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Project Details Card */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
           <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-4 sm:p-6 md:p-8">
             {/* Header: Submitted Date and Status Badge */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
@@ -526,7 +528,7 @@ export default function ProjectDetailsPage() {
                 </h2>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {project.type === "bundle" && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded uppercase border border-purple-200">Bundle</span>}
-                  {project.type === "custom" && <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded uppercase border border-blue-200">Custom Quote</span>}
+                  {project.type === "custom" && !project.calculatorSpecs && <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded uppercase border border-blue-200">Custom Quote</span>}
                   {project.type === "package" && <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase border border-green-200">Standard Package</span>}
                 </div>
               </div>
@@ -565,100 +567,149 @@ export default function ProjectDetailsPage() {
               </div>
             )}
 
-            <div className="mb-8 text-sm text-gray-600 leading-relaxed font-normal">
-              {project.description}
-            </div>
+            {/* Description / Calculator Specifications */}
+            {project.calculatorSpecs ? (
+              <div className="mb-10">
+                <div className="text-sm text-gray-700 leading-relaxed font-medium">
+                  <CalculatorSpecsCard specs={project.calculatorSpecs} />
+                </div>
+              </div>
+            ) : (
+              <div className="mb-8 text-sm text-gray-700 leading-relaxed font-medium">
+                <p className="text-gray-600 font-normal">{project.description}</p>
+              </div>
+            )}
 
-            {/* Deliverables Table */}
-            <div className="border border-gray-300 rounded-lg overflow-x-auto mb-6">
-              <table className="w-full min-w-[500px] sm:min-w-0">
-                <thead>
-                  <tr className="border-b border-gray-300 bg-white">
-                    <th className="px-4 sm:px-6 py-3.5 text-left text-xs sm:text-sm font-bold text-gray-700 w-1/2">Item</th>
-                    <th className="px-4 sm:px-6 py-3.5 text-center text-xs sm:text-sm font-bold text-gray-700">Duration</th>
-                    <th className="px-4 sm:px-6 py-3.5 text-right text-xs sm:text-sm font-bold text-gray-700">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {project.deliverableItems && project.deliverableItems.length > 0 ? (
-                    project.deliverableItems.map((item: any, idx: number) => (
-                      <tr key={item.description + idx} className={idx < project.deliverableItems.length - 1 ? "border-b border-gray-200" : ""}>
-                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 align-top">
-                          <div className="font-semibold text-gray-800 mb-0.5">{item.description || item.title || item.name}</div>
-                          {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
-                        </td>
-                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
-                          {item.duration}
-                        </td>
-                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
-                          {formatCurrency(item.amount ?? 0)}
+            {/* Deliverables Table — hidden for calculator projects (specs card covers it) */}
+            {!project.calculatorSpecs && (
+              <div className="border border-gray-300 rounded-lg overflow-x-auto mb-6">
+                <table className="w-full min-w-[500px] sm:min-w-0">
+                  <thead>
+                    <tr className="border-b border-gray-300 bg-white">
+                      <th className="px-4 sm:px-6 py-3.5 text-left text-xs sm:text-sm font-bold text-gray-700 w-1/2">Item</th>
+                      <th className="px-4 sm:px-6 py-3.5 text-center text-xs sm:text-sm font-bold text-gray-700">Duration</th>
+                      <th className="px-4 sm:px-6 py-3.5 text-right text-xs sm:text-sm font-bold text-gray-700">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {project.deliverableItems && project.deliverableItems.length > 0 ? (
+                      project.deliverableItems.map((item: any, idx: number) => (
+                        <tr key={item.description + idx} className={idx < project.deliverableItems.length - 1 ? "border-b border-gray-200" : ""}>
+                          <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 align-top">
+                            <div className="font-semibold text-gray-800 mb-0.5">{item.description || item.title || item.name}</div>
+                            {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
+                          </td>
+                          <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
+                            {item.duration}
+                          </td>
+                          <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
+                            {formatCurrency(item.amount ?? 0)}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 font-semibold">{project.title}</td>
+                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 text-center">-</td>
+                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold">
+                          {formatCurrency(project.price ?? 0)}
                         </td>
                       </tr>
-                    ))
-                  ) : (
+                    )}
+                    {/* Add-ons section if exists */}
+                    {project.addons && project.addons.length > 0 && (
+                      <React.Fragment>
+                        <tr className="bg-gray-800">
+                          <td colSpan={3} className="px-6 py-2.5 text-xs font-bold text-white tracking-wider">Add-On Tasks</td>
+                        </tr>
+                        {project.addons.map((addon: any, aIdx: number) => (
+                          addon.deliverableItems.map((item: any, iIdx: number) => (
+                            <tr key={`addon-${aIdx}-${iIdx}`} className={(aIdx === project.addons.length - 1 && iIdx === addon.deliverableItems.length - 1) ? "" : "border-b border-gray-200"}>
+                              <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 align-top">
+                                <div className="font-semibold text-gray-800 mb-0.5">{item.description}</div>
+                                {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
+                              </td>
+                              <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
+                                {item.duration} {item.unit || "Days"}
+                              </td>
+                              <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
+                                {formatCurrency(item.amount ?? 0)}
+                              </td>
+                            </tr>
+                          ))
+                        ))}
+                      </React.Fragment>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Calculator Project Summary Table */}
+            {project.calculatorSpecs && (
+              <div className="border border-gray-400 rounded-lg overflow-x-auto mb-4">
+                <table className="w-full min-w-[500px] sm:min-w-0">
+                  <thead>
+                    <tr className="border-b border-gray-400">
+                      <th className="px-3 sm:px-6 py-4 text-left text-xs sm:text-sm font-bold text-gray-600 bg-white w-1/2">Item</th>
+                      <th className="px-3 sm:px-6 py-4 text-center text-xs sm:text-sm font-bold text-gray-600 bg-white">Duration</th>
+                      <th className="px-3 sm:px-6 py-4 text-right text-xs sm:text-sm font-bold text-gray-600 bg-white">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     <tr>
-                      <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 font-semibold">{project.title}</td>
-                      <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 text-center">-</td>
-                      <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold">
-                        {formatCurrency(project.price ?? 0)}
+                      <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
+                        <div className="font-medium text-gray-700 mb-1">
+                          {getMainCalculatorCategory(
+                            project.calculatorSpecs?.categoryKey,
+                            project.calculatorSpecs?.categoryName
+                          )}
+                        </div>
+                        <div className="text-[10px] sm:text-xs text-gray-400">Based on calculator selections</div>
+                      </td>
+                      <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
+                        {project.calculatorSpecs?.estimatedTimeline || project.timeline || "-"}
+                      </td>
+                      <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top">
+                        {formatCurrency(totalCost)}
                       </td>
                     </tr>
-                  )}
-                  {/* Add-ons section if exists */}
-                  {project.addons && project.addons.length > 0 && (
-                    <React.Fragment>
-                      <tr className="bg-gray-800">
-                        <td colSpan={3} className="px-6 py-2.5 text-xs font-bold text-white tracking-wider">Add-On Tasks</td>
-                      </tr>
-                      {project.addons.map((addon: any, aIdx: number) => (
-                        addon.deliverableItems.map((item: any, iIdx: number) => (
-                          <tr key={`addon-${aIdx}-${iIdx}`} className={(aIdx === project.addons.length - 1 && iIdx === addon.deliverableItems.length - 1) ? "" : "border-b border-gray-200"}>
-                            <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 align-top">
-                              <div className="font-semibold text-gray-800 mb-0.5">{item.description}</div>
-                              {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
-                            </td>
-                            <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
-                              {item.duration} {item.unit || "Days"}
-                            </td>
-                            <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
-                              {formatCurrency(item.amount ?? 0)}
-                            </td>
-                          </tr>
-                        ))
-                      ))}
-                    </React.Fragment>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             {/* Totals Summary */}
-            <div className="flex flex-row justify-end gap-6 sm:gap-12 text-xs sm:text-sm mb-8">
+            <div className={`flex flex-row justify-end gap-6 sm:gap-12 text-xs sm:text-sm ${project.calculatorSpecs ? "mb-4" : "mb-8"}`}>
               <div className="text-center">
                 <div className="text-gray-500 font-bold mb-1 sm:mb-2">Base Amount</div>
-                <div className="font-semibold text-gray-800">{formatCurrency(baseAmount)}</div>
+                <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(baseAmount)}</div>
               </div>
               <div className="text-center">
                 <div className="text-gray-500 font-bold mb-1 sm:mb-2">VAT ({vatRate}%)</div>
-                <div className="font-semibold text-gray-800">{formatCurrency(vatAmount)}</div>
+                <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(vatAmount)}</div>
               </div>
               <div className="text-center">
-                <div className="text-gray-800 font-bold mb-1 sm:mb-2">Total Cost</div>
-                <div className="font-bold text-gray-900">{formatCurrency(totalCost)}</div>
+                <div className={`font-bold mb-1 sm:mb-2 ${project.calculatorSpecs ? "text-gray-500" : "text-gray-800"}`}>
+                  {project.calculatorSpecs ? "Total Paid" : "Total Cost"}
+                </div>
+                <div className={project.calculatorSpecs ? "font-bold text-gray-800" : "font-bold text-gray-900"}>{formatCurrency(totalCost)}</div>
               </div>
             </div>
 
             {/* Bottom Card Row: Estimated Deadline & Action Buttons */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-6 border-t border-gray-200">
-              <div className="text-xs text-gray-500 flex flex-wrap items-center gap-2">
-                <span className="font-bold text-gray-800 mr-2">Estimated Deadline:</span>
-                <span>
-                  {project.deadline ? formatSubmittedDate(project.deadline) : "Ongoing"}
-                </span>
-                <DeadlineTooltip position="center" />
+            <div className={`flex flex-col sm:flex-row justify-between items-center gap-4 ${project.calculatorSpecs ? "mt-6" : "pt-6 border-t border-gray-200"}`}>
+              <div>
+                <div className="text-xs text-gray-500 flex flex-wrap items-center gap-2">
+                  <span className={`font-bold ${project.calculatorSpecs ? "text-gray-600" : "text-gray-800"} mr-2`}>Estimated Deadline:</span>
+                  <span>
+                    {project.deadline ? formatSubmittedDate(project.deadline) : "Ongoing"}
+                  </span>
+                  <DeadlineTooltip position="center" />
+                </div>
               </div>
 
-              <div className="flex flex-row items-center gap-3 w-full sm:w-auto justify-start sm:justify-end shrink-0">
+              <div className="flex flex-row gap-3 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={async (e) => {
@@ -669,7 +720,7 @@ export default function ProjectDetailsPage() {
                       await downloadProjectDetailsPDF(project);
                     }
                   }}
-                  className="px-5 sm:px-6 py-2.5 bg-[#3B50DF] hover:bg-[#2F40B8] text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer whitespace-nowrap"
+                  className={`flex-1 sm:flex-initial px-6 py-2 text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap ${project.calculatorSpecs ? "bg-[#163659] hover:bg-[#112b4a]" : "bg-[#3B50DF] hover:bg-[#2F40B8]"}`}
                 >
                   Download Project (.PDF)
                 </button>
@@ -679,7 +730,7 @@ export default function ProjectDetailsPage() {
                     e.preventDefault();
                     printProjectDetails(project);
                   }}
-                  className="px-5 sm:px-6 py-2.5 bg-[#3B50DF] hover:bg-[#2F40B8] text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer whitespace-nowrap"
+                  className="flex-1 sm:flex-initial px-6 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap"
                 >
                   Print Details
                 </button>
@@ -758,7 +809,7 @@ export default function ProjectDetailsPage() {
           </div>
 
           {/* Subscription & Auto-Renewal Card */}
-          {project.billingType === "monthly" && (
+          {project.billingType === "monthly" && !project.calculatorSpecs && (
             <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 sm:p-7 mt-8">
               <h3 className="text-xs font-bold text-[#1E293B] uppercase tracking-wider mb-2 font-sans">
                 SUBSCRIPTION &amp; AUTO-RENEWAL

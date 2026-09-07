@@ -574,7 +574,7 @@ const ProposalPreview = ({
   );
 };
 
-const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, formatPriceLocal, currency, setCurrency, conversionRate }: any) => {
+const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, category, selections, formatPriceLocal, currency, setCurrency, conversionRate }: any) => {
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
@@ -768,9 +768,28 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
 
     setIsProcessing(true);
     try {
+      // Enrich selections with human-readable question/answer text from the loaded category config
+      const rawSelections = selectionsToArray(selections);
+      const enrichedSelections = rawSelections.map((sel: any) => {
+        const question = category?.questions?.find((q: any) => q.key === sel.questionKey);
+        const questionText = question?.text || sel.questionText || sel.questionKey;
+        const answerTexts: string[] = [];
+        if (sel.answerKeys && sel.answerKeys.length > 0 && question?.answers) {
+          sel.answerKeys.forEach((k: string) => {
+            const ans = question.answers.find((a: any) => a.key === k);
+            if (ans?.text) answerTexts.push(ans.text);
+          });
+        }
+        return {
+          ...sel,
+          questionText,
+          answerTexts: answerTexts.length > 0 ? answerTexts : sel.answerTexts,
+        };
+      });
+
       const proposalData = {
         categoryKey,
-        selections: selectionsToArray(selections),
+        selections: enrichedSelections,
         calculatedPrice: totalPrice,
         totalPrice,
         estimatedTimeline: timeline,
@@ -1337,6 +1356,7 @@ export default function CalculatorPage() {
                       totalPrice={calculation.totalPrice}
                       timeline={calculation.timeline}
                       categoryKey={selectedCategoryKey || selectedCategory.categoryKey}
+                      category={selectedCategory}
                       selections={selections}
                       formatPriceLocal={formatPriceLocal}
                       currency={currency}

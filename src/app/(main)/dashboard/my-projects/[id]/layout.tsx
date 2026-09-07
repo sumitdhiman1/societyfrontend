@@ -53,9 +53,11 @@ function ProjectLayoutContent({ children }: { children: React.ReactNode }) {
     <div className="bg-white min-h-screen flex flex-col font-sans" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
       <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12 overflow-x-hidden">
         <div className="mb-10">
-          <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100 mb-8 md:mb-12">
-            {project.title}
-          </h1>
+          <div className="flex items-center gap-3 group mb-8 md:mb-12">
+            <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100">
+              {project.title}
+            </h1>
+          </div>
 
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-gray-200">
             <div className="flex gap-4 sm:gap-6 md:gap-10 overflow-x-auto w-full md:w-auto hide-scrollbar">
