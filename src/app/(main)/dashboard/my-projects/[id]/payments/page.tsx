@@ -28,10 +28,10 @@ function ReceiptModal({ isOpen, onClose, project, payment }: { isOpen: boolean; 
 
   const dateFormatted = (payment?.createdAt || project.createdAt)
     ? new Date(payment?.createdAt || project.createdAt).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    })
     : "5 Sept 2026";
 
   const handlePrint = () => {
@@ -230,20 +230,20 @@ export default function ProjectPaymentsPage() {
   // 1. Regular items
   const regularItems = (activeProject.deliverableItems && activeProject.deliverableItems.length > 0)
     ? activeProject.deliverableItems.map((item: any) => ({
-        description: item.description || item.title || item.name || "Deliverable",
-        details: item.details || "",
-        duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "30 Days",
-        amount: Number(item.amount ?? 0),
-        isAddOn: false,
-      }))
+      description: item.description || item.title || item.name || "Deliverable",
+      details: item.details || "",
+      duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "30 Days",
+      amount: Number(item.amount ?? 0),
+      isAddOn: false,
+    }))
     : activeProject.title
-    ? [{
+      ? [{
         description: activeProject.title,
         duration: activeProject.timelineInDays ? `${activeProject.timelineInDays} Days` : "30 Days",
         amount: Number(activeProject.price ?? activeProject.totalCost ?? 0),
         isAddOn: false,
       }]
-    : [];
+      : [];
 
   // 2. Addon items from activeProject.addons
   const addonItemsFromAddons = (activeProject.addons || []).flatMap((addon: any) =>
@@ -411,7 +411,7 @@ export default function ProjectPaymentsPage() {
                   <th className="px-6 py-3 font-bold text-gray-500 uppercase">Amount</th>
                   <th className="px-6 py-3 font-bold text-gray-500 uppercase">Date</th>
                   <th className="px-6 py-3 font-bold text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-right font-bold text-gray-500 uppercase">Action</th>
+                  <th className="px-6 py-3 text-right font-bold text-gray-500 uppercase">Download Receipt</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">

@@ -9,7 +9,7 @@ import { useQuote } from "../layout";
 import { authService } from "@/lib/authService";
 import { paymentService } from "@/lib/paymentService";
 import { useCurrency } from "@/context/CurrencyContext";
-import { convertCurrencyAmount, formatPriceWithCurrency } from "@/lib/currencyUtils";
+import { convertCurrencyAmount, formatPriceWithCurrency, formatActiveCurrency } from "@/lib/currencyUtils";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
 
@@ -214,9 +214,11 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
     
     const errs: any = {};
     if (paymentOption === "other") {
+      const convertedTotal = convertCurrencyAmount(totalCost, currency || "USD", "USD", conversionRate);
+      const convertedDeposit = convertCurrencyAmount(depositAmount, currency || "USD", "USD", conversionRate);
       if (!customAmount || Number.parseFloat(customAmount) <= 0) errs.amount = "Enter a valid amount.";
-      else if (Number.parseFloat(customAmount) > totalCost) errs.amount = "Cannot exceed total cost.";
-      else if (Number.parseFloat(customAmount) < depositAmount - 0.01) errs.amount = `Min ${formatCurrency(depositAmount)}.`;
+      else if (Number.parseFloat(customAmount) > convertedTotal + 0.01) errs.amount = "Cannot exceed total cost.";
+      else if (Number.parseFloat(customAmount) < convertedDeposit - 0.01) errs.amount = `Min ${formatCurrency(depositAmount)}.`;
     }
     
     if (!cardHolderName.trim()) errs.cardHolderName = "Cardholder name is required.";
@@ -376,7 +378,7 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
               </div>
               
               <button onClick={handlePayment} disabled={isProcessing || !stripe || !elements} className="w-full bg-[#1e293b] text-white font-medium py-3 rounded-md text-sm mt-4 disabled:opacity-70">
-                {isProcessing ? "Processing..." : `Pay ${formatCurrency(getAmountToPay())} now`}
+                {isProcessing ? "Processing..." : `Pay ${formatActiveCurrency(getAmountToPay(), currency || "USD")} now`}
               </button>
             </div>
           </div>
