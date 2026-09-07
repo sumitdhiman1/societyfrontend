@@ -36,7 +36,7 @@ export async function getCalculatorPdfBase64(data: PdfProposalData): Promise<str
 function generateCalculatorHtml(data: PdfProposalData): string {
   const currencySymbol = data.currency?.toLowerCase() === "eur" ? "€" : "$";
   const displayTotal = getCalculatorDisplayAmount(
-    data.totalPrice,
+    data.totalPrice, 
     data.currency ?? "usd",
     data.conversionRate ?? 1,
     data.categoryKey
