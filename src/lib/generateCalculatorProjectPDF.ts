@@ -1,6 +1,5 @@
 import { authService } from "./authService";
 import { getProjectEstimatedDeadline } from "./calculatorUtils";
-import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "./generateCalculatorProjectPDF";
 
 function formatPdfDate(dateInput: any): string {
   if (!dateInput) return "";
@@ -12,35 +11,36 @@ function formatPdfDate(dateInput: any): string {
   return `${mm}/${dd}/${yyyy}`;
 }
 
-export interface ProjectPDFData {
-  title?: string;
-  projectNumber?: string;
-  clientEmail?: string;
-  clientName?: string;
-  status?: string;
-  submittedDate?: string;
-  deadlineDate?: string;
+export interface CalculatorPDFData {
+  title: string;
+  projectNumber: string;
+  rawProjectNumber: string;
+  clientEmail: string;
+  clientName: string;
+  status: string;
+  submittedDate: string;
+  deadlineDate: string;
+  categoryName: string;
+  selectedOptions: Array<{ question: string; answers: string[] }>;
+  deliverables: Array<{
+    name: string;
+    duration: string;
+    amount: number;
+  }>;
+  addons: Array<{
+    name: string;
+    duration: string;
+    amount: number;
+  }>;
+  duration: string;
+  totalPrice: number;
+  currency: string;
+  formattedPrice: string;
   description?: string;
-  categoryName?: string;
-  selectedOptions?: Array<{ question: string; answers: string[] }>;
-  deliverables?: Array<{
-    name: string;
-    duration: string;
-    amount: number;
-  }>;
-  addons?: Array<{
-    name: string;
-    duration: string;
-    amount: number;
-  }>;
-  duration?: string;
-  totalPrice?: number;
-  currency?: string;
-  formattedPrice?: string;
   [key: string]: any;
 }
 
-function extractProjectDetails(data: any): ProjectPDFData {
+export function extractCalculatorPDFData(data: any): CalculatorPDFData {
   const currentUser = authService.getUser();
   const clientEmail =
     data.client?.email ||
@@ -92,14 +92,15 @@ function extractProjectDetails(data: any): ProjectPDFData {
     0
   );
 
-  const duration = data.calculatorSpecs?.estimatedTimeline ||
+  const duration =
+    data.calculatorSpecs?.estimatedTimeline ||
     data.totalDuration ||
     (data.timelineInDays ? `${data.timelineInDays} Days` : "") ||
     data.timeline ||
     data.duration ||
     "14 Days";
 
-  const calculatorSpecs = data.calculatorSpecs || data.requirements;
+  const calculatorSpecs = data.calculatorSpecs || data.requirements || {};
   const rawSelections = calculatorSpecs?.selections || [];
 
   const categoryName =
@@ -112,7 +113,6 @@ function extractProjectDetails(data: any): ProjectPDFData {
   if (Array.isArray(rawSelections) && rawSelections.length > 0) {
     rawSelections.forEach((sel: any) => {
       const qText = sel.questionText || sel.questionKey || "";
-      // Filter out internal timeline questions or business info if repeated
       if (/timeline/i.test(sel.questionKey || "") || /timeline/i.test(qText)) {
         return;
       }
@@ -134,7 +134,7 @@ function extractProjectDetails(data: any): ProjectPDFData {
       }
     });
 
-    // Ensure timeline question is at the end of Selected Options
+    // Append desired project timeline at the end of selections
     const timelineVal =
       calculatorSpecs?.estimatedTimeline ||
       data.totalDuration ||
@@ -172,49 +172,17 @@ function extractProjectDetails(data: any): ProjectPDFData {
     });
   }
 
-  // Deliverables extraction
-  let deliverables: Array<{ name: string; duration: string; amount: number }> = [];
-
-  if (calculatorSpecs) {
-    deliverables = [
-      {
-        name: categoryName,
-        duration: duration,
-        amount: rawTotalPrice > 0 ? rawTotalPrice : Number(data.amountPaid || 0),
-      },
-    ];
-  } else {
-    const rawDeliverableItems: any[] = [];
-    if (Array.isArray(data.deliverableItems) && data.deliverableItems.length > 0) {
-      rawDeliverableItems.push(...data.deliverableItems);
-    } else if (Array.isArray(data.lineItems) && data.lineItems.length > 0) {
-      rawDeliverableItems.push(...data.lineItems);
-    }
-
-    if (rawDeliverableItems.length > 0) {
-      deliverables = rawDeliverableItems.map((d: any) => ({
-        name: d.item || d.name || d.description || d.title || title,
-        duration: d.duration
-          ? String(d.duration).toLowerCase().includes("day")
-            ? d.duration
-            : `${d.duration} Days`
-          : duration,
-        amount: Number(d.amount ?? d.cost ?? (d.price ?? 0)),
-      }));
-    } else {
-      deliverables = [
-        {
-          name: title.startsWith("Free website analysis") ? "Free website analysis" : title,
-          duration: duration,
-          amount: rawTotalPrice,
-        },
-      ];
-    }
-  }
+  // Base deliverables
+  const deliverables: Array<{ name: string; duration: string; amount: number }> = [
+    {
+      name: categoryName,
+      duration: duration,
+      amount: rawTotalPrice > 0 ? rawTotalPrice : Number(data.amountPaid || 0),
+    },
+  ];
 
   const deliverablesSum = deliverables.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
-  const addonsSum = addons.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
-  const totalPrice = deliverablesSum > 0 ? deliverablesSum + (calculatorSpecs ? 0 : addonsSum) : (rawTotalPrice > 0 ? rawTotalPrice : Number(data.amountPaid || 0));
+  const totalPrice = deliverablesSum > 0 ? deliverablesSum : (rawTotalPrice > 0 ? rawTotalPrice : Number(data.amountPaid || 0));
 
   const formattedPrice = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -222,17 +190,6 @@ function extractProjectDetails(data: any): ProjectPDFData {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(totalPrice);
-
-  let description = data.description || "";
-  if (!description && !calculatorSpecs) {
-    if (data.website) {
-      description = `Analysis for ${data.website}.`;
-    } else if (title.includes(" - ")) {
-      description = `Analysis for www.${title.split(" - ").pop()?.trim() || "com"}.`;
-    } else {
-      description = "Analysis for www.com.";
-    }
-  }
 
   return {
     rawProjectNumber,
@@ -249,13 +206,13 @@ function extractProjectDetails(data: any): ProjectPDFData {
     totalPrice,
     currency,
     formattedPrice,
-    description,
+    description: data.description || "",
     deliverables,
     addons,
   };
 }
 
-function getProjectDetailsHTML(d: ProjectPDFData): string {
+export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
   return `
     <div style="width: 100%; max-width: 794px; margin: 0 auto; box-sizing: border-box; background-color: #ffffff; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0F172A; padding: 36px 40px;">
       <!-- Header -->
@@ -400,14 +357,10 @@ function getProjectDetailsHTML(d: ProjectPDFData): string {
   `;
 }
 
-export async function downloadProjectDetailsPDF(data: any): Promise<void> {
+export async function downloadCalculatorProjectPDF(data: any): Promise<void> {
   if (typeof window === "undefined") return;
 
-  if (data?.calculatorSpecs) {
-    return downloadCalculatorProjectPDF(data);
-  }
-
-  const d = extractProjectDetails(data);
+  const d = extractCalculatorPDFData(data);
 
   try {
     let html2canvasLib = typeof window !== "undefined" ? (window as any).html2canvas : null;
@@ -432,7 +385,7 @@ export async function downloadProjectDetailsPDF(data: any): Promise<void> {
     container.style.top = "0";
     container.style.width = "794px";
     container.style.backgroundColor = "#ffffff";
-    container.innerHTML = getProjectDetailsHTML(d);
+    container.innerHTML = getCalculatorProjectHTML(d);
 
     document.body.appendChild(container);
 
@@ -455,11 +408,11 @@ export async function downloadProjectDetailsPDF(data: any): Promise<void> {
       let heightLeft = imgHeight;
       let position = 0;
 
-      // First page
+      // Page 1
       pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
       heightLeft -= pageHeight;
 
-      // Additional pages if needed (multi-page)
+      // Slicing across pages for multi-page documents
       while (heightLeft > 0) {
         position -= pageHeight;
         pdf.addPage();
@@ -467,7 +420,7 @@ export async function downloadProjectDetailsPDF(data: any): Promise<void> {
         heightLeft -= pageHeight;
       }
 
-      const cleanNum = d.rawProjectNumber.replace(/[^a-zA-Z0-9-_]/g, "") || "document";
+      const cleanNum = d.rawProjectNumber.replace(/[^a-zA-Z0-9-_]/g, "") || "calculator_project";
       const filename = `Project_Details_${cleanNum}.pdf`;
       pdf.save(filename);
     } finally {
@@ -476,8 +429,8 @@ export async function downloadProjectDetailsPDF(data: any): Promise<void> {
       }
     }
   } catch (err) {
-    console.warn("Direct PDF generation fallback to print:", err);
-    printProjectDetails(data);
+    console.warn("Calculator direct PDF generation fallback to print:", err);
+    printCalculatorProjectPDF(data);
   }
 }
 
@@ -497,14 +450,10 @@ function loadScript(src: string): Promise<void> {
   });
 }
 
-export function printProjectDetails(data: any): void {
+export function printCalculatorProjectPDF(data: any): void {
   if (typeof window === "undefined") return;
 
-  if (data?.calculatorSpecs) {
-    return printCalculatorProjectPDF(data);
-  }
-
-  const d = extractProjectDetails(data);
+  const d = extractCalculatorPDFData(data);
   const printContent = `
     <!DOCTYPE html>
     <html>
@@ -533,7 +482,7 @@ export function printProjectDetails(data: any): void {
         </style>
       </head>
       <body>
-        ${getProjectDetailsHTML(d)}
+        ${getCalculatorProjectHTML(d)}
       </body>
     </html>
   `;

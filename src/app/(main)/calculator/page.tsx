@@ -37,6 +37,7 @@ import {
   formatCalculatorAnswerLabel,
   formatCalculatorQuestionText,
   formatCalculatorPrice,
+  formatCalculatorDisplayAmount,
   getCalculatorDisplayAmount,
   getCalculatorPayableAmount,
   getCalculatorHalfPayableAmount,
@@ -315,17 +316,35 @@ const QuestionCard = ({
                     <div className="flex-shrink-0">
                       {question.type === "multi" ? (
                         <div
-                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? "bg-[#4F46E5] border-[#4F46E5] bg-white" : "border-[#CBD5E1] bg-white group-hover:border-[#4F46E5]"
-                            }`}
+                          className={`w-5 h-5 rounded-[4px] border-2 flex items-center justify-center transition-all ${
+                            isSelected
+                              ? "bg-[#4F46E5] border-[#4F46E5]"
+                              : "border-[#CBD5E1] bg-white group-hover:border-[#4F46E5]"
+                          }`}
+                          aria-hidden
                         >
                           {isSelected && (
-                            <div className="w-2.5 h-2.5 rounded-full bg-[#4F46E5]"></div>
+                            <svg
+                              className="w-3 h-3 text-white"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={3}
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
                           )}
                         </div>
                       ) : (
-                        <div className={`w-5 h-5 rounded-full border-2 border-[#4F46E5] flex items-center justify-center  ${isSelected ? "bg-[#4F46E5] border-[#4F46E5] bg-white" : "border-[#CBD5E1] bg-white group-hover:border-[#4F46E5]"
-                          }`}>
-                          {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#4F46E5]" />}
+                        <div
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                            isSelected
+                              ? "bg-[#4F46E5] border-[#4F46E5]"
+                              : "border-[#CBD5E1] bg-white group-hover:border-[#4F46E5]"
+                          }`}
+                          aria-hidden
+                        >
+                          {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
                         </div>
                       )}
                     </div>
@@ -574,7 +593,7 @@ const ProposalPreview = ({
   );
 };
 
-const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, formatPriceLocal, currency, setCurrency, conversionRate }: any) => {
+const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, category, selections, formatPriceLocal, currency, setCurrency, conversionRate }: any) => {
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
@@ -699,12 +718,7 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
   const totalPayable = Math.round((baseAmount + vatAmount) * 100) / 100;
 
   const formatPaymentLine = (amt: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currencyLabel,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amt);
+    formatCalculatorDisplayAmount(amt, currencyLabel, categoryKey);
 
   const getPayableAmount = () => totalPayable;
 
@@ -768,9 +782,28 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
 
     setIsProcessing(true);
     try {
+      // Enrich selections with human-readable question/answer text from the loaded category config
+      const rawSelections = selectionsToArray(selections);
+      const enrichedSelections = rawSelections.map((sel: any) => {
+        const question = category?.questions?.find((q: any) => q.key === sel.questionKey);
+        const questionText = question?.text || sel.questionText || sel.questionKey;
+        const answerTexts: string[] = [];
+        if (sel.answerKeys && sel.answerKeys.length > 0 && question?.answers) {
+          sel.answerKeys.forEach((k: string) => {
+            const ans = question.answers.find((a: any) => a.key === k);
+            if (ans?.text) answerTexts.push(ans.text);
+          });
+        }
+        return {
+          ...sel,
+          questionText,
+          answerTexts: answerTexts.length > 0 ? answerTexts : sel.answerTexts,
+        };
+      });
+
       const proposalData = {
         categoryKey,
-        selections: selectionsToArray(selections),
+        selections: enrichedSelections,
         calculatedPrice: totalPrice,
         totalPrice,
         estimatedTimeline: timeline,
@@ -1337,6 +1370,7 @@ export default function CalculatorPage() {
                       totalPrice={calculation.totalPrice}
                       timeline={calculation.timeline}
                       categoryKey={selectedCategoryKey || selectedCategory.categoryKey}
+                      category={selectedCategory}
                       selections={selections}
                       formatPriceLocal={formatPriceLocal}
                       currency={currency}
@@ -1358,7 +1392,17 @@ export default function CalculatorPage() {
             <div className="flex items-center gap-4">
               <span className="text-[12px] md:text-[14px] uppercase text-[#002e8a] tracking-[0.1em] font-semibold">PROJECT TOTAL COST:</span>
               <span className="text-2xl md:text-3xl font-black text-black font-bold">
-                {formatPriceLocal(calculation.totalPrice)}
+                {formatCalculatorDisplayAmount(
+                  getCalculatorDisplayAmount(
+                    calculation.totalPrice,
+                    currency,
+                    conversionRate,
+                    selectedCategoryKey ?? undefined
+                  ),
+                  currency,
+                  selectedCategoryKey ?? undefined,
+                  0
+                )}
               </span>
             </div>
             <div className="md:pl-8">

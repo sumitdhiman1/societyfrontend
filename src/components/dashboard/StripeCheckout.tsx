@@ -6,6 +6,7 @@ import { useStripe, useElements, CardNumberElement, CardExpiryElement, CardCvcEl
 import { paymentService } from "@/lib/paymentService";
 import { authService } from "@/lib/authService";
 import { useCurrency } from "@/context/CurrencyContext";
+import { convertCurrencyAmount, formatPriceWithCurrency, formatActiveCurrency } from "@/lib/currencyUtils";
 import StatusPopup from "@/components/common/StatusPopup";
 import VisaIcon from "@/components/icons/visa";
 import MastercardIcon from "@/components/icons/mastercard";
@@ -105,37 +106,30 @@ export default function StripeCheckout({
   }, []);
 
   const formatPrice = (val: number) => {
-    let amount = val;
-    const isEur = currentCurrency?.toLowerCase() === "eur";
-    // Simple conversion if needed, though usually backend handles the actual conversion
-    // For UI parity, we follow the conversion logic if it exists
-    if (isEur && conversionRate) {
-      amount = 10 * Math.round(amount / conversionRate / 10);
-    }
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currentCurrency?.toUpperCase() || "USD",
-      minimumFractionDigits: isEur ? 0 : 2,
-      maximumFractionDigits: isEur ? 0 : 2
-    }).format(amount);
+    return formatPriceWithCurrency(val, currentCurrency || "USD", "USD", conversionRate);
   };
 
   const amountRemaining = totalCost - amountPaid;
   const amountToPay = useMemo(() => {
     if (paymentMode === "custom" && customAmount) return parseFloat(customAmount);
-    return amountRemaining;
-  }, [paymentMode, customAmount, amountRemaining]);
+    return convertCurrencyAmount(amountRemaining, currentCurrency || "USD", "USD", conversionRate);
+  }, [paymentMode, customAmount, amountRemaining, currentCurrency, conversionRate]);
 
-  const creditsToApply = useCredits ? Math.min(userCredits, amountToPay) : 0;
-  const netAmount = amountToPay - creditsToApply;
+  const convertedCredits = useMemo(() => {
+    return convertCurrencyAmount(userCredits, currentCurrency || "USD", "USD", conversionRate);
+  }, [userCredits, currentCurrency, conversionRate]);
+
+  const creditsToApply = useCredits ? Math.min(convertedCredits, amountToPay) : 0;
+  const netAmount = Math.max(0, amountToPay - creditsToApply);
 
   const handleProcessPayment = async () => {
     if (!stripe || !elements || !termsAccepted) return;
 
     const currentErrors: any = {};
     if (paymentMode === "custom") {
+      const convertedPending = convertCurrencyAmount(amountRemaining, currentCurrency || "USD", "USD", conversionRate);
       if (!customAmount || parseFloat(customAmount) <= 0) currentErrors.amount = "Enter a valid amount.";
-      else if (parseFloat(customAmount) > amountRemaining) currentErrors.amount = "Cannot exceed remaining balance.";
+      else if (parseFloat(customAmount) > convertedPending + 0.01) currentErrors.amount = `Cannot exceed remaining balance (${formatPrice(amountRemaining)}).`;
     }
 
     if (netAmount > 0 && selectedMethod === "new") {
@@ -513,7 +507,7 @@ export default function StripeCheckout({
                     <span>Processing...</span>
                   </div>
                 ) : (
-                  `Pay ${formatPrice(netAmount)} Now`
+                  `Pay ${formatActiveCurrency(netAmount, currentCurrency || "USD")} Now`
                 )}
               </button>
 
