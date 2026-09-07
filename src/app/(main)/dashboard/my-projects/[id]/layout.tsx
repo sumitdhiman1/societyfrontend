@@ -5,6 +5,7 @@ import { useParams, usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProjectProvider, useProject } from "@/context/ProjectContext";
 import DeadlineTooltip from "@/components/common/DeadlineTooltip";
+import { getProjectEstimatedDeadline } from "@/lib/calculatorUtils";
 
 function ProjectLayoutContent({ children }: { children: React.ReactNode }) {
   const { project, isLoading } = useProject();
@@ -88,7 +89,11 @@ function ProjectLayoutContent({ children }: { children: React.ReactNode }) {
               <div className="flex items-center">
                 <span className="text-[#88909D] mr-2">Estimated Deadline:</span>
                 <span className="font-bold">
-                  {project.deadline ? formatDate(project.deadline) : "Ongoing"}
+                  {getProjectEstimatedDeadline(project)
+                    ? formatDate(getProjectEstimatedDeadline(project))
+                    : project.deadline
+                    ? formatDate(project.deadline)
+                    : "Ongoing"}
                 </span>
                 <DeadlineTooltip position="left" />
               </div>

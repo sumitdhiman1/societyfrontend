@@ -37,30 +37,60 @@ interface Props {
   specs: CalculatorSpecs;
 }
 
-function formatTimelineAnswer(timeline?: string): string {
-  if (!timeline) return "2 weeks (Normal): No extra fee";
-  const t = timeline.trim();
-  const lower = t.toLowerCase();
+function formatTimelineAnswer(timeline?: string, estimatedTimeline?: string): string {
+  // Use estimatedTimeline if provided so the duration strictly matches the project Duration
+  const primary = (estimatedTimeline && estimatedTimeline.trim()) || (timeline && timeline.trim()) || "2 weeks";
+  const source = (timeline && timeline.trim()) || primary;
+  const lowerSource = source.toLowerCase();
+  const lowerPrimary = primary.toLowerCase();
 
-  if (lower.includes("super") || lower.includes("3 day") || lower.includes("50%")) {
-    return "3 days (Super Rushed): +50% rush fee";
-  }
-  if (lower.includes("rush") || lower.includes("1 week") || lower.includes("25%")) {
-    return "1 week (Rushed): +25% rush fee";
-  }
+  // If source already has a full formatted string with colon
   if (
-    lower.includes("normal") ||
-    lower.includes("2 week") ||
-    lower.includes("starter_normal") ||
-    lower.includes("standard_normal") ||
-    lower.includes("premium_normal")
+    source.includes(":") &&
+    !source.toLowerCase().startsWith("web_") &&
+    !source.toLowerCase().startsWith("seo_") &&
+    !source.toLowerCase().startsWith("gfx_")
   ) {
-    return "2 weeks (Normal): No extra fee";
+    // If estimatedTimeline is known and differs from the duration prefix in source,
+    // sync the duration while preserving rush status
+    if (estimatedTimeline && !source.toLowerCase().includes(estimatedTimeline.toLowerCase())) {
+      if (lowerSource.includes("super") || lowerSource.includes("50%")) {
+        return `${estimatedTimeline} (Super Rushed): +50% rush fee`;
+      }
+      if (lowerSource.includes("rush") || lowerSource.includes("25%")) {
+        return `${estimatedTimeline} (Rushed): +25% rush fee`;
+      }
+      return `${estimatedTimeline} (Normal): No extra fee`;
+    }
+    return source;
   }
-  if (lower.includes("month")) {
-    return "Monthly Service";
+
+  const isMonthly = lowerPrimary.includes("month") || lowerSource.includes("month");
+  if (isMonthly) return "Monthly Service";
+
+  const isSuper = lowerSource.includes("super") || lowerSource.includes("50%") || lowerPrimary.includes("super");
+  const isRush = !isSuper && (lowerSource.includes("rush") || lowerSource.includes("25%") || lowerPrimary.includes("rush"));
+
+  // Determine base duration string (e.g. "3 weeks", "2 weeks", "1 week", "3 days")
+  let duration = estimatedTimeline?.trim();
+  if (!duration) {
+    if (lowerSource.includes("3 week")) duration = "3 weeks";
+    else if (lowerSource.includes("2 week")) duration = "2 weeks";
+    else if (lowerSource.includes("1 week")) duration = "1 week";
+    else if (lowerSource.includes("3 day")) duration = "3 days";
+    else duration = "2 weeks";
   }
-  return t.includes(":") ? t : `${t} (Normal): No extra fee`;
+
+  // Clean duration of any existing suffixes/parentheses
+  duration = duration.replace(/\s*\(.*?\)/g, "").replace(/:\s*.*$/, "").trim();
+
+  if (isSuper) {
+    return `${duration} (Super Rushed): +50% rush fee`;
+  }
+  if (isRush) {
+    return `${duration} (Rushed): +25% rush fee`;
+  }
+  return `${duration} (Normal): No extra fee`;
 }
 
 function renderAnswerValue(sel: CalculatorSelection): React.ReactNode {
@@ -132,7 +162,7 @@ export default function CalculatorSpecsCard({ specs }: Props) {
     estimatedTimeline ||
     "2 weeks";
 
-  const timelineAnswerText = formatTimelineAnswer(rawTimelineVal);
+  const timelineAnswerText = formatTimelineAnswer(rawTimelineVal, estimatedTimeline);
 
   const hasContent =
     validSelections.length > 0 ||

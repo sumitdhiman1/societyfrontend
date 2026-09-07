@@ -415,3 +415,41 @@ export function pruneHiddenSelections(
   }
   return next;
 }
+
+export function parseDurationToDays(durationStr: string): number {
+  if (!durationStr) return 0;
+  const weeksMatch = /(\d+)\s*week/i.exec(durationStr);
+  if (weeksMatch) return parseInt(weeksMatch[1], 10) * 7;
+  const monthsMatch = /(\d+)\s*month/i.exec(durationStr);
+  if (monthsMatch) return parseInt(monthsMatch[1], 10) * 30;
+  if (/month/i.test(durationStr)) return 30;
+  const daysMatch = /(\d+)\s*day/i.exec(durationStr);
+  if (daysMatch) return parseInt(daysMatch[1], 10);
+  return parseInt(durationStr, 10) || 0;
+}
+
+export function getProjectEstimatedDeadline(project: any): Date | null {
+  if (!project) return null;
+  const timelineStr =
+    project.calculatorSpecs?.estimatedTimeline ||
+    project.totalDuration ||
+    project.timeline ||
+    "";
+  const durationDays = parseDurationToDays(timelineStr);
+  const startDate = project.startDate || project.createdAt;
+
+  if (durationDays > 0 && startDate) {
+    const d = new Date(startDate);
+    if (!isNaN(d.getTime())) {
+      d.setDate(d.getDate() + durationDays);
+      return d;
+    }
+  }
+
+  if (project.deadline) {
+    const d = new Date(project.deadline);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+

@@ -8,12 +8,13 @@ import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";
 import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
+import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "@/lib/generateCalculatorProjectPDF";
 import LoadingDots from "@/components/common/LoadingDots";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
 import DeadlineTooltip from "@/components/common/DeadlineTooltip";
 import RecommendedSolutions from "@/components/common/RecommendedSolutions";
 import CalculatorSpecsCard from "@/components/common/CalculatorSpecsCard";
-import { getMainCalculatorCategory } from "@/lib/calculatorUtils";
+import { getMainCalculatorCategory, getProjectEstimatedDeadline } from "@/lib/calculatorUtils";
 import { toast } from "sonner";
 
 const renderStatusMessageText = (text: string, attachments?: any[]) => {
@@ -703,7 +704,11 @@ export default function ProjectDetailsPage() {
                 <div className="text-xs text-gray-500 flex flex-wrap items-center gap-2">
                   <span className={`font-bold ${project.calculatorSpecs ? "text-gray-600" : "text-gray-800"} mr-2`}>Estimated Deadline:</span>
                   <span>
-                    {project.deadline ? formatSubmittedDate(project.deadline) : "Ongoing"}
+                    {getProjectEstimatedDeadline(project)
+                      ? formatSubmittedDate(getProjectEstimatedDeadline(project))
+                      : project.deadline
+                      ? formatSubmittedDate(project.deadline)
+                      : "Ongoing"}
                   </span>
                   <DeadlineTooltip position="center" />
                 </div>
@@ -714,13 +719,15 @@ export default function ProjectDetailsPage() {
                   type="button"
                   onClick={async (e) => {
                     e.preventDefault();
-                    if (project.resultsPdfUrl || project.pdfUrl) {
+                    if (project.calculatorSpecs) {
+                      await downloadCalculatorProjectPDF(project);
+                    } else if (project.resultsPdfUrl || project.pdfUrl) {
                       downloadFile(e as any, project.resultsPdfUrl || project.pdfUrl, "Project_Document.pdf");
                     } else {
                       await downloadProjectDetailsPDF(project);
                     }
                   }}
-                  className={`flex-1 sm:flex-initial px-6 py-2 text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap ${project.calculatorSpecs ? "bg-[#163659] hover:bg-[#112b4a]" : "bg-[#3B50DF] hover:bg-[#2F40B8]"}`}
+                  className="flex-1 sm:flex-initial px-6 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap"
                 >
                   Download Project (.PDF)
                 </button>
@@ -728,7 +735,11 @@ export default function ProjectDetailsPage() {
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
-                    printProjectDetails(project);
+                    if (project.calculatorSpecs) {
+                      printCalculatorProjectPDF(project);
+                    } else {
+                      printProjectDetails(project);
+                    }
                   }}
                   className="flex-1 sm:flex-initial px-6 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap"
                 >
