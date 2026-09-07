@@ -227,6 +227,36 @@ export function getCategoryDisplayName(categoryKey: string, categoryName?: strin
   return categoryKey.toUpperCase();
 }
 
+export const MAIN_CALCULATOR_CATEGORIES: Record<string, string> = {
+  website: "A New Website",
+  graphics: "Graphic Designs",
+  seo: "Search Engine Optimization",
+  marketing: "A Marketing Campaign",
+};
+
+export function getMainCalculatorCategory(categoryKey?: string, categoryName?: string): string {
+  const normKey = (categoryKey || "").toLowerCase().trim();
+
+  if (categoryName?.trim()) {
+    const normName = categoryName.trim().toLowerCase();
+    if (normName === "a new website" || normName === "website") return "A New Website";
+    if (normName === "graphic designs" || normName === "graphics") return "Graphic Designs";
+    if (normName === "search engine optimization" || normName === "seo") return "Search Engine Optimization";
+    if (normName === "a marketing campaign" || normName === "marketing") return "A Marketing Campaign";
+
+    if (!normName.includes("custom website development") && !normName.includes("project")) {
+      return categoryName.trim();
+    }
+  }
+
+  if (normKey.includes("web")) return "A New Website";
+  if (normKey.includes("graph")) return "Graphic Designs";
+  if (normKey.includes("seo")) return "Search Engine Optimization";
+  if (normKey.includes("market")) return "A Marketing Campaign";
+
+  return MAIN_CALCULATOR_CATEGORIES[normKey] || "A New Website";
+}
+
 export function getCategoryProposalName(categoryKey: string, categoryName?: string): string {
   if (categoryName?.trim()) return categoryName.trim();
   return categoryKey
@@ -386,3 +416,41 @@ export function pruneHiddenSelections(
   }
   return next;
 }
+
+export function parseDurationToDays(durationStr: string): number {
+  if (!durationStr) return 0;
+  const weeksMatch = /(\d+)\s*week/i.exec(durationStr);
+  if (weeksMatch) return parseInt(weeksMatch[1], 10) * 7;
+  const monthsMatch = /(\d+)\s*month/i.exec(durationStr);
+  if (monthsMatch) return parseInt(monthsMatch[1], 10) * 30;
+  if (/month/i.test(durationStr)) return 30;
+  const daysMatch = /(\d+)\s*day/i.exec(durationStr);
+  if (daysMatch) return parseInt(daysMatch[1], 10);
+  return parseInt(durationStr, 10) || 0;
+}
+
+export function getProjectEstimatedDeadline(project: any): Date | null {
+  if (!project) return null;
+  const timelineStr =
+    project.calculatorSpecs?.estimatedTimeline ||
+    project.totalDuration ||
+    project.timeline ||
+    "";
+  const durationDays = parseDurationToDays(timelineStr);
+  const startDate = project.startDate || project.createdAt;
+
+  if (durationDays > 0 && startDate) {
+    const d = new Date(startDate);
+    if (!isNaN(d.getTime())) {
+      d.setDate(d.getDate() + durationDays);
+      return d;
+    }
+  }
+
+  if (project.deadline) {
+    const d = new Date(project.deadline);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
