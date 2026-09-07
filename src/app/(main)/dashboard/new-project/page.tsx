@@ -9,21 +9,21 @@ const projectOptions = [
   {
     title: "Browse our packages",
     description: "We offer a wide range of pre-created packages and plans to make your purchasing of projects a breeze!",
-    image: "/images/packages_illustration_1770345611911.png",
+    image: "/images/package2.webp",
     buttonText: "Our packages",
     href: "/dashboard/new-project/packages",
   },
   {
     title: "Calculate your own quote",
     description: "Use our custom price calculator to choose your project and select your exact requirements. You can generate a price quote instantly!",
-    image: "/images/calculator.png",
+    image: "/images/calculator2.webp",
     buttonText: "Quote calculator",
     href: "/calculator",
   },
   {
     title: "Request a custom quote",
     description: "Submit all relevant information about your project through a simple form. Our team will review it and get back to you with recommendations and quotes!",
-    image: "/images/custom_quote_card_1770345880796.png",
+    image: "/images/customquote2.webp",
     buttonText: "Custom quote",
     href: "/dashboard/new-project/custom-quote",
   },
@@ -73,7 +73,7 @@ export default function NewProjectPage() {
               />
             </div>
             <div className="p-8 flex flex-col flex-grow bg-white">
-              <h2 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-primary-300 transition-colors">
+              <h2 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-[#5c5cf2] transition-colors capitalize">
                 {option.title}
               </h2>
               <p className="text-gray-500 text-sm leading-relaxed mb-8 flex-grow">
@@ -81,7 +81,7 @@ export default function NewProjectPage() {
               </p>
               <button
                 onClick={() => handleNavigation(option)}
-                className="w-full py-3 px-6 rounded-lg bg-primary-300 hover:bg-primary-500 text-white font-semibold transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98] text-sm text-center"
+                className="w-full py-3 px-6 rounded-lg bg-[#4343F0] hover:bg-[#5c5cf2] text-white font-semibold transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98] text-sm"
               >
                 {option.buttonText}
               </button>
