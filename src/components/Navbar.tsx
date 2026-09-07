@@ -470,7 +470,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
                 New Project
               </button>
 
-              <div className="flex items-center gap-5 pl-2">
+              <div className="flex items-center gap-4 pl-2">
                 <Notification
                   notificationRef={notificationRef}
                   notificationsOpen={notificationsOpen}
@@ -488,7 +488,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
                   <ChatIcon />
                 </button>
 
-                <div className="h-10 w-[1px] bg-gray-600 mx-2" />
+                <div className="h-6 w-[1px] bg-white/20 shrink-0 self-center mx-1" />
 
                 <Profile
                   profileRef={profileRef}
