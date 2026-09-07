@@ -578,8 +578,8 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
-  const payableTotal = getCalculatorPayableAmount(totalPrice, currency, conversionRate);
-  const halfPrice = getCalculatorHalfPayableAmount(payableTotal);
+  const payableTotal = getCalculatorPayableAmount(totalPrice, currency, conversionRate, categoryKey);
+  const halfPrice = getCalculatorHalfPayableAmount(payableTotal, categoryKey);
 
   const [paymentOption, setPaymentOption] = useState("full");
   const [customAmount, setCustomAmount] = useState("");
@@ -702,8 +702,8 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
     new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: currencyLabel,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(amt);
 
   const getPayableAmount = () => totalPayable;

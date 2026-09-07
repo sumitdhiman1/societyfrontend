@@ -330,18 +330,20 @@ export function getCalculatorDisplayAmount(
 }
 
 /** Exact payable amount in display currency (2dp) for payment form — live parity. */
+/** Exact payable amount in chosen currency, rounded to nearest 5 for display/charge consistency. */
 export function getCalculatorPayableAmount(
   amountUsd: number,
   currency: string,
-  conversionRate = 1
+  conversionRate = 1,
+  categoryKey?: string
 ): number {
   const inCurrency = currency === "eur" ? amountUsd / conversionRate : amountUsd;
-  return Math.round(inCurrency * 100) / 100;
+  return roundCalculatorPrice(inCurrency, categoryKey);
 }
 
-/** 50% deposit uses floor to cents (live: $787.95 → $393.97). */
-export function getCalculatorHalfPayableAmount(payableTotal: number): number {
-  return Math.floor((payableTotal / 2) * 100) / 100;
+/** 50% deposit rounded to nearest 5. */
+export function getCalculatorHalfPayableAmount(payableTotal: number, categoryKey?: string): number {
+  return roundCalculatorPrice(payableTotal / 2, categoryKey);
 }
 
 export function formatCalculatorPrice(
