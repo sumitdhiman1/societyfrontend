@@ -6,7 +6,7 @@ import { useStripe, useElements, CardNumberElement, CardExpiryElement, CardCvcEl
 import { paymentService } from "@/lib/paymentService";
 import { authService } from "@/lib/authService";
 import { useCurrency } from "@/context/CurrencyContext";
-import { convertCurrencyAmount, formatPriceWithCurrency } from "@/lib/currencyUtils";
+import { convertCurrencyAmount, formatPriceWithCurrency, formatActiveCurrency } from "@/lib/currencyUtils";
 import StatusPopup from "@/components/common/StatusPopup";
 import VisaIcon from "@/components/icons/visa";
 import MastercardIcon from "@/components/icons/mastercard";
@@ -115,16 +115,21 @@ export default function StripeCheckout({
     return convertCurrencyAmount(amountRemaining, currentCurrency || "USD", "USD", conversionRate);
   }, [paymentMode, customAmount, amountRemaining, currentCurrency, conversionRate]);
 
-  const creditsToApply = useCredits ? Math.min(userCredits, amountToPay) : 0;
-  const netAmount = amountToPay - creditsToApply;
+  const convertedCredits = useMemo(() => {
+    return convertCurrencyAmount(userCredits, currentCurrency || "USD", "USD", conversionRate);
+  }, [userCredits, currentCurrency, conversionRate]);
+
+  const creditsToApply = useCredits ? Math.min(convertedCredits, amountToPay) : 0;
+  const netAmount = Math.max(0, amountToPay - creditsToApply);
 
   const handleProcessPayment = async () => {
     if (!stripe || !elements || !termsAccepted) return;
 
     const currentErrors: any = {};
     if (paymentMode === "custom") {
+      const convertedPending = convertCurrencyAmount(amountRemaining, currentCurrency || "USD", "USD", conversionRate);
       if (!customAmount || parseFloat(customAmount) <= 0) currentErrors.amount = "Enter a valid amount.";
-      else if (parseFloat(customAmount) > amountRemaining) currentErrors.amount = "Cannot exceed remaining balance.";
+      else if (parseFloat(customAmount) > convertedPending + 0.01) currentErrors.amount = `Cannot exceed remaining balance (${formatPrice(amountRemaining)}).`;
     }
 
     if (netAmount > 0 && selectedMethod === "new") {
@@ -502,7 +507,7 @@ export default function StripeCheckout({
                     <span>Processing...</span>
                   </div>
                 ) : (
-                  `Pay ${formatPrice(netAmount)} Now`
+                  `Pay ${formatActiveCurrency(netAmount, currentCurrency || "USD")} Now`
                 )}
               </button>
 

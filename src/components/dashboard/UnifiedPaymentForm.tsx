@@ -20,7 +20,7 @@ import AmexIcon from "@/components/icons/amex";
 import StatusPopup from "@/components/common/StatusPopup";
 import InvoicePreviewModal from "./InvoicePreviewModal";
 import { countryService, Country } from "@/lib/countryService";
-import { convertCurrencyAmount, formatPriceWithCurrency } from "@/lib/currencyUtils";
+import { convertCurrencyAmount, formatPriceWithCurrency, formatActiveCurrency } from "@/lib/currencyUtils";
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -259,6 +259,13 @@ function PaymentForm({
     return amount;
   };
 
+  const convertedCredits = useMemo(() => {
+    return convertCurrencyAmount(availableCredits, currency, nativeCurrency || "USD", conversionRate);
+  }, [availableCredits, currency, nativeCurrency, conversionRate]);
+
+  const activeCreditsToApply = useCredits ? Math.min(convertedCredits, getPayableAmount()) : 0;
+  const finalPayable = Math.max(0, getPayableAmount() - activeCreditsToApply);
+
   const handleSubmit = async () => {
     if (!stripe || !elements) return;
 
@@ -276,14 +283,14 @@ function PaymentForm({
 
     const errors: any = {};
     const amount = getPayableAmount();
-    const creditsToApply = useCredits ? Math.min(availableCredits, amount) : 0;
+    const creditsToApply = useCredits ? Math.min(convertedCredits, amount) : 0;
 
     const convertedPending = convertCurrencyAmount(totalCost, currency, nativeCurrency || "USD", conversionRate);
 
     if (paymentOption === "custom") {
       if (!customAmount || parseFloat(customAmount) <= 0) {
         errors.amount = "Please enter a valid amount.";
-      } else if (parseFloat(customAmount) > convertedPending) {
+      } else if (parseFloat(customAmount) > convertedPending + 0.01) {
         errors.amount = `Amount cannot exceed pending balance (${formatPrice(totalCost)}).`;
       }
     }
@@ -305,7 +312,7 @@ function PaymentForm({
     if (Object.keys(errors).length > 0) return;
 
     const finalAmount = getPayableAmount();
-    const finalCredits = useCredits ? Math.min(availableCredits, finalAmount) : 0;
+    const finalCredits = useCredits ? Math.min(convertedCredits, finalAmount) : 0;
 
     setIsProcessing(true);
     try {
@@ -872,7 +879,7 @@ function PaymentForm({
             )}
           </div>
 
-          {selectedMethod === "new" && getPayableAmount() - (useCredits ? Math.min(availableCredits, getPayableAmount()) : 0) > 0 ? (
+          {selectedMethod === "new" && finalPayable > 0 ? (
             <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
               <div>
                 <label htmlFor="card-holder-name" className="block text-xs font-bold text-gray-700 mb-2">
@@ -1081,7 +1088,7 @@ function PaymentForm({
                 </label>
               </div>
             </div>
-          ) : selectedMethod !== "new" && getPayableAmount() - (useCredits ? Math.min(availableCredits, getPayableAmount()) : 0) > 0 ? (
+          ) : selectedMethod !== "new" && finalPayable > 0 ? (
             <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg mb-8 animate-in fade-in duration-300">
               <p className="text-sm text-gray-600">You are paying with your saved card.</p>
             </div>
@@ -1108,7 +1115,7 @@ function PaymentForm({
                 Processing...
               </div>
             ) : (
-              `Pay ${formatPrice(getPayableAmount() - (useCredits ? Math.min(availableCredits, getPayableAmount()) : 0))} now`
+              `Pay ${formatActiveCurrency(finalPayable, currency)} now`
             )}
           </button>
         </div>

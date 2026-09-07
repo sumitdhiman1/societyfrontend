@@ -51,3 +51,17 @@ export function formatPriceWithCurrency(
     maximumFractionDigits: 2,
   }).format(converted);
 }
+
+export function formatActiveCurrency(
+  amount: number,
+  targetCurrency: string = "usd"
+): string {
+  const val = Number.isFinite(amount) ? amount : 0;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: (targetCurrency || "usd").toUpperCase(),
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(val);
+}
+
