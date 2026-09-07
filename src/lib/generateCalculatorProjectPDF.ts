@@ -1,5 +1,5 @@
 import { authService } from "./authService";
-import { getProjectEstimatedDeadline } from "./calculatorUtils";
+import { getProjectEstimatedDeadline, parseDurationToDays } from "./calculatorUtils";
 
 function formatPdfDate(dateInput: any): string {
   if (!dateInput) return "";
@@ -56,7 +56,10 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     (data.client?.firstName
       ? `${data.client.firstName} ${data.client.lastName || ""}`.trim()
       : "") ||
-    data.user?.fullName ||
+    currentUser?.fullName ||
+    (currentUser?.firstName
+      ? `${currentUser.firstName} ${currentUser.lastName || ""}`.trim()
+      : "") ||
     data.calculatorSpecs?.businessInfo?.name ||
     data.requirements?.businessInfo?.name ||
     (data.title && data.title.includes(" - ") ? data.title.split(" - ").pop()?.trim() : "") ||
@@ -69,78 +72,110 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
   rawProjectNumber = String(rawProjectNumber).replace(/^INV-/i, "");
   const projectNumber = rawProjectNumber.startsWith("#") ? rawProjectNumber : `#${rawProjectNumber}`;
 
-  const title = data.title || "Project Details";
+  const categoryName =
+    data.categoryName ||
+    data.calculatorSpecs?.categoryName ||
+    data.serviceType ||
+    "Custom Website Development Project";
+
+  const title =
+    data.title ||
+    `Website Price Calculator - ${clientName}`;
+
   const status = (data.status || "Active").charAt(0).toUpperCase() + (data.status || "Active").slice(1).toLowerCase();
 
-  const submittedDateObj = data.startDate || data.createdAt;
-  const submittedDate = submittedDateObj ? formatPdfDate(submittedDateObj) : "09/07/2026";
-
-  const deadlineDateObj = getProjectEstimatedDeadline(data) || (data.deadline ? new Date(data.deadline) : null);
-  const deadlineDate = deadlineDateObj ? formatPdfDate(deadlineDateObj) : "09/21/2026";
-
-  const currency = (data.currency || "USD").toUpperCase();
-
-  const rawTotalPrice = Number(
-    data.totalCost ||
-    data.price ||
-    data.amount ||
-    data.totalPrice ||
-    data.total ||
-    data.package?.price ||
-    data.bundle?.price ||
-    data.amountPaid ||
-    0
-  );
+  const submittedDateObj = data.startDate || data.createdAt || new Date();
+  const submittedDate = formatPdfDate(submittedDateObj);
 
   const duration =
     data.calculatorSpecs?.estimatedTimeline ||
     data.totalDuration ||
-    (data.timelineInDays ? `${data.timelineInDays} Days` : "") ||
     data.timeline ||
+    (data.timelineInDays ? `${data.timelineInDays} Days` : "") ||
     data.duration ||
-    "14 Days";
+    "2 weeks";
 
-  const calculatorSpecs = data.calculatorSpecs || data.requirements || {};
-  const rawSelections = calculatorSpecs?.selections || [];
+  let deadlineDate = "";
+  const deadlineDateObj = getProjectEstimatedDeadline(data) || (data.deadline ? new Date(data.deadline) : null);
+  if (deadlineDateObj) {
+    deadlineDate = formatPdfDate(deadlineDateObj);
+  } else {
+    const days = parseDurationToDays(duration) || 14;
+    const calcDate = new Date(submittedDateObj);
+    calcDate.setDate(calcDate.getDate() + days);
+    deadlineDate = formatPdfDate(calcDate);
+  }
 
-  const categoryName =
-    calculatorSpecs?.categoryName ||
-    data.serviceType ||
-    "Custom Website Development Project";
+  const currency = (data.currency || "USD").toUpperCase();
+
+  const rawTotalPrice = Number(
+    data.totalPrice ??
+    data.totalCost ??
+    data.price ??
+    data.amount ??
+    data.total ??
+    data.amountPaid ??
+    0
+  );
 
   const selectedOptions: Array<{ question: string; answers: string[] }> = [];
 
-  if (Array.isArray(rawSelections) && rawSelections.length > 0) {
-    rawSelections.forEach((sel: any) => {
-      const qText = sel.questionText || sel.questionKey || "";
-      if (/timeline/i.test(sel.questionKey || "") || /timeline/i.test(qText)) {
-        return;
-      }
-      let ansList: string[] = [];
-      if (Array.isArray(sel.answerTexts) && sel.answerTexts.length > 0) {
-        ansList = sel.answerTexts;
-      } else if (Array.isArray(sel.answerKeys) && sel.answerKeys.length > 0) {
-        ansList = sel.answerKeys;
-      } else if (sel.textValue !== undefined && sel.textValue !== "") {
-        ansList = [String(sel.textValue)];
-      } else if (sel.numericValue !== undefined) {
-        ansList = [String(sel.numericValue)];
-      }
-      if (ansList.length > 0) {
-        selectedOptions.push({
-          question: qText.endsWith(":") ? qText : `${qText}:`,
-          answers: ansList,
-        });
-      }
+  // Case 1: If invoked directly with calculator page breakdownItems
+  if (Array.isArray(data.breakdownItems) && data.breakdownItems.length > 0) {
+    if (data.subtitle) {
+      selectedOptions.push({
+        question: "What type of website do you need?:",
+        answers: [data.subtitle],
+      });
+    }
+    data.breakdownItems.forEach((item: any) => {
+      const qText = item.question || "";
+      if (/timeline/i.test(qText)) return;
+      selectedOptions.push({
+        question: qText.endsWith(":") ? qText : `${qText}:`,
+        answers: Array.isArray(item.answers) ? item.answers : [String(item.answers || "")],
+      });
     });
 
-    // Append desired project timeline at the end of selections
-    const timelineVal =
-      calculatorSpecs?.estimatedTimeline ||
-      data.totalDuration ||
-      data.timeline ||
-      "";
-    if (timelineVal) {
+    const timelineVal = duration;
+    let formattedTimeline = timelineVal;
+    if (!timelineVal.includes(":") && !timelineVal.includes("Normal") && !timelineVal.includes("Rushed")) {
+      formattedTimeline = `${timelineVal} (Normal): No extra fee`;
+    }
+    selectedOptions.push({
+      question: "What is your desired project timeline?:",
+      answers: [formattedTimeline],
+    });
+  } else {
+    // Case 2: From project / quote specs selections
+    const calculatorSpecs = data.calculatorSpecs || data.requirements || {};
+    const rawSelections = calculatorSpecs?.selections || [];
+
+    if (Array.isArray(rawSelections) && rawSelections.length > 0) {
+      rawSelections.forEach((sel: any) => {
+        const qText = sel.questionText || sel.questionKey || "";
+        if (/timeline/i.test(sel.questionKey || "") || /timeline/i.test(qText)) {
+          return;
+        }
+        let ansList: string[] = [];
+        if (Array.isArray(sel.answerTexts) && sel.answerTexts.length > 0) {
+          ansList = sel.answerTexts;
+        } else if (Array.isArray(sel.answerKeys) && sel.answerKeys.length > 0) {
+          ansList = sel.answerKeys;
+        } else if (sel.textValue !== undefined && sel.textValue !== "") {
+          ansList = [String(sel.textValue)];
+        } else if (sel.numericValue !== undefined) {
+          ansList = [String(sel.numericValue)];
+        }
+        if (ansList.length > 0) {
+          selectedOptions.push({
+            question: qText.endsWith(":") ? qText : `${qText}:`,
+            answers: ansList,
+          });
+        }
+      });
+
+      const timelineVal = duration;
       let formattedTimeline = timelineVal;
       if (!timelineVal.includes(":") && !timelineVal.includes("Normal") && !timelineVal.includes("Rushed")) {
         formattedTimeline = `${timelineVal} (Normal): No extra fee`;
@@ -172,7 +207,6 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     });
   }
 
-  // Base deliverables
   const deliverables: Array<{ name: string; duration: string; amount: number }> = [
     {
       name: categoryName,
@@ -357,37 +391,77 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
   `;
 }
 
+function loadScript(src: string): Promise<void> {
+  if (typeof window === "undefined" || typeof document === "undefined") return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) {
+      resolve();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
+async function ensurePdfLibraries(): Promise<{ html2canvasLib: any; jsPdfLib: any }> {
+  if (typeof window === "undefined") {
+    throw new Error("Window is not available");
+  }
+
+  if (!(window as any).html2canvas) {
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
+  }
+
+  if (!(window as any).jspdf) {
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  }
+
+  let tries = 0;
+  while ((!(window as any).html2canvas || !(window as any).jspdf) && tries < 25) {
+    await new Promise((r) => setTimeout(r, 100));
+    tries++;
+  }
+
+  const html2canvasLib = (window as any).html2canvas;
+  const jsPdfLib = (window as any).jspdf?.jsPDF || (window as any).jsPDF;
+
+  if (!html2canvasLib || !jsPdfLib) {
+    throw new Error("PDF generation libraries could not be loaded");
+  }
+
+  return { html2canvasLib, jsPdfLib };
+}
+
 export async function downloadCalculatorProjectPDF(data: any): Promise<void> {
   if (typeof window === "undefined") return;
 
   const d = extractCalculatorPDFData(data);
 
   try {
-    let html2canvasLib = typeof window !== "undefined" ? (window as any).html2canvas : null;
-    let jsPdfLib = typeof window !== "undefined" ? ((window as any).jspdf?.jsPDF || (window as any).jsPDF) : null;
-
-    if (!html2canvasLib) {
-      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
-      html2canvasLib = (window as any).html2canvas;
-    }
-    if (!jsPdfLib) {
-      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
-      jsPdfLib = (window as any).jspdf?.jsPDF || (window as any).jsPDF;
-    }
-
-    if (!html2canvasLib || !jsPdfLib) {
-      throw new Error("PDF generation libraries not available");
-    }
+    const { html2canvasLib, jsPdfLib } = await ensurePdfLibraries();
 
     const container = document.createElement("div");
     container.style.position = "fixed";
-    container.style.left = "-9999px";
-    container.style.top = "0";
+    container.style.left = "0px";
+    container.style.top = "0px";
+    container.style.zIndex = "-99999";
     container.style.width = "794px";
     container.style.backgroundColor = "#ffffff";
+    container.style.opacity = "1";
+    container.style.pointerEvents = "none";
     container.innerHTML = getCalculatorProjectHTML(d);
 
     document.body.appendChild(container);
+
+    // Wait 150ms for layout and font rendering
+    await new Promise((r) => setTimeout(r, 150));
 
     try {
       const canvas = await html2canvasLib(container, {
@@ -395,32 +469,58 @@ export async function downloadCalculatorProjectPDF(data: any): Promise<void> {
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
+        windowWidth: 794,
+        scrollY: 0,
+        scrollX: 0,
       });
 
-      const imgData = canvas.toDataURL("image/png");
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        throw new Error("Canvas rendering produced an empty canvas");
+      }
+
       const pdf = new jsPdfLib("p", "pt", "a4");
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
 
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      // Clean canvas page slicing for multi-page PDF
+      const pageCanvasHeight = Math.floor((canvas.width * pageHeight) / pageWidth);
+      let renderedHeight = 0;
+      let pageNum = 0;
 
-      let heightLeft = imgHeight;
-      let position = 0;
+      while (renderedHeight < canvas.height) {
+        const sliceHeight = Math.min(pageCanvasHeight, canvas.height - renderedHeight);
+        const pageCanvas = document.createElement("canvas");
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sliceHeight;
 
-      // Page 1
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
-      heightLeft -= pageHeight;
+        const ctx = pageCanvas.getContext("2d");
+        if (ctx) {
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          ctx.drawImage(
+            canvas,
+            0,
+            renderedHeight,
+            canvas.width,
+            sliceHeight,
+            0,
+            0,
+            canvas.width,
+            sliceHeight
+          );
 
-      // Slicing across pages for multi-page documents
-      while (heightLeft > 0) {
-        position -= pageHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
-        heightLeft -= pageHeight;
+          const pageImgData = pageCanvas.toDataURL("image/png");
+          if (pageNum > 0) {
+            pdf.addPage();
+          }
+          const renderHeightPt = (sliceHeight * pageWidth) / canvas.width;
+          pdf.addImage(pageImgData, "PNG", 0, 0, pageWidth, renderHeightPt, undefined, "FAST");
+          pageNum++;
+        }
+        renderedHeight += pageCanvasHeight;
       }
 
-      const cleanNum = d.rawProjectNumber.replace(/[^a-zA-Z0-9-_]/g, "") || "calculator_project";
+      const cleanNum = d.rawProjectNumber.replace(/[^a-zA-Z0-9-_]/g, "") || "quote";
       const filename = `Project_Details_${cleanNum}.pdf`;
       pdf.save(filename);
     } finally {
@@ -432,22 +532,6 @@ export async function downloadCalculatorProjectPDF(data: any): Promise<void> {
     console.warn("Calculator direct PDF generation fallback to print:", err);
     printCalculatorProjectPDF(data);
   }
-}
-
-function loadScript(src: string): Promise<void> {
-  if (typeof document === "undefined") return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${src}"]`);
-    if (existing) {
-      resolve();
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = src;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error(`Failed to load ${src}`));
-    document.head.appendChild(script);
-  });
 }
 
 export function printCalculatorProjectPDF(data: any): void {

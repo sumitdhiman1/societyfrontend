@@ -428,13 +428,18 @@ export async function downloadProjectDetailsPDF(data: any): Promise<void> {
 
     const container = document.createElement("div");
     container.style.position = "fixed";
-    container.style.left = "-9999px";
-    container.style.top = "0";
+    container.style.left = "0px";
+    container.style.top = "0px";
+    container.style.zIndex = "-99999";
     container.style.width = "794px";
     container.style.backgroundColor = "#ffffff";
+    container.style.opacity = "1";
+    container.style.pointerEvents = "none";
     container.innerHTML = getProjectDetailsHTML(d);
 
     document.body.appendChild(container);
+
+    await new Promise((r) => setTimeout(r, 150));
 
     try {
       const canvas = await html2canvasLib(container, {
@@ -442,29 +447,54 @@ export async function downloadProjectDetailsPDF(data: any): Promise<void> {
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
+        windowWidth: 794,
+        scrollY: 0,
+        scrollX: 0,
       });
 
-      const imgData = canvas.toDataURL("image/png");
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        throw new Error("Canvas rendering produced an empty canvas");
+      }
+
       const pdf = new jsPdfLib("p", "pt", "a4");
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
 
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pageCanvasHeight = Math.floor((canvas.width * pageHeight) / pageWidth);
+      let renderedHeight = 0;
+      let pageNum = 0;
 
-      let heightLeft = imgHeight;
-      let position = 0;
+      while (renderedHeight < canvas.height) {
+        const sliceHeight = Math.min(pageCanvasHeight, canvas.height - renderedHeight);
+        const pageCanvas = document.createElement("canvas");
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sliceHeight;
 
-      // First page
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
-      heightLeft -= pageHeight;
+        const ctx = pageCanvas.getContext("2d");
+        if (ctx) {
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          ctx.drawImage(
+            canvas,
+            0,
+            renderedHeight,
+            canvas.width,
+            sliceHeight,
+            0,
+            0,
+            canvas.width,
+            sliceHeight
+          );
 
-      // Additional pages if needed (multi-page)
-      while (heightLeft > 0) {
-        position -= pageHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
-        heightLeft -= pageHeight;
+          const pageImgData = pageCanvas.toDataURL("image/png");
+          if (pageNum > 0) {
+            pdf.addPage();
+          }
+          const renderHeightPt = (sliceHeight * pageWidth) / canvas.width;
+          pdf.addImage(pageImgData, "PNG", 0, 0, pageWidth, renderHeightPt, undefined, "FAST");
+          pageNum++;
+        }
+        renderedHeight += pageCanvasHeight;
       }
 
       const cleanNum = d.rawProjectNumber.replace(/[^a-zA-Z0-9-_]/g, "") || "document";
