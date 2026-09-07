@@ -324,10 +324,9 @@ export function getCalculatorDisplayAmount(
   conversionRate = 1,
   categoryKey?: string
 ): number {
-  if (currency === "eur") {
-    return getCalculatorPayableAmount(amountUsd, currency, conversionRate);
-  }
-  return roundCalculatorPrice(amountUsd, categoryKey);
+  // Convert to target currency first, then round to nearest 5 for display
+  const inCurrency = currency === "eur" ? amountUsd / conversionRate : amountUsd;
+  return roundCalculatorPrice(inCurrency, categoryKey);
 }
 
 /** Exact payable amount in display currency (2dp) for payment form — live parity. */
@@ -364,15 +363,13 @@ export function formatCalculatorDisplayAmount(
   categoryKey?: string
 ): string {
   const normalizedCurrency = currency.toUpperCase();
-  const rounded =
-    currency === "eur"
-      ? Math.round(amountInCurrency * 100) / 100
-      : roundCalculatorPrice(amountInCurrency, categoryKey);
+  // Always round to nearest 5 for display (both USD and EUR)
+  const rounded = roundCalculatorPrice(amountInCurrency, categoryKey);
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: normalizedCurrency,
-    minimumFractionDigits: currency === "eur" ? 2 : 0,
-    maximumFractionDigits: currency === "eur" ? 2 : 0,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(rounded);
 }
 

@@ -787,16 +787,24 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
       const quoteId = quote._id || quote.id;
       const quoteNum = quote.quoteNumber || "Q-PENDING";
 
+      // Always pass the USD base price so the backend can normalize regardless of which
+      // currency the user chose to pay in.
+      const usdBaseAmount = totalPrice; // totalPrice is always the raw USD amount from the calculator
+
       const intentRes = await paymentService.createPaymentIntent({
-        amount,
-        currency,
+        amount,          // actual charge amount in chosen currency (may be EUR-converted)
+        currency,        // "usd" or "eur"
         useCredits: false,
         metadata: {
           type: "QUOTE",
           quoteId,
           quoteNumber: quoteNum,
-          fullAmount: totalPrice,
-          calculatedPrice: totalPrice,
+          // fullAmount is the USD base price so backend always compares like-for-like
+          fullAmount: usdBaseAmount,
+          calculatedPrice: usdBaseAmount,
+          // store conversion rate so backend can normalise EUR payments back to USD
+          conversionRate: String(conversionRate),
+          paymentCurrency: currency,
         },
       });
 
