@@ -354,18 +354,19 @@ export default function QuoteDetailsPage() {
   if (!quote) return null;
 
   // Format Helpers
-  const currency = (quote.currency || "eur").toUpperCase();
-  const formatCurrency = (amt: any) => {
+  const currency = (quote.currency || "USD").toUpperCase();
+  const formatCurrency = (amt: any, customCurrency?: string) => {
     const num = Number(amt || 0);
+    const curr = (customCurrency || quote.currency || "USD").toUpperCase();
     try {
       return new Intl.NumberFormat("en-US", {
         style: "currency",
-        currency: currency,
+        currency: curr,
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(num);
     } catch {
-      return `€${num.toFixed(2)}`;
+      return curr === "EUR" ? `€${num.toFixed(2)}` : `$${num.toFixed(2)}`;
     }
   };
 
@@ -827,44 +828,28 @@ export default function QuoteDetailsPage() {
             </div>
           </div>
         </div>
-        <div className="lg:col-span-1 space-y-6">
-          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-8 sticky top-28">
-            <div className="text-center">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gray-100 border border-gray-200">
-                {manager?.avatar ? (
-                  <img src={manager.avatar} alt={manager.fullName} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white text-3xl font-bold">
-                    {manager?.fullName ? manager.fullName[0] : "?"}
-                  </div>
-                )}
-              </div>
-              <h4 className="text-lg font-bold text-gray-800 mb-1">{manager?.fullName || "Not assigned yet"}</h4>
-              <p className="text-sm text-gray-500 mb-4 font-medium uppercase tracking-wider text-[10px]">Project Manager</p>
-            </div>
-
-            {/* Right Card: Project Manager Card (col-span-1) */}
-            <div className="lg:col-span-1 bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-xs flex flex-col items-center justify-center text-center self-start h-auto min-h-[220px]">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full mx-auto mb-4 flex items-center justify-center shadow-inner overflow-hidden bg-gradient-to-b from-[#C4CAD4] to-[#94A3B8] flex-shrink-0">
-                {manager?.avatar ? (
-                  <img src={manager.avatar} alt={managerName} className="w-full h-full object-cover" />
-                ) : null}
-              </div>
-              <h4 className="font-bold text-gray-900 text-sm sm:text-base mb-1">
-                {manager ? managerName : "Not assigned yet"}
-              </h4>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">PROJECT MANAGER</p>
-            </div>
+        {/* Right Card: Project Manager Card (col-span-1) */}
+        <div className="lg:col-span-1 bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-xs flex flex-col items-center justify-center text-center self-start h-auto min-h-[220px]">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full mx-auto mb-4 flex items-center justify-center shadow-inner overflow-hidden bg-gradient-to-b from-[#C4CAD4] to-[#94A3B8] flex-shrink-0">
+            {manager?.avatar ? (
+              <img src={manager.avatar} alt={managerName} className="w-full h-full object-cover" />
+            ) : null}
           </div>
+          <h4 className="font-bold text-gray-900 text-sm sm:text-base mb-1">
+            {manager ? managerName : "Not assigned yet"}
+          </h4>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">PROJECT MANAGER</p>
+        </div>
+      </div>
 
-          {/* Center Section Divider */}
-          <div className="relative py-4 flex items-center justify-center w-full my-2">
-            <div className="flex-grow border-t border-gray-200"></div>
-            <span className="px-4 text-xs font-semibold text-gray-400 bg-white">
-              Quote Request Submitted
-            </span>
-            <div className="flex-grow border-t border-gray-200"></div>
-          </div>
+      {/* Center Section Divider */}
+      <div className="relative py-4 flex items-center justify-center w-full my-2">
+        <div className="flex-grow border-t border-gray-200"></div>
+        <span className="px-4 text-xs font-semibold text-gray-400 bg-white">
+          Quote Request Submitted
+        </span>
+        <div className="flex-grow border-t border-gray-200"></div>
+      </div>
 
           {/* Messages and Proposals Feed */}
           <div className="flex flex-col gap-6 w-full">
@@ -943,8 +928,21 @@ export default function QuoteDetailsPage() {
                       : [];
                 const senderName = msg.username || msg.senderName || managerName;
                 const proposalDesc = content.projectDescription || content.text || msg.message || "";
-                const totalDuration = content.totalDuration || quote.totalDuration || "-";
-                const totalCost = content.totalCost ?? quote.totalCost ?? 0;
+                const proposalCurrency = (content.currency || quote.currency || "USD").toUpperCase();
+                const calculatedDurationDays = propItems.reduce((sum: number, it: any) => {
+                  const dur = String(it.duration || "").toLowerCase();
+                  const match = dur.match(/(\d+(\.\d+)?)/);
+                  const val = match ? parseFloat(match[0]) : 0;
+                  if (dur.includes("week")) return sum + val * 7;
+                  if (dur.includes("month")) return sum + val * 30;
+                  return sum + val;
+                }, 0);
+                const totalDuration =
+                  calculatedDurationDays > 0
+                    ? `${calculatedDurationDays} Day${calculatedDurationDays > 1 ? "s" : ""}`
+                    : content.totalDuration || quote.totalDuration || "-";
+                const calculatedTotalCost = propItems.reduce((sum: number, it: any) => sum + (Number(it.amount ?? it.cost) || 0), 0);
+                const totalCost = content.totalCost ?? (calculatedTotalCost > 0 ? calculatedTotalCost : (quote.totalCost ?? 0));
 
                 // Check subsequent messages to track actions on this proposal
                 const subsequentMessages = allMessages.slice(i + 1);
@@ -1065,7 +1063,7 @@ export default function QuoteDetailsPage() {
                                     {formatDuration(item.duration)}
                                   </td>
                                   <td className="px-6 py-4 text-xs text-gray-900 font-bold text-right align-middle">
-                                    {formatCurrency(item.amount ?? item.cost ?? 0)}
+                                    {formatCurrency(item.amount ?? item.cost ?? 0, proposalCurrency)}
                                   </td>
                                 </tr>
                               ))}
@@ -1082,7 +1080,7 @@ export default function QuoteDetailsPage() {
                         </div>
                         <div className="text-center">
                           <div className="text-gray-400 font-bold text-[11px] uppercase tracking-wider mb-1">Total Cost</div>
-                          <div className="text-gray-900 font-extrabold text-sm sm:text-base">{formatCurrency(totalCost)}</div>
+                          <div className="text-gray-900 font-extrabold text-sm sm:text-base">{formatCurrency(totalCost, proposalCurrency)}</div>
                         </div>
                       </div>
 
@@ -1515,8 +1513,6 @@ export default function QuoteDetailsPage() {
             description="Please log in or register to message our team and collaborate on this quote."
             redirectUrl={quote?._id ? `/dashboard/my-quotes/${quote._id}/details` : undefined}
           />
-        </div>
-      </div>
     </div>
   );
 }

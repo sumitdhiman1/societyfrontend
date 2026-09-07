@@ -17,7 +17,7 @@ function ProjectLayoutContent({ children }: { children: React.ReactNode }) {
   const currentTab = pathname.split("/").pop();
   const activeTab = tabs.includes(currentTab || "") ? currentTab : "details";
 
-  if (isLoading) {
+  if (isLoading && !project) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5356ff]"></div>
@@ -39,11 +39,21 @@ function ProjectLayoutContent({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const formatDate = (date: any) => {
+    if (!date) return "";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "";
+    const month = d.toLocaleString("en-US", { month: "short" });
+    const day = d.getDate();
+    const time = d.toLocaleString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    return `${month} ${day}, ${time}`;
+  };
+
   return (
     <div className="bg-white min-h-screen flex flex-col font-sans" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
-      <main className="flex-grow w-full max-w-[1600px] mx-auto px-4 md:px-8 lg:px-[54px] pt-8 md:pt-12 pb-12">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12 overflow-x-hidden">
         <div className="mb-10">
-          <h1 className="text-[28px] md:text-[32px] font-bold text-[#1A202C] mb-8 md:mb-12">
+          <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100 mb-8 md:mb-12">
             {project.title}
           </h1>
 
@@ -54,8 +64,8 @@ function ProjectLayoutContent({ children }: { children: React.ReactNode }) {
                   key={tab}
                   href={`/dashboard/my-projects/${projectId}/${tab}`}
                   className={`pb-4 text-base sm:text-lg font-medium capitalize transition-colors relative whitespace-nowrap ${activeTab === tab
-                      ? "text-[#363636] font-bold"
-                      : "text-[#88909D] font-normal hover:text-gray-600"
+                    ? "text-[#363636] font-bold"
+                    : "text-[#88909D] font-normal hover:text-gray-600"
                     }`}
                 >
                   {tab}
@@ -70,15 +80,15 @@ function ProjectLayoutContent({ children }: { children: React.ReactNode }) {
               <div className="flex items-center">
                 <span className="text-[#88909D] mr-2">Start date:</span>
                 <span className="font-bold">
-                  {project.startDate ? new Date(project.startDate).toLocaleDateString() : "TBD"}
+                  {project.startDate ? formatDate(project.startDate) : "TBD"}
                 </span>
               </div>
               <div className="flex items-center">
                 <span className="text-[#88909D] mr-2">Estimated Deadline:</span>
                 <span className="font-bold">
-                  {project.deadline ? new Date(project.deadline).toLocaleDateString() : "Ongoing"}
+                  {project.deadline ? formatDate(project.deadline) : "Ongoing"}
                 </span>
-                <DeadlineTooltip />
+                <DeadlineTooltip position="left" />
               </div>
             </div>
           </div>

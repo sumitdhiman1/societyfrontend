@@ -66,19 +66,25 @@ function extractProjectDetails(data: any) {
     ? new Date(new Date(data.createdAt).getTime() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
     : "Sep 10, 2026";
 
-  const duration = data.timelineInDays
+  const rawTotalPrice = Number(
+    data.totalCost ||
+    data.price ||
+    data.amount ||
+    data.totalPrice ||
+    data.total ||
+    data.package?.price ||
+    data.bundle?.price ||
+    data.amountPaid ||
+    0
+  );
+
+  const duration = data.totalDuration
+    ? (String(data.totalDuration).toLowerCase().includes("day") ? data.totalDuration : `${data.totalDuration} Days`)
+    : data.timelineInDays
     ? `${data.timelineInDays} Days`
     : data.duration || (data.requirements?.estimatedTimeline || "5 Days");
 
-  const totalPrice = Number(data.amountPaid ?? data.price ?? data.totalCost ?? 0);
   const currency = (data.currency || "USD").toUpperCase();
-
-  const formattedPrice = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(totalPrice);
 
   let description = data.description || "";
   if (!description) {
@@ -91,26 +97,56 @@ function extractProjectDetails(data: any) {
     }
   }
 
+  const rawDeliverableItems: any[] = [];
+  if (Array.isArray(data.deliverableItems) && data.deliverableItems.length > 0) {
+    rawDeliverableItems.push(...data.deliverableItems);
+  } else if (Array.isArray(data.lineItems) && data.lineItems.length > 0) {
+    rawDeliverableItems.push(...data.lineItems);
+  }
+
+  if (Array.isArray(data.addons)) {
+    data.addons.forEach((addon: any) => {
+      if (Array.isArray(addon.deliverableItems)) {
+        rawDeliverableItems.push(...addon.deliverableItems);
+      }
+    });
+  }
+
+  if (Array.isArray(data.messages)) {
+    data.messages
+      .filter((m: any) => m.type === "quote_proposal" || m.content?.proposalStatus === "accepted" || m.proposalStatus === "accepted")
+      .forEach((m: any) => {
+        const items = m.deliverableItems || m.content?.deliverableItems || [];
+        if (Array.isArray(items)) {
+          rawDeliverableItems.push(...items);
+        }
+      });
+  }
+
   const deliverables =
-    Array.isArray(data.deliverableItems) && data.deliverableItems.length > 0
-      ? data.deliverableItems.map((d: any) => ({
-          name: d.item || d.name || d.description || title,
-          duration: d.duration || duration,
-          amount: Number(d.amount ?? d.cost ?? totalPrice),
-        }))
-      : Array.isArray(data.lineItems) && data.lineItems.length > 0
-      ? data.lineItems.map((d: any) => ({
-          name: d.description || d.name || title,
-          duration: d.duration || duration,
-          amount: Number(d.amount ?? totalPrice),
+    rawDeliverableItems.length > 0
+      ? rawDeliverableItems.map((d: any) => ({
+          name: d.item || d.name || d.description || d.title || title,
+          duration: d.duration ? (String(d.duration).toLowerCase().includes("day") ? d.duration : `${d.duration} Days`) : duration,
+          amount: Number(d.amount ?? d.cost ?? (d.price ?? 0)),
         }))
       : [
           {
             name: title.startsWith("Free website analysis") ? "Free website analysis" : title,
             duration: duration,
-            amount: totalPrice,
+            amount: rawTotalPrice,
           },
         ];
+
+  const deliverablesSum = deliverables.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
+  const totalPrice = deliverablesSum > 0 ? deliverablesSum : (rawTotalPrice > 0 ? rawTotalPrice : Number(data.amountPaid || 0));
+
+  const formattedPrice = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(totalPrice);
 
   return {
     rawProjectNumber,

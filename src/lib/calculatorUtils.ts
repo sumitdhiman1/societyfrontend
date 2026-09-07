@@ -324,25 +324,26 @@ export function getCalculatorDisplayAmount(
   conversionRate = 1,
   categoryKey?: string
 ): number {
-  if (currency === "eur") {
-    return getCalculatorPayableAmount(amountUsd, currency, conversionRate);
-  }
-  return roundCalculatorPrice(amountUsd, categoryKey);
+  // Convert to target currency first, then round to nearest 5 for display
+  const inCurrency = currency === "eur" ? amountUsd / conversionRate : amountUsd;
+  return roundCalculatorPrice(inCurrency, categoryKey);
 }
 
 /** Exact payable amount in display currency (2dp) for payment form — live parity. */
+/** Exact payable amount in chosen currency, rounded to nearest 5 for display/charge consistency. */
 export function getCalculatorPayableAmount(
   amountUsd: number,
   currency: string,
-  conversionRate = 1
+  conversionRate = 1,
+  categoryKey?: string
 ): number {
   const inCurrency = currency === "eur" ? amountUsd / conversionRate : amountUsd;
-  return Math.round(inCurrency * 100) / 100;
+  return roundCalculatorPrice(inCurrency, categoryKey);
 }
 
-/** 50% deposit uses floor to cents (live: $787.95 → $393.97). */
-export function getCalculatorHalfPayableAmount(payableTotal: number): number {
-  return Math.floor((payableTotal / 2) * 100) / 100;
+/** 50% deposit rounded to nearest 5. */
+export function getCalculatorHalfPayableAmount(payableTotal: number, categoryKey?: string): number {
+  return roundCalculatorPrice(payableTotal / 2, categoryKey);
 }
 
 export function formatCalculatorPrice(
@@ -364,15 +365,13 @@ export function formatCalculatorDisplayAmount(
   categoryKey?: string
 ): string {
   const normalizedCurrency = currency.toUpperCase();
-  const rounded =
-    currency === "eur"
-      ? Math.round(amountInCurrency * 100) / 100
-      : roundCalculatorPrice(amountInCurrency, categoryKey);
+  // Always round to nearest 5 for display (both USD and EUR)
+  const rounded = roundCalculatorPrice(amountInCurrency, categoryKey);
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: normalizedCurrency,
-    minimumFractionDigits: currency === "eur" ? 2 : 0,
-    maximumFractionDigits: currency === "eur" ? 2 : 0,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(rounded);
 }
 

@@ -8,7 +8,8 @@ import { authService } from "@/lib/authService";
 interface ProjectContextType {
   project: any | null;
   isLoading: boolean;
-  refreshProject: () => void;
+  refreshProject: () => Promise<any>;
+  setProject: React.Dispatch<React.SetStateAction<any | null>>;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -20,19 +21,23 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   
   const [project, setProject] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const isInitialMount = useRef(true);
 
-  const fetchProject = useCallback(async () => {
-    if (!projectId) return;
+  const fetchProject = useCallback(async (silent = false) => {
+    if (!projectId) return null;
     
-    setIsLoading(true);
+    if (!silent) {
+      setIsLoading(true);
+    }
     try {
       const res = await projectService.getProjectById(projectId);
       if (res?.data) {
         setProject(res.data);
+        return res.data;
       }
+      return null;
     } catch (error) {
       console.error("Failed to fetch project:", error);
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -44,21 +49,21 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (projectId && isInitialMount.current) {
-      isInitialMount.current = false;
+    if (projectId) {
       fetchProject();
     }
-    
-    return () => {
-      isInitialMount.current = true;
-    };
-  }, [projectId, fetchProject, router]);
+  }, [projectId, router]);
+
+  const refreshProject = useCallback(() => {
+    return fetchProject(true);
+  }, [fetchProject]);
 
   const value = useMemo(() => ({
     project,
     isLoading,
-    refreshProject: fetchProject
-  }), [project, isLoading, fetchProject]);
+    refreshProject,
+    setProject
+  }), [project, isLoading, refreshProject]);
 
   return (
     <ProjectContext.Provider value={value}>

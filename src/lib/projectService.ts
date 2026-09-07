@@ -112,6 +112,10 @@ export class ProjectService {
   async renameProject(projectId: string, title: string) {
     return this.client.patch(`/projects/rename/${projectId}`, { title });
   }
+
+  async toggleAutoRenewal(projectId: string, enabled?: boolean) {
+    return this.client.patch(`/projects/toggle-auto-renewal/${projectId}`, { enabled });
+  }
 }
 
 export const projectService = new ProjectService();

@@ -11,6 +11,7 @@ const STATUS_MAPPING: Record<string, string | undefined> = {
   pending: "Pending",
   approved: "Approved",
   rejected: "Rejected",
+  expired: "Expired",
   sent: "Sent",
   inactive: "Inactive",
 };
@@ -33,6 +34,7 @@ export default function MyQuotesPage() {
     pending: 0,
     approved: 0,
     rejected: 0,
+    expired: 0,
   });
 
   useEffect(() => {
@@ -78,6 +80,7 @@ export default function MyQuotesPage() {
           pending: summary.pending || 0,
           approved: summary.approved || 0,
           rejected: summary.rejected || 0,
+          expired: summary.expired || 0,
         });
       }
     } catch (error) {
@@ -100,6 +103,7 @@ export default function MyQuotesPage() {
     { id: "pending", label: "Pending", count: counts.pending },
     { id: "approved", label: "Approved", count: counts.approved },
     { id: "rejected", label: "Rejected", count: counts.rejected },
+    { id: "expired", label: "Expired", count: counts.expired },
   ];
 
   const getStatusBadgeStyles = (status: string) => {
@@ -114,6 +118,8 @@ export default function MyQuotesPage() {
       case "rejected":
       case "declined":
         return "bg-[#FEE2E2] text-[#B91C1C] border-[#FEE2E2]";
+      case "expired":
+        return "bg-gray-100 text-gray-600 border-gray-300";
       case "sent":
       case "offer_sent":
       case "proposal_sent":
@@ -129,11 +135,13 @@ export default function MyQuotesPage() {
     if (!dateString) return "";
     const d = new Date(dateString);
     if (isNaN(d.getTime())) return "";
-    const month = d.toLocaleString("en-US", { month: "short" }).toUpperCase();
+    const month = d.toLocaleString("en-US", { month: "short" });
     const day = d.getDate();
-    const time = d
-      .toLocaleString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
-      .toUpperCase();
+    const time = d.toLocaleString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
     return `Submitted on ${month} ${day}, ${time}`;
   };
 

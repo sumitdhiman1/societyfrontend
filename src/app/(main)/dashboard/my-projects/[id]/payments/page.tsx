@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useProject } from "@/context/ProjectContext";
 import { paymentService } from "@/lib/paymentService";
+import { authService } from "@/lib/authService";
 import { downloadFile } from "@/lib/utils";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
+import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 
 function ReceiptModal({ isOpen, onClose, project, payment }: { isOpen: boolean; onClose: () => void; project: any; payment?: any }) {
   if (!isOpen || !project) return null;
@@ -173,32 +175,43 @@ function ReceiptModal({ isOpen, onClose, project, payment }: { isOpen: boolean; 
 export default function ProjectPaymentsPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const projectId = params.id as string;
-  const { project, isLoading: projectLoading } = useProject();
+  const { project, isLoading: projectLoading, refreshProject } = useProject();
   const [payments, setPayments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showReceipt, setShowReceipt] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  const hasRefreshedRef = useRef(false);
+
+  const fetchPayments = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await paymentService.getTransactionsByProject(projectId);
+      if (res?.data) {
+        setPayments(res.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch project payments:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [projectId]);
 
   useEffect(() => {
-    const fetchPayments = async () => {
-      setIsLoading(true);
-      try {
-        const res = await paymentService.getTransactionsByProject(projectId);
-        if (res?.data) {
-          setPayments(res.data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch project payments:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     if (projectId) {
       fetchPayments();
     }
-  }, [projectId]);
+  }, [projectId, fetchPayments]);
+
+  useEffect(() => {
+    if (searchParams?.get("success") === "true" && !hasRefreshedRef.current) {
+      hasRefreshedRef.current = true;
+      refreshProject();
+      fetchPayments();
+      window.history.replaceState(null, "", `/dashboard/my-projects/${projectId}/payments`);
+    }
+  }, [searchParams, projectId, refreshProject, fetchPayments]);
 
   if (projectLoading && !project) {
     return (
@@ -209,28 +222,73 @@ export default function ProjectPaymentsPage() {
   }
 
   const activeProject = project || {};
+  const currentUser = authService.getUser();
   const projectNumber =
     activeProject.projectNumber ||
-    (activeProject.quoteNumber || (activeProject._id ? `INV-2026-${activeProject._id.slice(-3).toUpperCase()}` : "INV-2026-163"));
+    (activeProject.quoteNumber || (activeProject._id ? `INV-2026-${activeProject._id.slice(-3).toUpperCase()}` : "INV-2026-188"));
 
-  const totalPrice = Number(activeProject.amountPaid ?? activeProject.price ?? activeProject.totalCost ?? 0);
-  const currency = (activeProject.currency || "USD").toUpperCase();
+  // 1. Regular items
+  const regularItems = (activeProject.deliverableItems && activeProject.deliverableItems.length > 0)
+    ? activeProject.deliverableItems.map((item: any) => ({
+        description: item.description || item.title || item.name || "Deliverable",
+        details: item.details || "",
+        duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "30 Days",
+        amount: Number(item.amount ?? 0),
+        isAddOn: false,
+      }))
+    : activeProject.title
+    ? [{
+        description: activeProject.title,
+        duration: activeProject.timelineInDays ? `${activeProject.timelineInDays} Days` : "30 Days",
+        amount: Number(activeProject.price ?? activeProject.totalCost ?? 0),
+        isAddOn: false,
+      }]
+    : [];
 
-  const formatCurrency = (amt: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amt);
+  // 2. Addon items from activeProject.addons
+  const addonItemsFromAddons = (activeProject.addons || []).flatMap((addon: any) =>
+    (addon.deliverableItems || []).map((item: any) => ({
+      description: item.description || item.title || item.name || "Add-On Deliverable",
+      details: item.details || "",
+      duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
+      amount: Number(item.amount ?? 0),
+      isAddOn: true,
+    }))
+  );
 
-  const paymentDate = (payments[0]?.createdAt || activeProject.createdAt)
-    ? new Date(payments[0]?.createdAt || activeProject.createdAt).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
-    : "5 Sept 2026";
+  // 3. Addon items from activeProject.messages
+  const addonItemsFromMessages = (activeProject.messages || [])
+    .filter((m: any) => m.type === "quote_proposal" || m.content?.proposalStatus === "accepted" || m.proposalStatus === "accepted")
+    .flatMap((m: any) => {
+      const items = m.deliverableItems || m.content?.deliverableItems || [];
+      return items.map((item: any) => ({
+        description: item.description || item.title || item.name || "Add-On Deliverable",
+        details: item.details || "",
+        duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
+        amount: Number(item.amount ?? 0),
+        isAddOn: true,
+      }));
+    });
+
+  const allAddonItems = addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages;
+
+  // Combine deliverable items
+  const deliverableItems = allAddonItems.length > 0 ? [...regularItems, ...allAddonItems] : regularItems;
+
+  const totalPaidFromTransactions = (payments || [])
+    .filter((p: any) => ["succeeded", "paid", "completed"].includes(p.status?.toLowerCase()))
+    .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+
+  const amountPaid = Math.max(Number(activeProject.amountPaid || 0), totalPaidFromTransactions);
+  const baseCost = Number(activeProject.price ?? activeProject.totalCost ?? 0);
+  const addonsTotal = allAddonItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
+  const deliverablesTotal = deliverableItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
+  const totalProjectCost = deliverablesTotal > 0 ? deliverablesTotal : (baseCost > 0 ? baseCost : addonsTotal);
+
+  const pendingBalance = Math.max(0, totalProjectCost - amountPaid);
+  const payableAmount = pendingBalance;
+
+  const isFullyPaid = pendingBalance <= 0 && amountPaid > 0 && activeProject.paymentStatus !== "pending";
 
   const handleDownloadProject = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -263,8 +321,6 @@ export default function ProjectPaymentsPage() {
     }
   };
 
-  const mainStatus = (activeProject.paymentStatus || activeProject.status || "SUCCEEDED").toUpperCase();
-
   return (
     <div className="w-full font-sans space-y-8">
       <ReceiptModal
@@ -275,105 +331,33 @@ export default function ProjectPaymentsPage() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Left Card: Payment Details & Table (col-span-2) */}
-        <div className="lg:col-span-2 bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-xs flex flex-col justify-between">
-          <div>
-            {/* Top Row: Title + Status + Project Number */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-              <div className="flex items-center gap-3">
-                <h3 className="text-base sm:text-lg font-bold text-gray-900">
-                  {activeProject.title || "Free website analysis - com"}
-                </h3>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border ${getStatusColor(mainStatus)}`}>
-                  {mainStatus === "ACTIVE" ? "SUCCEEDED" : mainStatus}
-                </span>
-              </div>
-              <span className="text-xs sm:text-sm font-semibold text-[#4343F0]">
-                Project #{projectNumber}
-              </span>
-            </div>
-
-            {/* Sub Row: Payment Date + View Receipt Link */}
-            <div className="flex items-center gap-3 text-xs text-gray-500 mb-6 font-normal">
-              <span>Payment Date: {paymentDate}</span>
-              <span className="text-gray-300">|</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedPayment(payments[0] || null);
-                  setShowReceipt(true);
-                }}
-                className="text-[#4343F0] font-medium hover:underline cursor-pointer"
-              >
-                View Receipt
-              </button>
-            </div>
-
-            {/* Table Header & Rows */}
-            <div className="border-t border-b border-gray-100 py-3 mb-4">
-              <div className="grid grid-cols-12 text-[11px] font-bold text-gray-400 uppercase tracking-wider px-2">
-                <div className="col-span-6 text-left">ITEM</div>
-                <div className="col-span-3 text-center">DURATION</div>
-                <div className="col-span-3 text-right">AMOUNT</div>
-              </div>
-            </div>
-
-            {/* Line Item Row */}
-            <div className="grid grid-cols-12 text-xs sm:text-sm font-medium text-gray-800 px-2 py-3 items-center">
-              <div className="col-span-6 font-semibold text-gray-900">
-                {activeProject.title || "Free website analysis"}
-              </div>
-              <div className="col-span-3 text-center text-gray-600 font-normal">
-                {activeProject.timelineInDays ? `${activeProject.timelineInDays} Days` : (activeProject.duration || "5 Days")}
-              </div>
-              <div className="col-span-3 text-right font-bold text-gray-900">
-                {formatCurrency(totalPrice)}
-              </div>
-            </div>
-
-            {/* Divider Line */}
-            <div className="border-t border-gray-100 my-6" />
-
-            {/* Total Paid Section */}
-            <div className="flex justify-end text-right mb-6">
-              <div>
-                <span className="text-[10px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
-                  TOTAL PAID
-                </span>
-                <span className="text-base sm:text-lg font-bold text-gray-900">
-                  {formatCurrency(totalPrice)}
-                </span>
-              </div>
-            </div>
-
-            {/* Bottom Action Buttons (Aligned to bottom-right) */}
-            <div className="flex justify-end items-center gap-3 mt-4">
-              <button
-                type="button"
-                onClick={handleDownloadProject}
-                className="inline-flex items-center gap-2 bg-[#2B30C9] hover:bg-[#2025AB] text-white text-xs sm:text-sm font-bold py-2.5 px-5 rounded-lg shadow-sm transition-all active:scale-95 cursor-pointer"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Download Project (.PDF)
-              </button>
-              <button
-                type="button"
-                onClick={handlePrintDetails}
-                className="inline-flex items-center gap-2 bg-[#2B30C9] hover:bg-[#2025AB] text-white text-xs sm:text-sm font-bold py-2.5 px-5 rounded-lg shadow-sm transition-all active:scale-95 cursor-pointer"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                </svg>
-                Print Details
-              </button>
-            </div>
-          </div>
+        {/* Left Column: Unified Payment Form (col-span-2) */}
+        <div className="lg:col-span-2">
+          <UnifiedPaymentForm
+            type="project"
+            entityId={projectId}
+            entityNumber={projectNumber}
+            title={activeProject.title || "Project Development"}
+            description={
+              allAddonItems.length > 0
+                ? "Payment for accepted add-on project deliverables"
+                : (activeProject.description || "Payment for accepted project deliverables")
+            }
+            date={activeProject.createdAt}
+            startDate={activeProject.startDate}
+            deadline={activeProject.deadline}
+            totalCost={pendingBalance}
+            deliverableItems={deliverableItems}
+            clientEmail={currentUser?.email || activeProject.clientEmail || ""}
+            successRedirectUrl={`/dashboard/my-projects/${projectId}/payments?success=true`}
+            amountPaid={amountPaid}
+            isFullyPaid={isFullyPaid}
+            nativeCurrency={activeProject.currency || "USD"}
+          />
         </div>
 
-        {/* Right Card: Need To Contact Customer Support? (col-span-1) */}
-        <div className="lg:col-span-1 bg-white border border-gray-200 rounded-2xl p-8 sm:p-10 shadow-sm flex flex-col items-center justify-center text-center self-start h-auto min-h-[260px]">
+        {/* Right Column: Need To Contact Customer Support? (col-span-1) */}
+        <div className="lg:col-span-1 bg-white border border-gray-200 rounded-2xl p-8 sm:p-10 shadow-xs flex flex-col items-center justify-center text-center self-start">
           <h4 className="font-bold text-gray-900 text-lg sm:text-xl mb-1.5">
             Need To Contact Customer Support?
           </h4>
@@ -391,10 +375,32 @@ export default function ProjectPaymentsPage() {
       </div>
 
       {/* Transaction Records Breakdown (if available) */}
-      {!isLoading && payments.length > 1 && (
+      {!isLoading && payments.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-          <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+          <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h3 className="text-base font-bold text-gray-800">All Transaction Records</h3>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleDownloadProject}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#2B30C9] hover:bg-[#2025AB] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-2xs"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download Project (.PDF)
+              </button>
+              <button
+                type="button"
+                onClick={handlePrintDetails}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#2B30C9] hover:bg-[#2025AB] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-2xs"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Print Details
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left">
@@ -435,7 +441,7 @@ export default function ProjectPaymentsPage() {
                           setSelectedPayment(payment);
                           setShowReceipt(true);
                         }}
-                        className="text-[#4343F0] font-semibold hover:underline"
+                        className="text-[#4343F0] font-semibold hover:underline cursor-pointer"
                       >
                         Receipt
                       </button>

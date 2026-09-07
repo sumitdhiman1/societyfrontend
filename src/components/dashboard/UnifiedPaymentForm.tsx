@@ -12,7 +12,7 @@ import {
 } from "@stripe/react-stripe-js";
 import { paymentService } from "@/lib/paymentService";
 import { authService } from "@/lib/authService";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCurrency } from "@/context/CurrencyContext";
 import VisaIcon from "@/components/icons/visa";
 import MastercardIcon from "@/components/icons/mastercard";
@@ -94,10 +94,22 @@ function PaymentForm({
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
+  const searchParams = useSearchParams();
   
+  const queryAmount = searchParams?.get("amount");
+  const hasQueryAmount = !!(queryAmount && !isNaN(Number(queryAmount)) && Number(queryAmount) > 0);
   const hasAlreadyPaid = amountPaid > 0;
-  const [paymentOption, setPaymentOption] = useState<string>(hasAlreadyPaid ? "custom" : "full");
-  const [customAmount, setCustomAmount] = useState<string>(hasAlreadyPaid ? totalCost.toFixed(2) : "");
+  
+  const [paymentOption, setPaymentOption] = useState<string>(
+    hasQueryAmount || hasAlreadyPaid ? "custom" : "full"
+  );
+  const [customAmount, setCustomAmount] = useState<string>(
+    hasQueryAmount
+      ? Number(queryAmount).toFixed(2)
+      : hasAlreadyPaid
+      ? totalCost.toFixed(2)
+      : ""
+  );
   const [cardholderName, setCardholderName] = useState("");
   const { currency, setCurrency, conversionRate } = useCurrency();
   const [billingSameAsBusiness, setBillingSameAsBusiness] = useState(true);
@@ -196,6 +208,17 @@ function PaymentForm({
     fetchCountries();
   }, []);
 
+  useEffect(() => {
+    const paramAmount = searchParams?.get("amount");
+    if (paramAmount && !isNaN(Number(paramAmount)) && Number(paramAmount) > 0) {
+      setPaymentOption("custom");
+      setCustomAmount(Number(paramAmount).toFixed(2));
+    } else if (amountPaid > 0 && totalCost > 0) {
+      setPaymentOption("custom");
+      setCustomAmount(totalCost.toFixed(2));
+    }
+  }, [searchParams, amountPaid, totalCost]);
+
   const [popup, setPopup] = useState({
     isOpen: false,
     type: "success" as "success" | "error",
@@ -263,7 +286,7 @@ function PaymentForm({
       if (!customAmount || parseFloat(customAmount) <= 0) {
         errors.amount = "Please enter a valid amount.";
       } else if (parseFloat(customAmount) > totalCost) {
-        errors.amount = `Amount cannot exceed pending balance ($${totalCost.toFixed(2)}).`;
+        errors.amount = `Amount cannot exceed pending balance (${formatPrice(totalCost)}).`;
       }
     }
 
@@ -288,19 +311,21 @@ function PaymentForm({
 
     setIsProcessing(true);
     try {
+      const effectiveInvoiceId = invoiceId || searchParams?.get("invoiceId") || undefined;
       const intentResponse = await paymentService.createPaymentIntent({
         amount: finalAmount,
         currency,
         useCredits,
         paymentMethodId: selectedMethod !== "new" ? selectedMethod : undefined,
         saveCard: selectedMethod === "new" && saveCard,
-        invoiceId,
+        invoiceId: effectiveInvoiceId,
         metadata: {
           ...extraMetadata,
           type,
           [`${type.toLowerCase()}Id`]: entityId,
           [`${type.toLowerCase()}Number`]: entityNumber,
           billingComponentId,
+          invoiceId: effectiveInvoiceId,
         },
       });
 
@@ -393,10 +418,13 @@ function PaymentForm({
     }
   };
 
-  const regularItems = deliverableItems.filter((item) => !item.isAddOn);
-  const addonItems = deliverableItems.filter((item) => item.isAddOn);
-  const subtotalRegular = regularItems.reduce((acc, item) => acc + (item.amount || 0), 0);
-  const subtotalAddons = addonItems.reduce((acc, item) => acc + (item.amount || 0), 0);
+  const regularItems = (deliverableItems || []).filter((item) => !item.isAddOn);
+  const addonItems = (deliverableItems || []).filter((item) => item.isAddOn);
+  const subtotalRegular = regularItems.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+  const subtotalAddons = addonItems.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+  const deliverablesSum = subtotalRegular + subtotalAddons;
+  const projectSubtotal = deliverablesSum > 0 ? deliverablesSum : (totalCost + amountPaid);
+  const pendingAmount = deliverablesSum > 0 ? Math.max(0, deliverablesSum - amountPaid) : totalCost;
 
   return (
     <div className="bg-white border border-gray-300 rounded-lg p-4 sm:p-6 md:p-8">
@@ -476,19 +504,19 @@ function PaymentForm({
               <span className="text-xs sm:text-sm text-gray-600 uppercase sm:capitalize font-bold sm:font-normal">
                 Subtotal:
               </span>
-              <span className="text-sm font-bold text-gray-700">{formatPrice(totalCost + amountPaid)}</span>
+              <span className="text-sm font-bold text-gray-700">{formatPrice(projectSubtotal)}</span>
             </div>
             {getActiveVatRate() > 0 && (
               <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8">
                 <span className="text-xs sm:text-sm text-gray-600 font-bold sm:font-semibold">VAT ({getActiveVatRate()}%):</span>
-                <span className="text-sm text-gray-600 font-bold sm:font-semibold">{formatPrice(getVatAmount(totalCost + amountPaid))}</span>
+                <span className="text-sm text-gray-600 font-bold sm:font-semibold">{formatPrice(getVatAmount(projectSubtotal))}</span>
               </div>
             )}
             <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8 border-t border-gray-100 pt-2">
               <span className="text-xs sm:text-sm text-gray-800 uppercase sm:capitalize font-bold">
                 Total Cost:
               </span>
-              <span className="text-lg sm:text-xl font-bold text-gray-800">{formatPrice((totalCost + amountPaid) + getVatAmount(totalCost + amountPaid))}</span>
+              <span className="text-lg sm:text-xl font-bold text-gray-800">{formatPrice(projectSubtotal + getVatAmount(projectSubtotal))}</span>
             </div>
             <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8">
               <span className="text-xs sm:text-sm text-green-600 font-bold sm:font-semibold">Paid:</span>
@@ -496,7 +524,7 @@ function PaymentForm({
             </div>
             <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8">
               <span className="text-xs sm:text-sm text-red-600 font-bold sm:font-semibold">Pending Balance:</span>
-              <span className="text-sm text-red-600 font-bold sm:font-semibold">{formatPrice(totalCost + getVatAmount(totalCost))}</span>
+              <span className="text-sm text-red-600 font-bold sm:font-semibold">{formatPrice(pendingAmount + getVatAmount(pendingAmount))}</span>
             </div>
           </div>
         </div>
@@ -645,7 +673,7 @@ function PaymentForm({
                   onChange={() => setPaymentOption("half")}
                 />
                 <span className="text-gray-600 text-sm">
-                  Deposit half: <span className="font-medium">${depositAmount.toFixed(2)}</span>
+                  Deposit half: <span className="font-medium">{formatPrice(depositAmount)}</span>
                 </span>
               </label>
             )}
@@ -666,7 +694,7 @@ function PaymentForm({
                 onChange={() => setPaymentOption("full")}
               />
               <span className="text-gray-600 text-sm">
-                Pay the full amount: <span className="font-medium">${totalCost.toFixed(2)}</span>
+                Pay the full amount: <span className="font-medium">{formatPrice(totalCost)}</span>
               </span>
             </label>
 
@@ -740,7 +768,7 @@ function PaymentForm({
                       <p className="text-xs text-gray-500">
                         {availableCredits > 0 ? (
                           <span className="flex items-center gap-1">
-                            Apply your balance of <span className="font-bold text-gray-800">${availableCredits.toFixed(2)}</span> to
+                            Apply your balance of <span className="font-bold text-gray-800">{formatPrice(availableCredits)}</span> to
                             this payment.
                           </span>
                         ) : (
@@ -1082,10 +1110,7 @@ function PaymentForm({
                 Processing...
               </div>
             ) : (
-              `Pay $${(getPayableAmount() - (useCredits ? Math.min(availableCredits, getPayableAmount()) : 0)).toLocaleString(
-                "en-US",
-                { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-              )} now`
+              `Pay ${formatPrice(getPayableAmount() - (useCredits ? Math.min(availableCredits, getPayableAmount()) : 0))} now`
             )}
           </button>
         </div>
@@ -1095,9 +1120,9 @@ function PaymentForm({
         isOpen={showInvoiceModal}
         onClose={() => setShowInvoiceModal(false)}
         projectNumber={entityNumber}
-        totalCost={totalCost + amountPaid}
+        totalCost={projectSubtotal}
         deliverableItems={deliverableItems}
-        vatAmount={getVatAmount(totalCost + amountPaid)}
+        vatAmount={getVatAmount(projectSubtotal)}
         vatRate={getActiveVatRate() / 100}
       />
     </div>

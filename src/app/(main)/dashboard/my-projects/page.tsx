@@ -35,27 +35,23 @@ export default function MyProjectsPage() {
     return () => clearInterval(interval);
   }, [router]);
 
-  const fetchProjectsData = async (page = currentPage) => {
-    // Show loading state if it's the first fetch
-    if (projects.length === 0) setLoading(true);
+  const fetchProjectsData = React.useCallback(async (page: number = 1, status: string = "all") => {
     setIsTransitioning(true);
 
     try {
-      // Fetch projects for the current tab and page
-      // The getAllProjects endpoint already includes dashboard summary counts in the response
-      const projectsRes = await projectService.getAllProjects(10, page, activeTab);
+      const projectsRes = await projectService.getAllProjects(10, page, status);
 
-      if (projectsRes?.isSuccessful) {
+      if (projectsRes?.isSuccessful || projectsRes?.statusCode === 200 || projectsRes?.data) {
         const pList = Array.isArray(projectsRes.data) ? projectsRes.data : [];
         setProjects(pList);
 
         // Update pagination from response
-        if (projectsRes.pagination) {
-          setPagination({
-            total: projectsRes.pagination.total,
-            totalPages: projectsRes.pagination.totalPages,
-            limit: projectsRes.pagination.limit
-          });
+        const pag = projectsRes.pagination;
+        if (pag) {
+          const total = Number(pag.total ?? 0);
+          const limit = Number(pag.limit ?? 10) || 10;
+          const totalPages = Number(pag.totalPages) || Math.max(1, Math.ceil(total / limit) || 1);
+          setPagination({ total, totalPages, limit });
         }
 
         // Update counts from summary if available
@@ -65,22 +61,28 @@ export default function MyProjectsPage() {
       }
     } catch (error) {
       console.error("Failed to fetch projects data:", error);
+      setProjects([]);
     } finally {
       setLoading(false);
       setIsTransitioning(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    setCurrentPage(1);
-    fetchProjectsData(1);
-  }, [activeTab]);
-
-  useEffect(() => {
-    if (currentPage > 1) {
-      fetchProjectsData(currentPage);
+    if (authService.isAuthenticated()) {
+      fetchProjectsData(currentPage, activeTab);
     }
-  }, [currentPage]);
+  }, [currentPage, activeTab, fetchProjectsData]);
+
+  const formatDate = (date: any) => {
+    if (!date) return "";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "";
+    const month = d.toLocaleString("en-US", { month: "short" });
+    const day = d.getDate();
+    const time = d.toLocaleString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    return `Submitted on ${month} ${day}, ${time}`;
+  };
 
   const stats = {
     all: counts ? (counts.active || 0) + (counts.paused || 0) + (counts.completed || 0) + (counts.canceled || 0) : 0,
@@ -119,8 +121,11 @@ export default function MyProjectsPage() {
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`pb-3 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 ${activeTab === tab.id
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setCurrentPage(1);
+                  }}
+                  className={`pb-3 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 cursor-pointer ${activeTab === tab.id
                       ? "text-primary-300 border-b-2 border-primary-300"
                       : "text-gray-500 hover:text-gray-700"
                     }`}
@@ -181,14 +186,15 @@ export default function MyProjectsPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
                     <div className="flex flex-wrap items-center gap-4">
                       <span className="text-sm text-gray-500 font-medium">
-                        Submitted - {new Date(project.createdAt).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" })}
+                        {formatDate(project.createdAt)}
                       </span>
                       <span className={`px-4 py-1 rounded-[4px] text-xs font-bold uppercase border ${(() => {
-                          const status = project.status.toLowerCase();
-                          if (status === "active" || status === "paused") return "bg-[#E1FCEF] text-[#14804A] border-[#E1FCEF]";
-                          if (status === "completed") return "bg-blue-100 text-blue-800 border-blue-200";
-                          if (status === "canceled" || status === "cancelled") return "bg-red-100 text-red-800 border-red-200";
-                          return "bg-gray-100 text-gray-800 border-gray-200";
+                          const status = (project.status || "").toLowerCase();
+                          if (status === "active" || status === "in_progress") return "bg-[#E1FCEF] text-[#14804A] border-[#E1FCEF]";
+                          if (status === "paused") return "bg-[#FEF3C7] text-[#D97706] border-[#FEF3C7]";
+                          if (status === "completed") return "bg-[#EBF5FF] text-[#2563EB] border-[#EBF5FF]";
+                          if (status === "canceled" || status === "cancelled") return "bg-[#FEE2E2] text-[#B91C1C] border-[#FEE2E2]";
+                          return "bg-gray-100 text-gray-700 border-gray-200";
                         })()
                         }`}>
                         {project.status}
@@ -196,7 +202,7 @@ export default function MyProjectsPage() {
                     </div>
                     <button
                       onClick={() => router.push(`/dashboard/my-projects/${projectId}`)}
-                      className="bg-[#5356ff] hover:bg-[#3333D0] text-white text-sm font-bold py-2.5 px-6 rounded-[4px] transition-colors whitespace-nowrap"
+                      className="bg-[#5356ff] hover:bg-[#3333D0] text-white text-sm font-bold py-2.5 px-6 rounded-[4px] transition-colors whitespace-nowrap cursor-pointer"
                     >
                       View details
                     </button>
@@ -207,15 +213,31 @@ export default function MyProjectsPage() {
           })
           )}
 
+          {/* New Project Banner */}
+          <div className="border border-dashed border-[#717171] rounded-[8px] p-8 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 mt-8">
+            <h3
+              className="text-[22px] font-bold text-gray-900 font-sans"
+              style={{ fontFamily: "var(--font-inter), sans-serif" }}
+            >
+              New Project
+            </h3>
+            <button
+              onClick={() => router.push("/dashboard/new-project")}
+              className="bg-[#4343F0] hover:bg-[#3232b7] text-white text-[15px] font-bold py-3.5 px-8 rounded-[7px] transition-all shadow-sm whitespace-nowrap font-sans border-2 border-[#4343F0] cursor-pointer"
+            >
+              Create a New Project
+            </button>
+          </div>
+
           {/* Pagination */}
-          {!loading && projects.length > 0 && pagination.totalPages > 1 && (
+          {!loading && pagination.totalPages > 1 && (
             <div className="flex items-center justify-center gap-2 mt-12 py-4">
               <button
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
                 className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${currentPage === 1
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95"
+                    : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
                   }`}
               >
                 Previous
@@ -226,8 +248,8 @@ export default function MyProjectsPage() {
                   <button
                     key={i + 1}
                     onClick={() => setCurrentPage(i + 1)}
-                    className={`w-10 h-10 flex items-center justify-center rounded-[4px] text-sm font-bold transition-all ${currentPage === i + 1
-                        ? "bg-primary-300 text-white shadow-lg shadow-blue-500/20"
+                    className={`w-10 h-10 flex items-center justify-center rounded-[4px] text-sm font-bold transition-all cursor-pointer ${currentPage === i + 1
+                        ? "bg-[#4343F0] text-white shadow-md shadow-blue-500/20"
                         : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
                       }`}
                   >
@@ -241,7 +263,7 @@ export default function MyProjectsPage() {
                 disabled={currentPage === pagination.totalPages}
                 className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${currentPage === pagination.totalPages
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95"
+                    : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
                   }`}
               >
                 Next

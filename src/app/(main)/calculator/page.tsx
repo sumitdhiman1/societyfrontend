@@ -578,8 +578,8 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
-  const payableTotal = getCalculatorPayableAmount(totalPrice, currency, conversionRate);
-  const halfPrice = getCalculatorHalfPayableAmount(payableTotal);
+  const payableTotal = getCalculatorPayableAmount(totalPrice, currency, conversionRate, categoryKey);
+  const halfPrice = getCalculatorHalfPayableAmount(payableTotal, categoryKey);
 
   const [paymentOption, setPaymentOption] = useState("full");
   const [customAmount, setCustomAmount] = useState("");
@@ -702,8 +702,8 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
     new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: currencyLabel,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(amt);
 
   const getPayableAmount = () => totalPayable;
@@ -711,6 +711,12 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     if (!stripe || !elements) return;
+
+    // Redirect guests to login before allowing payment
+    if (!authService.isAuthenticated()) {
+      router.push("/login?redirect=/calculator");
+      return;
+    }
 
     if (requiresVerification) {
       setStatus({
@@ -781,16 +787,24 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
       const quoteId = quote._id || quote.id;
       const quoteNum = quote.quoteNumber || "Q-PENDING";
 
+      // Always pass the USD base price so the backend can normalize regardless of which
+      // currency the user chose to pay in.
+      const usdBaseAmount = totalPrice; // totalPrice is always the raw USD amount from the calculator
+
       const intentRes = await paymentService.createPaymentIntent({
-        amount,
-        currency,
+        amount,          // actual charge amount in chosen currency (may be EUR-converted)
+        currency,        // "usd" or "eur"
         useCredits: false,
         metadata: {
           type: "QUOTE",
           quoteId,
           quoteNumber: quoteNum,
-          fullAmount: totalPrice,
-          calculatedPrice: totalPrice,
+          // fullAmount is the USD base price so backend always compares like-for-like
+          fullAmount: usdBaseAmount,
+          calculatedPrice: usdBaseAmount,
+          // store conversion rate so backend can normalise EUR payments back to USD
+          conversionRate: String(conversionRate),
+          paymentCurrency: currency,
         },
       });
 
@@ -827,11 +841,16 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
         const confirmResult = await paymentService.confirmPayment({ transactionId });
         if (confirmResult.isSuccessful) {
           setStatus({ isOpen: true, type: "success", title: "Payment Successful", message: "Your project has been started successfully!" });
-          setTimeout(() => router.push(`/dashboard/my-quotes/${quoteId}`), 2000);
+          // Redirect to project page if created, otherwise fall back to quote page
+          const projectId = confirmResult.data?.project?._id || confirmResult.data?.project?.id;
+          setTimeout(() => router.push(
+            projectId ? `/dashboard/my-projects/${projectId}` : `/dashboard/my-quotes/${quoteId}`
+          ), 2000);
         } else {
           throw new Error("Payment succeeded but server confirmation failed. Please contact support.");
         }
       }
+
     } catch (err: any) {
       console.error("Payment Error:", err);
       setStatus({ isOpen: true, type: "error", title: "Payment Failed", message: err.message || "An unexpected error occurred." });
