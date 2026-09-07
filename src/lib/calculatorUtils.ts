@@ -362,7 +362,8 @@ export function formatCalculatorPrice(
 export function formatCalculatorDisplayAmount(
   amountInCurrency: number,
   currency: string,
-  categoryKey?: string
+  categoryKey?: string,
+  fractionDigits = 2
 ): string {
   const normalizedCurrency = currency.toUpperCase();
   // Always round to nearest 5 for display (both USD and EUR)
@@ -370,8 +371,8 @@ export function formatCalculatorDisplayAmount(
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: normalizedCurrency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
   }).format(rounded);
 }
 
