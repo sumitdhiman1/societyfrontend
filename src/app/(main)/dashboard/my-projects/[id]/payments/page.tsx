@@ -7,6 +7,7 @@ import { paymentService } from "@/lib/paymentService";
 import { authService } from "@/lib/authService";
 import { downloadFile } from "@/lib/utils";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
+import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 
 function ReceiptModal({ isOpen, onClose, project, payment }: { isOpen: boolean; onClose: () => void; project: any; payment?: any }) {
@@ -180,9 +181,20 @@ export default function ProjectPaymentsPage() {
   const { project, isLoading: projectLoading, refreshProject } = useProject();
   const [payments, setPayments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showReceipt, setShowReceipt] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null);
   const hasRefreshedRef = useRef(false);
+
+  const handleDownloadReceipt = async (payment: any) => {
+    const pId = payment._id || payment.id;
+    setDownloadingReceiptId(pId);
+    try {
+      await downloadReceiptPDF(activeProject, payment);
+    } catch (err) {
+      console.error("Failed to download receipt PDF:", err);
+    } finally {
+      setDownloadingReceiptId(null);
+    }
+  };
 
   const fetchPayments = useCallback(async () => {
     setIsLoading(true);
@@ -323,13 +335,6 @@ export default function ProjectPaymentsPage() {
 
   return (
     <div className="w-full font-sans space-y-8">
-      <ReceiptModal
-        isOpen={showReceipt}
-        onClose={() => setShowReceipt(false)}
-        project={activeProject}
-        payment={selectedPayment}
-      />
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Left Column: Unified Payment Form (col-span-2) */}
         <div className="lg:col-span-2">
@@ -424,7 +429,12 @@ export default function ProjectPaymentsPage() {
                       {payment.description || "Project Payment"}
                     </td>
                     <td className="px-6 py-4 font-bold text-gray-900">
-                      ${(payment.amount ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {new Intl.NumberFormat("en-US", {
+                        style: "currency",
+                        currency: (payment.currency || activeProject.currency || "USD").toUpperCase(),
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }).format(payment.amount ?? 0)}
                     </td>
                     <td className="px-6 py-4 text-gray-500">
                       {new Date(payment.createdAt).toLocaleDateString()}
@@ -437,13 +447,24 @@ export default function ProjectPaymentsPage() {
                     <td className="px-6 py-4 text-right">
                       <button
                         type="button"
-                        onClick={() => {
-                          setSelectedPayment(payment);
-                          setShowReceipt(true);
-                        }}
-                        className="text-[#4343F0] font-semibold hover:underline cursor-pointer"
+                        onClick={() => handleDownloadReceipt(payment)}
+                        disabled={downloadingReceiptId === (payment._id || payment.id)}
+                        className="inline-flex items-center gap-1.5 text-[#4343F0] hover:text-[#2025AB] font-semibold hover:underline cursor-pointer disabled:opacity-50"
+                        title="Download PDF Receipt"
                       >
-                        Receipt
+                        {downloadingReceiptId === (payment._id || payment.id) ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-[#4343F0] border-t-transparent rounded-full animate-spin" />
+                            <span>Downloading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span>Receipt</span>
+                          </>
+                        )}
                       </button>
                     </td>
                   </tr>

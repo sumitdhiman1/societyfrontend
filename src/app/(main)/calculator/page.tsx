@@ -1380,8 +1380,7 @@ export default function CalculatorPage() {
                     selectedCategoryKey ?? undefined
                   ),
                   currency,
-                  selectedCategoryKey ?? undefined,
-                  0
+                  selectedCategoryKey ?? undefined
                 )}
               </span>
             </div>

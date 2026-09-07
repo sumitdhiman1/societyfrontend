@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAnalysis } from "@/context/AnalysisContext";
 import { downloadFile } from "@/lib/utils";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
+import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 
 function ReceiptModal({ isOpen, onClose, analysis }: { isOpen: boolean; onClose: () => void; analysis: any }) {
   if (!isOpen || !analysis) return null;
@@ -173,7 +174,24 @@ function ReceiptModal({ isOpen, onClose, analysis }: { isOpen: boolean; onClose:
 export default function AnalysisPaymentsPage() {
   const { analysis } = useAnalysis();
   const router = useRouter();
-  const [showReceipt, setShowReceipt] = useState(false);
+  const [downloadingReceipt, setDownloadingReceipt] = useState(false);
+
+  const handleDownloadReceipt = async () => {
+    setDownloadingReceipt(true);
+    try {
+      await downloadReceiptPDF(analysis, {
+        amount: totalPrice,
+        currency,
+        createdAt: analysis.createdAt,
+        status: "SUCCEEDED",
+        description: analysis.title || "Free website analysis",
+      });
+    } catch (err) {
+      console.error("Failed to download receipt:", err);
+    } finally {
+      setDownloadingReceipt(false);
+    }
+  };
 
   if (!analysis) return null;
 
@@ -216,8 +234,6 @@ export default function AnalysisPaymentsPage() {
 
   return (
     <div className="w-full font-sans">
-      <ReceiptModal isOpen={showReceipt} onClose={() => setShowReceipt(false)} analysis={analysis} />
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Left Card: Payment Details & Table (col-span-2) */}
         <div className="lg:col-span-2 bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-xs flex flex-col justify-between">
@@ -237,16 +253,29 @@ export default function AnalysisPaymentsPage() {
               </span>
             </div>
 
-            {/* Sub Row: Payment Date + View Receipt Link */}
+            {/* Sub Row: Payment Date + Download Receipt Button */}
             <div className="flex items-center gap-3 text-xs text-gray-500 mb-6 font-normal">
               <span>Payment Date: {paymentDate}</span>
               <span className="text-gray-300">|</span>
               <button
                 type="button"
-                onClick={() => setShowReceipt(true)}
-                className="text-[#4343F0] font-medium hover:underline cursor-pointer"
+                onClick={handleDownloadReceipt}
+                disabled={downloadingReceipt}
+                className="inline-flex items-center gap-1 text-[#4343F0] font-medium hover:underline cursor-pointer disabled:opacity-50"
               >
-                View Receipt
+                {downloadingReceipt ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-[#4343F0] border-t-transparent rounded-full animate-spin" />
+                    <span>Downloading Receipt...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span>Download Receipt (.PDF)</span>
+                  </>
+                )}
               </button>
             </div>
 
