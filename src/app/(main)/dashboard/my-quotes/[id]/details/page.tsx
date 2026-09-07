@@ -556,6 +556,19 @@ export default function QuoteDetailsPage() {
       }
 
       try {
+        const allRes = await projectService.getAllProjects(100, 1);
+        const projectsList = allRes?.data?.projects || allRes?.data?.data || allRes?.data || [];
+        const matched = Array.isArray(projectsList)
+          ? projectsList.find((p: any) => toIdString(p.quoteId) === quoteId || toIdString(p.quote) === quoteId)
+          : null;
+        if (matched?._id || matched?.id) {
+          return toIdString(matched._id || matched.id);
+        }
+      } catch (e) {
+        console.error("Failed to resolve project by quote id from projects list:", e);
+      }
+
+      try {
         const projectRes = await projectService.getProjectById(quoteId);
         projectId = projectIdFromResponse(projectRes, quoteId);
         if (projectId) return projectId;
@@ -862,14 +875,12 @@ export default function QuoteDetailsPage() {
               if (msg.type === "system_notification" || msg.isSystemMessage) {
                 const title = msg.content?.systemText || msg.systemText || msg.message || "System Notification";
                 const text = msg.content?.text || msg.text || "";
-                // If a quote_proposal card is already displaying the Project Created or Offer header, skip system notification
-                const hasAcceptedProposal = allMessages.some((m: any) => m.type === "quote_proposal" && (m.content?.status === "accepted" || quote.status?.toLowerCase() === "approved"));
+
                 if (
                   title.toLowerCase().includes("offer") ||
                   title.toLowerCase().includes("proposal") ||
                   text.toLowerCase().includes("sent you a new offer") ||
-                  text.toLowerCase().includes("prepared a custom proposal") ||
-                  (hasAcceptedProposal && (title.toLowerCase().includes("project created") || text.toLowerCase().includes("active project")))
+                  text.toLowerCase().includes("prepared a custom proposal")
                 ) {
                   return null;
                 }

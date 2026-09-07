@@ -365,6 +365,7 @@ export default function ProjectPaymentsPage() {
             amountPaid={amountPaid}
             isFullyPaid={isFullyPaid}
             nativeCurrency={activeProject.currency || "USD"}
+            vatRate={Number(activeProject.vatRate ?? activeProject.vatPercentage ?? (activeProject.taxPercentage != null ? activeProject.taxPercentage : 0))}
           />
         </div>
 
