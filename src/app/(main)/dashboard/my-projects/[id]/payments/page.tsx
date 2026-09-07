@@ -8,6 +8,7 @@ import { authService } from "@/lib/authService";
 import { downloadFile } from "@/lib/utils";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
+import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "@/lib/generateCalculatorProjectPDF";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 
 function ReceiptModal({ isOpen, onClose, project, payment }: { isOpen: boolean; onClose: () => void; project: any; payment?: any }) {
@@ -304,7 +305,9 @@ export default function ProjectPaymentsPage() {
 
   const handleDownloadProject = async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (activeProject.resultsPdfUrl || activeProject.pdfUrl) {
+    if (activeProject.calculatorSpecs) {
+      await downloadCalculatorProjectPDF(activeProject);
+    } else if (activeProject.resultsPdfUrl || activeProject.pdfUrl) {
       downloadFile(e as any, activeProject.resultsPdfUrl || activeProject.pdfUrl, "Project_Document.pdf");
     } else {
       await downloadProjectDetailsPDF(activeProject);
@@ -313,7 +316,11 @@ export default function ProjectPaymentsPage() {
 
   const handlePrintDetails = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
-    printProjectDetails(activeProject);
+    if (activeProject.calculatorSpecs) {
+      printCalculatorProjectPDF(activeProject);
+    } else {
+      printProjectDetails(activeProject);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -388,7 +395,7 @@ export default function ProjectPaymentsPage() {
               <button
                 type="button"
                 onClick={handleDownloadProject}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#2B30C9] hover:bg-[#2025AB] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-2xs"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -398,7 +405,7 @@ export default function ProjectPaymentsPage() {
               <button
                 type="button"
                 onClick={handlePrintDetails}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#2B30C9] hover:bg-[#2025AB] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-2xs"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />

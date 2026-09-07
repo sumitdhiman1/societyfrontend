@@ -3,6 +3,11 @@
  */
 
 import { getCalculatorDisplayAmount } from "./calculatorUtils";
+import {
+  downloadCalculatorProjectPDF,
+  getCalculatorProjectHTML,
+  extractCalculatorPDFData,
+} from "./generateCalculatorProjectPDF";
 
 export interface PdfProposalData {
   categoryName: string;
@@ -13,24 +18,21 @@ export interface PdfProposalData {
   currency?: string;
   conversionRate?: number;
   categoryKey?: string;
+  [key: string]: any;
 }
 
 export async function downloadCalculatorPdf(data: PdfProposalData): Promise<void> {
-  const html = generateCalculatorHtml(data);
-  const blob = new Blob([html], { type: "text/html;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `proposal-${data.categoryName.toLowerCase().replace(/\s+/g, "-")}.html`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  return downloadCalculatorProjectPDF(data);
 }
 
 export async function getCalculatorPdfBase64(data: PdfProposalData): Promise<string> {
-  const html = generateCalculatorHtml(data);
-  return btoa(unescape(encodeURIComponent(html)));
+  try {
+    const html = getCalculatorProjectHTML(extractCalculatorPDFData(data));
+    return btoa(unescape(encodeURIComponent(html)));
+  } catch {
+    const html = generateCalculatorHtml(data);
+    return btoa(unescape(encodeURIComponent(html)));
+  }
 }
 
 function generateCalculatorHtml(data: PdfProposalData): string {

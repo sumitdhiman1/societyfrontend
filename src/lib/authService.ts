@@ -80,6 +80,7 @@ export class AuthService {
 
   async logout() {
     const token = this.getAccessToken();
+    const refreshToken = this.getRefreshToken();
 
     // Clear cookies immediately so subsequent navigations don't see stale cookies
     document.cookie = "access_token=; path=/; max-age=0; SameSite=Strict";
@@ -96,9 +97,10 @@ export class AuthService {
           method: "POST",
           headers: {
             "Authorization": "Bearer " + token,
-            "Content-Type": "application/json"
-          }
-        }).catch(e => console.error("Logout API call failed:", e));
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ refreshToken }),
+        }).catch((e) => console.error("Logout API call failed:", e));
       } catch (error) {
         console.error("Logout API call failed:", error);
       }
