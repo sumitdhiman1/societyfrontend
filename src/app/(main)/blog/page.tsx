@@ -73,15 +73,19 @@ export default function BlogPage() {
   return (
     <div className="bg-white min-h-screen flex flex-col font-sans text-gray-600">
       {/* Hero Section */}
-      <div className="bg-primary-100 border-[3px] border-gray-600">
-        <div className="container mx-auto px-4 md:px-8 lg:px-[54px] py-16 max-w-[1536px]">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white uppercase tracking-tight">
-            Blog
+      <div className="bg-[#041235] text-white pt-28 pb-0 shadow-sm">
+        <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] flex flex-col items-center">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-24 text-center text-white">
+            Our Blog
           </h1>
+          <div className="flex justify-center items-center gap-12 relative">
+            <button className="text-base sm:text-lg pb-3 transition-all font-medium border-b-2 rounded-none text-white border-[#5b63d3]">User Guides</button>
+            <button className="text-base sm:text-lg pb-3 transition-all font-medium border-b-2 rounded-none text-gray-400 hover:text-gray-200 border-transparent">Blog</button>
+          </div>
         </div>
       </div>
 
-      <main className="flex-grow w-full max-w-[1600px] mx-auto px-4 md:px-8 lg:px-[54px] py-16">
+      <main className="bg-[#041235] flex-grow w-full maxgrid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16-w-[1600px] mx-auto px-4 md:px-8 lg:px-[54px] py-16">
         {isLoading ? (
           <div className="flex justify-center items-center py-24">
             <div className="text-center">
@@ -115,15 +119,15 @@ export default function BlogPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 xl:gap-10">
               {blogs.map((blog) => (
                 <Link
                   key={blog._id}
                   href={`/blog/${blog.slug}`}
-                  className="group block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300"
+                  className="bg-white rounded-xl shadow-xl overflow-hidden flex flex-col h-full transition-transform hover:-translate-y-1 duration-300"
                 >
                   {/* Thumbnail */}
-                  <div className="relative h-48 bg-gray-100 overflow-hidden">
+                  <div className="relative h-[240px] w-full bg-gray-100">
                     {blog.thumbnail || blog.coverImage ? (
                       <img
                         src={blog.thumbnail || blog.coverImage}
@@ -137,28 +141,35 @@ export default function BlogPage() {
                         </svg>
                       </div>
                     )}
-                    {blog.category && (
-                      <span className="absolute top-3 left-3 bg-[#5356ff] text-white text-xs font-bold px-2 py-1 rounded uppercase tracking-wide">
+                    {/* {blog.category && (
+                      <span className="absolute top-[10px] left-[10px] bg-[#042060] text-white text-[13px] font-semibold px-6 py-1.5 rounded-[4px] shadow-md z-10 whitespace-nowrap">
                         {blog.category}
                       </span>
-                    )}
+                    )} */}
+                    <span className="absolute -bottom-[18px] left-1/2 transform -translate-x-1/2 bg-[#042060] text-white text-[13px] font-semibold px-6 py-1.5 rounded-[4px] shadow-md z-10 whitespace-nowrap">
+                      {formatDate(blog.publishedAt || blog.createdAt)}
+                    </span>
+
                   </div>
 
                   {/* Content */}
-                  <div className="p-6">
-                    <h2 className="font-bold text-gray-800 text-base mb-2 line-clamp-2 group-hover:text-[#5356ff] transition-colors leading-snug">
+                  <div className="pt-10 pb-8 px-6 sm:px-8 flex flex-col items-center text-center flex-grow">
+                    <h2 className="text-xl sm:text-2xl font-bold text-[#042060] leading-snug text-center hover:text-[#5b63d3] transition-colors">
                       {blog.title}
                     </h2>
+                    <span className="text-[#a1a1aa] text-[13px] font-normal mb-4 text-center block">Society Web Solutions</span>
                     {blog.excerpt && (
-                      <p className="text-gray-500 text-sm leading-relaxed line-clamp-3 mb-4">
-                        {blog.excerpt}
-                      </p>
+                      <div className="mb-6 flex-grow flex">
+                        <p className="text-[#4a5568] text-[14px] leading-relaxed text-center line-clamp-3 px-1 font-normal min-h-[63px] flex">
+                          {blog.excerpt}
+                        </p>
+                      </div>
                     )}
-                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
-                      <span className="text-xs text-gray-400 font-medium">
+                    <div className="flex items-center justify-between mt-auto border-gray-100">
+                      {/* <span className="text-xs text-gray-400 font-medium">
                         {formatDate(blog.publishedAt || blog.createdAt)}
-                      </span>
-                      <span className="text-xs font-bold text-[#5356ff] uppercase tracking-tight group-hover:underline">
+                      </span> */}
+                      <span className="bg-[#042060] hover:bg-[#082a7a] text-white text-[13px] font-bold py-2.5 px-7 rounded-[4px] uppercase tracking-wider transition-colors shadow-sm">
                         Read more
                       </span>
                     </div>
