@@ -712,6 +712,12 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
     e.preventDefault();
     if (!stripe || !elements) return;
 
+    // Redirect guests to login before allowing payment
+    if (!authService.isAuthenticated()) {
+      router.push("/login?redirect=/calculator");
+      return;
+    }
+
     if (requiresVerification) {
       setStatus({
         isOpen: true,
@@ -827,11 +833,16 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, selections, 
         const confirmResult = await paymentService.confirmPayment({ transactionId });
         if (confirmResult.isSuccessful) {
           setStatus({ isOpen: true, type: "success", title: "Payment Successful", message: "Your project has been started successfully!" });
-          setTimeout(() => router.push(`/dashboard/my-quotes/${quoteId}`), 2000);
+          // Redirect to project page if created, otherwise fall back to quote page
+          const projectId = confirmResult.data?.project?._id || confirmResult.data?.project?.id;
+          setTimeout(() => router.push(
+            projectId ? `/dashboard/my-projects/${projectId}` : `/dashboard/my-quotes/${quoteId}`
+          ), 2000);
         } else {
           throw new Error("Payment succeeded but server confirmation failed. Please contact support.");
         }
       }
+
     } catch (err: any) {
       console.error("Payment Error:", err);
       setStatus({ isOpen: true, type: "error", title: "Payment Failed", message: err.message || "An unexpected error occurred." });
