@@ -9,6 +9,7 @@ import { useQuote } from "../layout";
 import { authService } from "@/lib/authService";
 import { paymentService } from "@/lib/paymentService";
 import { useCurrency } from "@/context/CurrencyContext";
+import { convertCurrencyAmount, formatPriceWithCurrency } from "@/lib/currencyUtils";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
 
@@ -181,8 +182,8 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
   const [cardHolderName, setCardHolderName] = useState("");
   const [saveCard, setSaveCard] = useState(true);
   
-  const { currency, setCurrency } = useCurrency();
-  const formatCurrency = (amt: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(amt);
+  const { currency, setCurrency, conversionRate } = useCurrency();
+  const formatCurrency = (amt: number) => formatPriceWithCurrency(amt, currency || "USD", "USD", conversionRate);
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [errors, setErrors] = useState<any>({});
@@ -202,10 +203,10 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
   }, []);
 
   const getAmountToPay = () => {
-    if (paymentOption === "half") return depositAmount;
-    if (paymentOption === "full") return totalCost;
-    if (paymentOption === "other" && customAmount) return Number.parseFloat(customAmount);
-    return totalCost;
+    let amt = totalCost;
+    if (paymentOption === "half") amt = depositAmount;
+    else if (paymentOption === "other" && customAmount) return Number.parseFloat(customAmount);
+    return convertCurrencyAmount(amt, currency || "USD", "USD", conversionRate);
   };
 
   const handlePayment = async () => {

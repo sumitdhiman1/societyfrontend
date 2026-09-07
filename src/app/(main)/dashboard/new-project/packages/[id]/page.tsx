@@ -12,6 +12,7 @@ import StatusPopup from "@/components/common/StatusPopup";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 import Toast from "@/components/common/Toast";
 import { countryService, Country } from "@/lib/countryService";
+import { formatPriceWithCurrency } from "@/lib/currencyUtils";
 
 const CheckIcon = () => (
   <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center mx-auto">
@@ -216,17 +217,7 @@ function PackageDetailsContent() {
   };
 
   const formatPrice = (amount: number) => {
-    const isEur = currency?.toLowerCase() === "eur";
-    let displayAmount = amount;
-    if (isEur && conversionRate) {
-      displayAmount = 10 * Math.round(amount / conversionRate / 10);
-    }
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency?.toUpperCase() || "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(displayAmount);
+    return formatPriceWithCurrency(amount, currency || "USD", "USD", conversionRate);
   };
 
   const getVatRate = () => {

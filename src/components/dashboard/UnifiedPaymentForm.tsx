@@ -20,6 +20,7 @@ import AmexIcon from "@/components/icons/amex";
 import StatusPopup from "@/components/common/StatusPopup";
 import InvoicePreviewModal from "./InvoicePreviewModal";
 import { countryService, Country } from "@/lib/countryService";
+import { convertCurrencyAmount, formatPriceWithCurrency } from "@/lib/currencyUtils";
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -128,18 +129,7 @@ function PaymentForm({
   const [countriesList, setCountriesList] = useState<Country[]>([]);
 
   const formatPrice = (amount: number) => {
-    let convertedAmount = amount;
-    if (nativeCurrency && nativeCurrency.toLowerCase() !== currency.toLowerCase()) {
-      if (nativeCurrency.toLowerCase() === "usd" && currency === "eur") {
-        convertedAmount = amount / conversionRate;
-      } else if (nativeCurrency.toLowerCase() === "eur" && currency === "usd") {
-        convertedAmount = amount * conversionRate;
-      }
-    }
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency.toUpperCase(),
-    }).format(convertedAmount);
+    return formatPriceWithCurrency(amount, currency, nativeCurrency || "USD", conversionRate);
   };
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -209,15 +199,17 @@ function PaymentForm({
   }, []);
 
   useEffect(() => {
+    const convertedPending = convertCurrencyAmount(totalCost, currency, nativeCurrency || "USD", conversionRate);
+
     const paramAmount = searchParams?.get("amount");
     if (paramAmount && !isNaN(Number(paramAmount)) && Number(paramAmount) > 0) {
       setPaymentOption("custom");
       setCustomAmount(Number(paramAmount).toFixed(2));
     } else if (amountPaid > 0 && totalCost > 0) {
       setPaymentOption("custom");
-      setCustomAmount(totalCost.toFixed(2));
+      setCustomAmount(convertedPending.toFixed(2));
     }
-  }, [searchParams, amountPaid, totalCost]);
+  }, [searchParams, amountPaid, totalCost, currency, conversionRate, nativeCurrency]);
 
   const [popup, setPopup] = useState({
     isOpen: false,
@@ -255,6 +247,10 @@ function PaymentForm({
     if (paymentOption === "half") amount = depositAmount;
     else if (paymentOption === "custom" && customAmount) amount = parseFloat(customAmount);
     
+    if (paymentOption !== "custom") {
+      amount = convertCurrencyAmount(amount, currency, nativeCurrency || "USD", conversionRate);
+    }
+    
     const vatRate = getActiveVatRate();
     if (vatRate > 0) {
       return amount * (1 + vatRate / 100);
@@ -282,10 +278,12 @@ function PaymentForm({
     const amount = getPayableAmount();
     const creditsToApply = useCredits ? Math.min(availableCredits, amount) : 0;
 
+    const convertedPending = convertCurrencyAmount(totalCost, currency, nativeCurrency || "USD", conversionRate);
+
     if (paymentOption === "custom") {
       if (!customAmount || parseFloat(customAmount) <= 0) {
         errors.amount = "Please enter a valid amount.";
-      } else if (parseFloat(customAmount) > totalCost) {
+      } else if (parseFloat(customAmount) > convertedPending) {
         errors.amount = `Amount cannot exceed pending balance (${formatPrice(totalCost)}).`;
       }
     }

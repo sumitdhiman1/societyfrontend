@@ -11,6 +11,7 @@ import { profileService } from "@/lib/profileService";
 import StatusPopup from "@/components/common/StatusPopup";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 import { countryService, Country } from "@/lib/countryService";
+import { formatPriceWithCurrency } from "@/lib/currencyUtils";
 
 
 const CheckIcon = () => (
@@ -176,16 +177,7 @@ function BundleDetailsContent() {
 
   const formatPrice = (val: any) => {
     let amount = typeof val === "number" ? val : parseFloat(String(val).replace(/[^0-9.]/g, "")) || 0;
-    const isEur = currency?.toLowerCase() === "eur";
-    if (isEur && conversionRate) {
-      amount = 10 * Math.round(amount / conversionRate / 10);
-    }
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency?.toUpperCase() || "USD",
-      minimumFractionDigits: isEur ? 0 : 2,
-      maximumFractionDigits: isEur ? 0 : 2
-    }).format(amount);
+    return formatPriceWithCurrency(amount, currency || "USD", "USD", conversionRate);
   };
 
   const getVatRate = () => {
