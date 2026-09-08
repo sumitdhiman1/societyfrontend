@@ -29,7 +29,7 @@ import {
   isGraphicsItemsQuestion,
   filterGraphicsAnswers,
   groupAnswersByHeading,
-  calculateGraphicsBaselineTimelineDays,
+  calculateGraphicsRawTimelineDays,
   shouldShowPriceBar,
   selectionsToArray,
   filterQuestionAnswers,
@@ -430,6 +430,11 @@ const ProposalPreview = ({
   const sortedQuestions = [...(category.questions || [])].sort(
     (a: any, b: any) => (a.order || 0) - (b.order || 0)
   );
+  const tier = getSelectedTier(
+    selections,
+    getTierQuestionKey(category.categoryKey || ""),
+    sortedQuestions
+  );
   const firstQuestionKey = sortedQuestions[0]?.key;
   let subtitle = "";
   const breakdown: { question: string; answers: string[] }[] = [];
@@ -460,7 +465,7 @@ const ProposalPreview = ({
               categoryKey: category.categoryKey,
               roleId: q.roleId,
               metadata: ans.metadata,
-              baselineDays: category.categoryKey === "graphics" ? calculateGraphicsBaselineTimelineDays(sortedQuestions.find((sq: any) => isGraphicsItemsQuestion(sq)), selections) : undefined,
+              baselineDays: category.categoryKey === "graphics" ? calculateGraphicsRawTimelineDays(sortedQuestions.find((sq: any) => isGraphicsItemsQuestion(sq)), selections, tier) : undefined,
             })
           );
         }
@@ -1461,8 +1466,8 @@ export default function CalculatorPage() {
     () => sortedQuestions.find((q) => isGraphicsItemsQuestion(q)),
     [sortedQuestions]
   );
-  const graphicsBaselineDays = useMemo(
-    () => calculateGraphicsBaselineTimelineDays(graphicsItemsQuestion, selections, tier),
+  const graphicsRawTimelineDays = useMemo(
+    () => calculateGraphicsRawTimelineDays(graphicsItemsQuestion, selections, tier),
     [graphicsItemsQuestion, selections, tier]
   );
   const seoServiceMode = useMemo(
@@ -1685,7 +1690,7 @@ export default function CalculatorPage() {
                       tier={tier}
                       categoryKey={selectedCategoryKey}
                       categorySelections={graphicsCategoryKeys}
-                      baselineDays={selectedCategoryKey === "graphics" ? graphicsBaselineDays : undefined}
+                      baselineDays={selectedCategoryKey === "graphics" ? graphicsRawTimelineDays : undefined}
                       seoServiceMode={seoServiceMode}
                       error={questionErrors[q.key]}
                     />

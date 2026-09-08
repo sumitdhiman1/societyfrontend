@@ -1,5 +1,6 @@
 import { authService } from "./authService";
 import { getProjectEstimatedDeadline } from "./calculatorUtils";
+import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "./generateCalculatorProjectPDF";
 
 function loadScript(src: string): Promise<void> {
   if (typeof document === "undefined") return Promise.resolve();
@@ -489,8 +490,19 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
   `;
 }
 
+function isCalculatorProject(data: any): boolean {
+  return Boolean(
+    data?.calculatorSpecs ||
+    data?.requirements?.selections ||
+    data?.categoryKey
+  );
+}
+
 export async function downloadProjectDetailsPDF(data: any): Promise<void> {
   if (typeof window === "undefined") return;
+  if (isCalculatorProject(data)) {
+    return downloadCalculatorProjectPDF(data);
+  }
 
   const d = extractProjectDetails(data);
 
@@ -571,6 +583,9 @@ export async function downloadProjectDetailsPDF(data: any): Promise<void> {
 
 export function printProjectDetails(data: any): void {
   if (typeof window === "undefined") return;
+  if (isCalculatorProject(data)) {
+    return printCalculatorProjectPDF(data);
+  }
 
   const d = extractProjectDetails(data);
   const printContent = `
