@@ -20,18 +20,24 @@ export function convertCurrencyAmount(
   const rate = conversionRate || 1.08;
 
   if (isTargetEur && !isSourceEur) {
-    // USD -> EUR: convert and round to nearest 5
-    return roundToNearest5(amount / rate);
+    // USD -> EUR: convert and round amounts >= 5 to nearest 5
+    const converted = amount / rate;
+    if (converted >= 5) {
+      return roundToNearest5(converted);
+    }
+    return Number(converted.toFixed(2));
   }
 
   if (isTargetEur && isSourceEur) {
-    // Already in EUR: round to nearest 5
-    return roundToNearest5(amount);
+    if (amount >= 5) {
+      return roundToNearest5(amount);
+    }
+    return Number(amount.toFixed(2));
   }
 
   if (!isTargetEur && isSourceEur) {
     // EUR -> USD
-    return amount * rate;
+    return Number((amount * rate).toFixed(2));
   }
 
   return amount;

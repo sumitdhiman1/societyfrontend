@@ -27,6 +27,17 @@ export default function PromoCarousel() {
     },
   ];
 
+  const bgImages = [
+    "/images/crousal1.webp",
+    "/images/crousal2.webp",
+    "/images/crousal3.webp",
+  ];
+
+  // ... rest of your existing fetch/scroll logic unchanged ...
+
+  const activeSlides = slides.length > 0 ? slides : defaultSlides;
+  const currentBg = bgImages[activeIndex] || bgImages[bgImages.length - 1];
+
   useEffect(() => {
     const fetchSlides = async () => {
       try {
@@ -81,7 +92,7 @@ export default function PromoCarousel() {
     );
   }
 
-  const activeSlides = slides.length > 0 ? slides : defaultSlides;
+
 
   return (
     <div
@@ -91,10 +102,11 @@ export default function PromoCarousel() {
     >
       <>
         <Image
-          src="/images/Brand2.webp"
+          key={currentBg}
+          src={currentBg}
           alt="Background Pattern"
           fill
-          className="object-cover absolute inset-0 z-0 opacity-10 mix-blend-overlay"
+          className="object-cover absolute inset-0 z-0  transition-opacity duration-500"
           priority
         />
         <div

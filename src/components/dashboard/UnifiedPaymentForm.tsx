@@ -68,6 +68,7 @@ interface UnifiedPaymentFormProps {
   invoiceId?: string;
   metadata?: any;
   hideHeader?: boolean;
+  vatRate?: number;
 }
 
 function PaymentForm({
@@ -92,6 +93,7 @@ function PaymentForm({
   invoiceId,
   metadata: extraMetadata,
   hideHeader = false,
+  vatRate: propVatRate,
 }: UnifiedPaymentFormProps & { hideHeader?: boolean }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -166,7 +168,6 @@ function PaymentForm({
       if (user) {
         if (user.fullName) setCardholderName(user.fullName);
         try {
-          // This is a dynamic import in the chunk, we assume profileService is available via lib
           const { profileService } = await import("@/lib/profileService");
           const profile = await profileService.getMyProfile();
           if (profile?.data) {
@@ -199,32 +200,14 @@ function PaymentForm({
     fetchCountries();
   }, []);
 
-  useEffect(() => {
-    const convertedPending = convertCurrencyAmount(totalCost, currency, nativeCurrency || "USD", conversionRate);
-
-    const paramAmount = searchParams?.get("amount");
-    if (paramAmount && !isNaN(Number(paramAmount)) && Number(paramAmount) > 0) {
-      setPaymentOption("custom");
-      setCustomAmount(Number(paramAmount).toFixed(2));
-    } else if (amountPaid > 0 && totalCost > 0) {
-      setPaymentOption("custom");
-      setCustomAmount(convertedPending.toFixed(2));
-    }
-  }, [searchParams, amountPaid, totalCost, currency, conversionRate, nativeCurrency]);
-
-  const [popup, setPopup] = useState({
-    isOpen: false,
-    type: "success" as "success" | "error",
-    title: "",
-    message: "",
-  });
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-
   const getActiveCountryCode = () => {
     return billingSameAsBusiness ? userCountry : billingAddress.country;
   };
 
   const getActiveVatRate = () => {
+    if (propVatRate !== undefined && propVatRate !== null) {
+      return Number(propVatRate);
+    }
     const activeCode = getActiveCountryCode();
     if (!activeCode) return 0;
     const directRate = countryService.getVatRateSync(activeCode);
@@ -243,6 +226,29 @@ function PaymentForm({
     return vatRate > 0 ? (baseAmount * vatRate) / 100 : 0;
   };
 
+  useEffect(() => {
+    const vatMultiplier = 1 + getActiveVatRate() / 100;
+    const effectivePending = totalCost * (getActiveVatRate() > 0 ? vatMultiplier : 1);
+    const convertedPending = convertCurrencyAmount(effectivePending, currency, nativeCurrency || "USD", conversionRate);
+
+    const paramAmount = searchParams?.get("amount");
+    if (paramAmount && !isNaN(Number(paramAmount)) && Number(paramAmount) > 0) {
+      setPaymentOption("custom");
+      setCustomAmount(Number(paramAmount).toFixed(2));
+    } else if (amountPaid > 0 && totalCost > 0) {
+      setPaymentOption("custom");
+      setCustomAmount(convertedPending.toFixed(2));
+    }
+  }, [searchParams, amountPaid, totalCost, currency, conversionRate, nativeCurrency, countriesList, userCountry, billingSameAsBusiness, billingAddress.country, propVatRate]);
+
+  const [popup, setPopup] = useState({
+    isOpen: false,
+    type: "success" as "success" | "error",
+    title: "",
+    message: "",
+  });
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+
   const getPayableAmount = () => {
     let amount = totalCost;
     if (paymentOption === "half") amount = depositAmount;
@@ -250,11 +256,11 @@ function PaymentForm({
     
     if (paymentOption !== "custom") {
       amount = convertCurrencyAmount(amount, currency, nativeCurrency || "USD", conversionRate);
-    }
-    
-    const vatRate = getActiveVatRate();
-    if (vatRate > 0) {
-      return amount * (1 + vatRate / 100);
+      const vatRate = getActiveVatRate();
+      if (vatRate > 0) {
+        return amount * (1 + vatRate / 100);
+      }
+      return amount;
     }
     
     return amount;
@@ -284,10 +290,19 @@ function PaymentForm({
     }
 
     const errors: any = {};
+    const amount = getPayableAmount();
+    const creditsToApply = useCredits ? Math.min(convertedCredits, amount) : 0;
+
+    const vatMultiplier = 1 + getActiveVatRate() / 100;
+    const effectivePending = totalCost * (getActiveVatRate() > 0 ? vatMultiplier : 1);
+    const convertedPending = convertCurrencyAmount(effectivePending, currency, nativeCurrency || "USD", conversionRate);
+
     if (paymentOption === "custom") {
-      const val = parseFloat(customAmount);
-      if (!val || val <= 0) errors.customAmount = "Please enter a valid amount";
-      else if (val > totalCost) errors.customAmount = `Amount cannot exceed ${formatPrice(totalCost)}`;
+      if (!customAmount || parseFloat(customAmount) <= 0) {
+        errors.amount = "Please enter a valid amount.";
+      } else if (parseFloat(customAmount) > convertedPending + 0.01) {
+        errors.amount = `Amount cannot exceed pending balance (${formatPrice(effectivePending)}).`;
+      }
     }
 
     if (selectedMethod === "new" && finalPayable > 0) {
@@ -707,7 +722,7 @@ function PaymentForm({
                 onChange={() => setPaymentOption("full")}
               />
               <span className="text-gray-600 text-sm">
-                Pay the full amount: <span className="font-medium">{formatPrice(totalCost)}</span>
+                Pay the full amount: <span className="font-medium">{formatPrice(totalCost * (1 + getActiveVatRate() / 100))}</span>
               </span>
             </label>
 

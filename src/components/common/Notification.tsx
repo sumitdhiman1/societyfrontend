@@ -121,15 +121,15 @@ const Notification = ({
   };
 
   return (
-    <div className="relative" ref={notificationRef}>
+    <div className="relative flex items-center justify-center shrink-0" ref={notificationRef}>
       <button
-        className="w-9 h-9 rounded-full bg-white text-gray-700 flex items-center justify-center transition-transform hover:scale-105 shadow-sm"
+        className="w-10 h-10 rounded-full bg-white text-gray-700 flex items-center justify-center transition-transform hover:scale-105 shadow-sm shrink-0"
         onClick={() => setNotificationsOpen(!notificationsOpen)}
       >
         <BellIcon />
       </button>
       {unreadCount > 0 && (
-        <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#5356FF] text-[10px] font-bold text-white ring-2 ring-[#00102E]">
+        <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#5356FF] text-[10px] font-bold text-white ring-2 ring-[#00102E] z-10 pointer-events-none">
           {unreadCount}
         </span>
       )}

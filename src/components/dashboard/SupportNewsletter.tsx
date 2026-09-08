@@ -76,7 +76,7 @@ export default function SupportNewsletter() {
   };
 
   return (
-    <div className="max-w-[1536px] mx-auto w-full">
+    <div className="max-w-[1536px] w-full mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] \">
       <StatusPopup
         isOpen={popup.isOpen}
         onClose={() => setPopup({ ...popup, isOpen: false })}
@@ -86,7 +86,7 @@ export default function SupportNewsletter() {
       />
 
       <div
-        className="w-full grid grid-cols-1 lg:grid-cols-2  md:gap-8 font-sans mt-8 md:mt-12 font-sans gap-8 mb-12"
+        className="w-full grid grid-cols-1 lg:grid-cols-2  md:gap-8 font-sans font-sans gap-8 mb-12 mt-8 md:mt-12"
         style={{ fontFamily: "var(--font-inter), sans-serif" }}
       >
         {/* Support Card */}
