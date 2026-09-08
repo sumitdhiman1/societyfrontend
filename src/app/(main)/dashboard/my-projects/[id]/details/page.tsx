@@ -260,6 +260,18 @@ export default function ProjectDetailsPage() {
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [projectPayments, setProjectPayments] = useState<any[]>([]);
 
+  const requireAuth = () => {
+    if (!authService.isAuthenticated()) {
+      setShowAuthModal(true);
+      return null;
+    }
+    const current = currentUser || authService.getUser() || {};
+    if (!currentUser && authService.getUser()) setCurrentUser(authService.getUser());
+    return current;
+  };
+
+  const isLoggedIn = Boolean(currentUser) || authService.isAuthenticated();
+
   useEffect(() => {
     setCurrentUser(authService.getUser());
     refreshProject(true);
@@ -386,6 +398,7 @@ export default function ProjectDetailsPage() {
   };
 
   const handleSendMessage = async () => {
+    if (!requireAuth()) return;
     if (attachments.some(a => a.status === "uploading")) return;
 
     const uploadedUrls = attachments.filter(a => a.status === "done" && a.url).map(a => a.url);
@@ -1645,22 +1658,19 @@ export default function ProjectDetailsPage() {
           <div className="p-6">
             <textarea
               className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent cursor-pointer"
-              placeholder={currentUser ? "Type a message..." : "Please log in or register to message our team..."}
+              placeholder={isLoggedIn ? "Type a message..." : "Please log in or register to message our team..."}
               value={messageText}
               onChange={(e) => {
-                if (!currentUser) {
-                  setShowAuthModal(true);
-                  return;
-                }
+                if (!requireAuth()) return;
                 setMessageText(e.target.value);
               }}
               onClick={() => {
-                if (!currentUser) setShowAuthModal(true);
+                requireAuth();
               }}
               onFocus={() => {
-                if (!currentUser) setShowAuthModal(true);
+                requireAuth();
               }}
-              readOnly={!currentUser}
+              readOnly={!isLoggedIn}
             />
           </div>
 
@@ -1725,11 +1735,8 @@ export default function ProjectDetailsPage() {
           <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
             <button
               onClick={() => {
-                if (!currentUser) {
-                  setShowAuthModal(true);
-                } else {
-                  fileInputRef.current?.click();
-                }
+                if (!requireAuth()) return;
+                fileInputRef.current?.click();
               }}
               className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2 rounded-lg border-2 border-blue-600 hover:bg-blue-50 shadow-sm cursor-pointer"
               type="button"
@@ -1750,10 +1757,7 @@ export default function ProjectDetailsPage() {
             <div className="flex gap-3 w-full sm:w-auto justify-end">
               <button
                 onClick={() => {
-                  if (!currentUser) {
-                    setShowAuthModal(true);
-                    return;
-                  }
+                  if (!requireAuth()) return;
                   setMessageText("");
                   setAttachments([]);
                 }}
@@ -1764,14 +1768,13 @@ export default function ProjectDetailsPage() {
               </button>
               <button
                 onClick={(e) => {
-                  if (!currentUser) {
+                  if (!requireAuth()) {
                     e.preventDefault();
-                    setShowAuthModal(true);
                     return;
                   }
                   handleSendMessage();
                 }}
-                disabled={currentUser && (isSending || isUploading || (!messageText.trim() && attachments.filter(a => a.status === "done").length === 0))}
+                disabled={isLoggedIn && (isSending || isUploading || (!messageText.trim() && attachments.filter(a => a.status === "done").length === 0))}
                 className="flex-1 sm:flex-none px-7 py-2.5 bg-[#7B8BF5] hover:bg-[#5356ff] text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
               >
                 {isSending ? "Sending..." : isUploading ? "Uploading..." : "Send Message"}
