@@ -22,7 +22,60 @@ export function findTimelineQuestionKey(questions: CalculatorQuestion[]): string
     ["WEB_TIMELINE", "GFX_TIMELINE", "SEO_TIMELINE"].includes(q.key || "")
   );
   if (known?.key) return known.key;
-  return questions.find((q) => q.roleId === 13 || q.roleId === 14)?.key;
+  const byRole = questions.find((q) => q.roleId === 13 || q.roleId === 14)?.key;
+  if (byRole) return byRole;
+  return questions.find((q) => /timeline/i.test(q.key || "") || /timeline/i.test(q.text || ""))?.key;
+}
+
+export function isTimelineQuestion(question: any): boolean {
+  if (!question) return false;
+  return (
+    question.roleId === 13 ||
+    question.roleId === 14 ||
+    ["WEB_TIMELINE", "GFX_TIMELINE", "SEO_TIMELINE"].includes(question.key || "") ||
+    /timeline/i.test(question.key || "") ||
+    /timeline/i.test(question.text || "")
+  );
+}
+
+export function hasTimelineSelected(
+  questions: any[],
+  selections: Record<string, CalculatorSelection>
+): boolean {
+  const timelineKey = findTimelineQuestionKey(questions);
+  if (!timelineKey) return true;
+  const timelineQ = questions.find((q) => q.key === timelineKey || isTimelineQuestion(q));
+  if (!timelineQ || !isQuestionVisible(timelineQ, selections)) return true;
+
+  const sel = selections[timelineKey] || selections[timelineQ.key];
+  if (!sel) return false;
+  if (sel.answerKeys && sel.answerKeys.length > 0) return true;
+  if (sel.numericValue !== undefined && sel.numericValue > 0) return true;
+  if (sel.textValue && sel.textValue.trim() !== "") return true;
+  return false;
+}
+
+export function getMissingRequiredQuestions(
+  questions: any[],
+  selections: Record<string, CalculatorSelection>
+): any[] {
+  return questions.filter((q) => {
+    if (!isQuestionVisible(q, selections)) return false;
+    const isRequired = q.isRequired || isTimelineQuestion(q) || q.roleId === 1 || q.roleId === 2;
+    if (!isRequired) return false;
+
+    if (q.type === "number") {
+      const minVal = q.config?.minValue ?? 0;
+      const sel = selections[q.key];
+      const val = sel?.numericValue ?? 0;
+      return val < minVal;
+    }
+
+    const sel = selections[q.key];
+    if (!sel) return true;
+    if (q.type === "text") return !sel.textValue || sel.textValue.trim() === "";
+    return !sel.answerKeys || sel.answerKeys.length === 0;
+  });
 }
 
 export function isTierSourceQuestion(

@@ -21,6 +21,9 @@ import {
   getSelectedTier,
   getTierQuestionKey,
   findTimelineQuestionKey,
+  isTimelineQuestion,
+  hasTimelineSelected,
+  getMissingRequiredQuestions,
   isTierSourceQuestion,
   getGraphicsCategoryKeys,
   shouldShowPriceBar,
@@ -249,6 +252,7 @@ const QuestionCard = ({
   categoryKey,
   categorySelections,
   seoServiceMode,
+  error,
 }: {
   question: any;
   selection: any;
@@ -257,6 +261,7 @@ const QuestionCard = ({
   categoryKey?: string | null;
   categorySelections?: string[];
   seoServiceMode?: string;
+  error?: string;
 }) => {
   const [textVal, setTextVal] = useState(selection?.textValue || "");
   const numVal = selection?.numericValue ?? 0;
@@ -274,10 +279,36 @@ const QuestionCard = ({
   const answerGroups = [{ heading: null, answers: visibleAnswers }];
 
   return (
-    <div className="animate-in fade-in duration-700 bg-white p-8 md:p-12 rounded-2xl shadow-xl border border-gray-100/80 text-left max-w-[680px] mx-auto">
-      <h2 className="text-[20px] md:text-[22px] font-medium text-[#475569] mb-6 md:mb-8 tracking-normal leading-snug">
-        {formatCalculatorQuestionText(question.text, question.isRequired, question.type, categoryKey ?? undefined)}
-      </h2>
+    <div
+      id={`question-${question.key}`}
+      data-question-key={question.key}
+      tabIndex={-1}
+      className={`animate-in fade-in duration-700 bg-white p-8 md:p-12 rounded-2xl shadow-xl text-left max-w-[680px] mx-auto scroll-mt-28 focus:outline-none transition-all duration-300 ${
+        error
+          ? "border-2 border-red-500 ring-4 ring-red-100/80 shadow-red-100"
+          : "border border-gray-100/80"
+      }`}
+    >
+      <div className="flex flex-col mb-6 md:mb-8">
+        <h2
+          className={`text-[20px] md:text-[22px] font-medium tracking-normal leading-snug transition-colors ${
+            error ? "text-red-900 font-semibold" : "text-[#475569]"
+          }`}
+        >
+          {formatCalculatorQuestionText(question.text, question.isRequired, question.type, categoryKey ?? undefined)}
+        </h2>
+
+        {error && (
+          <div className="mt-3 flex items-center gap-2 text-sm text-red-600 font-semibold bg-red-50 border border-red-200 px-3.5 py-2.5 rounded-xl animate-in fade-in slide-in-from-top-1">
+            <svg className="w-4 h-4 flex-shrink-0 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span>{error}</span>
+          </div>
+        )}
+      </div>
 
       {question.type === "text" && (
         <textarea
@@ -292,11 +323,7 @@ const QuestionCard = ({
       {question.type === "number" && (
         <NumberStepper
           value={numVal}
-          min={
-            question.key === "SEO_WORDS" || question.key === "SEO_BACKLINKS" || question.key === "SEO_MONTHS"
-              ? 0
-              : (question.config?.minValue ?? 1)
-          }
+          min={question.config?.minValue ?? 0}
           onChange={(n) => onToggleAnswer(question.key, n, "number")}
         />
       )}
@@ -373,6 +400,7 @@ const ProposalPreview = ({
   timeline,
   billingType,
   onDownloadPdf,
+  onValidateRequired,
 }: any) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const { currency, conversionRate } = useCurrency();
@@ -430,11 +458,15 @@ const ProposalPreview = ({
   });
 
   const displayName = getCategoryProposalName(category.categoryKey, category.categoryName);
-  const displayTimeline = timeline || getDefaultCategoryTimeline(category.categoryKey, category.timeline);
+  const hasTimeline = hasTimelineSelected(category.questions || [], selections);
+  const displayTimeline = hasTimeline
+    ? (timeline || getDefaultCategoryTimeline(category.categoryKey, category.timeline))
+    : "Please select a timeline option above";
 
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {
+    if (onValidateRequired && !onValidateRequired()) return;
     if (isDownloading) return;
     setIsDownloading(true);
     try {
@@ -457,12 +489,42 @@ const ProposalPreview = ({
     }
   };
 
-  const handleEmail = async () => {
-    const email = prompt("Please enter your email address to receive the proposal:");
-    if (!email || !email.includes("@")) {
-      if (email !== null) alert("Please enter a valid email address.");
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [emailInput, setEmailInput] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailSentSuccess, setEmailSentSuccess] = useState(false);
+
+  useEffect(() => {
+    const user = authService.getUser();
+    if (user?.email && !emailInput) {
+      setEmailInput(user.email);
+    }
+  }, []);
+
+  const openEmailModal = () => {
+    if (onValidateRequired && !onValidateRequired()) return;
+    const user = authService.getUser();
+    if (user?.email) setEmailInput(user.email);
+    setEmailError("");
+    setEmailSentSuccess(false);
+    setIsEmailModalOpen(true);
+  };
+
+  const handleSendEmailProposal = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanEmail = emailInput.trim();
+    if (!cleanEmail) {
+      setEmailError("Please enter your email address.");
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setEmailError("Please enter a valid email address.");
+      return;
+    }
+
+    setEmailError("");
+    setIsSendingEmail(true);
 
     try {
       const subject = `Estimate: ${category.categoryName}`;
@@ -473,8 +535,6 @@ const ProposalPreview = ({
       });
 
       body += `\n\nTotal Price: ${formatPriceLocal(totalPrice)}\nTimeline: ${displayTimeline || "TBA"}\n\nAttached is your detailed proposal PDF.\n\nGenerated via Society Web Solutions Calculator.`;
-
-      alert("Generating PDF and sending email... Please wait a moment.");
 
       const pdfBase64 = await getCalculatorPdfBase64({
         categoryName: category.categoryName,
@@ -491,7 +551,7 @@ const ProposalPreview = ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email,
+          email: cleanEmail,
           subject,
           messageBody: body,
           pdfBase64
@@ -499,13 +559,15 @@ const ProposalPreview = ({
       });
 
       if (res.ok) {
-        alert("Proposal sent successfully to your email!");
+        setEmailSentSuccess(true);
       } else {
-        alert("Failed to send proposal via email. Please try downloading it instead.");
+        setEmailError("Failed to send proposal via email. Please check the address or download the PDF.");
       }
     } catch (err) {
       console.error("Error emailing proposal:", err);
-      alert("An error occurred while sending the proposal.");
+      setEmailError("An unexpected error occurred while sending the proposal.");
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -571,7 +633,9 @@ const ProposalPreview = ({
               )}
             </div>
           </div>
-          <p className="text-[#111827] text-[16px] font-bold">{displayTimeline}</p>
+          <p className={`text-[16px] font-bold ${hasTimeline ? "text-[#111827]" : "text-amber-600 italic font-semibold"}`}>
+            {displayTimeline}
+          </p>
         </div>
 
         <div className="bg-[#EEF2FF] border border-[#C7D2FE] rounded-xl p-4 mb-8 text-sm text-[#4338CA] leading-relaxed">
@@ -621,7 +685,11 @@ const ProposalPreview = ({
               </>
             )}
           </button>
-          <button onClick={handleEmail} className="w-full bg-white border border-gray-300 hover:bg-gray-50 text-[#374151] font-semibold py-3.5 px-6 rounded-[6px] transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer">
+          <button
+            type="button"
+            onClick={openEmailModal}
+            className="w-full bg-white border border-gray-300 hover:bg-gray-50 text-[#374151] font-semibold py-3.5 px-6 rounded-[6px] transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
+          >
             <svg className="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1 0.9-2 2-2z" />
               <polyline points="22,6 12,13 2,6" />
@@ -630,11 +698,140 @@ const ProposalPreview = ({
           </button>
         </div>
       </div>
+
+      {/* Website Email Proposal Modal */}
+      {isEmailModalOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-[#00102E]/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div
+            className="fixed inset-0 cursor-default"
+            onClick={() => {
+              if (!isSendingEmail) setIsEmailModalOpen(false);
+            }}
+          />
+          <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 sm:p-8 border border-gray-100 z-10 animate-in zoom-in-95 duration-200 text-left">
+            <button
+              type="button"
+              onClick={() => setIsEmailModalOpen(false)}
+              disabled={isSendingEmail}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
+              aria-label="Close"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+
+            {emailSentSuccess ? (
+              <div className="text-center py-4">
+                <div className="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-200">
+                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Proposal Sent!</h3>
+                <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+                  We&apos;ve sent the complete project proposal PDF to <span className="font-semibold text-gray-900">{emailInput}</span>.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsEmailModalOpen(false)}
+                  className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-md"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleSendEmailProposal}>
+                <div className="flex items-center gap-3.5 mb-5">
+                  <div className="w-12 h-12 rounded-xl bg-indigo-50 text-[#4F46E5] flex items-center justify-center flex-shrink-0 border border-indigo-100">
+                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1 0.9-2 2-2z" />
+                      <polyline points="22,6 12,13 2,6" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 leading-tight">Email Proposal</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">Receive detailed breakdown and PDF proposal</p>
+                  </div>
+                </div>
+
+                <div className="mb-5">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={emailInput}
+                    onChange={(e) => {
+                      setEmailInput(e.target.value);
+                      if (emailError) setEmailError("");
+                    }}
+                    placeholder="name@example.com"
+                    autoFocus
+                    className={`w-full px-4 py-3 rounded-xl border bg-gray-50/50 text-gray-900 text-sm outline-none transition-all placeholder:text-gray-400 ${
+                      emailError
+                        ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200"
+                        : "border-gray-200 focus:border-[#4F46E5] focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                    }`}
+                  />
+                  {emailError && (
+                    <p className="text-xs text-red-600 font-medium mt-1.5 flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      {emailError}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsEmailModalOpen(false)}
+                    disabled={isSendingEmail}
+                    className="w-1/3 py-3 px-4 rounded-xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSendingEmail}
+                    className="w-2/3 bg-[#4F46E5] hover:bg-[#4338CA] text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed text-sm cursor-pointer"
+                  >
+                    {isSendingEmail ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Sending...</span>
+                      </>
+                    ) : (
+                      "Send Proposal"
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, category, selections, formatPriceLocal, currency, setCurrency, conversionRate }: any) => {
+const CalculatorPaymentForm = ({
+  totalPrice,
+  timeline,
+  categoryKey,
+  category,
+  selections,
+  formatPriceLocal,
+  currency,
+  setCurrency,
+  conversionRate,
+  onValidateRequired,
+}: any) => {
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
@@ -767,6 +964,11 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, category, se
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     if (!stripe || !elements) return;
+
+    // Validate required questions and timeline selection inline without popup
+    if (onValidateRequired && !onValidateRequired()) {
+      return;
+    }
 
     // Redirect guests to login before allowing payment
     if (!authService.isAuthenticated()) {
@@ -947,7 +1149,13 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, category, se
 
   return (
     <form onSubmit={handleSubmit} className="animate-in fade-in duration-500 w-full flex flex-col gap-8">
-      <StatusPopup isOpen={status.isOpen} onClose={() => setStatus({ ...status, isOpen: false })} type={status.type} title={status.title} message={status.message} />
+      <StatusPopup
+        isOpen={status.isOpen}
+        onClose={() => setStatus({ ...status, isOpen: false })}
+        type={status.type}
+        title={status.title}
+        message={status.message}
+      />
 
       <div className="text-center mb-6">
         <h2 className="text-[24px] md:text-[26px] font-medium text-white mb-3 tracking-normal">READY TO BEGIN?</h2>
@@ -1189,6 +1397,7 @@ export default function CalculatorPage() {
   const [loading, setLoading] = useState(true);
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
   const [selections, setSelections] = useState<Record<string, CalculatorSelection>>({});
+  const [questionErrors, setQuestionErrors] = useState<Record<string, string>>({});
   useEffect(() => {
     (async () => {
       try {
@@ -1273,7 +1482,48 @@ export default function CalculatorPage() {
     };
   }, [selectedCategoryKey, selections, hasUserSelections]);
 
+  const validateRequiredSelections = () => {
+    if (!selectedCategory) return false;
+    const missingQuestions = getMissingRequiredQuestions(selectedCategory.questions || [], selections);
+    if (missingQuestions.length > 0) {
+      const newErrors: Record<string, string> = {};
+      missingQuestions.forEach((q) => {
+        const isTimeline = isTimelineQuestion(q);
+        newErrors[q.key] = isTimeline
+          ? "Please select a project timeline."
+          : "This selection is required.";
+      });
+      setQuestionErrors(newErrors);
+
+      const firstMissing = missingQuestions[0];
+      const missingElem =
+        (document.getElementById(`question-${firstMissing.key}`) ||
+        document.querySelector(`[data-question-key="${firstMissing.key}"]`)) as HTMLElement | null;
+      if (missingElem) {
+        missingElem.scrollIntoView({ behavior: "smooth", block: "center" });
+        const interactive = missingElem.querySelector<HTMLElement>(
+          "input, textarea, select, button:not([disabled])"
+        );
+        if (interactive) {
+          setTimeout(() => interactive.focus(), 200);
+        } else {
+          missingElem.focus();
+        }
+      }
+      return false;
+    }
+    setQuestionErrors({});
+    return true;
+  };
+
   const handleToggleAnswer = (questionKey: string, value: any, type: string) => {
+    setQuestionErrors((prev) => {
+      if (!prev[questionKey]) return prev;
+      const next = { ...prev };
+      delete next[questionKey];
+      return next;
+    });
+
     setSelections(prev => {
       const current = prev[questionKey];
       const currentKeys = current?.answerKeys || [];
@@ -1390,6 +1640,7 @@ export default function CalculatorPage() {
                 onSelect={(key) => {
                   setSelectedCategoryKey(key);
                   setSelections({});
+                  setQuestionErrors({});
                 }}
               />
             )}
@@ -1411,6 +1662,7 @@ export default function CalculatorPage() {
                       categoryKey={selectedCategoryKey}
                       categorySelections={graphicsCategoryKeys}
                       seoServiceMode={seoServiceMode}
+                      error={questionErrors[q.key]}
                     />
                   </div>
                 ))}
@@ -1432,6 +1684,7 @@ export default function CalculatorPage() {
                     totalPrice={calculation.totalPrice}
                     timeline={calculation.timeline}
                     billingType={isMonthlyBilling ? "monthly" : undefined}
+                    onValidateRequired={validateRequiredSelections}
                   />
                   <div className="w-full mt-6">
                     <WrappedPaymentForm
@@ -1444,6 +1697,7 @@ export default function CalculatorPage() {
                       currency={currency}
                       setCurrency={setCurrency}
                       conversionRate={conversionRate}
+                      onValidateRequired={validateRequiredSelections}
                     />
                   </div>
                 </div>
