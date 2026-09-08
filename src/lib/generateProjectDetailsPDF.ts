@@ -1,5 +1,11 @@
 import { authService } from "./authService";
-import { getProjectEstimatedDeadline } from "./calculatorUtils";
+import {
+  calculateGraphicsRawTimelineDays,
+  formatGraphicsTimelineLabel,
+  getProjectEstimatedDeadline,
+  resolveGraphicsTimelineAnswer,
+  snapGraphicsBaselineDays,
+} from "./calculatorUtils";
 import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "./generateCalculatorProjectPDF";
 
 function formatPdfDate(dateInput: any): string {
@@ -125,7 +131,39 @@ function extractProjectDetails(data: any): ProjectPDFData {
     (data.timelineInDays ? `${data.timelineInDays} Days` : "") ||
     "";
 
-  const formatRawAnswer = (raw: string): string => {
+  const categoryKey = data.categoryKey || calculatorSpecs.categoryKey || "";
+
+  let graphicsRawTimelineDays = 0;
+  if (categoryKey === "graphics" && Array.isArray(rawSelections)) {
+    const itemsSel = rawSelections.find(
+      (s: any) =>
+        s.questionKey === "GD_ITEMS" ||
+        s.questionKey === "GFX_ITEMS" ||
+        /include in this project/i.test(s.questionText || "")
+    );
+    const tierSel = rawSelections.find(
+      (s: any) => s.questionKey === "GD_TIER" || s.questionKey === "GFX_TIER"
+    );
+    const tierKey = tierSel?.answerKeys?.[0] || "starter";
+    const tier =
+      /premium/i.test(tierKey) ? "premium" : /standard/i.test(tierKey) ? "standard" : "starter";
+    if (itemsSel?.answerKeys?.length) {
+      const pseudoQuestion = {
+        key: itemsSel.questionKey,
+        answers: itemsSel.answerKeys.map((k: string) => {
+          const meta = itemsSel.answerMetadata?.[k];
+          return { key: k, metadata: meta };
+        }),
+      };
+      graphicsRawTimelineDays = calculateGraphicsRawTimelineDays(
+        pseudoQuestion,
+        { [itemsSel.questionKey]: { questionKey: itemsSel.questionKey, answerKeys: itemsSel.answerKeys } },
+        tier
+      );
+    }
+  }
+
+  const formatRawAnswer = (raw: string, metadata?: { fee?: number; reduction?: number }): string => {
     if (!raw) return "";
     const lower = raw.toLowerCase().trim();
     if (lower.startsWith("web_timeline_1") || lower === "timeline_14" || lower === "timeline_standard") {
@@ -137,20 +175,34 @@ function extractProjectDetails(data: any): ProjectPDFData {
     if (lower.startsWith("web_timeline_3") || lower === "timeline_3" || lower === "timeline_super_rush") {
       return "3 - 4 days (Super Rushed): +50% rush fee";
     }
-    if (lower.startsWith("gfx_timeline_1") || lower === "gfx_time_normal") {
-      return directTimeline ? `${directTimeline} (Normal): No extra fee` : "5 - 7 business days (Normal): No extra fee";
-    }
-    if (lower.startsWith("gfx_timeline_2") || lower === "gfx_time_rush") {
-      return directTimeline ? `${directTimeline} (Rushed): +25% rush fee` : "2 - 3 business days (Rushed): +25% rush fee";
-    }
-    if (lower.startsWith("gfx_timeline_3") || lower === "gfx_time_super") {
-      return directTimeline ? `${directTimeline} (Super Rushed): +50% rush fee` : "24 - 48 hours (Super Rushed): +50% rush fee";
+    if (
+      lower.startsWith("gfx_time") ||
+      lower.startsWith("gd_time") ||
+      lower.startsWith("gfx_timeline")
+    ) {
+      return resolveGraphicsTimelineAnswer(raw, {
+        directTimeline,
+        baselineDays: graphicsRawTimelineDays,
+        metadata,
+      });
     }
     if (lower.startsWith("seo_timeline")) return "Monthly Service";
+    if (categoryKey === "graphics" && /timeline|rushed|normal/i.test(raw)) {
+      return resolveGraphicsTimelineAnswer(raw, {
+        directTimeline,
+        baselineDays: graphicsRawTimelineDays,
+        metadata,
+      });
+    }
     return raw;
   };
 
-  const finalTimelineAnswer = formatRawAnswer(foundTimelineAnswer) || formatRawAnswer(directTimeline) || directTimeline;
+  const finalTimelineAnswer =
+    formatRawAnswer(foundTimelineAnswer) ||
+    (directTimeline && categoryKey === "graphics"
+      ? directTimeline
+      : formatRawAnswer(directTimeline)) ||
+    directTimeline;
 
   let duration = "";
   if (finalTimelineAnswer) {
@@ -167,11 +219,15 @@ function extractProjectDetails(data: any): ProjectPDFData {
       .trim();
   }
 
-  const categoryKey = data.categoryKey || calculatorSpecs.categoryKey || "";
   if (!duration) {
     if (categoryKey === "seo") duration = "Monthly Service";
-    else if (categoryKey === "graphics") duration = "5 - 7 business days";
-    else if (categoryKey === "marketing") duration = "Ongoing";
+    else if (categoryKey === "graphics") {
+      duration =
+        directTimeline ||
+        (graphicsRawTimelineDays > 0
+          ? formatGraphicsTimelineLabel(snapGraphicsBaselineDays(graphicsRawTimelineDays))
+          : formatGraphicsTimelineLabel(14));
+    } else if (categoryKey === "marketing") duration = "Ongoing";
     else duration = "2 weeks";
   }
 
