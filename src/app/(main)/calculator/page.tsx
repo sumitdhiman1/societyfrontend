@@ -199,7 +199,7 @@ const CategoryGrid = ({ categories, selectedCategoryKey, onSelect }: { categorie
             />
           </div>
           <div className="w-full border-rs-cs min-h-[65px] px-6 pb-4 flex items-center justify-start bg-white">
-            <h3 className="font-extrabold text-[#1F2937] uppercase tracking-[0.01em] text-[14px] md:text-[15px] leading-snug text-left">
+            <h3 className="font-bold text-[#1F2937] uppercase tracking-[0.01em] text-[14px] md:text-[15px] leading-snug text-left">
               {getCategoryDisplayName(cat.categoryKey, cat.categoryName)}
             </h3>
           </div>
@@ -283,17 +283,15 @@ const QuestionCard = ({
       id={`question-${question.key}`}
       data-question-key={question.key}
       tabIndex={-1}
-      className={`animate-in fade-in duration-700 bg-white p-8 md:p-12 rounded-2xl shadow-xl text-left max-w-[680px] mx-auto scroll-mt-28 focus:outline-none transition-all duration-300 ${
-        error
-          ? "border-2 border-red-500 ring-4 ring-red-100/80 shadow-red-100"
-          : "border border-gray-100/80"
-      }`}
+      className={`animate-in fade-in duration-700 bg-white p-8 md:p-12 rounded-2xl shadow-xl text-left max-w-[680px] mx-auto scroll-mt-28 focus:outline-none transition-all duration-300 ${error
+        ? "border-2 border-red-500 ring-4 ring-red-100/80 shadow-red-100"
+        : "border border-gray-100/80"
+        }`}
     >
       <div className="flex flex-col mb-6 md:mb-8">
         <h2
-          className={`text-[20px] md:text-[22px] font-medium tracking-normal leading-snug transition-colors ${
-            error ? "text-red-900 font-semibold" : "text-[#475569]"
-          }`}
+          className={`text-[20px] md:text-[22px] font-medium tracking-normal leading-snug transition-colors ${error ? "text-red-900 font-semibold" : "text-[#475569]"
+            }`}
         >
           {formatCalculatorQuestionText(question.text, question.isRequired, question.type, categoryKey ?? undefined)}
         </h2>
@@ -344,11 +342,10 @@ const QuestionCard = ({
                     <div className="flex-shrink-0">
                       {question.type === "multi" ? (
                         <div
-                          className={`w-5 h-5 rounded-[4px] border-2 flex items-center justify-center transition-all ${
-                            isSelected
-                              ? "bg-[#4F46E5] border-[#4F46E5]"
-                              : "border-[#CBD5E1] bg-white group-hover:border-[#4F46E5]"
-                          }`}
+                          className={`w-5 h-5 rounded-[4px] border-2 flex items-center justify-center transition-all ${isSelected
+                            ? "bg-[#4F46E5] border-[#4F46E5]"
+                            : "border-[#CBD5E1] bg-white group-hover:border-[#4F46E5]"
+                            }`}
                           aria-hidden
                         >
                           {isSelected && (
@@ -365,11 +362,10 @@ const QuestionCard = ({
                         </div>
                       ) : (
                         <div
-                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                            isSelected
-                              ? "bg-[#4F46E5] border-[#4F46E5]"
-                              : "border-[#CBD5E1] bg-white group-hover:border-[#4F46E5]"
-                          }`}
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${isSelected
+                            ? "bg-[#4F46E5] border-[#4F46E5]"
+                            : "border-[#CBD5E1] bg-white group-hover:border-[#4F46E5]"
+                            }`}
                           aria-hidden
                         >
                           {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
@@ -646,9 +642,8 @@ const ProposalPreview = ({
           <button
             onClick={handleDownload}
             disabled={isDownloading}
-            className={`w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-semibold py-3.5 px-6 rounded-[6px] transition-all flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg ${
-              isDownloading ? "opacity-80 cursor-not-allowed" : "cursor-pointer"
-            }`}
+            className={`w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-semibold py-3.5 px-6 rounded-[6px] transition-all flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg ${isDownloading ? "opacity-80 cursor-not-allowed" : "cursor-pointer"
+              }`}
           >
             {isDownloading ? (
               <>
@@ -769,11 +764,10 @@ const ProposalPreview = ({
                     }}
                     placeholder="name@example.com"
                     autoFocus
-                    className={`w-full px-4 py-3 rounded-xl border bg-gray-50/50 text-gray-900 text-sm outline-none transition-all placeholder:text-gray-400 ${
-                      emailError
-                        ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200"
-                        : "border-gray-200 focus:border-[#4F46E5] focus:bg-white focus:ring-2 focus:ring-indigo-100"
-                    }`}
+                    className={`w-full px-4 py-3 rounded-xl border bg-gray-50/50 text-gray-900 text-sm outline-none transition-all placeholder:text-gray-400 ${emailError
+                      ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200"
+                      : "border-gray-200 focus:border-[#4F46E5] focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                      }`}
                   />
                   {emailError && (
                     <p className="text-xs text-red-600 font-medium mt-1.5 flex items-center gap-1">
@@ -1124,7 +1118,7 @@ const CalculatorPaymentForm = ({
           setPaymentStep("activating");
           await new Promise((r) => setTimeout(r, 600));
           setPaymentStep("success");
-          
+
           setStatus({ isOpen: true, type: "success", title: "Payment Successful", message: "Your project has been started successfully!" });
           // Redirect to project page if created, otherwise fall back to quote page
           const projectId = confirmResult.data?.project?._id || confirmResult.data?.project?.id;
@@ -1232,7 +1226,7 @@ const CalculatorPaymentForm = ({
                     min="1"
                     value={customAmount}
                     onChange={(e) => { setCustomAmount(e.target.value); if (errors.amount) setErrors((p: any) => ({ ...p, amount: "" })); }}
-                    className={`w-full border-b ${errors.amount ? "border-red-500" : "border-black"} py-0.5 pl-4 pr-1 text-[16px] font-medium outline-none bg-transparent`}
+                    className={`w-full border-b focus:border-[#4F46E5] ${errors.amount ? "border-red-500" : "border-gray-300"} py-0.5 pl-4 pr-1 placeholder-[#8b8b8b] text-[16px] text-[#171717] font-medium outline-none bg-transparent`}
                     placeholder="Amount"
                   />
                 </div>
@@ -1276,7 +1270,7 @@ const CalculatorPaymentForm = ({
               value={cardholderName}
               onChange={(e) => { setCardholderName(e.target.value); if (errors.cardHolderName) setErrors((p: any) => ({ ...p, cardHolderName: "" })); }}
               placeholder="Name on the card"
-              className={`w-full border-b ${errors.cardHolderName ? "border-red-500" : "border-gray-200"} py-2.5 bg-transparent outline-none placeholder-gray-400 focus:border-[#4F46E5] text-[15px] transition-all`}
+              className={`w-full border-b ${errors.cardHolderName ? "border-red-500" : "border-[#e5e7eb]"} py-2.5 bg-transparent outline-none placeholder-gray-400 focus:border-[#4F46E5] text-[15px] transition-all`}
             />
             {errors.cardHolderName && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardHolderName}</span>}
           </div>
@@ -1498,7 +1492,7 @@ export default function CalculatorPage() {
       const firstMissing = missingQuestions[0];
       const missingElem =
         (document.getElementById(`question-${firstMissing.key}`) ||
-        document.querySelector(`[data-question-key="${firstMissing.key}"]`)) as HTMLElement | null;
+          document.querySelector(`[data-question-key="${firstMissing.key}"]`)) as HTMLElement | null;
       if (missingElem) {
         missingElem.scrollIntoView({ behavior: "smooth", block: "center" });
         const interactive = missingElem.querySelector<HTMLElement>(
@@ -1600,14 +1594,14 @@ export default function CalculatorPage() {
           alt="Price calculator hero background"
           fill
           priority
-          className="object-cover object-center"
+          className="object-cover object-center opacity-[.85]"
         />
         <div className="absolute inset-0 z-0 bg-gradient-to-r from-[#00102E] via-[#00102E]/60 to-transparent"></div>
         <div className="mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] text-left relative z-10 max-w-[1536px] w-full">
           <div className="flex flex-row justify-center items-center">
             <div className="w-full text-center md:text-left">
               <p className="text-gray-300 text-sm md:text-base font-medium mb-3">Calculator</p>
-              <h1 className="text-4xl md:text-[52px] font-extrabold mb-4 leading-tight tracking-tight text-white">
+              <h1 className="text-4xl md:text-[52px] font-bold mb-4 leading-tight tracking-tight text-white">
                 Instantly create your price quote.
               </h1>
               <p className="text-base md:text-xl text-gray-200 font-normal leading-relaxed max-w-2xl">
@@ -1622,7 +1616,7 @@ export default function CalculatorPage() {
 
         {/* Category Selection Section */}
         <div
-          className={`calculator-category-section w-full transition-colors duration-300 ${selectedCategoryKey ? "py-6 md:py-10" : "bg-[#00102E] py-8 md:py-16"
+          className={`calculator-category-section w-full transition-colors duration-300 ${selectedCategoryKey ? "py-6 md:py-10" : "bg-[#00102E] py-8 md:py-20"
             }`}
           style={selectedCategoryKey ? calculatorDarkBg : undefined}
         >

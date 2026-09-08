@@ -283,8 +283,8 @@ export function getCategoryDisplayName(categoryKey: string, categoryName?: strin
 export const MAIN_CALCULATOR_CATEGORIES: Record<string, string> = {
   website: "A New Website",
   graphics: "Graphic Designs",
-  seo: "Search Engine Optimization",
-  marketing: "A Marketing Campaign",
+  seo: "Search Engine <br> Optimization",
+  marketing: "A Marketing <br> Campaign",
 };
 
 export function getMainCalculatorCategory(categoryKey?: string, categoryName?: string): string {
@@ -294,8 +294,8 @@ export function getMainCalculatorCategory(categoryKey?: string, categoryName?: s
     const normName = categoryName.trim().toLowerCase();
     if (normName === "a new website" || normName === "website") return "A New Website";
     if (normName === "graphic designs" || normName === "graphics") return "Graphic Designs";
-    if (normName === "search engine optimization" || normName === "seo") return "Search Engine Optimization";
-    if (normName === "a marketing campaign" || normName === "marketing") return "A Marketing Campaign";
+    if (normName === "search engine optimization" || normName === "seo") return "Search Engine <br> Optimization";
+    if (normName === "a marketing campaign" || normName === "marketing") return "A Marketing <br> Campaign";
 
     if (!normName.includes("custom website development") && !normName.includes("project")) {
       return categoryName.trim();
@@ -304,8 +304,8 @@ export function getMainCalculatorCategory(categoryKey?: string, categoryName?: s
 
   if (normKey.includes("web")) return "A New Website";
   if (normKey.includes("graph")) return "Graphic Designs";
-  if (normKey.includes("seo")) return "Search Engine Optimization";
-  if (normKey.includes("market")) return "A Marketing Campaign";
+  if (normKey.includes("seo")) return "Search Engine <br> Optimization";
+  if (normKey.includes("market")) return "A Marketing <br> Campaign";
 
   return MAIN_CALCULATOR_CATEGORIES[normKey] || "A New Website";
 }

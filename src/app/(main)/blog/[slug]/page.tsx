@@ -95,8 +95,55 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
 
   return (
     <div className="bg-white min-h-screen flex flex-col font-sans text-gray-600">
+
       {/* Hero Section */}
-      <div className="bg-primary-100 border-[3px] border-gray-600">
+
+      {/* Hero Section */}
+      <div
+        className="relative h-[45vh] min-h-[360px] w-full bg-cover bg-center flex items-center justify-center"
+        style={{
+          backgroundImage: (post.thumbnail || post.coverImage)
+            ? `url(${post.thumbnail || post.coverImage})`
+            : undefined,
+        }}
+      >
+        {/* Dark overlay for text readability */}
+        <div className="absolute inset-0 bg-[#0d1939]/85 z-10" />
+        <div className="relative z-20 text-center px-4 max-w-4xl mx-auto">
+          <div className="text-gray-300 text-sm md:text-base font-medium mb-4 uppercase tracking-wider">
+            {/* {authorName && (
+              <div className="flex items-center gap-2">
+                {post.author?.avatar ? (
+                  <img
+                    src={post.author.avatar}
+                    alt={authorName}
+                    className="w-7 h-7 rounded-full object-cover border border-white/30"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                )}
+                <span className="font-medium">{authorName}</span>
+              </div>
+            )} */}
+            {(post.publishedAt || post.createdAt) && (
+              <span className="text-gray-300 text-sm md:text-base font-medium mb-4 uppercase tracking-wider">{formatDate(post.publishedAt || post.createdAt)}</span>
+            )}
+            {/* {post.category && (
+                <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide">
+                  {post.category}
+                </span>
+              )} */}
+          </div>
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight drop-shadow-md">
+            {post.title}
+          </h1>
+        </div>
+      </div>
+      {/* <div className="bg-primary-100 border-[3px] border-gray-600">
         <div className="container mx-auto px-4 md:px-8 lg:px-[54px] py-16 max-w-[1536px]">
           <div className="flex items-center gap-2 text-white/70 text-sm mb-4">
             <Link href="/blog" className="hover:text-white transition-colors">
@@ -143,9 +190,10 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
             )}
           </div>
         </div>
-      </div>
+      </div> */}
 
-      <main className="flex-grow w-full max-w-[1600px] mx-auto px-4 md:px-8 lg:px-[54px] py-16">
+      <main className="flex-grow w-full py-6 md:py-10">
+        <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px]"></div>
         <div className="max-w-4xl mx-auto">
           {/* Cover Image */}
           {(post.thumbnail || post.coverImage) && (
