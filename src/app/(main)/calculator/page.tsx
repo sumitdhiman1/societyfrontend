@@ -26,6 +26,10 @@ import {
   getMissingRequiredQuestions,
   isTierSourceQuestion,
   getGraphicsCategoryKeys,
+  isGraphicsItemsQuestion,
+  filterGraphicsAnswers,
+  groupAnswersByHeading,
+  calculateGraphicsBaselineTimelineDays,
   shouldShowPriceBar,
   selectionsToArray,
   filterQuestionAnswers,
@@ -251,6 +255,7 @@ const QuestionCard = ({
   tier,
   categoryKey,
   categorySelections,
+  baselineDays,
   seoServiceMode,
   error,
 }: {
@@ -260,6 +265,7 @@ const QuestionCard = ({
   tier: string;
   categoryKey?: string | null;
   categorySelections?: string[];
+  baselineDays?: number;
   seoServiceMode?: string;
   error?: string;
 }) => {
@@ -273,10 +279,19 @@ const QuestionCard = ({
   const activeKeys = selection?.answerKeys || [];
   const filteredQuestion = filterQuestionAnswers(question, tier);
   let visibleAnswers = filteredQuestion.answers || [];
+  if (isGraphicsItemsQuestion(question)) {
+    if (!categorySelections || categorySelections.length === 0) {
+      return null;
+    }
+    visibleAnswers = filterGraphicsAnswers(visibleAnswers, categorySelections);
+    if (visibleAnswers.length === 0) {
+      return null;
+    }
+  }
   if (question.key === "SEO_SERVICE_TYPE") {
     visibleAnswers = visibleAnswers.filter((a: any) => a.key !== "SEO_TYPE_COMBO");
   }
-  const answerGroups = [{ heading: null, answers: visibleAnswers }];
+  const answerGroups = groupAnswersByHeading(visibleAnswers);
 
   return (
     <div
@@ -330,7 +345,12 @@ const QuestionCard = ({
 
       {(question.type === "single" || question.type === "multi") &&
         answerGroups.map((group, gIdx) => (
-          <div key={gIdx} className={gIdx > 0 ? "mt-6" : ""}>
+          <div key={gIdx} className={gIdx > 0 ? "mt-8" : ""}>
+            {group.heading && (
+              <h3 className="text-[13px] font-bold uppercase tracking-wider text-[#64748B] mb-3 mt-4 pt-4 border-t border-gray-100 first:mt-0 first:pt-0 first:border-none">
+                {group.heading}
+              </h3>
+            )}
             <div className="grid grid-cols-1 gap-1 multiple-radio">
               {group.answers.map((ans: any) => {
                 const isSelected = activeKeys.includes(ans.key);
@@ -381,6 +401,7 @@ const QuestionCard = ({
                         categoryKey: categoryKey ?? undefined,
                         roleId: question.roleId,
                         metadata: ans.metadata,
+                        baselineDays,
                       })}
                     </div>
                   </button>
@@ -418,7 +439,7 @@ const ProposalPreview = ({
   const breakdown: { question: string; answers: string[] }[] = [];
 
   sortedQuestions.forEach((q: any) => {
-    if (!isQuestionVisible(q, selections)) return;
+    if (!isQuestionVisible(q, selections, sortedQuestions)) return;
 
     const sel = selections[q.key];
     if (!sel) return;
@@ -443,6 +464,7 @@ const ProposalPreview = ({
               categoryKey: category.categoryKey,
               roleId: q.roleId,
               metadata: ans.metadata,
+              baselineDays: category.categoryKey === "graphics" ? calculateGraphicsBaselineTimelineDays(sortedQuestions.find((sq: any) => isGraphicsItemsQuestion(sq)), selections) : undefined,
             })
           );
         }
@@ -1438,15 +1460,23 @@ export default function CalculatorPage() {
     [selections, selectedCategoryKey, sortedQuestions]
   );
   const graphicsCategoryKeys = useMemo(
-    () => getGraphicsCategoryKeys(selections),
-    [selections]
+    () => getGraphicsCategoryKeys(selections, sortedQuestions),
+    [selections, sortedQuestions]
+  );
+  const graphicsItemsQuestion = useMemo(
+    () => sortedQuestions.find((q) => isGraphicsItemsQuestion(q)),
+    [sortedQuestions]
+  );
+  const graphicsBaselineDays = useMemo(
+    () => calculateGraphicsBaselineTimelineDays(graphicsItemsQuestion, selections, tier),
+    [graphicsItemsQuestion, selections, tier]
   );
   const seoServiceMode = useMemo(
     () => (selectedCategoryKey === "seo" ? getSeoServiceMode(selections) : undefined),
     [selections, selectedCategoryKey]
   );
   const visibleQuestions = useMemo(
-    () => sortedQuestions.filter((q) => isQuestionVisible(q, selections)),
+    () => sortedQuestions.filter((q) => isQuestionVisible(q, selections, sortedQuestions)),
     [sortedQuestions, selections]
   );
   const isMonthlyBilling = isMonthlyBillingCategory(selectedCategoryKey);
@@ -1661,6 +1691,7 @@ export default function CalculatorPage() {
                       tier={tier}
                       categoryKey={selectedCategoryKey}
                       categorySelections={graphicsCategoryKeys}
+                      baselineDays={selectedCategoryKey === "graphics" ? graphicsBaselineDays : undefined}
                       seoServiceMode={seoServiceMode}
                       error={questionErrors[q.key]}
                     />
