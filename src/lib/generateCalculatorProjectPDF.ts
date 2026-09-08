@@ -136,9 +136,15 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     if (lower.startsWith("web_timeline_3") || lower === "timeline_3" || lower === "timeline_super_rush") {
       return "3 - 4 days (Super Rushed): +50% rush fee";
     }
-    if (lower.startsWith("gfx_timeline_1")) return "5 - 7 business days";
-    if (lower.startsWith("gfx_timeline_2")) return "2 - 3 business days (Rushed): +25% rush fee";
-    if (lower.startsWith("gfx_timeline_3")) return "24 - 48 hours (Super Rushed): +50% rush fee";
+    if (lower.startsWith("gfx_timeline_1") || lower === "gfx_time_normal") {
+      return directTimeline ? `${directTimeline} (Normal): No extra fee` : "5 - 7 business days (Normal): No extra fee";
+    }
+    if (lower.startsWith("gfx_timeline_2") || lower === "gfx_time_rush") {
+      return directTimeline ? `${directTimeline} (Rushed): +25% rush fee` : "2 - 3 business days (Rushed): +25% rush fee";
+    }
+    if (lower.startsWith("gfx_timeline_3") || lower === "gfx_time_super") {
+      return directTimeline ? `${directTimeline} (Super Rushed): +50% rush fee` : "24 - 48 hours (Super Rushed): +50% rush fee";
+    }
     if (lower.startsWith("seo_timeline")) return "Monthly Service";
     return raw;
   };
