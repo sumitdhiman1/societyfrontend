@@ -894,7 +894,7 @@ export default function QuoteDetailsPage() {
                   return (
                     <div key={msgId} className="text-center my-8 py-2 w-full" ref={isLast ? messagesEndRef : null}>
                       <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
-                        Project Created
+                        Project created
                       </h2>
                       <p className="text-xs sm:text-sm font-medium text-gray-500 mb-5 max-w-lg mx-auto leading-relaxed">
                         Great news! Your quote has been converted into an active project.
@@ -1002,10 +1002,10 @@ export default function QuoteDetailsPage() {
                     {/* Header above offer card */}
                     <div className="text-center my-8">
                       <h2 className="text-2xl sm:text-3xl font-extrabold text-[#111827] mb-2">
-                        You Received an Offer
+                        You received an offer
                       </h2>
                       <p className="text-sm font-medium text-gray-500">
-                        Weve prepared a custom proposal for your project.
+                        We’ve prepared a custom proposal for your project.
                       </p>
                     </div>
 
@@ -1037,7 +1037,7 @@ export default function QuoteDetailsPage() {
 
                       {/* Card Title Row: Title on Left, From on Right */}
                       <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-4">
-                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Project Proposal</h3>
+                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Project proposal</h3>
                         {senderName && (
                           <span className="text-xs sm:text-sm text-gray-400 font-normal">
                             From: {senderName}
@@ -1127,7 +1127,7 @@ export default function QuoteDetailsPage() {
                     {isDeclined && !allMessages.some((m: any) => (m.type === "quote_action" || m.type === "action") && (m.content?.action === "denied" || m.content?.action === "declined" || m.action === "denied" || m.action === "declined")) && (
                       <div className="text-center my-12 py-2 w-full">
                         <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
-                          Quote Declined
+                          Quote declined
                         </h2>
                         <p className="text-xs sm:text-sm font-normal text-gray-500 max-w-lg mx-auto leading-relaxed">
                           The offered quote has been declined.
@@ -1139,7 +1139,7 @@ export default function QuoteDetailsPage() {
                     {isAccepted && !allMessages.some((m: any) => (m.type === "quote_action" && m.content?.action === "accepted") || (m.type === "system_notification" && (m.content?.systemText?.toLowerCase().includes("project created") || m.text?.toLowerCase().includes("project created")))) && (
                       <div className="text-center my-12 py-2 w-full">
                         <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
-                          Project Created
+                          Project created
                         </h2>
                         <p className="text-xs sm:text-sm font-normal text-gray-500 mb-6 max-w-lg mx-auto leading-relaxed">
                           Great news! Your quote has been converted into an active project.
@@ -1174,7 +1174,7 @@ export default function QuoteDetailsPage() {
                   return (
                     <div key={msgId} ref={isLast ? messagesEndRef : null} className="text-center my-10 py-2 w-full">
                       <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
-                        Quote Declined
+                        Quote declined
                       </h2>
                       <p className="text-xs sm:text-sm font-normal text-gray-500 max-w-lg mx-auto leading-relaxed">
                         The offered quote has been declined.
@@ -1187,7 +1187,7 @@ export default function QuoteDetailsPage() {
                   return (
                     <div key={msgId} ref={isLast ? messagesEndRef : null} className="text-center my-10 py-2 w-full">
                       <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
-                        Project Created
+                        Project created
                       </h2>
                       <p className="text-xs sm:text-sm font-normal text-gray-500 mb-6 max-w-lg mx-auto leading-relaxed">
                         Great news! Your quote has been converted into an active project.

@@ -124,7 +124,21 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
           data?.project?.id;
         if (!incomingId || String(incomingId) === String(projectId)) {
           if (data?.project && (String(data.project._id || data.project.id) === String(projectId))) {
-            setProject(data.project);
+            setProject((prev: any) => ({ ...prev, ...data.project }));
+          } else if (data?.message) {
+            setProject((prev: any) => {
+              if (!prev) return prev;
+              const existingMsgs = prev.messages || [];
+              const incomingMsgId = data.message._id || data.message.id;
+              if (incomingMsgId && existingMsgs.some((m: any) => (m._id || m.id) === incomingMsgId)) {
+                return prev;
+              }
+              return {
+                ...prev,
+                messages: [...existingMsgs, data.message],
+                status: data.project?.status || prev.status,
+              };
+            });
           }
           fetchProject(true);
         }
@@ -135,6 +149,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       sock.on("projectUpdated", handleMessageUpdate);
       sock.on("project_updated", handleMessageUpdate);
       sock.on("newMessage", handleMessageUpdate);
+      sock.on("new_message", handleMessageUpdate);
       sock.on("notification", (notif: any) => {
         const pId = notif?.data?.projectId || notif?.projectId;
         if (!pId || String(pId) === String(projectId)) {

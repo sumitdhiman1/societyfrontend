@@ -562,6 +562,13 @@ export default function ProjectPaymentsPage() {
     );
   }
 
+  const searchAmount = searchParams?.get("amount") ? Number(searchParams.get("amount")) : 0;
+  const searchInvoiceId = searchParams?.get("invoiceId") || undefined;
+  const searchInvoiceNumber = searchParams?.get("invoiceNumber") || undefined;
+  const searchMessageId = searchParams?.get("messageId") || undefined;
+  const searchDescription = searchParams?.get("description") || undefined;
+  const targetCost = searchAmount > 0 ? searchAmount : pendingBalance;
+
   return (
     <div className="w-full font-sans space-y-8">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -573,14 +580,16 @@ export default function ProjectPaymentsPage() {
             entityNumber={projectNumber}
             title={activeProject.title || "Project Development"}
             description={
-              allAddonItems.length > 0
-                ? "Payment for accepted add-on project deliverables"
-                : (activeProject.description || "Payment for accepted project deliverables")
+              searchDescription
+                ? `Payment for ${searchDescription}`
+                : (allAddonItems.length > 0
+                  ? "Payment for accepted add-on project deliverables"
+                  : (activeProject.description || "Payment for accepted project deliverables"))
             }
             date={activeProject.createdAt}
             startDate={activeProject.startDate}
             deadline={activeProject.deadline}
-            totalCost={pendingBalance}
+            totalCost={targetCost}
             deliverableItems={deliverableItems}
             clientEmail={currentUser?.email || activeProject.clientEmail || ""}
             successRedirectUrl={`/dashboard/my-projects/${projectId}/payments?success=true`}
@@ -588,6 +597,13 @@ export default function ProjectPaymentsPage() {
             isFullyPaid={isFullyPaid}
             nativeCurrency={activeProject.currency || "USD"}
             vatRate={Number(activeProject.vatRate ?? activeProject.vatPercentage ?? (activeProject.taxPercentage != null ? activeProject.taxPercentage : 0))}
+            invoiceId={searchInvoiceId}
+            metadata={{
+              invoiceId: searchInvoiceId,
+              invoiceNumber: searchInvoiceNumber,
+              messageId: searchMessageId,
+              description: searchDescription,
+            }}
           />
         </div>
 
