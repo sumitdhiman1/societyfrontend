@@ -182,6 +182,7 @@ export default function ProjectPaymentsPage() {
   const projectId = params.id as string;
   const { project, isLoading: projectLoading, refreshProject } = useProject();
   const [payments, setPayments] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showReceipt, setShowReceipt] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
@@ -480,7 +481,7 @@ export default function ProjectPaymentsPage() {
                         {formatCurrency(totalPaidAmount)}
                       </td>
                     </tr>
-                    {allAddonItems.map((addon, idx) => (
+                    {allAddonItems.map((addon: any, idx: number) => (
                       <tr key={idx}>
                         <td className="py-4 px-6 text-sm">
                           <div className="font-semibold text-[#0d1939]">{addon.description}</div>
