@@ -424,8 +424,10 @@ export function parseDurationToDays(durationStr: string): number {
   const monthsMatch = /(\d+)\s*month/i.exec(durationStr);
   if (monthsMatch) return parseInt(monthsMatch[1], 10) * 30;
   if (/month/i.test(durationStr)) return 30;
-  const daysMatch = /(\d+)\s*day/i.exec(durationStr);
+  const daysMatch = /(\d+)\s*(?:business\s*)?day/i.exec(durationStr);
   if (daysMatch) return parseInt(daysMatch[1], 10);
+  const hoursMatch = /(\d+)\s*hour/i.exec(durationStr);
+  if (hoursMatch) return Math.max(1, Math.ceil(parseInt(hoursMatch[1], 10) / 24));
   return parseInt(durationStr, 10) || 0;
 }
 
@@ -433,8 +435,13 @@ export function getProjectEstimatedDeadline(project: any): Date | null {
   if (!project) return null;
   const timelineStr =
     project.calculatorSpecs?.estimatedTimeline ||
+    project.calculatorSpecs?.timeline ||
+    project.requirements?.estimatedTimeline ||
+    project.requirements?.timeline ||
+    project.estimatedTimeline ||
     project.totalDuration ||
     project.timeline ||
+    project.duration ||
     "";
   const durationDays = parseDurationToDays(timelineStr);
   const startDate = project.startDate || project.createdAt;

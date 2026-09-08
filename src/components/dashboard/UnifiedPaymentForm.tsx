@@ -18,6 +18,7 @@ import VisaIcon from "@/components/icons/visa";
 import MastercardIcon from "@/components/icons/mastercard";
 import AmexIcon from "@/components/icons/amex";
 import StatusPopup from "@/components/common/StatusPopup";
+type PaymentProcessStep = "idle" | "preparing" | "gateway" | "bank_auth" | "confirming" | "activating" | "success" | "error";
 import InvoicePreviewModal from "./InvoicePreviewModal";
 import { countryService, Country } from "@/lib/countryService";
 import { convertCurrencyAmount, formatPriceWithCurrency, formatActiveCurrency } from "@/lib/currencyUtils";
@@ -266,7 +267,8 @@ function PaymentForm({
   const activeCreditsToApply = useCredits ? Math.min(convertedCredits, getPayableAmount()) : 0;
   const finalPayable = Math.max(0, getPayableAmount() - activeCreditsToApply);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!stripe || !elements) return;
 
     const user = authService.getUser();
@@ -282,21 +284,14 @@ function PaymentForm({
     }
 
     const errors: any = {};
-    const amount = getPayableAmount();
-    const creditsToApply = useCredits ? Math.min(convertedCredits, amount) : 0;
-
-    const convertedPending = convertCurrencyAmount(totalCost, currency, nativeCurrency || "USD", conversionRate);
-
     if (paymentOption === "custom") {
-      if (!customAmount || parseFloat(customAmount) <= 0) {
-        errors.amount = "Please enter a valid amount.";
-      } else if (parseFloat(customAmount) > convertedPending + 0.01) {
-        errors.amount = `Amount cannot exceed pending balance (${formatPrice(totalCost)}).`;
-      }
+      const val = parseFloat(customAmount);
+      if (!val || val <= 0) errors.customAmount = "Please enter a valid amount";
+      else if (val > totalCost) errors.customAmount = `Amount cannot exceed ${formatPrice(totalCost)}`;
     }
 
-    if (amount - creditsToApply > 0 && selectedMethod === "new") {
-      if (!cardholderName.trim()) errors.cardHolderName = "Cardholder name is required.";
+    if (selectedMethod === "new" && finalPayable > 0) {
+      if (!cardholderName.trim()) errors.cardholderName = "Cardholder name is required.";
       if (!billingSameAsBusiness) {
         if (!billingAddress.line1.trim()) errors.billingLine1 = "Address is required.";
         if (!billingAddress.city.trim()) errors.billingCity = "City is required.";
@@ -315,8 +310,10 @@ function PaymentForm({
     const finalCredits = useCredits ? Math.min(convertedCredits, finalAmount) : 0;
 
     setIsProcessing(true);
+    setPaymentStep("preparing");
     try {
       const effectiveInvoiceId = invoiceId || searchParams?.get("invoiceId") || undefined;
+      setPaymentStep("gateway");
       const intentResponse = await paymentService.createPaymentIntent({
         amount: finalAmount,
         currency,
@@ -341,6 +338,9 @@ function PaymentForm({
       const { clientSecret, transactionId, fullyPaidByCredits } = intentResponse.data;
 
       if (fullyPaidByCredits) {
+        setPaymentStep("activating");
+        await new Promise((r) => setTimeout(r, 600));
+        setPaymentStep("success");
         handlePaymentSuccess("Payment completed using your credits.", finalCredits);
         return;
       }
@@ -348,6 +348,7 @@ function PaymentForm({
       await confirmStripePayment(clientSecret, transactionId, finalCredits);
     } catch (err: any) {
       console.error("Payment Error:", err);
+      setPaymentStep("error");
       setPopup({
         isOpen: true,
         type: "error",
@@ -355,7 +356,9 @@ function PaymentForm({
         message: err.message || "An unexpected error occurred.",
       });
     } finally {
-      setIsProcessing(false);
+      setTimeout(() => {
+        setIsProcessing(false);
+      }, 500);
     }
   };
 
@@ -397,6 +400,7 @@ function PaymentForm({
           },
         };
 
+    setPaymentStep("bank_auth");
     const confirmResponse = await stripe.confirmCardPayment(clientSecret, {
       payment_method: selectedMethod !== "new" ? selectedMethod : {
         card: cardElement!,
@@ -414,8 +418,12 @@ function PaymentForm({
     }
 
     if (confirmResponse.paymentIntent?.status === "succeeded") {
+      setPaymentStep("confirming");
       const confirmResult = await paymentService.confirmPayment({ transactionId });
       if (confirmResult.isSuccessful) {
+        setPaymentStep("activating");
+        await new Promise((r) => setTimeout(r, 600));
+        setPaymentStep("success");
         handlePaymentSuccess("Your payment has been processed successfully.", creditsUsed);
       } else {
         throw new Error("Payment succeeded but server confirmation failed. Please contact support.");
@@ -1107,13 +1115,21 @@ function PaymentForm({
           <button
             onClick={handleSubmit}
             disabled={isProcessing || !stripe || !elements || !stripePromise}
-            className="w-full bg-[#1e293b] hover:bg-[#0f172a] text-white font-medium py-3 rounded-md transition-colors text-sm mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full bg-[#1e293b] hover:bg-[#0f172a] text-white font-medium py-3 rounded-md transition-colors text-sm mt-4 disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isProcessing ? (
-              <div className="flex items-center justify-center gap-2">
+              <>
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Processing...
-              </div>
+                <span>
+                  {paymentStep === "preparing" && "Preparing..."}
+                  {paymentStep === "gateway" && "Connecting..."}
+                  {paymentStep === "bank_auth" && "Authorizing..."}
+                  {paymentStep === "confirming" && "Confirming..."}
+                  {paymentStep === "activating" && "Activating..."}
+                  {paymentStep === "success" && "Success!"}
+                  {(paymentStep === "idle" || paymentStep === "error") && "Processing..."}
+                </span>
+              </>
             ) : (
               `Pay ${formatActiveCurrency(finalPayable, currency)} now`
             )}

@@ -92,15 +92,82 @@ function extractProjectDetails(data: any): ProjectPDFData {
     0
   );
 
-  const duration = data.calculatorSpecs?.estimatedTimeline ||
-    data.totalDuration ||
-    (data.timelineInDays ? `${data.timelineInDays} Days` : "") ||
-    data.timeline ||
-    data.duration ||
-    "14 Days";
+  // Comprehensive timeline resolution
+  let foundTimelineQuestion = "";
+  let foundTimelineAnswer = "";
 
-  const calculatorSpecs = data.calculatorSpecs || data.requirements;
-  const rawSelections = calculatorSpecs?.selections || [];
+  const calculatorSpecs = data.calculatorSpecs || data.requirements || {};
+  const rawSelections = calculatorSpecs.selections || data.selections || [];
+
+  if (Array.isArray(rawSelections)) {
+    const sel = rawSelections.find(
+      (s: any) => /timeline/i.test(s.questionKey || "") || /timeline/i.test(s.questionText || "")
+    );
+    if (sel) {
+      foundTimelineQuestion = sel.questionText || "What is your desired project timeline?";
+      if (Array.isArray(sel.answerTexts) && sel.answerTexts.length > 0 && sel.answerTexts[0]) {
+        foundTimelineAnswer = sel.answerTexts[0];
+      } else if (Array.isArray(sel.answerKeys) && sel.answerKeys.length > 0 && sel.answerKeys[0]) {
+        foundTimelineAnswer = sel.answerKeys[0];
+      } else if (sel.textValue) {
+        foundTimelineAnswer = String(sel.textValue);
+      }
+    }
+  }
+
+  const directTimeline =
+    calculatorSpecs.estimatedTimeline ||
+    data.estimatedTimeline ||
+    data.timeline ||
+    data.totalDuration ||
+    calculatorSpecs.timeline ||
+    data.duration ||
+    (data.timelineInDays ? `${data.timelineInDays} Days` : "") ||
+    "";
+
+  const formatRawAnswer = (raw: string): string => {
+    if (!raw) return "";
+    const lower = raw.toLowerCase().trim();
+    if (lower.startsWith("web_timeline_1") || lower === "timeline_14" || lower === "timeline_standard") {
+      return "2 weeks (Normal): No extra fee";
+    }
+    if (lower.startsWith("web_timeline_2") || lower === "timeline_7" || lower === "timeline_rush") {
+      return "1 week (Rushed): +25% rush fee";
+    }
+    if (lower.startsWith("web_timeline_3") || lower === "timeline_3" || lower === "timeline_super_rush") {
+      return "3 - 4 days (Super Rushed): +50% rush fee";
+    }
+    if (lower.startsWith("gfx_timeline_1")) return "5 - 7 business days";
+    if (lower.startsWith("gfx_timeline_2")) return "2 - 3 business days (Rushed): +25% rush fee";
+    if (lower.startsWith("gfx_timeline_3")) return "24 - 48 hours (Super Rushed): +50% rush fee";
+    if (lower.startsWith("seo_timeline")) return "Monthly Service";
+    return raw;
+  };
+
+  const finalTimelineAnswer = formatRawAnswer(foundTimelineAnswer) || formatRawAnswer(directTimeline) || directTimeline;
+
+  let duration = "";
+  if (finalTimelineAnswer) {
+    duration = finalTimelineAnswer
+      .replace(/\s*\(.*?\)/g, "")
+      .replace(/:\s*\+\d+%.*$/i, "")
+      .replace(/:\s*No extra fee.*$/i, "")
+      .replace(/:\s*.*$/, "")
+      .trim();
+  } else if (directTimeline) {
+    duration = directTimeline
+      .replace(/\s*\(.*?\)/g, "")
+      .replace(/:\s*.*$/, "")
+      .trim();
+  }
+
+  const categoryKey = data.categoryKey || calculatorSpecs.categoryKey || "";
+  if (!duration) {
+    if (categoryKey === "seo") duration = "Monthly Service";
+    else if (categoryKey === "graphics") duration = "5 - 7 business days";
+    else if (categoryKey === "marketing") duration = "Ongoing";
+    else duration = "2 weeks";
+  }
 
   const categoryName =
     calculatorSpecs?.categoryName ||
@@ -112,7 +179,7 @@ function extractProjectDetails(data: any): ProjectPDFData {
   if (Array.isArray(rawSelections) && rawSelections.length > 0) {
     rawSelections.forEach((sel: any) => {
       const qText = sel.questionText || sel.questionKey || "";
-      // Filter out internal timeline questions or business info if repeated
+      // Filter out internal timeline questions
       if (/timeline/i.test(sel.questionKey || "") || /timeline/i.test(qText)) {
         return;
       }
@@ -135,15 +202,10 @@ function extractProjectDetails(data: any): ProjectPDFData {
     });
 
     // Ensure timeline question is at the end of Selected Options
-    const timelineVal =
-      calculatorSpecs?.estimatedTimeline ||
-      data.totalDuration ||
-      data.timeline ||
-      "";
-    if (timelineVal) {
-      let formattedTimeline = timelineVal;
-      if (!timelineVal.includes(":") && !timelineVal.includes("Normal") && !timelineVal.includes("Rushed")) {
-        formattedTimeline = `${timelineVal} (Normal): No extra fee`;
+    if (finalTimelineAnswer || duration) {
+      let formattedTimeline = finalTimelineAnswer || duration;
+      if (!formattedTimeline.includes(":") && !formattedTimeline.includes("Normal") && !formattedTimeline.includes("Rushed") && !formattedTimeline.toLowerCase().includes("month") && !formattedTimeline.toLowerCase().includes("business")) {
+        formattedTimeline = `${formattedTimeline} (Normal): No extra fee`;
       }
       selectedOptions.push({
         question: "What is your desired project timeline?:",
@@ -402,196 +464,10 @@ function getProjectDetailsHTML(d: ProjectPDFData): string {
 
 export async function downloadProjectDetailsPDF(data: any): Promise<void> {
   if (typeof window === "undefined") return;
-
-  if (data?.calculatorSpecs) {
-    return downloadCalculatorProjectPDF(data);
-  }
-
-  const d = extractProjectDetails(data);
-
-  try {
-    let html2canvasLib = typeof window !== "undefined" ? (window as any).html2canvas : null;
-    let jsPdfLib = typeof window !== "undefined" ? ((window as any).jspdf?.jsPDF || (window as any).jsPDF) : null;
-
-    if (!html2canvasLib) {
-      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
-      html2canvasLib = (window as any).html2canvas;
-    }
-    if (!jsPdfLib) {
-      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
-      jsPdfLib = (window as any).jspdf?.jsPDF || (window as any).jsPDF;
-    }
-
-    if (!html2canvasLib || !jsPdfLib) {
-      throw new Error("PDF generation libraries not available");
-    }
-
-    const container = document.createElement("div");
-    container.style.position = "fixed";
-    container.style.left = "0px";
-    container.style.top = "0px";
-    container.style.zIndex = "-99999";
-    container.style.width = "794px";
-    container.style.backgroundColor = "#ffffff";
-    container.style.opacity = "1";
-    container.style.pointerEvents = "none";
-    container.innerHTML = getProjectDetailsHTML(d);
-
-    document.body.appendChild(container);
-
-    await new Promise((r) => setTimeout(r, 150));
-
-    try {
-      const canvas = await html2canvasLib(container, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: "#ffffff",
-        windowWidth: 794,
-        scrollY: 0,
-        scrollX: 0,
-      });
-
-      if (!canvas || canvas.width === 0 || canvas.height === 0) {
-        throw new Error("Canvas rendering produced an empty canvas");
-      }
-
-      const pdf = new jsPdfLib("p", "pt", "a4");
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-
-      const pageCanvasHeight = Math.floor((canvas.width * pageHeight) / pageWidth);
-      let renderedHeight = 0;
-      let pageNum = 0;
-
-      while (renderedHeight < canvas.height) {
-        const sliceHeight = Math.min(pageCanvasHeight, canvas.height - renderedHeight);
-        const pageCanvas = document.createElement("canvas");
-        pageCanvas.width = canvas.width;
-        pageCanvas.height = sliceHeight;
-
-        const ctx = pageCanvas.getContext("2d");
-        if (ctx) {
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-          ctx.drawImage(
-            canvas,
-            0,
-            renderedHeight,
-            canvas.width,
-            sliceHeight,
-            0,
-            0,
-            canvas.width,
-            sliceHeight
-          );
-
-          const pageImgData = pageCanvas.toDataURL("image/png");
-          if (pageNum > 0) {
-            pdf.addPage();
-          }
-          const renderHeightPt = (sliceHeight * pageWidth) / canvas.width;
-          pdf.addImage(pageImgData, "PNG", 0, 0, pageWidth, renderHeightPt, undefined, "FAST");
-          pageNum++;
-        }
-        renderedHeight += pageCanvasHeight;
-      }
-
-      const cleanNum = d.rawProjectNumber.replace(/[^a-zA-Z0-9-_]/g, "") || "document";
-      const filename = `Project_Details_${cleanNum}.pdf`;
-      pdf.save(filename);
-    } finally {
-      if (document.body.contains(container)) {
-        document.body.removeChild(container);
-      }
-    }
-  } catch (err) {
-    console.warn("Direct PDF generation fallback to print:", err);
-    printProjectDetails(data);
-  }
-}
-
-function loadScript(src: string): Promise<void> {
-  if (typeof document === "undefined") return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${src}"]`);
-    if (existing) {
-      resolve();
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = src;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error(`Failed to load ${src}`));
-    document.head.appendChild(script);
-  });
+  return downloadCalculatorProjectPDF(data);
 }
 
 export function printProjectDetails(data: any): void {
   if (typeof window === "undefined") return;
-
-  if (data?.calculatorSpecs) {
-    return printCalculatorProjectPDF(data);
-  }
-
-  const d = extractProjectDetails(data);
-  const printContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>Project Details - ${d.projectNumber}</title>
-        <style>
-          @page {
-            size: A4 portrait;
-            margin: 10mm;
-          }
-          * {
-            box-sizing: border-box;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color-adjust: exact !important;
-          }
-          body {
-            margin: 0;
-            padding: 0;
-            background-color: #ffffff;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: #0F172A;
-            -webkit-font-smoothing: antialiased;
-          }
-        </style>
-      </head>
-      <body>
-        ${getProjectDetailsHTML(d)}
-      </body>
-    </html>
-  `;
-
-  const iframe = document.createElement("iframe");
-  iframe.style.position = "fixed";
-  iframe.style.right = "0";
-  iframe.style.bottom = "0";
-  iframe.style.width = "0";
-  iframe.style.height = "0";
-  iframe.style.border = "0";
-
-  document.body.appendChild(iframe);
-
-  const doc = iframe.contentWindow?.document;
-  if (!doc) return;
-
-  doc.open();
-  doc.write(printContent);
-  doc.close();
-
-  iframe.contentWindow?.focus();
-  setTimeout(() => {
-    iframe.contentWindow?.print();
-    setTimeout(() => {
-      if (document.body.contains(iframe)) {
-        document.body.removeChild(iframe);
-      }
-    }, 2000);
-  }, 400);
+  return printCalculatorProjectPDF(data);
 }

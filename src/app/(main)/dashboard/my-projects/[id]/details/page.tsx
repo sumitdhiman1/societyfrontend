@@ -191,6 +191,7 @@ export default function ProjectDetailsPage() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const [isRestarting, setIsRestarting] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   useEffect(() => {
     setCurrentUser(authService.getUser());
@@ -717,19 +718,36 @@ export default function ProjectDetailsPage() {
               <div className="flex flex-row gap-3 w-full sm:w-auto">
                 <button
                   type="button"
+                  disabled={isDownloadingPdf}
                   onClick={async (e) => {
                     e.preventDefault();
-                    if (project.calculatorSpecs) {
-                      await downloadCalculatorProjectPDF(project);
-                    } else if (project.resultsPdfUrl || project.pdfUrl) {
-                      downloadFile(e as any, project.resultsPdfUrl || project.pdfUrl, "Project_Document.pdf");
-                    } else {
-                      await downloadProjectDetailsPDF(project);
+                    if (isDownloadingPdf) return;
+                    setIsDownloadingPdf(true);
+                    try {
+                      if (project.calculatorSpecs) {
+                        await downloadCalculatorProjectPDF(project);
+                      } else if (project.resultsPdfUrl || project.pdfUrl) {
+                        downloadFile(e as any, project.resultsPdfUrl || project.pdfUrl, "Project_Document.pdf");
+                      } else {
+                        await downloadProjectDetailsPDF(project);
+                      }
+                    } catch (err) {
+                      console.error("Failed to download PDF", err);
+                      toast.error("Failed to download PDF. Please try again.");
+                    } finally {
+                      setIsDownloadingPdf(false);
                     }
                   }}
-                  className="flex-1 sm:flex-initial px-6 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap"
+                  className="flex-1 sm:flex-initial px-6 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                 >
-                  Download Project (.PDF)
+                  {isDownloadingPdf ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Downloading...</span>
+                    </>
+                  ) : (
+                    "Download Project (.PDF)"
+                  )}
                 </button>
                 <button
                   type="button"

@@ -10,6 +10,7 @@ import { authService } from "@/lib/authService";
 import { paymentService } from "@/lib/paymentService";
 import { useCurrency } from "@/context/CurrencyContext";
 import { convertCurrencyAmount, formatPriceWithCurrency, formatActiveCurrency } from "@/lib/currencyUtils";
+type PaymentProcessStep = "idle" | "preparing" | "gateway" | "bank_auth" | "confirming" | "activating" | "success" | "error";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
 
@@ -186,6 +187,7 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
   const formatCurrency = (amt: number) => formatPriceWithCurrency(amt, currency || "USD", "USD", conversionRate);
   
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentStep, setPaymentStep] = useState<PaymentProcessStep>("idle");
   const [errors, setErrors] = useState<any>({});
   const [showInvoice, setShowInvoice] = useState(false);
   
@@ -231,8 +233,10 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
     
     const amount = getAmountToPay();
     setIsProcessing(true);
+    setPaymentStep("preparing");
     
     try {
+      setPaymentStep("gateway");
       const intentRes = await paymentService.createPaymentIntent({
         amount,
         currency,
@@ -249,6 +253,7 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
       const cardElement = elements.getElement(CardNumberElement);
       if (!cardElement) throw new Error("Card element not found.");
       
+      setPaymentStep("bank_auth");
       const confirmRes = await stripe.confirmCardPayment(clientSecret, {
         payment_method: { card: cardElement, billing_details: { name: cardHolderName, email: quoteDetails.client?.email } },
         setup_future_usage: saveCard ? "off_session" : undefined
@@ -257,8 +262,12 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
       if (confirmRes.error) throw new Error(confirmRes.error.message);
       
       if (confirmRes.paymentIntent.status === "succeeded") {
+        setPaymentStep("confirming");
         const confirmResult = await paymentService.confirmPayment({ transactionId });
         if (confirmResult.isSuccessful) {
+          setPaymentStep("activating");
+          await new Promise((r) => setTimeout(r, 600));
+          setPaymentStep("success");
           setPopup({ isOpen: true, type: "success", title: "Payment Successful", message: "Your payment has been processed successfully." });
           setTimeout(() => {
             router.push(`/dashboard/my-quotes/${quoteDetails._id}`);
@@ -269,9 +278,12 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
       }
     } catch (e: any) {
       console.error("Payment Error:", e);
+      setPaymentStep("error");
       setPopup({ isOpen: true, type: "error", title: "Payment Failed", message: e.message || "An unexpected error occurred." });
     } finally {
-      setIsProcessing(false);
+      setTimeout(() => {
+        setIsProcessing(false);
+      }, 500);
     }
   };
 
@@ -377,8 +389,27 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
                 </div>
               </div>
               
-              <button onClick={handlePayment} disabled={isProcessing || !stripe || !elements} className="w-full bg-[#1e293b] text-white font-medium py-3 rounded-md text-sm mt-4 disabled:opacity-70">
-                {isProcessing ? "Processing..." : `Pay ${formatActiveCurrency(getAmountToPay(), currency || "USD")} now`}
+              <button
+                onClick={handlePayment}
+                disabled={isProcessing || !stripe || !elements}
+                className="w-full bg-[#1e293b] hover:bg-[#0f172a] text-white font-medium py-3 rounded-md text-sm mt-4 disabled:opacity-75 flex items-center justify-center gap-2 transition-colors"
+              >
+                {isProcessing ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    <span>
+                      {paymentStep === "preparing" && "Preparing..."}
+                      {paymentStep === "gateway" && "Connecting..."}
+                      {paymentStep === "bank_auth" && "Authorizing..."}
+                      {paymentStep === "confirming" && "Confirming..."}
+                      {paymentStep === "activating" && "Activating..."}
+                      {paymentStep === "success" && "Success!"}
+                      {(paymentStep === "idle" || paymentStep === "error") && "Processing..."}
+                    </span>
+                  </>
+                ) : (
+                  `Pay ${formatActiveCurrency(getAmountToPay(), currency || "USD")} now`
+                )}
               </button>
             </div>
           </div>

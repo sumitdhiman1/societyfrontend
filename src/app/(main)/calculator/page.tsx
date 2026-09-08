@@ -45,6 +45,7 @@ import {
 } from "@/lib/calculatorUtils";
 import { downloadCalculatorPdf, getCalculatorPdfBase64 } from "@/lib/calculatorPdfService";
 import StatusPopup from "@/components/common/StatusPopup";
+type PaymentProcessStep = "idle" | "preparing" | "gateway" | "bank_auth" | "confirming" | "activating" | "success" | "error";
 import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import VisaIcon from "@/components/icons/visa";
 import MastercardIcon from "@/components/icons/mastercard";
@@ -431,7 +432,11 @@ const ProposalPreview = ({
   const displayName = getCategoryProposalName(category.categoryKey, category.categoryName);
   const displayTimeline = timeline || getDefaultCategoryTimeline(category.categoryKey, category.timeline);
 
+  const [isDownloading, setIsDownloading] = useState(false);
+
   const handleDownload = async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
     try {
       await downloadCalculatorPdf({
         categoryName: category.categoryName,
@@ -447,6 +452,8 @@ const ProposalPreview = ({
     } catch (err) {
       console.error("Failed to generate PDF", err);
       alert("Failed to generate PDF. Please try again.");
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -572,13 +579,47 @@ const ProposalPreview = ({
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 mt-4">
-          <button onClick={handleDownload} className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-semibold py-3.5 px-6 rounded-[6px] transition-all flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg cursor-pointer">
-            <svg className="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            <span className="text-[16px] font-semibold tracking-normal">Download PDF</span>
+          <button
+            onClick={handleDownload}
+            disabled={isDownloading}
+            className={`w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-semibold py-3.5 px-6 rounded-[6px] transition-all flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg ${
+              isDownloading ? "opacity-80 cursor-not-allowed" : "cursor-pointer"
+            }`}
+          >
+            {isDownloading ? (
+              <>
+                <svg
+                  className="w-5 h-5 animate-spin text-white flex-shrink-0"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                <span className="text-[16px] font-semibold tracking-normal">Processing...</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                <span className="text-[16px] font-semibold tracking-normal">Download PDF</span>
+              </>
+            )}
           </button>
           <button onClick={handleEmail} className="w-full bg-white border border-gray-300 hover:bg-gray-50 text-[#374151] font-semibold py-3.5 px-6 rounded-[6px] transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer">
             <svg className="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -652,6 +693,7 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, category, se
   }, [currency]);
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentStep, setPaymentStep] = useState<PaymentProcessStep>("idle");
   const [status, setStatus] = useState({ isOpen: false, type: "success" as any, title: "", message: "" });
   const [errors, setErrors] = useState<any>({});
   const [cardStatus, setCardStatus] = useState<any>({
@@ -781,6 +823,7 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, category, se
     }
 
     setIsProcessing(true);
+    setPaymentStep("preparing");
     try {
       // Enrich selections with human-readable question/answer text from the loaded category config
       const rawSelections = selectionsToArray(selections);
@@ -824,6 +867,7 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, category, se
       // currency the user chose to pay in.
       const usdBaseAmount = totalPrice; // totalPrice is always the raw USD amount from the calculator
 
+      setPaymentStep("gateway");
       const intentRes = await paymentService.createPaymentIntent({
         amount,          // actual charge amount in chosen currency (may be EUR-converted)
         currency,        // "usd" or "eur"
@@ -849,6 +893,7 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, category, se
       const cardElement = elements.getElement(CardNumberElement);
       if (!cardElement) throw new Error("Card element not found.");
 
+      setPaymentStep("bank_auth");
       const confirmRes = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: cardElement,
@@ -871,14 +916,19 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, category, se
       if (confirmRes.error) throw new Error(confirmRes.error.message);
 
       if (confirmRes.paymentIntent?.status === "succeeded") {
+        setPaymentStep("confirming");
         const confirmResult = await paymentService.confirmPayment({ transactionId });
         if (confirmResult.isSuccessful) {
+          setPaymentStep("activating");
+          await new Promise((r) => setTimeout(r, 600));
+          setPaymentStep("success");
+          
           setStatus({ isOpen: true, type: "success", title: "Payment Successful", message: "Your project has been started successfully!" });
           // Redirect to project page if created, otherwise fall back to quote page
           const projectId = confirmResult.data?.project?._id || confirmResult.data?.project?.id;
           setTimeout(() => router.push(
             projectId ? `/dashboard/my-projects/${projectId}` : `/dashboard/my-quotes/${quoteId}`
-          ), 2000);
+          ), 2200);
         } else {
           throw new Error("Payment succeeded but server confirmation failed. Please contact support.");
         }
@@ -886,9 +936,12 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, category, se
 
     } catch (err: any) {
       console.error("Payment Error:", err);
+      setPaymentStep("error");
       setStatus({ isOpen: true, type: "error", title: "Payment Failed", message: err.message || "An unexpected error occurred." });
     } finally {
-      setIsProcessing(false);
+      setTimeout(() => {
+        setIsProcessing(false);
+      }, 500);
     }
   };
 
@@ -1097,9 +1150,24 @@ const CalculatorPaymentForm = ({ totalPrice, timeline, categoryKey, category, se
       <button
         type="submit"
         disabled={isProcessing || !stripe || !elements}
-        className="w-full max-w-[680px] mx-auto py-4 px-6 rounded-[6px] bg-[#4343F0] text-white font-extrabold text-[16px] tracking-widest shadow-xl hover:bg-[#3232b7] transition-all  disabled:cursor-not-allowed uppercase active:scale-[0.98] mt-4"
+        className="w-full max-w-[680px] mx-auto py-4 px-6 rounded-[6px] bg-[#4343F0] text-white font-extrabold text-[16px] tracking-widest shadow-xl hover:bg-[#3232b7] transition-all disabled:opacity-75 disabled:cursor-not-allowed uppercase active:scale-[0.98] mt-4 flex items-center justify-center gap-3"
       >
-        {isProcessing ? "PROCESSING..." : `PAY ${formatPaymentLine(totalPayable)} NOW`}
+        {isProcessing ? (
+          <>
+            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            <span>
+              {paymentStep === "preparing" && "PREPARING..."}
+              {paymentStep === "gateway" && "CONNECTING..."}
+              {paymentStep === "bank_auth" && "AUTHORIZING..."}
+              {paymentStep === "confirming" && "CONFIRMING..."}
+              {paymentStep === "activating" && "ACTIVATING..."}
+              {paymentStep === "success" && "SUCCESS!"}
+              {(paymentStep === "idle" || paymentStep === "error") && "PROCESSING..."}
+            </span>
+          </>
+        ) : (
+          `PAY ${formatPaymentLine(totalPayable)} NOW`
+        )}
       </button>
     </form>
   );
