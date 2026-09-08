@@ -13,23 +13,19 @@ import AuthPromptModal from "@/components/common/AuthPromptModal";
 import { io, Socket } from "socket.io-client";
 
 const formatStatusTitle = (rawTitle: string): string => {
-  if (!rawTitle) return "System Notification";
+  if (!rawTitle) return "System notification";
   let clean = rawTitle
-    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}👤🚀📌✅🔔]/gu, "")
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}⏸▶️💳🛠️🎉✅🔄👤🚀📌🔔]/gu, "")
     .trim();
 
   const lower = clean.toLowerCase();
-  if (lower === "project manager assigned" || lower === "project manager assigned!") {
-    return "Project manager assigned";
+  if (lower === "action required: payment" || lower === "payment required") {
+    return "Project paused";
   }
-  if (lower === "order completed" || lower === "order completed!") {
-    return "Order completed!";
+  if (lower.startsWith("project status updated to active") || lower === "active") {
+    return "Project resumed";
   }
-  if (lower === "bundle project starting" || lower === "bundle project starting!") {
-    return "Bundle project starting";
-  }
-
-  if (clean.length > 1 && clean === clean.toUpperCase()) {
+  if (clean.length > 0) {
     clean = clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
   }
   return clean;
@@ -1481,7 +1477,7 @@ export default function AnalysisDetailsPage() {
                       setMessageText("");
                       setAttachments([]);
                     }}
-                    className="flex-1 sm:flex-none px-6 py-2.5 bg-[#800020] hover:bg-[#600018] text-white font-bold text-xs rounded-lg transition-colors shadow-sm cursor-pointer"
+                    className="flex-1 sm:flex-none px-6 py-2.5 bg-[#7A1C1C] hover:bg-[#631616] text-white font-bold text-xs rounded-lg transition-colors shadow-sm cursor-pointer"
                   >
                     Cancel
                   </button>

@@ -402,25 +402,24 @@ function renderSelectedOptionsList(options: Array<{ question: string; answers: s
   return `
     <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px;">
       ${options
-        .map((opt) => {
-          const cleanQuestion = opt.question.trim().replace(/:$/, "");
-          const hasMultiple = opt.answers.length > 1;
-          return `
+      .map((opt) => {
+        const cleanQuestion = opt.question.trim().replace(/:$/, "");
+        const hasMultiple = opt.answers.length > 1;
+        return `
             <div>
               <div style="font-size: 13.5px; font-weight: 700; color: #0F172A; margin-bottom: 5px;">${cleanQuestion}</div>
-              ${
-                hasMultiple
-                  ? `<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 2px;">
+              ${hasMultiple
+            ? `<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 2px;">
                       ${opt.answers
-                        .map((ans) => `<div style="font-size: 12px; color: #475569; line-height: 1.5;">• ${ans.replace(/^[•\-\*]\s*/, "")}</div>`)
-                        .join("")}
+              .map((ans) => `<div style="font-size: 12px; color: #475569; line-height: 1.5;">• ${ans.replace(/^[•\-\*]\s*/, "")}</div>`)
+              .join("")}
                     </div>`
-                  : `<div style="font-size: 12px; color: #475569; line-height: 1.5; padding-left: 2px;">${opt.answers[0] || "-"}</div>`
-              }
+            : `<div style="font-size: 12px; color: #475569; line-height: 1.5; padding-left: 2px;">${opt.answers[0] || "-"}</div>`
+          }
             </div>
           `;
-        })
-        .join("")}
+      })
+      .join("")}
     </div>
   `;
 }
@@ -430,17 +429,33 @@ function renderSummaryBoxAndFooter(d: CalculatorPDFData, currentPage: number, to
     <div style="margin-top: auto; padding-top: 10px;">
       <!-- Estimated Timeline & Investment Total Box -->
       <div style="display: flex; justify-content: flex-end; margin-bottom: 22px;">
-        <div style="width: 290px; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
+        <div style="width: 310px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
           <!-- Top Row (Estimated Timeline) -->
-          <div style="background-color: #0D1322; color: #FFFFFF; padding: 9px 16px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; opacity: 0.9;">ESTIMATED TIMELINE</span>
-            <span style="font-size: 12px; font-weight: 800;">${d.duration}</span>
-          </div>
+          <table style="width: 100%; border-collapse: collapse; background-color: #0D1939; margin: 0; padding: 0;">
+            <tbody>
+              <tr>
+                <td style="padding: 12px 18px; vertical-align: middle; text-align: left;">
+                  <span style="font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #94A3B8; display: inline-block; vertical-align: middle; line-height: 1;">ESTIMATED TIMELINE</span>
+                </td>
+                <td style="padding: 12px 18px; vertical-align: middle; text-align: right;">
+                  <span style="font-size: 13.5px; font-weight: 800; color: #FFFFFF; display: inline-block; vertical-align: middle; line-height: 1;">${d.duration}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
           <!-- Bottom Row (Investment Total) -->
-          <div style="background-color: #282C8F; color: #FFFFFF; padding: 13px 16px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px;">INVESTMENT TOTAL</span>
-            <span style="font-size: 21px; font-weight: 900; letter-spacing: -0.5px;">${d.formattedPrice}</span>
-          </div>
+          <table style="width: 100%; border-collapse: collapse; background-color: #282BB3; margin: 0; padding: 0;">
+            <tbody>
+              <tr>
+                <td style="padding: 16px 18px; vertical-align: middle; text-align: left;">
+                  <span style="font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #FFFFFF; display: inline-block; vertical-align: middle; line-height: 1;">INVESTMENT TOTAL</span>
+                </td>
+                <td style="padding: 10px 18px 15px 0px; vertical-align: middle; text-align: right;">
+                  <span style="font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: #FFFFFF; display: inline-block; vertical-align: middle; line-height: 1;">${d.formattedPrice}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -460,7 +475,7 @@ function renderSummaryBoxAndFooter(d: CalculatorPDFData, currentPage: number, to
 
 export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
   const options = d.selectedOptions || [];
-  
+
   // Calculate approximate height of items to decide single-page vs multi-page
   let totalItemsHeight = 0;
   for (const opt of options) {
@@ -518,13 +533,12 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
             <div style="border-bottom: 1px solid #E2E8F0; margin-bottom: 18px;"></div>
           </div>
 
-          ${
-            d.subtitle
-              ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.subtitle}</div>`
-              : d.description
-              ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.description}</div>`
-              : ""
-          }
+          ${d.subtitle
+        ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.subtitle}</div>`
+        : d.description
+          ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.description}</div>`
+          : ""
+      }
 
           ${renderSelectedOptionsList(options)}
         </div>
@@ -600,13 +614,12 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
           <div style="border-bottom: 1px solid #E2E8F0; margin-bottom: 18px;"></div>
         </div>
 
-        ${
-          d.subtitle
-            ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.subtitle}</div>`
-            : d.description
-            ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.description}</div>`
-            : ""
-        }
+        ${d.subtitle
+      ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.subtitle}</div>`
+      : d.description
+        ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.description}</div>`
+        : ""
+    }
 
         ${renderSelectedOptionsList(page1Items)}
       </div>

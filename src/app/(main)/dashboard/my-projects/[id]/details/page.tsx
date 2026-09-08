@@ -724,13 +724,7 @@ export default function ProjectDetailsPage() {
                     if (isDownloadingPdf) return;
                     setIsDownloadingPdf(true);
                     try {
-                      if (project.calculatorSpecs) {
-                        await downloadCalculatorProjectPDF(project);
-                      } else if (project.resultsPdfUrl || project.pdfUrl) {
-                        downloadFile(e as any, project.resultsPdfUrl || project.pdfUrl, "Project_Document.pdf");
-                      } else {
-                        await downloadProjectDetailsPDF(project);
-                      }
+                      await downloadProjectDetailsPDF(project);
                     } catch (err) {
                       console.error("Failed to download PDF", err);
                       toast.error("Failed to download PDF. Please try again.");
@@ -753,11 +747,7 @@ export default function ProjectDetailsPage() {
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
-                    if (project.calculatorSpecs) {
-                      printCalculatorProjectPDF(project);
-                    } else {
-                      printProjectDetails(project);
-                    }
+                    printProjectDetails(project);
                   }}
                   className="flex-1 sm:flex-initial px-6 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap"
                 >
@@ -1024,9 +1014,11 @@ export default function ProjectDetailsPage() {
                 const rawTitle = msg.content?.systemText || msg.message || "Notification";
                 let cleanTitle = rawTitle.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}⏸▶️💳🛠️🎉✅🔄👤🚀📌🔔]/gu, "").trim();
                 if (cleanTitle.toLowerCase() === "action required: payment" || cleanTitle.toLowerCase() === "payment required") {
-                  cleanTitle = "Project Paused";
+                  cleanTitle = "Project paused";
                 } else if (cleanTitle.toLowerCase().startsWith("project status updated to active") || cleanTitle.toLowerCase() === "active") {
-                  cleanTitle = "Project Resumed";
+                  cleanTitle = "Project resumed";
+                } else if (cleanTitle.length > 0) {
+                  cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1).toLowerCase();
                 }
 
                 const rawTextCandidate = msg.content?.text || msg.text || (msg.message !== rawTitle && msg.message !== cleanTitle ? msg.message : "");
@@ -1653,7 +1645,7 @@ export default function ProjectDetailsPage() {
                   setMessageText("");
                   setAttachments([]);
                 }}
-                className="flex-1 sm:flex-none px-6 py-2.5 bg-[#7A1C1C] hover:bg-[#600018] text-white font-bold text-xs rounded-lg transition-colors shadow-sm cursor-pointer"
+                className="flex-1 sm:flex-none px-6 py-2.5 bg-[#7A1C1C] hover:bg-[#631616] text-white font-bold text-xs rounded-lg transition-colors shadow-sm cursor-pointer"
                 disabled={isSending}
               >
                 Cancel
@@ -1668,8 +1660,7 @@ export default function ProjectDetailsPage() {
                   handleSendMessage();
                 }}
                 disabled={currentUser && (isSending || isUploading || (!messageText.trim() && attachments.filter(a => a.status === "done").length === 0))}
-                className={`flex-1 sm:flex-none px-7 py-2.5 text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer ${isSending || isUploading ? "bg-gray-400 cursor-not-allowed" : "bg-[#0D1939] hover:bg-[#1a2847]"
-                  }`}
+                className="flex-1 sm:flex-none px-7 py-2.5 bg-[#7B8BF5] hover:bg-[#5356ff] text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
               >
                 {isSending ? "Sending..." : isUploading ? "Uploading..." : "Send Message"}
               </button>

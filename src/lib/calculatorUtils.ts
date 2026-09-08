@@ -897,13 +897,19 @@ export function parseDurationToDays(durationStr: string): number {
 
 export function getProjectEstimatedDeadline(project: any): Date | null {
   if (!project) return null;
-  const isMonthly =
-    project.billingType === "monthly" ||
-    project.calculatorSpecs?.categoryKey === "seo" ||
-    project.calculatorSpecs?.categoryKey === "marketing" ||
-    project.categoryKey === "seo" ||
-    project.categoryKey === "marketing";
 
+  // 1. If project has an explicit deadline set, prioritize it
+  if (project.deadline) {
+    const d = new Date(project.deadline);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  const startDate = project.startDate || project.createdAt;
+  if (!startDate) return null;
+  const start = new Date(startDate);
+  if (isNaN(start.getTime())) return null;
+
+  // 2. Parse duration from timeline strings
   const timelineStr =
     project.calculatorSpecs?.estimatedTimeline ||
     project.calculatorSpecs?.timeline ||
@@ -915,21 +921,44 @@ export function getProjectEstimatedDeadline(project: any): Date | null {
     project.duration ||
     "";
 
-  // A monthly project is always 30 days
-  const durationDays = isMonthly ? 30 : parseDurationToDays(timelineStr);
-  const startDate = project.startDate || project.createdAt;
+  let durationDays = parseDurationToDays(timelineStr);
 
-  if (durationDays > 0 && startDate) {
-    const d = new Date(startDate);
-    if (!isNaN(d.getTime())) {
-      d.setDate(d.getDate() + durationDays);
-      return d;
+  // 3. If durationDays is 0, check if items have duration sum
+  if (durationDays === 0 && Array.isArray(project.items) && project.items.length > 0) {
+    let sumDays = 0;
+    for (const item of project.items) {
+      if (item.duration) {
+        const itemDays =
+          typeof item.duration === "number"
+            ? item.duration
+            : parseDurationToDays(String(item.duration));
+        sumDays += itemDays;
+      }
+    }
+    if (sumDays > 0) {
+      durationDays = sumDays;
     }
   }
 
-  if (project.deadline) {
-    const d = new Date(project.deadline);
-    if (!isNaN(d.getTime())) return d;
+  // 4. If no explicit duration found, check if it's a monthly subscription project (default 30 days)
+  if (durationDays === 0) {
+    const isMonthly =
+      project.billingType === "monthly" ||
+      project.calculatorSpecs?.categoryKey === "seo" ||
+      project.calculatorSpecs?.categoryKey === "marketing" ||
+      project.categoryKey === "seo" ||
+      project.categoryKey === "marketing";
+
+    if (isMonthly) {
+      durationDays = 30;
+    }
   }
+
+  if (durationDays > 0) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + durationDays);
+    return d;
+  }
+
   return null;
 }

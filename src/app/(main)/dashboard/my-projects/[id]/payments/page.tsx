@@ -300,13 +300,7 @@ export default function ProjectPaymentsPage() {
     if (isDownloadingPdf) return;
     setIsDownloadingPdf(true);
     try {
-      if (activeProject.calculatorSpecs) {
-        await downloadCalculatorProjectPDF(activeProject);
-      } else if (activeProject.resultsPdfUrl || activeProject.pdfUrl) {
-        downloadFile(e as any, activeProject.resultsPdfUrl || activeProject.pdfUrl, "Project_Document.pdf");
-      } else {
-        await downloadProjectDetailsPDF(activeProject);
-      }
+      await downloadProjectDetailsPDF(activeProject);
     } catch (err) {
       console.error("Failed to download project PDF:", err);
     } finally {
@@ -328,11 +322,7 @@ export default function ProjectPaymentsPage() {
 
   const handlePrintDetails = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
-    if (activeProject.calculatorSpecs) {
-      printCalculatorProjectPDF(activeProject);
-    } else {
-      printProjectDetails(activeProject);
-    }
+    printProjectDetails(activeProject);
   };
 
   const getStatusColor = (status: string) => {
