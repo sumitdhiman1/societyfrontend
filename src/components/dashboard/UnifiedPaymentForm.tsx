@@ -136,6 +136,7 @@ function PaymentForm({
   };
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentStep, setPaymentStep] = useState<PaymentProcessStep>("idle");
   const [useCredits, setUseCredits] = useState(false);
   const [availableCredits, setAvailableCredits] = useState(0);
   const [formErrors, setFormErrors] = useState<any>({});
