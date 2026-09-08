@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useProject } from "@/context/ProjectContext";
 import { projectService } from "@/lib/projectService";
@@ -157,45 +157,70 @@ const renderStatusMessageText = (text: string, attachments?: any[]) => {
   );
 };
 
-const normalizeEntityId = (val: any): string => {
+const asId = (val: any): string => {
   if (val == null || val === "") return "";
   if (typeof val === "object") return String(val._id || val.id || "");
   return String(val);
 };
 
-const getMessageIdentityIds = (m: any): string[] => {
-  const ids = new Set<string>();
-  const add = (v: any) => {
-    const n = normalizeEntityId(v);
-    if (n && n !== "[object Object]") ids.add(n);
+const sameText = (a: any, b: any): boolean => {
+  const left = String(a || "").trim().toLowerCase();
+  const right = String(b || "").trim().toLowerCase();
+  return Boolean(left && right && left === right);
+};
+
+function isExactPaymentRequestPaid(msg: any, project: any, payments: any[]): boolean {
+  const content = typeof msg?.content === "object" && msg.content ? msg.content : {};
+  const description = content.description || msg.description || "";
+  const invId = asId(content.invoiceId || msg.invoiceId);
+  const invNum = String(content.invoiceNumber || msg.invoiceNumber || "");
+  const msgIds = [asId(msg._id), asId(msg.id), asId(content.messageId)].filter(Boolean);
+
+  const matchesTarget = (target: { messageId?: any; invoiceId?: any; invoiceNumber?: any; description?: any }) => {
+    const tMsgId = asId(target.messageId);
+    const tInvId = asId(target.invoiceId);
+    const tInvNum = String(target.invoiceNumber || "");
+    return Boolean(
+      (tMsgId && msgIds.includes(tMsgId)) ||
+      (invId && tInvId && invId === tInvId) ||
+      (invNum && tInvNum && invNum === tInvNum) ||
+      sameText(description, target.description)
+    );
   };
-  add(m?._id);
-  add(m?.id);
-  add(m?.content?.messageId);
-  return Array.from(ids);
-};
 
-const amountsCompatible = (a: number, b: number): boolean => {
-  if (!a && !b) return true;
-  if (!a || !b) return a === b;
-  if (Math.abs(a - b) < 0.05) return true;
-  const lo = Math.min(a, b);
-  const hi = Math.max(a, b);
-  return hi <= lo * 1.3 + 0.05;
-};
+  if ((project.invoices || []).some((inv: any) =>
+    String(inv.status || "").toLowerCase() === "paid" &&
+    matchesTarget({ invoiceId: inv._id || inv.id, invoiceNumber: inv.invoiceNumber })
+  )) {
+    return true;
+  }
 
-const isPaymentRequestPaidFlag = (m: any, content?: any): boolean => {
-  const c = content ?? m?.content ?? {};
-  return Boolean(
-    c.isPaid === true ||
-    c.isPaid === "true" ||
-    String(c.status || "").toLowerCase() === "paid" ||
-    m?.isPaid === true ||
-    m?.isPaid === "true" ||
-    String(m?.status || "").toLowerCase() === "paid" ||
-    String(m?.paymentStatus || "").toLowerCase() === "paid"
-  );
-};
+  if ((project.messages || []).some((m: any) => {
+    const c = m.content || {};
+    const type = String(m.type || c.type || "").toLowerCase();
+    const text = `${m.message || ""} ${c.text || ""} ${c.systemText || ""}`.toLowerCase();
+    const isReceipt = type === "payment_received" || type === "payment_receipt" || text.includes("payment received") || text.includes("payment confirmed");
+    return isReceipt && matchesTarget({
+      messageId: c.messageId || m.messageId,
+      invoiceId: c.invoiceId || m.invoiceId,
+      invoiceNumber: c.invoiceNumber || m.invoiceNumber,
+      description: c.description || m.description,
+    });
+  })) {
+    return true;
+  }
+
+  return (payments || []).some((p: any) => {
+    if (!["succeeded", "paid", "completed"].includes(String(p.status || "").toLowerCase())) return false;
+    const meta = p.metadata || {};
+    return matchesTarget({
+      messageId: meta.messageId,
+      invoiceId: meta.invoiceId || meta.invoice_id,
+      invoiceNumber: meta.invoiceNumber,
+      description: meta.description || p.description,
+    });
+  });
+}
 
 export default function ProjectDetailsPage() {
   const { project, refreshProject, setProject } = useProject();
@@ -266,204 +291,6 @@ export default function ProjectDetailsPage() {
       });
     }
   }, [project?._id, project?.id, project?.projectId, project?.status]);
-
-  // Pre-calculate paid status for all payment requests in project.messages
-  const paidRequestMsgIds = useMemo(() => {
-    const paidSet = new Set<string>();
-    if (!project || !Array.isArray(project.messages)) return paidSet;
-
-    const invoices = Array.isArray(project.invoices) ? project.invoices : [];
-    const paidInvoices = invoices.filter(
-      (inv: any) => String(inv.status).toLowerCase() === "paid"
-    );
-    const paidInvoiceIds = new Set(
-      paidInvoices.map((inv: any) => normalizeEntityId(inv._id || inv.id)).filter(Boolean)
-    );
-    const paidInvoiceNumbers = new Set(
-      paidInvoices.map((inv: any) => String(inv.invoiceNumber || "")).filter(Boolean)
-    );
-
-    const receipts = project.messages.filter((m: any) => {
-      const c = m.content || {};
-      const typeStr = String(m.type || c.type || "").toLowerCase();
-      const textStr = `${m.message || ""} ${c.text || ""} ${c.systemText || ""}`.toLowerCase();
-      return (
-        typeStr === "payment_received" ||
-        typeStr === "payment_receipt" ||
-        textStr.includes("payment received") ||
-        textStr.includes("payment confirmed")
-      );
-    });
-
-    const isProjectFullyPaid =
-      (project.amountPaid != null && project.price != null && Number(project.amountPaid) >= Number(project.price)) ||
-      (project.amountDue != null && Number(project.amountDue) <= 0 && Number(project.amountPaid || 0) > 0);
-
-    const paymentRequests = project.messages.filter((m: any) => {
-      const c = m.content || {};
-      const typeStr = String(m.type || c.type || "").toLowerCase();
-      const textStr = `${m.message || ""} ${c.text || ""} ${c.systemText || ""}`.toLowerCase();
-      return (
-        typeStr === "payment_request" ||
-        textStr.includes("payment request") ||
-        textStr.includes("action required: payment")
-      );
-    });
-
-    // 1. Direct explicit flags or project fully paid
-    const addPaidIds = (req: any, idx: number) => {
-      const reqId = String(req.id || req._id || `req-${idx}`);
-      paidSet.add(reqId);
-      getMessageIdentityIds(req).forEach((id) => paidSet.add(id));
-    };
-
-    paymentRequests.forEach((req: any, idx: number) => {
-      const c = req.content || {};
-      if (isProjectFullyPaid) {
-        addPaidIds(req, idx);
-        return;
-      }
-      if (isPaymentRequestPaidFlag(req, c)) {
-        addPaidIds(req, idx);
-        return;
-      }
-
-      const invId = normalizeEntityId(c.invoiceId || req.invoiceId);
-      const invNum = c.invoiceNumber ? String(c.invoiceNumber) : req.invoiceNumber ? String(req.invoiceNumber) : "";
-      if ((invId && paidInvoiceIds.has(invId)) || (invNum && paidInvoiceNumbers.has(invNum))) {
-        addPaidIds(req, idx);
-      }
-    });
-
-    // 2. Exact match against payment_received receipts
-    const usedReceiptIndices = new Set<number>();
-    paymentRequests.forEach((req: any, idx: number) => {
-      const reqId = String(req.id || req._id || `req-${idx}`);
-      if (paidSet.has(reqId)) return;
-
-      const c = req.content || {};
-      const invId = normalizeEntityId(c.invoiceId || req.invoiceId);
-      const invNum = c.invoiceNumber ? String(c.invoiceNumber) : req.invoiceNumber ? String(req.invoiceNumber) : "";
-      const msgIds = getMessageIdentityIds(req);
-      const reqDesc = (c.description || req.description || "").trim().toLowerCase();
-      const reqAmt = Number(c.amount ?? req.amount ?? c.total ?? c.price ?? 0);
-
-      receipts.forEach((r: any, rIdx: number) => {
-        if (usedReceiptIndices.has(rIdx) || paidSet.has(reqId)) return;
-        const rc = r.content || {};
-        const rFullText = `${r.message || ""} ${rc.text || ""} ${rc.systemText || ""}`.toLowerCase();
-        const rAmt = Number(rc.amount ?? r.amount ?? 0);
-        const receiptMsgId = normalizeEntityId(rc.messageId || r.messageId);
-        const receiptInvId = normalizeEntityId(rc.invoiceId || r.invoiceId);
-
-        const idMatch = Boolean(receiptMsgId && msgIds.includes(receiptMsgId));
-        const invIdMatch = Boolean(invId && receiptInvId && receiptInvId === invId);
-        const invNumMatch = Boolean(invNum && (rc.invoiceNumber === invNum || r.invoiceNumber === invNum));
-        const descMatch =
-          Boolean(reqDesc) &&
-          (rc.description?.toLowerCase() === reqDesc ||
-            r.description?.toLowerCase() === reqDesc ||
-            rFullText.includes(reqDesc)) &&
-          amountsCompatible(rAmt, reqAmt);
-
-        if (idMatch || invIdMatch || invNumMatch || descMatch) {
-          addPaidIds(req, idx);
-          usedReceiptIndices.add(rIdx);
-        }
-      });
-    });
-
-    // 3. Amount-based fallback match for remaining unmatched receipts
-    paymentRequests.forEach((req: any, idx: number) => {
-      const reqId = String(req.id || req._id || `req-${idx}`);
-      if (paidSet.has(reqId)) return;
-      const c = req.content || {};
-      const reqAmt = Number(c.amount ?? req.amount ?? c.total ?? c.price ?? 0);
-      if (reqAmt <= 0) return;
-
-      receipts.forEach((r: any, rIdx: number) => {
-        if (usedReceiptIndices.has(rIdx) || paidSet.has(reqId)) return;
-        const rc = r.content || {};
-        const rAmt = Number(rc.amount ?? r.amount ?? 0);
-        if (amountsCompatible(rAmt, reqAmt)) {
-          addPaidIds(req, idx);
-          usedReceiptIndices.add(rIdx);
-        }
-      });
-    });
-
-    // 4. Succeeded card/credit transactions are the source of truth
-    const succeededPayments = (projectPayments || []).filter((p: any) =>
-      ["succeeded", "paid", "completed"].includes(String(p.status || "").toLowerCase())
-    );
-    const usedTxnIds = new Set<string>();
-
-    paymentRequests.forEach((req: any, idx: number) => {
-      const reqId = String(req.id || req._id || `req-${idx}`);
-      if (paidSet.has(reqId)) return;
-      const c = req.content || {};
-      const invId = normalizeEntityId(c.invoiceId || req.invoiceId);
-      const invNum = String(c.invoiceNumber || req.invoiceNumber || "");
-      const msgIds = getMessageIdentityIds(req);
-      const reqDesc = (c.description || req.description || "").trim().toLowerCase();
-      const reqAmt = Number(c.amount ?? req.amount ?? c.total ?? c.price ?? 0);
-
-      const match = succeededPayments.find((p: any) => {
-        const txnId = String(p._id || p.id || "");
-        if (txnId && usedTxnIds.has(txnId)) return false;
-        const meta = p.metadata || {};
-        const tMsgId = normalizeEntityId(meta.messageId);
-        const tInvId = normalizeEntityId(meta.invoiceId || meta.invoice_id);
-        const tInvNum = String(meta.invoiceNumber || "");
-        const tDesc = String(meta.description || p.description || "").trim().toLowerCase();
-        if (tMsgId && msgIds.includes(tMsgId)) return true;
-        if (invId && tInvId && invId === tInvId) return true;
-        if (invNum && tInvNum && invNum === tInvNum) return true;
-        if (
-          reqDesc &&
-          tDesc &&
-          (tDesc === reqDesc || tDesc.includes(reqDesc) || reqDesc.includes(tDesc)) &&
-          amountsCompatible(Number(p.amountPaid ?? p.amount ?? 0), reqAmt)
-        ) {
-          return true;
-        }
-        return false;
-      });
-
-      if (match) {
-        const txnId = String(match._id || match.id || "");
-        if (txnId) usedTxnIds.add(txnId);
-        addPaidIds(req, idx);
-      }
-    });
-
-    paymentRequests.forEach((req: any, idx: number) => {
-      const reqId = String(req.id || req._id || `req-${idx}`);
-      if (paidSet.has(reqId)) return;
-      const c = req.content || {};
-      const reqAmt = Number(c.amount ?? req.amount ?? c.total ?? c.price ?? 0);
-      if (reqAmt <= 0) return;
-      const reqTime = new Date(req.createdAt || req.timestamp || 0).getTime();
-
-      const match = succeededPayments.find((p: any) => {
-        const txnId = String(p._id || p.id || "");
-        if (txnId && usedTxnIds.has(txnId)) return false;
-        const tAmt = Number(p.amountPaid ?? p.amount ?? 0);
-        if (!amountsCompatible(tAmt, reqAmt)) return false;
-        const txnTime = new Date(p.createdAt || 0).getTime();
-        if (reqTime && txnTime && txnTime + 5000 < reqTime) return false;
-        return true;
-      });
-
-      if (match) {
-        const txnId = String(match._id || match.id || "");
-        if (txnId) usedTxnIds.add(txnId);
-        addPaidIds(req, idx);
-      }
-    });
-
-    return paidSet;
-  }, [project, projectPayments]);
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.hash === "#messages") {
@@ -1228,81 +1055,16 @@ export default function ProjectDetailsPage() {
                   project.project?._id ||
                   project.project?.id;
 
-                const invId = normalizeEntityId(content.invoiceId || msg.invoiceId);
+                const invId = asId(content.invoiceId || msg.invoiceId);
                 const invNum = content.invoiceNumber || msg.invoiceNumber;
-                const currentMsgId = normalizeEntityId(msg._id || msg.id || msgId);
-                const requestIds = getMessageIdentityIds(msg);
-
-                // 1. Direct explicit payment flags on the message
-                const isExplicitlyPaid = isPaymentRequestPaidFlag(msg, content);
-
-                // 2. Exact invoice status lookup in project.invoices
-                const isInvoicePaid =
-                  Array.isArray(project.invoices) &&
-                  project.invoices.some((inv: any) => {
-                    const paidStatus = String(inv.status || "").toLowerCase() === "paid";
-                    if (!paidStatus) return false;
-                    const rowInvId = normalizeEntityId(inv._id || inv.id);
-                    return (
-                      (invId && rowInvId && rowInvId === invId) ||
-                      (invNum && inv.invoiceNumber === invNum)
-                    );
-                  });
-
-                // 3. Exact matching in payment_received / receipt messages
-                const matchingPaymentReceipt = (project.messages || []).some((m: any) => {
-                  const mContent = typeof m.content === "object" && m.content !== null ? m.content : {};
-                  const mType = String(m.type || mContent.type || "").toLowerCase();
-                  const fullReceiptText = `${m.message || ""} ${mContent.text || ""} ${mContent.systemText || ""}`.toLowerCase();
-                  const isReceipt =
-                    mType === "payment_received" ||
-                    mType === "payment_receipt" ||
-                    fullReceiptText.includes("payment received") ||
-                    fullReceiptText.includes("payment confirmed");
-
-                  if (!isReceipt) return false;
-
-                  const receiptMsgId = normalizeEntityId(mContent.messageId || m.messageId);
-                  const receiptInvId = normalizeEntityId(mContent.invoiceId || m.invoiceId);
-                  if (receiptMsgId && requestIds.includes(receiptMsgId)) return true;
-                  if (invId && receiptInvId && receiptInvId === invId) return true;
-                  if (invNum && (mContent.invoiceNumber === invNum || m.invoiceNumber === invNum)) return true;
-
-                  const receiptAmt = Number(mContent.amount ?? m.amount ?? 0);
-                  if (
-                    description &&
-                    (mContent.description?.toLowerCase() === description.toLowerCase() ||
-                      m.description?.toLowerCase() === description.toLowerCase() ||
-                      fullReceiptText.includes(description.toLowerCase())) &&
-                    amountsCompatible(receiptAmt, amount)
-                  ) {
-                    return true;
-                  }
-
-                  return false;
-                });
-
-                const isProjectFullyPaid =
-                  (project.amountPaid != null && project.price != null && Number(project.amountPaid) >= Number(project.price)) ||
-                  (project.amountDue != null && Number(project.amountDue) <= 0 && Number(project.amountPaid || 0) > 0);
-
-                const reqLookupKey = String(msg.id || msg._id || `req-${idx}`);
-                const isPaid =
-                  isExplicitlyPaid ||
-                  isInvoicePaid ||
-                  matchingPaymentReceipt ||
-                  isProjectFullyPaid ||
-                  paidRequestMsgIds.has(reqLookupKey) ||
-                  requestIds.some((id) => paidRequestMsgIds.has(id)) ||
-                  paidRequestMsgIds.has(String(currentMsgId)) ||
-                  paidRequestMsgIds.has(String(msgId));
+                const currentMsgId = asId(msg.id || msg._id || msgId);
+                const isPaid = isExactPaymentRequestPaid(msg, project, projectPayments);
 
                 const payParams = new URLSearchParams();
                 if (amount > 0) payParams.set("amount", String(amount));
                 if (invId) payParams.set("invoiceId", invId);
                 if (invNum) payParams.set("invoiceNumber", String(invNum));
-                if (msg.id) payParams.set("messageId", String(msg.id));
-                else if (currentMsgId) payParams.set("messageId", currentMsgId);
+                if (currentMsgId) payParams.set("messageId", currentMsgId);
                 if (description) payParams.set("description", String(description));
                 const payUrl = `/dashboard/my-projects/${pId}/payments?${payParams.toString()}`;
 
