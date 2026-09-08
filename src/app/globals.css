@@ -71,6 +71,247 @@ body {
   border-radius: 6px !important;
 }
 
+.blog-content-cs p {
+  line-height: 26px;
+  color: #d1d5db;
+  margin-top: 0 !important;
+  margin-bottom: 1rem !important;
+  font-size: 1rem !important;
+  line-height: 1.65 !important;
+}
+
+.blog-content p>strong:only-child,
+.blog-content p>b:only-child,
+.blog-content p>strong:first-child:last-child,
+.blog-content p>b:first-child:last-child {
+  color: #fff !important;
+  margin-top: 1.25rem !important;
+  margin-bottom: .35rem !important;
+  font-size: 1.15rem !important;
+  font-weight: 800 !important;
+  display: block !important;
+}
+
+.blog-content-cs p em {
+  overflow-wrap: break-word;
+  word-break: normal;
+  -webkit-hyphens: none;
+  hyphens: none;
+  color: #d1d5db !important;
+}
+
+.blog-content-cs h2 {
+  color: #fff !important;
+  border-bottom: 1px solid #ffffff26 !important;
+  margin-top: 1.75rem !important;
+  margin-bottom: .75rem !important;
+  padding-bottom: .35rem !important;
+  font-size: 1.5rem !important;
+  font-weight: 800 !important;
+  line-height: 1.35 !important;
+}
+
+.blog-content p:empty,
+.ql-editor-preview p:empty,
+.rich-text-content p:empty,
+.prose p:empty {
+  min-height: 1.5em;
+}
+
+.blog-content p,
+.blog-content span,
+.blog-content em,
+.blog-content u,
+.blog-content i,
+.blog-content li,
+.blog-content ul,
+.blog-content ol,
+.blog-content blockquote,
+.blog-content td,
+.blog-content th,
+.blog-content dt,
+.blog-content dd {
+  color: #d1d5db !important;
+}
+
+.blog-content span,
+.blog-content strong,
+.blog-content em {
+  overflow-wrap: break-word;
+  word-break: normal;
+  -webkit-hyphens: none;
+  hyphens: none;
+}
+
+.blog-content strong,
+.blog-content b {
+  color: #fff !important;
+  font-weight: 700 !important;
+}
+
+.blog-content p,
+.blog-content li,
+.blog-content td,
+.blog-content th,
+.blog-content h1,
+.blog-content h2,
+.blog-content h3,
+.blog-content h4,
+.blog-content h5,
+.blog-content h6,
+.blog-content blockquote,
+.blog-content span,
+.blog-content strong,
+.blog-content em {
+  overflow-wrap: break-word;
+  word-break: normal;
+  -webkit-hyphens: none;
+  hyphens: none;
+}
+
+.blog-content img,
+.ql-editor-preview img,
+.rich-text-content img {
+  object-fit: contain !important;
+  border: 1px solid #ffffff1a !important;
+  border-radius: 8px !important;
+  width: auto !important;
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: 500px !important;
+  margin: 1.25rem auto !important;
+  display: block !important;
+  box-shadow: 0 8px 25px #00000059 !important;
+}
+
+.blog-content ul,
+.ql-editor-preview ul,
+.rich-text-content ul,
+.prose ul {
+  margin-top: .5rem !important;
+  margin-bottom: .75rem !important;
+  padding-left: 1.5rem !important;
+  list-style-type: disc !important;
+}
+
+.blog-content li,
+.ql-editor-preview li,
+.rich-text-content li,
+.prose li {
+  line-height: 1.6;
+  margin-top: .25rem !important;
+  margin-bottom: .25rem !important;
+  display: list-item !important;
+}
+
+.blog-content li>p:last-child,
+.ql-editor-preview li>p:last-child,
+.rich-text-content li>p:last-child,
+.prose li>p:last-child {
+  margin-bottom: 0 !important;
+}
+
+.blog-content li p,
+.ql-editor-preview li p,
+.rich-text-content li p,
+.prose li p {
+  min-height: auto !important;
+  margin-top: 0 !important;
+  margin-bottom: .25rem !important;
+}
+
+.blog-content p {
+  margin-top: 0 !important;
+  margin-bottom: 1rem !important;
+  font-size: 1rem !important;
+  line-height: 1.65 !important;
+}
+
+.blog-content strong,
+.blog-content b {
+  color: #fff !important;
+  font-weight: 700 !important;
+}
+
+.blog-content p,
+.blog-content li,
+.blog-content td,
+.blog-content th,
+.blog-content h1,
+.blog-content h2,
+.blog-content h3,
+.blog-content h4,
+.blog-content h5,
+.blog-content h6,
+.blog-content blockquote,
+.blog-content span,
+.blog-content strong,
+.blog-content em {
+  overflow-wrap: break-word;
+  word-break: normal;
+  -webkit-hyphens: none;
+  hyphens: none;
+}
+
+.blog-content p br {
+  display: none;
+}
+
+.blog-content ol,
+.ql-editor-preview ol,
+.rich-text-content ol,
+.prose ol {
+  margin-top: .5rem !important;
+  margin-bottom: .75rem !important;
+  padding-left: 1.5rem !important;
+  list-style-type: decimal !important;
+}
+
+.blog-content p,
+.blog-content span,
+.blog-content em,
+.blog-content u,
+.blog-content i,
+.blog-content li,
+.blog-content ul,
+.blog-content ol,
+.blog-content blockquote,
+.blog-content td,
+.blog-content th,
+.blog-content dt,
+.blog-content dd {
+  color: #d1d5db !important;
+}
+
+.blog-content a,
+.blog-content a * {
+  color: #60a5fa !important;
+}
+
+.blog-content h2,
+.blog-content h2 * {
+  color: #fff !important;
+  border-bottom: 1px solid #ffffff26 !important;
+  margin-top: 1.75rem !important;
+  margin-bottom: .75rem !important;
+  padding-bottom: .35rem !important;
+  font-size: 1.5rem !important;
+  font-weight: 800 !important;
+  line-height: 1.35 !important;
+}
+
+.blog-content p>strong:only-child,
+.blog-content p>b:only-child,
+.blog-content p>strong:first-child:last-child,
+.blog-content p>b:first-child:last-child {
+  color: #fff !important;
+  margin-top: 1.25rem !important;
+  margin-bottom: .35rem !important;
+  font-size: 1.15rem !important;
+  font-weight: 800 !important;
+  display: block !important;
+}
+
 @media screen and (max-width: 1660px) {
   .p-inline-set {
     padding-right: 0;

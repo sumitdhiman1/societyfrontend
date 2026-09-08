@@ -192,11 +192,24 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
         </div>
       </div> */}
 
-      <main className="flex-grow w-full py-6 md:py-10">
-        <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px]"></div>
-        <div className="max-w-4xl mx-auto">
-          {/* Cover Image */}
-          {(post.thumbnail || post.coverImage) && (
+      <main className="flex-grow w-full py-6 md:py-10 bg-[#0d1939]">
+        <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px]">
+          <div className="max-w-5xl mx-auto w-full">
+            <div className="mb-6 w-full text-sm text-gray-400">
+              <Link href="/blog" className="hover:text-blue-400 transition-colors">
+                Blog
+              </Link>
+              <span className="mx-2 text-gray-600">/</span>
+              {post.category && (
+                <>
+                  <span className="hover:text-blue-400 transition-colors">{post.category}</span>
+                  <span className="mx-2 text-gray-600">/</span>
+                </>
+              )}
+              <span className="text-gray-200 line-clamp-1 inline-block max-w-[300px] sm:max-w-none align-bottom">{post.title}</span>
+            </div>
+            {/* Cover Image */}
+            {/* {(post.thumbnail || post.coverImage) && (
             <div className="mb-10 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
               <img
                 src={post.thumbnail || post.coverImage}
@@ -204,62 +217,67 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
                 className="w-full max-h-[480px] object-cover"
               />
             </div>
-          )}
+          )} */}
 
-          {/* Excerpt */}
-          {post.excerpt && (
+            {/* Excerpt */}
+            {/* {post.excerpt && (
             <p className="text-lg text-gray-500 leading-relaxed mb-8 border-l-4 border-[#5356ff] pl-5 italic">
               {post.excerpt}
             </p>
-          )}
+          )} */}
 
-          {/* Content */}
-          {post.content ? (
-            <div
-              className="prose prose-gray max-w-none text-gray-600 text-sm leading-relaxed
-                prose-headings:font-bold prose-headings:text-gray-800
-                prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg
-                prose-p:mb-4 prose-p:leading-relaxed
-                prose-a:text-[#5356ff] prose-a:no-underline hover:prose-a:underline
-                prose-strong:text-gray-800 prose-strong:font-bold
-                prose-ul:list-disc prose-ul:pl-5 prose-ol:list-decimal prose-ol:pl-5
-                prose-li:mb-1
-                prose-blockquote:border-l-4 prose-blockquote:border-[#5356ff] prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-gray-500
-                prose-img:rounded-lg prose-img:shadow-sm"
-              dangerouslySetInnerHTML={{ __html: post.content }}
-            />
-          ) : (
-            <p className="text-gray-400 italic text-sm">No content available for this post.</p>
-          )}
+            {/* Content */}
+            {post.content ? (
+              <div
+                className="blog-content prose blog-content-cs prose-lg prose-invert w-full max-w-none text-gray-300
+                        prose-headings:text-white prose-headings:font-bold
+                        prose-h2:text-2xl md:prose-h2:text-3xl prose-h2:mt-8 prose-h2:mb-4
+                        prose-h3:text-xl md:prose-h3:text-2xl prose-h3:mt-6 prose-h3:mb-3
+                        prose-p:leading-relaxed prose-p:mb-5
+                        prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline
+                        prose-strong:text-white
+                        prose-ul:list-disc prose-ul:pl-6 prose-ul:mb-5
+                        prose-ol:list-decimal prose-ol:pl-6 prose-ol:mb-5
+                        prose-li:mb-2
+                        prose-img:rounded-xl prose-img:max-w-full prose-img:mx-auto prose-img:block prose-img:shadow-lg
+                        prose-pre:overflow-x-auto prose-pre:max-w-full prose-pre:rounded-xl
+                        prose-table:w-full prose-table:overflow-x-auto
+                        [&_*]:max-w-full [&_img]:h-auto [&_pre]:whitespace-pre-wrap"
+                dangerouslySetInnerHTML={{ __html: post.content }}
+              />
+            ) : (
+              <p className="text-gray-400 italic text-sm">No content available for this post.</p>
+            )}
 
-          {/* Tags */}
-          {post.tags && post.tags.length > 0 && (
-            <div className="mt-12 pt-6 border-t border-gray-200">
-              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Tags</h3>
-              <div className="flex flex-wrap gap-2">
-                {post.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="bg-gray-100 text-gray-600 text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-[#5356ff] hover:text-white transition-colors cursor-default"
-                  >
-                    #{tag}
-                  </span>
-                ))}
+            {/* Tags */}
+            {post.tags && post.tags.length > 0 && (
+              <div className="mt-10 pt-6 border-t border-gray-800/80 w-full">
+                <h4 className="text-white font-bold text-sm uppercase tracking-wider mb-3">Related Tags</h4>
+                <div className="flex flex-wrap gap-2">
+                  {post.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="bg-[#1a233a] text-[#8ec5ff] px-3 py-1 rounded-full text-xs font-medium border border-blue-800/40 hover:border-blue-500/60 transition-colors"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Back to Blog */}
-          <div className="mt-12 pt-8 border-t border-gray-200">
-            <Link
-              href="/blog"
-              className="inline-flex items-center gap-2 text-sm font-bold text-[#5356ff] hover:underline transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Back to all posts
-            </Link>
+            {/* Back to Blog */}
+            <div className=" pt-8 border-gray-200">
+              <Link
+                href="/blog"
+                className="inline-flex items-center gap-2 text-sm font-bold text-[#5356ff] hover:underline transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to all posts
+              </Link>
+            </div>
           </div>
         </div>
       </main>
