@@ -157,7 +157,7 @@ const Notification = ({
                   router.push("/dashboard/notifications");
                   setNotificationsOpen(false);
                 }}
-                className="text-sm font-bold text-[#5356ff] hover:text-[#3232b7]"
+                className="text-xs font-semibold text-[#4343F0] hover:text-[#3232b7] hover:underline transition-colors"
               >
                 View All
               </button>
