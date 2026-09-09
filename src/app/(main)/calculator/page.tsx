@@ -584,7 +584,12 @@ const ProposalPreview = ({
       if (res.ok) {
         setEmailSentSuccess(true);
       } else {
-        setEmailError("Failed to send proposal via email. Please check the address or download the PDF.");
+        const errorData = await res.json().catch(() => null);
+        const errorMsg =
+          errorData?.message ||
+          errorData?.error ||
+          "Failed to send proposal via email. Please check the address or download the PDF.";
+        setEmailError(Array.isArray(errorMsg) ? errorMsg.join(", ") : errorMsg);
       }
     } catch (err) {
       console.error("Error emailing proposal:", err);

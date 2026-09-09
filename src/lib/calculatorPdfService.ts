@@ -1,10 +1,6 @@
-/**
- * Utility to generate a PDF proposal from calculator data.
- */
-
-import { getCalculatorDisplayAmount } from "./calculatorUtils";
 import {
   downloadCalculatorProjectPDF,
+  generateCalculatorProjectPDFBase64,
   getCalculatorProjectHTML,
   extractCalculatorPDFData,
 } from "./generateCalculatorProjectPDF";
@@ -26,17 +22,6 @@ export async function downloadCalculatorPdf(data: PdfProposalData): Promise<void
 }
 
 export async function getCalculatorPdfBase64(data: PdfProposalData): Promise<string> {
-  try {
-    const html = getCalculatorProjectHTML(extractCalculatorPDFData(data));
-    return btoa(unescape(encodeURIComponent(html)));
-  } catch {
-    const html = generateCalculatorHtml(data);
-    return btoa(unescape(encodeURIComponent(html)));
-  }
-}
-
-function generateCalculatorHtml(data: PdfProposalData): string {
-  const d = extractCalculatorPDFData(data);
-  return getCalculatorProjectHTML(d);
+  return generateCalculatorProjectPDFBase64(data);
 }
 
