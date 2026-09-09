@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   title: "Society - Create What You Want",
   description: "A platform for managing and creating projects.",
   icons: {
-    icon: "/favicon.png",
+    icon: "/favicon.ico",
   },
 };
 
