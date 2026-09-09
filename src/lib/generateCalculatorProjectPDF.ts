@@ -835,6 +835,68 @@ export async function downloadCalculatorProjectPDF(data: any): Promise<void> {
   }
 }
 
+export async function generateCalculatorProjectPDFBase64(data: any): Promise<string> {
+  if (typeof window === "undefined") {
+    throw new Error("Window is not available");
+  }
+
+  const d = extractCalculatorPDFData(data);
+  const { html2canvasLib, jsPdfLib } = await ensurePdfLibraries();
+
+  const container = document.createElement("div");
+  container.style.position = "fixed";
+  container.style.left = "0px";
+  container.style.top = "0px";
+  container.style.zIndex = "-99999";
+  container.style.width = "794px";
+  container.style.backgroundColor = "#ffffff";
+  container.style.opacity = "1";
+  container.style.pointerEvents = "none";
+  container.innerHTML = getCalculatorProjectHTML(d);
+
+  document.body.appendChild(container);
+
+  // Wait 150ms for layout and font rendering
+  await new Promise((r) => setTimeout(r, 150));
+
+  try {
+    const pageElements = container.querySelectorAll(".pdf-page");
+    const pdf = new jsPdfLib("p", "pt", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    for (let i = 0; i < pageElements.length; i++) {
+      const pageEl = pageElements[i] as HTMLElement;
+      const canvas = await html2canvasLib(pageEl, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+        windowWidth: 794,
+        scrollY: 0,
+        scrollX: 0,
+      });
+
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        continue;
+      }
+
+      if (i > 0) {
+        pdf.addPage();
+      }
+
+      const pageImgData = canvas.toDataURL("image/png");
+      pdf.addImage(pageImgData, "PNG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
+    }
+
+    return pdf.output("datauristring");
+  } finally {
+    if (document.body.contains(container)) {
+      document.body.removeChild(container);
+    }
+  }
+}
+
 export function printCalculatorProjectPDF(data: any): void {
   if (typeof window === "undefined") return;
 
