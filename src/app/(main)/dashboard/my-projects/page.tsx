@@ -43,7 +43,18 @@ export default function MyProjectsPage() {
 
       if (projectsRes?.isSuccessful || projectsRes?.statusCode === 200 || projectsRes?.data) {
         const pList = Array.isArray(projectsRes.data) ? projectsRes.data : [];
-        setProjects(pList);
+        const seenIds = new Set<string>();
+        const seenQuoteIds = new Set<string>();
+        const deduplicatedProjects = pList.filter((p: any) => {
+          const pId = String(p._id || p.id || "");
+          const qId = String(p.quoteId || "");
+          if (pId && seenIds.has(pId)) return false;
+          if (pId) seenIds.add(pId);
+          if (qId && seenQuoteIds.has(qId)) return false;
+          if (qId) seenQuoteIds.add(qId);
+          return true;
+        });
+        setProjects(deduplicatedProjects);
 
         // Update pagination from response
         const pag = projectsRes.pagination;
