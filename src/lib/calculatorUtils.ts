@@ -387,11 +387,6 @@ export function isGraphicsItemVisible(
     return fg ? selSet.has(fg) || selLower.includes(fg) : false;
   }
 
-  // Special requirement: If "Full Brand Identity Package" is selected, also show "Logo Design" items
-  if (itemCat === "logo") {
-    return isGraphicsCategorySelected("logo", categoryKeys) || isGraphicsCategorySelected("brand_id", categoryKeys);
-  }
-
   return isGraphicsCategorySelected(itemCat, categoryKeys);
 }
 
