@@ -328,7 +328,11 @@ function PaymentForm({
     setIsProcessing(true);
     setPaymentStep("preparing");
     try {
-      const effectiveInvoiceId = invoiceId || searchParams?.get("invoiceId") || undefined;
+      const effectiveInvoiceId = invoiceId || searchParams?.get("invoiceId") || extraMetadata?.invoiceId || undefined;
+      const effectiveInvoiceNumber = searchParams?.get("invoiceNumber") || extraMetadata?.invoiceNumber || undefined;
+      const effectiveMessageId = searchParams?.get("messageId") || extraMetadata?.messageId || undefined;
+      const effectiveDescription = searchParams?.get("description") || extraMetadata?.description || description || undefined;
+
       setPaymentStep("gateway");
       const intentResponse = await paymentService.createPaymentIntent({
         amount: finalAmount,
@@ -336,7 +340,6 @@ function PaymentForm({
         useCredits,
         paymentMethodId: selectedMethod !== "new" ? selectedMethod : undefined,
         saveCard: selectedMethod === "new" && saveCard,
-        invoiceId: effectiveInvoiceId,
         metadata: {
           ...extraMetadata,
           type,
@@ -344,6 +347,9 @@ function PaymentForm({
           [`${type.toLowerCase()}Number`]: entityNumber,
           billingComponentId,
           invoiceId: effectiveInvoiceId,
+          invoiceNumber: effectiveInvoiceNumber,
+          messageId: effectiveMessageId,
+          description: effectiveDescription,
         },
       });
 

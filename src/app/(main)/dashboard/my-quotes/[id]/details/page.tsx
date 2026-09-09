@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useQuote } from "../layout";
 import { authService } from "@/lib/authService";
+import { profileService } from "@/lib/profileService";
 import { quoteService } from "@/lib/quoteService";
 import { projectService } from "@/lib/projectService";
 import { mediaService } from "@/lib/mediaService";
@@ -256,9 +257,42 @@ export default function QuoteDetailsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const u = authService.getUser();
-    if (u) setUser(u);
+    const hydrateUser = async () => {
+      const existing = authService.getUser();
+      if (existing) {
+        setUser(existing);
+        return;
+      }
+      if (!authService.isAuthenticated()) return;
+      try {
+        const profileRes = await profileService.getMyProfile();
+        const profile = profileRes?.data;
+        if (profile && typeof profile === "object") {
+          authService.updateInternalUser(profile);
+          setUser(profile);
+        }
+      } catch (e) {
+        console.warn("Could not hydrate logged-in user:", e);
+      }
+    };
+
+    hydrateUser();
+    const onLogin = () => setUser(authService.getUser());
+    window.addEventListener("auth:login", onLogin);
+    return () => window.removeEventListener("auth:login", onLogin);
   }, []);
+
+  const requireAuth = () => {
+    if (!authService.isAuthenticated()) {
+      setShowAuthModal(true);
+      return null;
+    }
+    const current = user || authService.getUser() || {};
+    if (!user && authService.getUser()) setUser(authService.getUser());
+    return current;
+  };
+
+  const isLoggedIn = Boolean(user) || authService.isAuthenticated();
 
   // Real-time socket connection
   useEffect(() => {
@@ -474,10 +508,8 @@ export default function QuoteDetailsPage() {
   };
 
   const handleSendMessage = async () => {
-    if (!user) {
-      setShowAuthModal(true);
-      return;
-    }
+    const currentUser = requireAuth();
+    if (!currentUser) return;
     if (attachments.some((a) => a.status === "uploading")) return;
 
     const uploadedUrls = attachments.filter((a) => a.status === "done" && a.url).map((a) => a.url);
@@ -489,8 +521,8 @@ export default function QuoteDetailsPage() {
           action: "message",
           userComments: messageText.trim(),
           attachedFilesUrl: uploadedUrls.length > 0 ? uploadedUrls : undefined,
-          username: user?.fullName,
-          userAvatar: user?.avatar,
+          username: currentUser?.fullName || user?.fullName,
+          userAvatar: currentUser?.avatar || user?.avatar,
         });
         if (res.isSuccessful || res.statusCode === 200) {
           setMessageText("");
@@ -511,17 +543,15 @@ export default function QuoteDetailsPage() {
   };
 
   const handleAcceptQuote = async () => {
-    if (!user) {
-      setShowAuthModal(true);
-      return;
-    }
+    const currentUser = requireAuth();
+    if (!currentUser) return;
     if (quote) {
       setIsAccepting(true);
       try {
         const res = await quoteService.updateQuote(quote._id, {
           action: "accept",
-          username: user?.fullName,
-          userAvatar: user?.avatar,
+          username: currentUser?.fullName || user?.fullName,
+          userAvatar: currentUser?.avatar || user?.avatar,
         });
         if (res.isSuccessful || res.statusCode === 200) {
           toast.success("Proposal accepted successfully!");
@@ -595,18 +625,16 @@ export default function QuoteDetailsPage() {
   };
 
   const handleDeclineQuote = async () => {
-    if (!user) {
-      setShowAuthModal(true);
-      return;
-    }
+    const currentUser = requireAuth();
+    if (!currentUser) return;
     if (!quote) return;
 
     setIsDeclining(true);
     try {
       const res = await quoteService.updateQuote(quote._id, {
         action: "deny",
-        username: user?.fullName,
-        userAvatar: user?.avatar,
+        username: currentUser?.fullName || user?.fullName,
+        userAvatar: currentUser?.avatar || user?.avatar,
       });
 
       if (res.isSuccessful || res.statusCode === 200) {
@@ -625,7 +653,9 @@ export default function QuoteDetailsPage() {
   };
 
   const handleRequestModification = async () => {
-    
+    const currentUser = requireAuth();
+    if (!currentUser) return;
+
     if (!messageText.trim() || !quote) {
       if (messageInputRef.current) {
         messageInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -640,8 +670,8 @@ export default function QuoteDetailsPage() {
       const res = await quoteService.updateQuote(quote._id, {
         action: "request_modification",
         userComments: messageText.trim(),
-        username: user?.fullName,
-        userAvatar: user?.avatar,
+        username: currentUser?.fullName || user?.fullName,
+        userAvatar: currentUser?.avatar || user?.avatar,
       });
       if (res.isSuccessful || res.statusCode === 200) {
         setMessageText("");
@@ -894,7 +924,7 @@ export default function QuoteDetailsPage() {
                   return (
                     <div key={msgId} className="text-center my-8 py-2 w-full" ref={isLast ? messagesEndRef : null}>
                       <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
-                        Project Created
+                        Project created
                       </h2>
                       <p className="text-xs sm:text-sm font-medium text-gray-500 mb-5 max-w-lg mx-auto leading-relaxed">
                         Great news! Your quote has been converted into an active project.
@@ -1002,10 +1032,10 @@ export default function QuoteDetailsPage() {
                     {/* Header above offer card */}
                     <div className="text-center my-8">
                       <h2 className="text-2xl sm:text-3xl font-extrabold text-[#111827] mb-2">
-                        You Received an Offer
+                        You received an offer
                       </h2>
                       <p className="text-sm font-medium text-gray-500">
-                        Weve prepared a custom proposal for your project.
+                        We’ve prepared a custom proposal for your project.
                       </p>
                     </div>
 
@@ -1037,7 +1067,7 @@ export default function QuoteDetailsPage() {
 
                       {/* Card Title Row: Title on Left, From on Right */}
                       <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-4">
-                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Project Proposal</h3>
+                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Project proposal</h3>
                         {senderName && (
                           <span className="text-xs sm:text-sm text-gray-400 font-normal">
                             From: {senderName}
@@ -1127,7 +1157,7 @@ export default function QuoteDetailsPage() {
                     {isDeclined && !allMessages.some((m: any) => (m.type === "quote_action" || m.type === "action") && (m.content?.action === "denied" || m.content?.action === "declined" || m.action === "denied" || m.action === "declined")) && (
                       <div className="text-center my-12 py-2 w-full">
                         <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
-                          Quote Declined
+                          Quote declined
                         </h2>
                         <p className="text-xs sm:text-sm font-normal text-gray-500 max-w-lg mx-auto leading-relaxed">
                           The offered quote has been declined.
@@ -1139,7 +1169,7 @@ export default function QuoteDetailsPage() {
                     {isAccepted && !allMessages.some((m: any) => (m.type === "quote_action" && m.content?.action === "accepted") || (m.type === "system_notification" && (m.content?.systemText?.toLowerCase().includes("project created") || m.text?.toLowerCase().includes("project created")))) && (
                       <div className="text-center my-12 py-2 w-full">
                         <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
-                          Project Created
+                          Project created
                         </h2>
                         <p className="text-xs sm:text-sm font-normal text-gray-500 mb-6 max-w-lg mx-auto leading-relaxed">
                           Great news! Your quote has been converted into an active project.
@@ -1174,7 +1204,7 @@ export default function QuoteDetailsPage() {
                   return (
                     <div key={msgId} ref={isLast ? messagesEndRef : null} className="text-center my-10 py-2 w-full">
                       <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
-                        Quote Declined
+                        Quote declined
                       </h2>
                       <p className="text-xs sm:text-sm font-normal text-gray-500 max-w-lg mx-auto leading-relaxed">
                         The offered quote has been declined.
@@ -1187,7 +1217,7 @@ export default function QuoteDetailsPage() {
                   return (
                     <div key={msgId} ref={isLast ? messagesEndRef : null} className="text-center my-10 py-2 w-full">
                       <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
-                        Project Created
+                        Project created
                       </h2>
                       <p className="text-xs sm:text-sm font-normal text-gray-500 mb-6 max-w-lg mx-auto leading-relaxed">
                         Great news! Your quote has been converted into an active project.
@@ -1365,7 +1395,7 @@ export default function QuoteDetailsPage() {
                   </div>
                 )}
                 <div>
-                  <h4 className="font-bold text-gray-900 text-sm">{user?.fullName || clientName || "saurav singh"}</h4>
+                  <h4 className="font-bold text-gray-900 text-sm">{user?.fullName || clientName}</h4>
                   <p className="text-xs text-gray-400 font-medium">New Message</p>
                 </div>
               </div>
@@ -1376,17 +1406,14 @@ export default function QuoteDetailsPage() {
             <div className="p-6">
               <textarea
                 className="w-full text-sm text-gray-800 placeholder-gray-400 border-0 focus:outline-none min-h-[100px] resize-none bg-transparent cursor-pointer"
-                placeholder={user ? "Type a message..." : "Please log in or register to message our team..."}
+                placeholder={isLoggedIn ? "Type a message..." : "Please log in or register to message our team..."}
                 value={messageText}
                 onChange={(e) => {
-                  if (!user) {
-                    setShowAuthModal(true);
-                    return;
-                  }
+                  if (!requireAuth()) return;
                   setMessageText(e.target.value);
                 }}
                 onClick={() => {
-                  if (!user) setShowAuthModal(true);
+                  requireAuth();
                 }}
               />
 
@@ -1456,10 +1483,7 @@ export default function QuoteDetailsPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (!user) {
-                      setShowAuthModal(true);
-                      return;
-                    }
+                    if (!requireAuth()) return;
                     fileInputRef.current?.click();
                   }}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-bold text-xs py-2 px-4 rounded-lg transition-colors cursor-pointer"
@@ -1495,15 +1519,14 @@ export default function QuoteDetailsPage() {
                 <button
                   type="button"
                   onClick={(e) => {
-                    if (!user) {
+                    if (!requireAuth()) {
                       e.preventDefault();
-                      setShowAuthModal(true);
                       return;
                     }
                     handleSendMessage();
                   }}
                   disabled={
-                    user &&
+                    isLoggedIn &&
                     (isSending ||
                       (!messageText.trim() && attachments.length === 0) ||
                       attachments.some((a) => a.status === "uploading"))

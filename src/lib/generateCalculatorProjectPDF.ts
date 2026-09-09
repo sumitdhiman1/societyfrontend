@@ -1,5 +1,12 @@
 import { authService } from "./authService";
-import { getProjectEstimatedDeadline, parseDurationToDays } from "./calculatorUtils";
+import {
+  calculateGraphicsRawTimelineDays,
+  formatGraphicsTimelineLabel,
+  getProjectEstimatedDeadline,
+  parseDurationToDays,
+  resolveGraphicsTimelineAnswer,
+  snapGraphicsBaselineDays,
+} from "./calculatorUtils";
 
 function formatPdfDate(dateInput: any): string {
   if (!dateInput) return "";
@@ -123,8 +130,41 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     (data.timelineInDays ? `${data.timelineInDays} Days` : "") ||
     "";
 
+  const categoryKey = data.categoryKey || calculatorSpecs.categoryKey || "";
+
+  // Graphics baseline from item selections when API timeline not yet stored
+  let graphicsRawTimelineDays = 0;
+  if (categoryKey === "graphics" && Array.isArray(rawSelections)) {
+    const itemsSel = rawSelections.find(
+      (s: any) =>
+        s.questionKey === "GD_ITEMS" ||
+        s.questionKey === "GFX_ITEMS" ||
+        /include in this project/i.test(s.questionText || "")
+    );
+    const tierSel = rawSelections.find(
+      (s: any) => s.questionKey === "GD_TIER" || s.questionKey === "GFX_TIER"
+    );
+    const tierKey = tierSel?.answerKeys?.[0] || "starter";
+    const tier =
+      /premium/i.test(tierKey) ? "premium" : /standard/i.test(tierKey) ? "standard" : "starter";
+    if (itemsSel?.answerKeys?.length) {
+      const pseudoQuestion = {
+        key: itemsSel.questionKey,
+        answers: itemsSel.answerKeys.map((k: string) => {
+          const meta = itemsSel.answerMetadata?.[k];
+          return { key: k, metadata: meta };
+        }),
+      };
+      graphicsRawTimelineDays = calculateGraphicsRawTimelineDays(
+        pseudoQuestion,
+        { [itemsSel.questionKey]: { questionKey: itemsSel.questionKey, answerKeys: itemsSel.answerKeys } },
+        tier
+      );
+    }
+  }
+
   // Map known key codes to human readable labels
-  const formatRawAnswer = (raw: string): string => {
+  const formatRawAnswer = (raw: string, metadata?: { fee?: number; reduction?: number }): string => {
     if (!raw) return "";
     const lower = raw.toLowerCase().trim();
     if (lower.startsWith("web_timeline_1") || lower === "timeline_14" || lower === "timeline_standard") {
@@ -136,20 +176,34 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     if (lower.startsWith("web_timeline_3") || lower === "timeline_3" || lower === "timeline_super_rush") {
       return "3 - 4 days (Super Rushed): +50% rush fee";
     }
-    if (lower.startsWith("gfx_timeline_1") || lower === "gfx_time_normal") {
-      return directTimeline ? `${directTimeline} (Normal): No extra fee` : "5 - 7 business days (Normal): No extra fee";
-    }
-    if (lower.startsWith("gfx_timeline_2") || lower === "gfx_time_rush") {
-      return directTimeline ? `${directTimeline} (Rushed): +25% rush fee` : "2 - 3 business days (Rushed): +25% rush fee";
-    }
-    if (lower.startsWith("gfx_timeline_3") || lower === "gfx_time_super") {
-      return directTimeline ? `${directTimeline} (Super Rushed): +50% rush fee` : "24 - 48 hours (Super Rushed): +50% rush fee";
+    if (
+      lower.startsWith("gfx_time") ||
+      lower.startsWith("gd_time") ||
+      lower.startsWith("gfx_timeline")
+    ) {
+      return resolveGraphicsTimelineAnswer(raw, {
+        directTimeline: directTimeline,
+        baselineDays: graphicsRawTimelineDays,
+        metadata,
+      });
     }
     if (lower.startsWith("seo_timeline")) return "Monthly Service";
+    if (categoryKey === "graphics" && /timeline|rushed|normal/i.test(raw)) {
+      return resolveGraphicsTimelineAnswer(raw, {
+        directTimeline: directTimeline,
+        baselineDays: graphicsRawTimelineDays,
+        metadata,
+      });
+    }
     return raw;
   };
 
-  let finalTimelineAnswer = formatRawAnswer(foundTimelineAnswer) || formatRawAnswer(directTimeline) || directTimeline;
+  let finalTimelineAnswer =
+    formatRawAnswer(foundTimelineAnswer) ||
+    (directTimeline && categoryKey === "graphics"
+      ? directTimeline
+      : formatRawAnswer(directTimeline)) ||
+    directTimeline;
 
   // Clean duration for the summary box
   let duration = "";
@@ -167,11 +221,15 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
       .trim();
   }
 
-  const categoryKey = data.categoryKey || calculatorSpecs.categoryKey || "";
   if (!duration) {
     if (categoryKey === "seo") duration = "Monthly Service";
-    else if (categoryKey === "graphics") duration = "5 - 7 business days";
-    else if (categoryKey === "marketing") duration = "Ongoing";
+    else if (categoryKey === "graphics") {
+      duration =
+        directTimeline ||
+        (graphicsRawTimelineDays > 0
+          ? formatGraphicsTimelineLabel(snapGraphicsBaselineDays(graphicsRawTimelineDays))
+          : formatGraphicsTimelineLabel(14));
+    } else if (categoryKey === "marketing") duration = "Ongoing";
     else duration = "2 weeks";
   }
 
@@ -402,25 +460,24 @@ function renderSelectedOptionsList(options: Array<{ question: string; answers: s
   return `
     <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px;">
       ${options
-        .map((opt) => {
-          const cleanQuestion = opt.question.trim().replace(/:$/, "");
-          const hasMultiple = opt.answers.length > 1;
-          return `
+      .map((opt) => {
+        const cleanQuestion = opt.question.trim().replace(/:$/, "");
+        const hasMultiple = opt.answers.length > 1;
+        return `
             <div>
               <div style="font-size: 13.5px; font-weight: 700; color: #0F172A; margin-bottom: 5px;">${cleanQuestion}</div>
-              ${
-                hasMultiple
-                  ? `<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 2px;">
+              ${hasMultiple
+            ? `<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 2px;">
                       ${opt.answers
-                        .map((ans) => `<div style="font-size: 12px; color: #475569; line-height: 1.5;">• ${ans.replace(/^[•\-\*]\s*/, "")}</div>`)
-                        .join("")}
+              .map((ans) => `<div style="font-size: 12px; color: #475569; line-height: 1.5;">• ${ans.replace(/^[•\-\*]\s*/, "")}</div>`)
+              .join("")}
                     </div>`
-                  : `<div style="font-size: 12px; color: #475569; line-height: 1.5; padding-left: 2px;">${opt.answers[0] || "-"}</div>`
-              }
+            : `<div style="font-size: 12px; color: #475569; line-height: 1.5; padding-left: 2px;">${opt.answers[0] || "-"}</div>`
+          }
             </div>
           `;
-        })
-        .join("")}
+      })
+      .join("")}
     </div>
   `;
 }
@@ -430,17 +487,33 @@ function renderSummaryBoxAndFooter(d: CalculatorPDFData, currentPage: number, to
     <div style="margin-top: auto; padding-top: 10px;">
       <!-- Estimated Timeline & Investment Total Box -->
       <div style="display: flex; justify-content: flex-end; margin-bottom: 22px;">
-        <div style="width: 290px; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
+        <div style="width: 310px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
           <!-- Top Row (Estimated Timeline) -->
-          <div style="background-color: #0D1322; color: #FFFFFF; padding: 9px 16px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; opacity: 0.9;">ESTIMATED TIMELINE</span>
-            <span style="font-size: 12px; font-weight: 800;">${d.duration}</span>
-          </div>
+          <table style="width: 100%; border-collapse: collapse; background-color: #0D1939; margin: 0; padding: 0;">
+            <tbody>
+              <tr>
+                <td style="padding: 12px 18px; vertical-align: middle; text-align: left;">
+                  <span style="font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #94A3B8; display: inline-block; vertical-align: middle; line-height: 1;">ESTIMATED TIMELINE</span>
+                </td>
+                <td style="padding: 12px 18px; vertical-align: middle; text-align: right;">
+                  <span style="font-size: 13.5px; font-weight: 800; color: #FFFFFF; display: inline-block; vertical-align: middle; line-height: 1;">${d.duration}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
           <!-- Bottom Row (Investment Total) -->
-          <div style="background-color: #282C8F; color: #FFFFFF; padding: 13px 16px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px;">INVESTMENT TOTAL</span>
-            <span style="font-size: 21px; font-weight: 900; letter-spacing: -0.5px;">${d.formattedPrice}</span>
-          </div>
+          <table style="width: 100%; border-collapse: collapse; background-color: #282BB3; margin: 0; padding: 0;">
+            <tbody>
+              <tr>
+                <td style="padding: 16px 18px; vertical-align: middle; text-align: left;">
+                  <span style="font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #FFFFFF; display: inline-block; vertical-align: middle; line-height: 1;">INVESTMENT TOTAL</span>
+                </td>
+                <td style="padding: 10px 18px 15px 0px; vertical-align: middle; text-align: right;">
+                  <span style="font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: #FFFFFF; display: inline-block; vertical-align: middle; line-height: 1;">${d.formattedPrice}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -460,7 +533,7 @@ function renderSummaryBoxAndFooter(d: CalculatorPDFData, currentPage: number, to
 
 export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
   const options = d.selectedOptions || [];
-  
+
   // Calculate approximate height of items to decide single-page vs multi-page
   let totalItemsHeight = 0;
   for (const opt of options) {
@@ -518,13 +591,12 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
             <div style="border-bottom: 1px solid #E2E8F0; margin-bottom: 18px;"></div>
           </div>
 
-          ${
-            d.subtitle
-              ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.subtitle}</div>`
-              : d.description
-              ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.description}</div>`
-              : ""
-          }
+          ${d.subtitle
+        ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.subtitle}</div>`
+        : d.description
+          ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.description}</div>`
+          : ""
+      }
 
           ${renderSelectedOptionsList(options)}
         </div>
@@ -600,13 +672,12 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
           <div style="border-bottom: 1px solid #E2E8F0; margin-bottom: 18px;"></div>
         </div>
 
-        ${
-          d.subtitle
-            ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.subtitle}</div>`
-            : d.description
-            ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.description}</div>`
-            : ""
-        }
+        ${d.subtitle
+      ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.subtitle}</div>`
+      : d.description
+        ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.description}</div>`
+        : ""
+    }
 
         ${renderSelectedOptionsList(page1Items)}
       </div>

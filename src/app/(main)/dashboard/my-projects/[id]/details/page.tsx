@@ -16,6 +16,7 @@ import RecommendedSolutions from "@/components/common/RecommendedSolutions";
 import CalculatorSpecsCard from "@/components/common/CalculatorSpecsCard";
 import { getMainCalculatorCategory, getProjectEstimatedDeadline } from "@/lib/calculatorUtils";
 import { toast } from "sonner";
+import { paymentService } from "@/lib/paymentService";
 
 const renderStatusMessageText = (text: string, attachments?: any[]) => {
   if (!text) return null;
@@ -156,6 +157,71 @@ const renderStatusMessageText = (text: string, attachments?: any[]) => {
   );
 };
 
+const asId = (val: any): string => {
+  if (val == null || val === "") return "";
+  if (typeof val === "object") return String(val._id || val.id || "");
+  return String(val);
+};
+
+const sameText = (a: any, b: any): boolean => {
+  const left = String(a || "").trim().toLowerCase();
+  const right = String(b || "").trim().toLowerCase();
+  return Boolean(left && right && left === right);
+};
+
+function isExactPaymentRequestPaid(msg: any, project: any, payments: any[]): boolean {
+  const content = typeof msg?.content === "object" && msg.content ? msg.content : {};
+  const description = content.description || msg.description || "";
+  const invId = asId(content.invoiceId || msg.invoiceId);
+  const invNum = String(content.invoiceNumber || msg.invoiceNumber || "");
+  const msgIds = [asId(msg._id), asId(msg.id), asId(content.messageId)].filter(Boolean);
+
+  const matchesTarget = (target: { messageId?: any; invoiceId?: any; invoiceNumber?: any; description?: any }) => {
+    const tMsgId = asId(target.messageId);
+    const tInvId = asId(target.invoiceId);
+    const tInvNum = String(target.invoiceNumber || "");
+    return Boolean(
+      (tMsgId && msgIds.includes(tMsgId)) ||
+      (invId && tInvId && invId === tInvId) ||
+      (invNum && tInvNum && invNum === tInvNum) ||
+      sameText(description, target.description)
+    );
+  };
+
+  if ((project.invoices || []).some((inv: any) =>
+    String(inv.status || "").toLowerCase() === "paid" &&
+    matchesTarget({ invoiceId: inv._id || inv.id, invoiceNumber: inv.invoiceNumber })
+  )) {
+    return true;
+  }
+
+  if ((project.messages || []).some((m: any) => {
+    const c = m.content || {};
+    const type = String(m.type || c.type || "").toLowerCase();
+    const text = `${m.message || ""} ${c.text || ""} ${c.systemText || ""}`.toLowerCase();
+    const isReceipt = type === "payment_received" || type === "payment_receipt" || text.includes("payment received") || text.includes("payment confirmed");
+    return isReceipt && matchesTarget({
+      messageId: c.messageId || m.messageId,
+      invoiceId: c.invoiceId || m.invoiceId,
+      invoiceNumber: c.invoiceNumber || m.invoiceNumber,
+      description: c.description || m.description,
+    });
+  })) {
+    return true;
+  }
+
+  return (payments || []).some((p: any) => {
+    if (!["succeeded", "paid", "completed"].includes(String(p.status || "").toLowerCase())) return false;
+    const meta = p.metadata || {};
+    return matchesTarget({
+      messageId: meta.messageId,
+      invoiceId: meta.invoiceId || meta.invoice_id,
+      invoiceNumber: meta.invoiceNumber,
+      description: meta.description || p.description,
+    });
+  });
+}
+
 export default function ProjectDetailsPage() {
   const { project, refreshProject, setProject } = useProject();
   const [messageText, setMessageText] = useState("");
@@ -192,10 +258,42 @@ export default function ProjectDetailsPage() {
 
   const [isRestarting, setIsRestarting] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [projectPayments, setProjectPayments] = useState<any[]>([]);
+
+  const requireAuth = () => {
+    if (!authService.isAuthenticated()) {
+      setShowAuthModal(true);
+      return null;
+    }
+    const current = currentUser || authService.getUser() || {};
+    if (!currentUser && authService.getUser()) setCurrentUser(authService.getUser());
+    return current;
+  };
+
+  const isLoggedIn = Boolean(currentUser) || authService.isAuthenticated();
 
   useEffect(() => {
     setCurrentUser(authService.getUser());
-  }, []);
+    refreshProject(true);
+  }, [refreshProject]);
+
+  useEffect(() => {
+    const projectId =
+      project?._id ||
+      project?.id ||
+      project?.projectId ||
+      project?.project_id;
+    if (!projectId) return;
+    paymentService
+      .getTransactionsByProject(String(projectId))
+      .then((res) => {
+        const rows = Array.isArray(res?.data) ? res.data : [];
+        setProjectPayments(rows);
+      })
+      .catch(() => {
+        setProjectPayments([]);
+      });
+  }, [project?._id, project?.id, project?.projectId, project?.amountPaid]);
 
   useEffect(() => {
     const projectId = project?._id || project?.id || project?.projectId || project?.project_id || project?.orderId || project?.uuid || project?.uid || project?.project?._id || project?.project?.id;
@@ -300,6 +398,7 @@ export default function ProjectDetailsPage() {
   };
 
   const handleSendMessage = async () => {
+    if (!requireAuth()) return;
     if (attachments.some(a => a.status === "uploading")) return;
 
     const uploadedUrls = attachments.filter(a => a.status === "done" && a.url).map(a => a.url);
@@ -724,13 +823,7 @@ export default function ProjectDetailsPage() {
                     if (isDownloadingPdf) return;
                     setIsDownloadingPdf(true);
                     try {
-                      if (project.calculatorSpecs) {
-                        await downloadCalculatorProjectPDF(project);
-                      } else if (project.resultsPdfUrl || project.pdfUrl) {
-                        downloadFile(e as any, project.resultsPdfUrl || project.pdfUrl, "Project_Document.pdf");
-                      } else {
-                        await downloadProjectDetailsPDF(project);
-                      }
+                      await downloadProjectDetailsPDF(project);
                     } catch (err) {
                       console.error("Failed to download PDF", err);
                       toast.error("Failed to download PDF. Please try again.");
@@ -753,11 +846,7 @@ export default function ProjectDetailsPage() {
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
-                    if (project.calculatorSpecs) {
-                      printCalculatorProjectPDF(project);
-                    } else {
-                      printProjectDetails(project);
-                    }
+                    printProjectDetails(project);
                   }}
                   className="flex-1 sm:flex-initial px-6 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap"
                 >
@@ -979,6 +1068,19 @@ export default function ProjectDetailsPage() {
                   project.project?._id ||
                   project.project?.id;
 
+                const invId = asId(content.invoiceId || msg.invoiceId);
+                const invNum = content.invoiceNumber || msg.invoiceNumber;
+                const currentMsgId = asId(msg.id || msg._id || msgId);
+                const isPaid = isExactPaymentRequestPaid(msg, project, projectPayments);
+
+                const payParams = new URLSearchParams();
+                if (amount > 0) payParams.set("amount", String(amount));
+                if (invId) payParams.set("invoiceId", invId);
+                if (invNum) payParams.set("invoiceNumber", String(invNum));
+                if (currentMsgId) payParams.set("messageId", currentMsgId);
+                if (description) payParams.set("description", String(description));
+                const payUrl = `/dashboard/my-projects/${pId}/payments?${payParams.toString()}`;
+
                 return (
                   <div
                     key={msgId}
@@ -1004,12 +1106,25 @@ export default function ProjectDetailsPage() {
                       </div>
                     </div>
                     <div className="shrink-0">
-                      <Link
-                        href={`/dashboard/my-projects/${pId}/payments${amount > 0 ? `?amount=${amount}` : ""}`}
-                        className="inline-block w-full sm:w-auto px-8 py-2.5 bg-[#4343F0] hover:bg-[#3232b7] text-white font-bold text-sm rounded-xl shadow-md shadow-[#4343F0]/20 transition-all text-center"
-                      >
-                        Pay Now
-                      </Link>
+                      {isPaid ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-8 py-2.5 bg-green-50 text-green-700 font-bold text-sm rounded-xl border border-green-200 cursor-not-allowed select-none"
+                        >
+                          <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>Paid</span>
+                        </button>
+                      ) : (
+                        <Link
+                          href={payUrl}
+                          className="inline-block w-full sm:w-auto px-8 py-2.5 bg-[#4343F0] hover:bg-[#3232b7] text-white font-bold text-sm rounded-xl shadow-md shadow-[#4343F0]/20 transition-all text-center"
+                        >
+                          Pay Now
+                        </Link>
+                      )}
                     </div>
                   </div>
                 );
@@ -1024,9 +1139,11 @@ export default function ProjectDetailsPage() {
                 const rawTitle = msg.content?.systemText || msg.message || "Notification";
                 let cleanTitle = rawTitle.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}⏸▶️💳🛠️🎉✅🔄👤🚀📌🔔]/gu, "").trim();
                 if (cleanTitle.toLowerCase() === "action required: payment" || cleanTitle.toLowerCase() === "payment required") {
-                  cleanTitle = "Project Paused";
+                  cleanTitle = "Project paused";
                 } else if (cleanTitle.toLowerCase().startsWith("project status updated to active") || cleanTitle.toLowerCase() === "active") {
-                  cleanTitle = "Project Resumed";
+                  cleanTitle = "Project resumed";
+                } else if (cleanTitle.length > 0) {
+                  cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1).toLowerCase();
                 }
 
                 const rawTextCandidate = msg.content?.text || msg.text || (msg.message !== rawTitle && msg.message !== cleanTitle ? msg.message : "");
@@ -1147,7 +1264,7 @@ export default function ProjectDetailsPage() {
 
                       {/* Header: Title and From */}
                       <div className="pb-4 sm:pb-6 flex flex-col sm:flex-row justify-between items-start gap-2">
-                        <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Add-On Proposal</h2>
+                        <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Add-on proposal</h2>
                         <span className="text-xs sm:text-sm text-gray-400 font-medium">From: {msg.username || "Project Manager"}</span>
                       </div>
 
@@ -1541,22 +1658,19 @@ export default function ProjectDetailsPage() {
           <div className="p-6">
             <textarea
               className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent cursor-pointer"
-              placeholder={currentUser ? "Type a message..." : "Please log in or register to message our team..."}
+              placeholder={isLoggedIn ? "Type a message..." : "Please log in or register to message our team..."}
               value={messageText}
               onChange={(e) => {
-                if (!currentUser) {
-                  setShowAuthModal(true);
-                  return;
-                }
+                if (!requireAuth()) return;
                 setMessageText(e.target.value);
               }}
               onClick={() => {
-                if (!currentUser) setShowAuthModal(true);
+                requireAuth();
               }}
               onFocus={() => {
-                if (!currentUser) setShowAuthModal(true);
+                requireAuth();
               }}
-              readOnly={!currentUser}
+              readOnly={!isLoggedIn}
             />
           </div>
 
@@ -1621,11 +1735,8 @@ export default function ProjectDetailsPage() {
           <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
             <button
               onClick={() => {
-                if (!currentUser) {
-                  setShowAuthModal(true);
-                } else {
-                  fileInputRef.current?.click();
-                }
+                if (!requireAuth()) return;
+                fileInputRef.current?.click();
               }}
               className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2 rounded-lg border-2 border-blue-600 hover:bg-blue-50 shadow-sm cursor-pointer"
               type="button"
@@ -1646,30 +1757,25 @@ export default function ProjectDetailsPage() {
             <div className="flex gap-3 w-full sm:w-auto justify-end">
               <button
                 onClick={() => {
-                  if (!currentUser) {
-                    setShowAuthModal(true);
-                    return;
-                  }
+                  if (!requireAuth()) return;
                   setMessageText("");
                   setAttachments([]);
                 }}
-                className="flex-1 sm:flex-none px-6 py-2.5 bg-[#7A1C1C] hover:bg-[#600018] text-white font-bold text-xs rounded-lg transition-colors shadow-sm cursor-pointer"
+                className="flex-1 sm:flex-none px-6 py-2.5 bg-[#7A1C1C] hover:bg-[#631616] text-white font-bold text-xs rounded-lg transition-colors shadow-sm cursor-pointer"
                 disabled={isSending}
               >
                 Cancel
               </button>
               <button
                 onClick={(e) => {
-                  if (!currentUser) {
+                  if (!requireAuth()) {
                     e.preventDefault();
-                    setShowAuthModal(true);
                     return;
                   }
                   handleSendMessage();
                 }}
-                disabled={currentUser && (isSending || isUploading || (!messageText.trim() && attachments.filter(a => a.status === "done").length === 0))}
-                className={`flex-1 sm:flex-none px-7 py-2.5 text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer ${isSending || isUploading ? "bg-gray-400 cursor-not-allowed" : "bg-[#0D1939] hover:bg-[#1a2847]"
-                  }`}
+                disabled={isLoggedIn && (isSending || isUploading || (!messageText.trim() && attachments.filter(a => a.status === "done").length === 0))}
+                className="flex-1 sm:flex-none px-7 py-2.5 bg-[#7B8BF5] hover:bg-[#5356ff] text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
               >
                 {isSending ? "Sending..." : isUploading ? "Uploading..." : "Send Message"}
               </button>

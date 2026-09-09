@@ -29,7 +29,7 @@ import {
   isGraphicsItemsQuestion,
   filterGraphicsAnswers,
   groupAnswersByHeading,
-  calculateGraphicsBaselineTimelineDays,
+  calculateGraphicsRawTimelineDays,
   shouldShowPriceBar,
   selectionsToArray,
   filterQuestionAnswers,
@@ -430,6 +430,11 @@ const ProposalPreview = ({
   const sortedQuestions = [...(category.questions || [])].sort(
     (a: any, b: any) => (a.order || 0) - (b.order || 0)
   );
+  const tier = getSelectedTier(
+    selections,
+    getTierQuestionKey(category.categoryKey || ""),
+    sortedQuestions
+  );
   const firstQuestionKey = sortedQuestions[0]?.key;
   let subtitle = "";
   const breakdown: { question: string; answers: string[] }[] = [];
@@ -460,7 +465,7 @@ const ProposalPreview = ({
               categoryKey: category.categoryKey,
               roleId: q.roleId,
               metadata: ans.metadata,
-              baselineDays: category.categoryKey === "graphics" ? calculateGraphicsBaselineTimelineDays(sortedQuestions.find((sq: any) => isGraphicsItemsQuestion(sq)), selections) : undefined,
+              baselineDays: category.categoryKey === "graphics" ? calculateGraphicsRawTimelineDays(sortedQuestions.find((sq: any) => isGraphicsItemsQuestion(sq)), selections, tier) : undefined,
             })
           );
         }
@@ -866,43 +871,43 @@ const CalculatorPaymentForm = ({
     country: "US",
   });
   const [userCountry, setUserCountry] = useState("US");
+  const [isAuth, setIsAuth] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(true);
-  const [bizInfo, setBizInfo] = useState({
-    personName: "",
-    personEmail: "",
-    personPhone: "",
-    preferredContactMethod: "email",
-    businessName: "",
-    businessEmail: "",
-    businessPhone: "",
-    businessAddress: "",
-    businessWebsite: "",
-    businessDescription: "",
-  });
 
   useEffect(() => {
-    const user = authService.getUser();
-    if (user) {
-      setIsEmailVerified(!!user.isEmailVerified);
-      if (user.fullName) {
-        setCardholderName(user.fullName);
-        setBizInfo((p) => ({ ...p, personName: user.fullName || "" }));
-      }
-      if (user.email) {
-        setBizInfo((p) => ({ ...p, personEmail: user.email || "" }));
-      }
-      (async () => {
-        try {
-          const { profileService } = await import("@/lib/profileService");
-          const profile = await profileService.getMyProfile();
-          if (profile?.data) {
-            setUserCountry(profile.data.country || profile.data.billingCountry || (currency === "eur" ? "DE" : "US"));
+    const checkAuth = () => {
+      const authenticated = authService.isAuthenticated();
+      setIsAuth(authenticated);
+      if (authenticated) {
+        const user = authService.getUser();
+        if (user) {
+          setIsEmailVerified(!!user.isEmailVerified);
+          if (user.fullName) {
+            setCardholderName(user.fullName);
           }
-        } catch {
-          setUserCountry(currency === "eur" ? "DE" : "US");
+          (async () => {
+            try {
+              const { profileService } = await import("@/lib/profileService");
+              const profile = await profileService.getMyProfile();
+              if (profile?.data) {
+                setUserCountry(profile.data.country || profile.data.billingCountry || (currency === "eur" ? "DE" : "US"));
+              }
+            } catch {
+              setUserCountry(currency === "eur" ? "DE" : "US");
+            }
+          })();
         }
-      })();
-    }
+      }
+    };
+
+    checkAuth();
+    const handleAuthChange = () => checkAuth();
+    window.addEventListener("auth:login", handleAuthChange);
+    window.addEventListener("auth:logout", handleAuthChange);
+    return () => {
+      window.removeEventListener("auth:login", handleAuthChange);
+      window.removeEventListener("auth:logout", handleAuthChange);
+    };
   }, [currency]);
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -923,12 +928,6 @@ const CalculatorPaymentForm = ({
       "cardNumber",
       "cardExpiry",
       "cardCvc",
-      "personName",
-      "personEmail",
-      "billingStreet",
-      "billingCity",
-      "billingState",
-      "billingZip",
     ];
     const firstKey = order.find((key) => errs[key]);
     if (!firstKey) return;
@@ -956,8 +955,6 @@ const CalculatorPaymentForm = ({
     }
   };
 
-  const handleBizChange = (e: any) => setBizInfo({ ...bizInfo, [e.target.name]: e.target.value });
-
   const vatRate = 0;
   const currencyLabel = currency.toUpperCase();
   const requiresVerification = !isEmailVerified;
@@ -979,16 +976,23 @@ const CalculatorPaymentForm = ({
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
+
+    // Redirect guests directly to login without checking validations
+    if (!authService.isAuthenticated()) {
+      try {
+        sessionStorage.setItem(
+          "pending_calculator_state",
+          JSON.stringify({ categoryKey, selections })
+        );
+      } catch {}
+      router.push("/login?redirect=/calculator");
+      return;
+    }
+
     if (!stripe || !elements) return;
 
     // Validate required questions and timeline selection inline without popup
     if (onValidateRequired && !onValidateRequired()) {
-      return;
-    }
-
-    // Redirect guests to login before allowing payment
-    if (!authService.isAuthenticated()) {
-      router.push("/login?redirect=/calculator");
       return;
     }
 
@@ -1006,13 +1010,6 @@ const CalculatorPaymentForm = ({
     const errs: any = {};
     const amount = getPayableAmount();
 
-    if (!bizInfo.personName.trim()) errs.personName = "Name is required.";
-    if (!bizInfo.personEmail.trim()) {
-      errs.personEmail = "Email is required.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bizInfo.personEmail)) {
-      errs.personEmail = "Invalid email format.";
-    }
-
     if (paymentOption === "custom") {
       if (!customAmount || parseFloat(customAmount) <= 0) {
         errs.amount = "Enter a valid amount.";
@@ -1024,12 +1021,6 @@ const CalculatorPaymentForm = ({
     }
 
     if (!cardholderName.trim()) errs.cardHolderName = "Cardholder name is required.";
-    if (!billingSameAsBusiness) {
-      if (!billingAddress.street.trim()) errs.billingStreet = "Address is required.";
-      if (!billingAddress.city.trim()) errs.billingCity = "City is required.";
-      if (!billingAddress.state.trim()) errs.billingState = "State is required.";
-      if (!billingAddress.zip.trim()) errs.billingZip = "ZIP is required.";
-    }
     if (!cardStatus.number.complete) errs.cardNumber = cardStatus.number.error?.message || "Incomplete card number.";
     if (!cardStatus.expiry.complete) errs.cardExpiry = cardStatus.expiry.error?.message || "Incomplete expiry.";
     if (!cardStatus.cvc.complete) errs.cardCvc = cardStatus.cvc.error?.message || "Incomplete CVC.";
@@ -1062,6 +1053,7 @@ const CalculatorPaymentForm = ({
         };
       });
 
+      const user = authService.getUser();
       const proposalData = {
         categoryKey,
         selections: enrichedSelections,
@@ -1069,7 +1061,8 @@ const CalculatorPaymentForm = ({
         totalPrice,
         estimatedTimeline: timeline,
         timeline,
-        ...bizInfo,
+        personName: cardholderName || user?.fullName || "Valued Customer",
+        personEmail: user?.email || "customer@example.com",
       };
 
       const submitRes = await priceCalculatorService.submitQuote(proposalData);
@@ -1116,17 +1109,8 @@ const CalculatorPaymentForm = ({
         payment_method: {
           card: cardElement,
           billing_details: {
-            name: cardholderName || bizInfo.personName,
-            email: bizInfo.personEmail,
-            address: billingSameAsBusiness
-              ? undefined
-              : {
-                line1: billingAddress.street,
-                city: billingAddress.city,
-                state: billingAddress.state,
-                postal_code: billingAddress.zip,
-                country: billingAddress.country,
-              },
+            name: cardholderName || user?.fullName || "Valued Customer",
+            email: user?.email || undefined,
           },
         },
       });
@@ -1273,107 +1257,64 @@ const CalculatorPaymentForm = ({
           </div>
         </div>
 
-        <label className="flex items-center gap-3 mb-8 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={billingSameAsBusiness}
-            onChange={(e) => setBillingSameAsBusiness(e.target.checked)}
-            className="w-4 h-4 rounded border-gray-300 text-[#5356ff] focus:ring-[#5356ff]"
-          />
-          <span className="text-sm text-gray-700">Billing address is the same as Business details</span>
-        </label>
-
-        <div className="space-y-6 font-sans">
-          <div data-field="cardHolderName">
-            <label className="block text-[15px] font-medium text-[#111827] mb-2">Name on the card:</label>
-            <input
-              ref={(el) => { fieldRefs.current.cardHolderName = el; }}
-              type="text"
-              value={cardholderName}
-              onChange={(e) => { setCardholderName(e.target.value); if (errors.cardHolderName) setErrors((p: any) => ({ ...p, cardHolderName: "" })); }}
-              placeholder="Name on the card"
-              className={`w-full border-b ${errors.cardHolderName ? "border-red-500" : "border-[#e5e7eb]"} py-2.5 bg-transparent outline-none placeholder-gray-400 focus:border-[#4F46E5] text-[15px] transition-all`}
-            />
-            {errors.cardHolderName && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardHolderName}</span>}
-          </div>
-
-          <div ref={(el) => { fieldRefs.current.cardNumber = el; }} data-field="cardNumber">
-            <label className="block text-[15px] font-medium text-[#111827] mb-2">Card number:</label>
-            <div className={`w-full border-b ${errors.cardNumber ? "border-red-500" : "border-gray-200"} py-2.5 focus-within:border-[#4F46E5] transition-all`}>
-              <CardNumberElement options={stripeCardNumberOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, number: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardNumber: "" })); }} />
+        {!isAuth ? (
+          <div className="p-6 bg-[#f8fafc] border border-gray-200 rounded-xl text-center space-y-2">
+            <div className="w-10 h-10 bg-indigo-50 text-[#4F46E5] rounded-full flex items-center justify-center mx-auto mb-2">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
             </div>
-            {errors.cardNumber && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardNumber}</span>}
+            <h4 className="text-[16px] font-bold text-[#111827]">Account Required</h4>
+            <p className="text-[14px] text-gray-600 max-w-md mx-auto">
+              Please log in or sign up to enter your payment details and begin your project.
+            </p>
           </div>
+        ) : (
+          <div className="space-y-6 font-sans">
+            <div data-field="cardHolderName">
+              <label className="block text-[15px] font-medium text-[#111827] mb-2">Name on the card:</label>
+              <input
+                ref={(el) => { fieldRefs.current.cardHolderName = el; }}
+                type="text"
+                value={cardholderName}
+                onChange={(e) => { setCardholderName(e.target.value); if (errors.cardHolderName) setErrors((p: any) => ({ ...p, cardHolderName: "" })); }}
+                placeholder="Name on the card"
+                className={`w-full border-b ${errors.cardHolderName ? "border-red-500" : "border-[#e5e7eb]"} py-2.5 bg-transparent outline-none placeholder-gray-400 focus:border-[#4F46E5] text-[15px] transition-all`}
+              />
+              {errors.cardHolderName && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardHolderName}</span>}
+            </div>
 
-          <div className="grid grid-cols-2 gap-10">
-            <div ref={(el) => { fieldRefs.current.cardExpiry = el; }} data-field="cardExpiry">
-              <label className="block text-[15px] font-medium text-[#111827] mb-2">Expiry date:</label>
-              <div className={`w-full border-b ${errors.cardExpiry ? "border-red-500" : "border-black/80"} py-2.5 focus-within:border-black transition-all`}>
-                <CardExpiryElement options={stripeCardExpiryOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, expiry: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardExpiry: "" })); }} />
+            <div ref={(el) => { fieldRefs.current.cardNumber = el; }} data-field="cardNumber">
+              <label className="block text-[15px] font-medium text-[#111827] mb-2">Card number:</label>
+              <div className={`w-full border-b ${errors.cardNumber ? "border-red-500" : "border-gray-200"} py-2.5 focus-within:border-[#4F46E5] transition-all`}>
+                <CardNumberElement options={stripeCardNumberOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, number: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardNumber: "" })); }} />
               </div>
-              {errors.cardExpiry && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardExpiry}</span>}
+              {errors.cardNumber && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardNumber}</span>}
             </div>
-            <div ref={(el) => { fieldRefs.current.cardCvc = el; }} data-field="cardCvc">
-              <label className="block text-[15px] font-medium text-[#111827] mb-2">CVC:</label>
-              <div className={`w-full border-b ${errors.cardCvc ? "border-red-500" : "border-black/80"} py-2.5 focus-within:border-black transition-all`}>
-                <CardCvcElement options={stripeCardCvcOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, cvc: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardCvc: "" })); }} />
+
+            <div className="grid grid-cols-2 gap-10">
+              <div ref={(el) => { fieldRefs.current.cardExpiry = el; }} data-field="cardExpiry">
+                <label className="block text-[15px] font-medium text-[#111827] mb-2">Expiry date:</label>
+                <div className={`w-full border-b ${errors.cardExpiry ? "border-red-500" : "border-gray-200"} py-2.5 focus-within:border-[#4F46E5] transition-all`}>
+                  <CardExpiryElement options={stripeCardExpiryOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, expiry: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardExpiry: "" })); }} />
+                </div>
+                {errors.cardExpiry && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardExpiry}</span>}
               </div>
-              {errors.cardCvc && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardCvc}</span>}
+              <div ref={(el) => { fieldRefs.current.cardCvc = el; }} data-field="cardCvc">
+                <label className="block text-[15px] font-medium text-[#111827] mb-2">CVC:</label>
+                <div className={`w-full border-b ${errors.cardCvc ? "border-red-500" : "border-gray-200"} py-2.5 focus-within:border-[#4F46E5] transition-all`}>
+                  <CardCvcElement options={stripeCardCvcOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, cvc: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardCvc: "" })); }} />
+                </div>
+                {errors.cardCvc && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardCvc}</span>}
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      <p className="text-center text-[16px] text-gray-300 max-w-[680px] mx-auto font-sans">Please fill out your business information before paying.</p>
-
-      <div className="bg-white rounded-[10px] p-6 md:p-10 text-black space-y-6 max-w-[680px] mx-auto w-full font-sans shadow-2xl">
-        <div data-field="personName">
-          <label className="block text-[16px] font-bold mb-2">Contact person&apos;s name: *</label>
-          <input
-            ref={(el) => { fieldRefs.current.personName = el; }}
-            type="text" name="personName" value={bizInfo.personName} onChange={(e) => { handleBizChange(e); if (errors.personName) setErrors((p: any) => ({ ...p, personName: "" })); }} placeholder="Your answer" className={`w-full border-b ${errors.personName ? "border-red-500" : "border-black/80"} py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]`} />
-          {errors.personName && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.personName}</span>}
-        </div>
-        <div data-field="personEmail">
-          <label className="block text-[16px] font-bold mb-2">Contact person&apos;s email address: *</label>
-          <input
-            ref={(el) => { fieldRefs.current.personEmail = el; }}
-            type="email" name="personEmail" value={bizInfo.personEmail} onChange={(e) => { handleBizChange(e); if (errors.personEmail) setErrors((p: any) => ({ ...p, personEmail: "" })); }} placeholder="Your answer" className={`w-full border-b ${errors.personEmail ? "border-red-500" : "border-black/80"} py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]`} />
-          {errors.personEmail && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.personEmail}</span>}
-        </div>
-        <div>
-          <label className="block text-[16px] font-bold mb-2">Contact person&apos;s phone number:</label>
-          <input type="tel" name="personPhone" value={bizInfo.personPhone} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]" />
-        </div>
-        <div>
-          <label className="block text-[16px] font-bold mb-2">Business name:</label>
-          <input type="text" name="businessName" value={bizInfo.businessName} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]" />
-        </div>
-        <div>
-          <label className="block text-[16px] font-bold mb-2">Business email address:</label>
-          <input type="email" name="businessEmail" value={bizInfo.businessEmail} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]" />
-        </div>
-        <div>
-          <label className="block text-[16px] font-bold mb-2">Business phone number:</label>
-          <input type="tel" name="businessPhone" value={bizInfo.businessPhone} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]" />
-        </div>
-        <div>
-          <label className="block text-[16px] font-bold mb-2">Business address:</label>
-          <input type="text" name="businessAddress" value={bizInfo.businessAddress} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]" />
-        </div>
-        <div>
-          <label className="block text-[16px] font-bold mb-2">Business website:</label>
-          <input type="url" name="businessWebsite" value={bizInfo.businessWebsite} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]" />
-        </div>
-        <div>
-          <label className="block text-[16px] font-bold mb-2">Business services and description:</label>
-          <textarea name="businessDescription" rows={1} value={bizInfo.businessDescription} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px] resize-none" />
-        </div>
+        )}
       </div>
 
       <button
         type="submit"
-        disabled={isProcessing || !stripe || !elements}
+        disabled={isProcessing || (isAuth && (!stripe || !elements))}
         className="w-full max-w-[680px] mx-auto py-4 px-6 rounded-[6px] bg-[#4343F0] text-white font-extrabold text-[16px] tracking-widest shadow-xl hover:bg-[#3232b7] transition-all disabled:opacity-75 disabled:cursor-not-allowed uppercase active:scale-[0.98] mt-4 flex items-center justify-center gap-3"
       >
         {isProcessing ? (
@@ -1389,6 +1330,8 @@ const CalculatorPaymentForm = ({
               {(paymentStep === "idle" || paymentStep === "error") && "PROCESSING..."}
             </span>
           </>
+        ) : !isAuth ? (
+          "LOG IN OR SIGN UP TO PAY"
         ) : (
           `PAY ${formatPaymentLine(totalPayable)} NOW`
         )}
@@ -1419,6 +1362,15 @@ export default function CalculatorPage() {
       try {
         const res = await priceCalculatorService.getCalculatorConfig();
         setConfig(res);
+        try {
+          const saved = sessionStorage.getItem("pending_calculator_state");
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed.categoryKey) setSelectedCategoryKey(parsed.categoryKey);
+            if (parsed.selections) setSelections(parsed.selections);
+            sessionStorage.removeItem("pending_calculator_state");
+          }
+        } catch {}
       } catch (err) {
         console.error("Failed to load calculator config", err);
       } finally {
@@ -1461,8 +1413,8 @@ export default function CalculatorPage() {
     () => sortedQuestions.find((q) => isGraphicsItemsQuestion(q)),
     [sortedQuestions]
   );
-  const graphicsBaselineDays = useMemo(
-    () => calculateGraphicsBaselineTimelineDays(graphicsItemsQuestion, selections, tier),
+  const graphicsRawTimelineDays = useMemo(
+    () => calculateGraphicsRawTimelineDays(graphicsItemsQuestion, selections, tier),
     [graphicsItemsQuestion, selections, tier]
   );
   const seoServiceMode = useMemo(
@@ -1642,7 +1594,7 @@ export default function CalculatorPage() {
         </div>
       </div>
 
-      <main className="flex-grow w-full overflow-hidden flex flex-col relative z-10">
+      <main className="flex-grow w-full overflow-x-clip flex flex-col relative z-10">
 
         {/* Category Selection Section */}
         <div
@@ -1685,7 +1637,7 @@ export default function CalculatorPage() {
                       tier={tier}
                       categoryKey={selectedCategoryKey}
                       categorySelections={graphicsCategoryKeys}
-                      baselineDays={selectedCategoryKey === "graphics" ? graphicsBaselineDays : undefined}
+                      baselineDays={selectedCategoryKey === "graphics" ? graphicsRawTimelineDays : undefined}
                       seoServiceMode={seoServiceMode}
                       error={questionErrors[q.key]}
                     />
@@ -1734,7 +1686,7 @@ export default function CalculatorPage() {
 
       {/* Sticky Bottom Bar */}
       {showStickyPriceBar && (
-        <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 shadow-lg z-[100] h-20 bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.05)] flex items-center transition-transform duration-500 ease-in-out translate-y-0">
+        <div className="sticky bottom-0 left-0 right-0 w-full border-t border-gray-200 shadow-lg z-40 h-20 bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.08)] flex items-center transition-all duration-300">
           <div className="mx-auto max-w-[1536px] flex flex-col md:flex-row justify-center items-center gap-4 md:gap-10 px-4">
             <div className="flex items-center gap-4">
               <span className="text-[12px] md:text-[14px] uppercase text-[#002e8a] tracking-[0.1em] font-semibold">PROJECT TOTAL COST:</span>

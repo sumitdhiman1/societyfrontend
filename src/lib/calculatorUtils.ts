@@ -387,11 +387,6 @@ export function isGraphicsItemVisible(
     return fg ? selSet.has(fg) || selLower.includes(fg) : false;
   }
 
-  // Special requirement: If "Full Brand Identity Package" is selected, also show "Logo Design" items
-  if (itemCat === "logo") {
-    return isGraphicsCategorySelected("logo", categoryKeys) || isGraphicsCategorySelected("brand_id", categoryKeys);
-  }
-
   return isGraphicsCategorySelected(itemCat, categoryKeys);
 }
 
@@ -423,36 +418,135 @@ export function groupAnswersByHeading(answers: any[]) {
   return groups;
 }
 
-export function calculateGraphicsBaselineTimelineDays(
-  itemsQuestion: any,
-  selections: Record<string, CalculatorSelection>,
-  tier = "starter"
-): number {
-  const normTier = (tier || "starter").toLowerCase();
+/** Snap raw per-heading sum to spec sensible values (matches backend). */
+export function snapGraphicsBaselineDays(days: number): number {
+  if (days <= 3) return 3;
+  if (days <= 7) return 7;
+  if (days <= 10) return 10;
+  if (days <= 14) return 14;
+  if (days <= 21) return 21;
+  if (days <= 28) return 28;
+  return Math.ceil(days / 7) * 7;
+}
 
-  // Find item keys from selections
-  const itemsKey = itemsQuestion?.key;
-  let itemKeys: string[] = [];
-  if (itemsKey && selections[itemsKey]?.answerKeys?.length) {
-    itemKeys = selections[itemsKey].answerKeys;
-  } else if (selections.GFX_ITEMS?.answerKeys?.length) {
-    itemKeys = selections.GFX_ITEMS.answerKeys;
-  } else if (selections.GD_ITEMS?.answerKeys?.length) {
-    itemKeys = selections.GD_ITEMS.answerKeys;
-  } else {
-    for (const [k, sel] of Object.entries(selections)) {
-      if (
-        (k === "GFX_ITEMS" || k === "GD_ITEMS" || isGraphicsItemsQuestion({ key: k })) &&
-        sel.answerKeys?.length
-      ) {
-        itemKeys = sel.answerKeys;
-        break;
-      }
-    }
+export type GraphicsRushType = "normal" | "rushed" | "super";
+
+/** Apply rush on raw heading-sum, then snap (live parity). */
+export function applyGraphicsRushDays(rawDays: number, rushType: GraphicsRushType): number {
+  if (rushType === "normal") return snapGraphicsBaselineDays(rawDays);
+  const reduction = rushType === "super" ? 0.75 : 0.5;
+  const rushed = Math.max(1, Math.ceil(rawDays * (1 - reduction)));
+  return snapGraphicsBaselineDays(rushed);
+}
+
+/** Discrete graphics timeline labels per product spec. */
+export function formatGraphicsTimelineLabel(days: number): string {
+  if (days <= 4) return "3 days";
+  if (days <= 7) return "1 week";
+  if (days <= 10) return "10 days";
+  if (days <= 14) return "2 weeks";
+  if (days <= 21) return "3 weeks";
+  if (days <= 28) return "4 weeks";
+  return `${Math.ceil(days / 7)} weeks`;
+}
+
+export function getGraphicsRushTypeFromMetadata(
+  metadata?: { fee?: number; reduction?: number },
+  text?: string
+): GraphicsRushType {
+  const isSuper =
+    metadata?.fee === 0.5 ||
+    metadata?.reduction === 0.75 ||
+    /super\s*rushed/i.test(text || "") ||
+    /50%/i.test(text || "");
+  if (isSuper) return "super";
+  const isRush =
+    metadata?.fee === 0.25 ||
+    metadata?.reduction === 0.5 ||
+    /\(rushed\)/i.test(text || "") ||
+    /25%/i.test(text || "");
+  if (isRush) return "rushed";
+  return "normal";
+}
+
+export function formatGraphicsTimelineOptionLabel(
+  rawDays: number,
+  rushType: GraphicsRushType
+): string {
+  const days = applyGraphicsRushDays(rawDays, rushType);
+  const durationStr = formatGraphicsTimelineLabel(days);
+  if (rushType === "super") return `${durationStr} (Super Rushed): +50% rush fee`;
+  if (rushType === "rushed") return `${durationStr} (Rushed): +25% rush fee`;
+  return `${durationStr} (Normal): No extra fee`;
+}
+
+/** Resolve graphics timeline label from answer key/text for PDF and proposals. */
+export function resolveGraphicsTimelineAnswer(
+  raw: string,
+  options?: {
+    directTimeline?: string;
+    baselineDays?: number;
+    metadata?: { fee?: number; reduction?: number };
+  }
+): string {
+  if (!raw) return options?.directTimeline || "";
+  const lower = raw.toLowerCase().trim();
+
+  const isGfxTimelineKey =
+    lower.startsWith("gfx_time") ||
+    lower.startsWith("gd_time") ||
+    lower.startsWith("gfx_timeline");
+
+  if (!isGfxTimelineKey && !/super\s*rushed|rushed|normal/i.test(raw)) {
+    return raw;
   }
 
-  if (!itemKeys.length) return 14;
+  if (options?.directTimeline && !isGfxTimelineKey) {
+    return options.directTimeline;
+  }
 
+  const baseline = options?.baselineDays && options.baselineDays > 0 ? options.baselineDays : 14;
+  const rushType = getGraphicsRushTypeFromMetadata(options?.metadata, raw);
+  if (isGfxTimelineKey || options?.metadata?.fee != null || options?.metadata?.reduction != null) {
+    return formatGraphicsTimelineOptionLabel(baseline, rushType);
+  }
+
+  return options?.directTimeline || raw;
+}
+
+function collectGraphicsItemKeys(
+  itemsQuestion: any,
+  selections: Record<string, CalculatorSelection>
+): string[] {
+  const itemsKey = itemsQuestion?.key;
+  if (itemsKey && selections[itemsKey]?.answerKeys?.length) {
+    return selections[itemsKey].answerKeys;
+  }
+  if (selections.GFX_ITEMS?.answerKeys?.length) {
+    return selections.GFX_ITEMS.answerKeys;
+  }
+  if (selections.GD_ITEMS?.answerKeys?.length) {
+    return selections.GD_ITEMS.answerKeys;
+  }
+  for (const [k, sel] of Object.entries(selections)) {
+    if (
+      (k === "GFX_ITEMS" || k === "GD_ITEMS" || isGraphicsItemsQuestion({ key: k })) &&
+      sel.answerKeys?.length
+    ) {
+      return sel.answerKeys;
+    }
+  }
+  return [];
+}
+
+function sumGraphicsHeadingTimelineDays(
+  itemKeys: string[],
+  itemsQuestion: any,
+  tier: string
+): number {
+  if (!itemKeys.length) return 0;
+
+  const normTier = (tier || "starter").toLowerCase();
   const answersMap = new Map<string, any>();
   (itemsQuestion?.answers || []).forEach((a: any) => answersMap.set(a.key, a));
 
@@ -481,8 +575,27 @@ export function calculateGraphicsBaselineTimelineDays(
     }
   });
 
-  const total = Object.values(headingsTimeline).reduce((sum, d) => sum + d, 0);
+  return Object.values(headingsTimeline).reduce((sum, d) => sum + d, 0);
+}
+
+/** Raw per-heading sum before sensible snap (for rush Q4 labels). */
+export function calculateGraphicsRawTimelineDays(
+  itemsQuestion: any,
+  selections: Record<string, CalculatorSelection>,
+  tier = "starter"
+): number {
+  const itemKeys = collectGraphicsItemKeys(itemsQuestion, selections);
+  const total = sumGraphicsHeadingTimelineDays(itemKeys, itemsQuestion, tier);
   return total > 0 ? total : 14;
+}
+
+/** Snapped normal baseline from raw heading-sum. */
+export function calculateGraphicsBaselineTimelineDays(
+  itemsQuestion: any,
+  selections: Record<string, CalculatorSelection>,
+  tier = "starter"
+): number {
+  return snapGraphicsBaselineDays(calculateGraphicsRawTimelineDays(itemsQuestion, selections, tier));
 }
 
 export function formatDaysToTimelineLabel(days: number): string {
@@ -662,7 +775,7 @@ export function getCategoryProposalName(categoryKey: string, categoryName?: stri
 
 const DEFAULT_CATEGORY_TIMELINES: Record<string, string> = {
   website: "2 weeks",
-  graphics: "5 - 7 business days",
+  graphics: "2 weeks",
   seo: "Monthly Service",
   marketing: "Monthly Service",
 };
@@ -709,6 +822,7 @@ export function formatCalculatorAnswerLabel(
     baselineDays?: number;
   }
 ): string {
+  if (!text) return "";
   const { categoryKey, roleId, metadata, baselineDays } = options ?? {};
 
   if (
@@ -720,34 +834,8 @@ export function formatCalculatorAnswerLabel(
       /timeline/i.test(questionKey || ""))
   ) {
     if (baselineDays && baselineDays > 0) {
-      const isSuper =
-        metadata?.fee === 0.5 ||
-        metadata?.reduction === 0.75 ||
-        /super\s*rushed/i.test(text) ||
-        /50%/i.test(text);
-
-      const isRush =
-        !isSuper &&
-        (metadata?.fee === 0.25 ||
-          metadata?.reduction === 0.5 ||
-          /\(rushed\)/i.test(text) ||
-          /25%/i.test(text));
-
-      let days = baselineDays;
-      if (isSuper) {
-        days = Math.max(1, Math.round(baselineDays * 0.25));
-      } else if (isRush) {
-        days = Math.max(1, Math.round(baselineDays * 0.5));
-      }
-
-      const durationStr = formatDaysToTimelineLabel(days);
-      if (isSuper) {
-        return `${durationStr} (Super Rushed): +50% rush fee`;
-      }
-      if (isRush) {
-        return `${durationStr} (Rushed): +25% rush fee`;
-      }
-      return `${durationStr} (Normal): No extra fee`;
+      const rushType = getGraphicsRushTypeFromMetadata(metadata, text);
+      return formatGraphicsTimelineOptionLabel(baselineDays, rushType);
     }
   }
 
@@ -760,16 +848,17 @@ export function formatCalculatorAnswerLabel(
     return label;
   }
 
-  return text.replace(/:\s*\+\d+% rush fee/i, "").trim();
+  return (text || "").replace(/:\s*\+\d+% rush fee/i, "").trim();
 }
 
 /** Append (Optional) for optional text/number on marketing, SEO, and graphics. */
 export function formatCalculatorQuestionText(
-  text: string,
+  text?: string,
   isRequired?: boolean,
   questionType?: string,
   categoryKey?: string
 ): string {
+  if (!text) return "";
   const trimmed = text.replace(/\s*\(Optional\)/gi, "").trim();
   const supportsOptionalLabel = questionType === "text" || questionType === "number";
   const showOptional =
@@ -883,6 +972,11 @@ export function pruneHiddenSelections(
 export function parseDurationToDays(durationStr: string): number {
   if (!durationStr) return 0;
   if (/monthly\s*service/i.test(durationStr)) return 30;
+  const trimmed = durationStr.trim();
+  if (/^3\s*days?$/i.test(trimmed)) return 3;
+  if (/^10\s*days?$/i.test(trimmed)) return 10;
+  const rangeMatch = /(\d+)\s*-\s*(\d+)/.exec(durationStr);
+  if (rangeMatch) return parseInt(rangeMatch[2], 10);
   const weeksMatch = /(\d+)\s*week/i.exec(durationStr);
   if (weeksMatch) return parseInt(weeksMatch[1], 10) * 7;
   const monthsMatch = /(\d+)\s*month/i.exec(durationStr);
@@ -897,13 +991,19 @@ export function parseDurationToDays(durationStr: string): number {
 
 export function getProjectEstimatedDeadline(project: any): Date | null {
   if (!project) return null;
-  const isMonthly =
-    project.billingType === "monthly" ||
-    project.calculatorSpecs?.categoryKey === "seo" ||
-    project.calculatorSpecs?.categoryKey === "marketing" ||
-    project.categoryKey === "seo" ||
-    project.categoryKey === "marketing";
 
+  // 1. If project has an explicit deadline set, prioritize it
+  if (project.deadline) {
+    const d = new Date(project.deadline);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  const startDate = project.startDate || project.createdAt;
+  if (!startDate) return null;
+  const start = new Date(startDate);
+  if (isNaN(start.getTime())) return null;
+
+  // 2. Parse duration from timeline strings
   const timelineStr =
     project.calculatorSpecs?.estimatedTimeline ||
     project.calculatorSpecs?.timeline ||
@@ -915,21 +1015,44 @@ export function getProjectEstimatedDeadline(project: any): Date | null {
     project.duration ||
     "";
 
-  // A monthly project is always 30 days
-  const durationDays = isMonthly ? 30 : parseDurationToDays(timelineStr);
-  const startDate = project.startDate || project.createdAt;
+  let durationDays = parseDurationToDays(timelineStr);
 
-  if (durationDays > 0 && startDate) {
-    const d = new Date(startDate);
-    if (!isNaN(d.getTime())) {
-      d.setDate(d.getDate() + durationDays);
-      return d;
+  // 3. If durationDays is 0, check if items have duration sum
+  if (durationDays === 0 && Array.isArray(project.items) && project.items.length > 0) {
+    let sumDays = 0;
+    for (const item of project.items) {
+      if (item.duration) {
+        const itemDays =
+          typeof item.duration === "number"
+            ? item.duration
+            : parseDurationToDays(String(item.duration));
+        sumDays += itemDays;
+      }
+    }
+    if (sumDays > 0) {
+      durationDays = sumDays;
     }
   }
 
-  if (project.deadline) {
-    const d = new Date(project.deadline);
-    if (!isNaN(d.getTime())) return d;
+  // 4. If no explicit duration found, check if it's a monthly subscription project (default 30 days)
+  if (durationDays === 0) {
+    const isMonthly =
+      project.billingType === "monthly" ||
+      project.calculatorSpecs?.categoryKey === "seo" ||
+      project.calculatorSpecs?.categoryKey === "marketing" ||
+      project.categoryKey === "seo" ||
+      project.categoryKey === "marketing";
+
+    if (isMonthly) {
+      durationDays = 30;
+    }
   }
+
+  if (durationDays > 0) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + durationDays);
+    return d;
+  }
+
   return null;
 }

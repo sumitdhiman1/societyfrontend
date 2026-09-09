@@ -13,23 +13,19 @@ import AuthPromptModal from "@/components/common/AuthPromptModal";
 import { io, Socket } from "socket.io-client";
 
 const formatStatusTitle = (rawTitle: string): string => {
-  if (!rawTitle) return "System Notification";
+  if (!rawTitle) return "System notification";
   let clean = rawTitle
-    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}👤🚀📌✅🔔]/gu, "")
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}⏸▶️💳🛠️🎉✅🔄👤🚀📌🔔]/gu, "")
     .trim();
 
   const lower = clean.toLowerCase();
-  if (lower === "project manager assigned" || lower === "project manager assigned!") {
-    return "Project manager assigned";
+  if (lower === "action required: payment" || lower === "payment required") {
+    return "Project paused";
   }
-  if (lower === "order completed" || lower === "order completed!") {
-    return "Order completed!";
+  if (lower.startsWith("project status updated to active") || lower === "active") {
+    return "Project resumed";
   }
-  if (lower === "bundle project starting" || lower === "bundle project starting!") {
-    return "Bundle project starting";
-  }
-
-  if (clean.length > 1 && clean === clean.toUpperCase()) {
+  if (clean.length > 0) {
     clean = clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
   }
   return clean;
@@ -362,6 +358,18 @@ export default function AnalysisDetailsPage() {
   const [isActionLoading, setIsActionLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const requireAuth = () => {
+    if (!authService.isAuthenticated()) {
+      setShowAuthModal(true);
+      return null;
+    }
+    const current = currentUser || authService.getUser() || {};
+    if (!currentUser && authService.getUser()) setCurrentUser(authService.getUser());
+    return current;
+  };
+
+  const isLoggedIn = Boolean(currentUser) || authService.isAuthenticated();
+
   useEffect(() => {
     setCurrentUser(authService.getUser());
 
@@ -543,10 +551,8 @@ export default function AnalysisDetailsPage() {
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!currentUser) {
-      setShowAuthModal(true);
-      return;
-    }
+    const actingUser = requireAuth();
+    if (!actingUser) return;
     if (attachments.some((a) => a.status === "uploading")) return;
 
     const uploadedUrls = attachments.filter((a) => a.status === "done" && a.url).map((a) => a.url);
@@ -577,14 +583,12 @@ export default function AnalysisDetailsPage() {
   };
 
   const handleAcceptProposal = async (proposalId: string) => {
-    if (!currentUser) {
-      setShowAuthModal(true);
-      return;
-    }
+    const actingUser = requireAuth();
+    if (!actingUser) return;
     setIsActionLoading(true);
     try {
-      const username = currentUser?.fullName || currentUser?.username || "User";
-      const avatar = currentUser?.avatar;
+      const username = actingUser?.fullName || actingUser?.username || currentUser?.fullName || "User";
+      const avatar = actingUser?.avatar || currentUser?.avatar;
       const aId = analysis._id || analysis.id;
       const res = await projectService.acceptProposal(aId, proposalId, username, avatar);
       if (res && (res.isSuccessful || res.success || res.statusCode === 200 || res.statusCode === 201 || res.data)) {
@@ -598,10 +602,8 @@ export default function AnalysisDetailsPage() {
   };
 
   const handleActionSubmit = async () => {
-    if (!currentUser) {
-      setShowAuthModal(true);
-      return;
-    }
+    const actingUser = requireAuth();
+    if (!actingUser) return;
     if (actionModal.proposalId && actionModal.action && (!actionModal.required || actionComment.trim())) {
       setIsActionLoading(true);
       try {
@@ -1354,29 +1356,22 @@ export default function AnalysisDetailsPage() {
                 <textarea
                   className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent cursor-pointer"
                   placeholder={
-                    currentUser
+                    isLoggedIn
                       ? "Type your message or submit requested details..."
                       : "Please log in or register to message our team..."
                   }
                   value={messageText}
                   onChange={(e) => {
-                    if (!currentUser) {
-                      setShowAuthModal(true);
-                      return;
-                    }
+                    if (!requireAuth()) return;
                     setMessageText(e.target.value);
                   }}
                   onClick={() => {
-                    if (!currentUser) {
-                      setShowAuthModal(true);
-                    }
+                    requireAuth();
                   }}
                   onFocus={() => {
-                    if (!currentUser) {
-                      setShowAuthModal(true);
-                    }
+                    requireAuth();
                   }}
-                  readOnly={!currentUser}
+                  readOnly={!isLoggedIn}
                 />
               </div>
 
@@ -1444,10 +1439,7 @@ export default function AnalysisDetailsPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (!currentUser) {
-                        setShowAuthModal(true);
-                        return;
-                      }
+                      if (!requireAuth()) return;
                       fileInputRef.current?.click();
                     }}
                     className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2 rounded-lg border-2 border-blue-600 hover:bg-blue-50 shadow-sm cursor-pointer"
@@ -1474,27 +1466,23 @@ export default function AnalysisDetailsPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (!currentUser) {
-                        setShowAuthModal(true);
-                        return;
-                      }
+                      if (!requireAuth()) return;
                       setMessageText("");
                       setAttachments([]);
                     }}
-                    className="flex-1 sm:flex-none px-6 py-2.5 bg-[#800020] hover:bg-[#600018] text-white font-bold text-xs rounded-lg transition-colors shadow-sm cursor-pointer"
+                    className="flex-1 sm:flex-none px-6 py-2.5 bg-[#7A1C1C] hover:bg-[#631616] text-white font-bold text-xs rounded-lg transition-colors shadow-sm cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
-                    type={currentUser ? "submit" : "button"}
+                    type={isLoggedIn ? "submit" : "button"}
                     onClick={(e) => {
-                      if (!currentUser) {
+                      if (!requireAuth()) {
                         e.preventDefault();
-                        setShowAuthModal(true);
                       }
                     }}
                     disabled={
-                      currentUser &&
+                      isLoggedIn &&
                       (isSending ||
                         isUploading ||
                         (!messageText.trim() &&
