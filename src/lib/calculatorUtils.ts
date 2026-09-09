@@ -504,22 +504,23 @@ export function resolveGraphicsTimelineAnswer(
   if (!raw) return options?.directTimeline || "";
   const lower = raw.toLowerCase().trim();
 
-  const isGfxTimelineKey =
+  const isRushTimelineKey =
     lower.startsWith("gfx_time") ||
     lower.startsWith("gd_time") ||
-    lower.startsWith("gfx_timeline");
+    lower.startsWith("gfx_timeline") ||
+    lower.startsWith("seo_time");
 
-  if (!isGfxTimelineKey && !/super\s*rushed|rushed|normal/i.test(raw)) {
+  if (!isRushTimelineKey && !/super\s*rushed|rushed|normal/i.test(raw)) {
     return raw;
   }
 
-  if (options?.directTimeline && !isGfxTimelineKey) {
+  if (options?.directTimeline && !isRushTimelineKey) {
     return options.directTimeline;
   }
 
   const baseline = options?.baselineDays && options.baselineDays > 0 ? options.baselineDays : 14;
   const rushType = getGraphicsRushTypeFromMetadata(options?.metadata, raw);
-  if (isGfxTimelineKey || options?.metadata?.fee != null || options?.metadata?.reduction != null) {
+  if (isRushTimelineKey || options?.metadata?.fee != null || options?.metadata?.reduction != null) {
     return formatGraphicsTimelineOptionLabel(baseline, rushType);
   }
 
@@ -608,6 +609,90 @@ export function calculateGraphicsBaselineTimelineDays(
   tier = "starter"
 ): number {
   return snapGraphicsBaselineDays(calculateGraphicsRawTimelineDays(itemsQuestion, selections, tier));
+}
+
+function collectSeoItemKeys(
+  itemsQuestion: any,
+  selections: Record<string, CalculatorSelection>
+): string[] {
+  const itemsKey = itemsQuestion?.key;
+  if (itemsKey && selections[itemsKey]?.answerKeys?.length) {
+    return selections[itemsKey].answerKeys;
+  }
+  if (selections.SEO_ITEMS?.answerKeys?.length) {
+    return selections.SEO_ITEMS.answerKeys;
+  }
+  if (selections["2"]?.answerKeys?.length) {
+    return selections["2"].answerKeys;
+  }
+  for (const [k, sel] of Object.entries(selections)) {
+    if ((k === "SEO_ITEMS" || k === "2") && sel.answerKeys?.length) {
+      return sel.answerKeys;
+    }
+  }
+  return [];
+}
+
+function isSeoOnetimeTimedItem(ans: any): boolean {
+  const meta = ans?.metadata;
+  if (meta?.type === "monthly") return false;
+  if (meta?.type === "onetime") return true;
+  const key = ans?.key || "";
+  const isMonthlyKey =
+    key.includes("LOCAL") ||
+    key.includes("CONTENT_MONTHLY") ||
+    key.includes("NATIONAL") ||
+    key.includes("LINK_MONTHLY") ||
+    key.includes("INTL") ||
+    key.includes("REPORT");
+  return !isMonthlyKey;
+}
+
+/** Raw per-heading sum for one-time SEO items only (no snap). */
+export function calculateSeoRawTimelineDays(
+  itemsQuestion: any,
+  selections: Record<string, CalculatorSelection>,
+  tier = "starter"
+): number {
+  const itemKeys = collectSeoItemKeys(itemsQuestion, selections);
+  if (!itemKeys.length || !itemsQuestion) return 0;
+
+  const normTier = (tier || "starter").toLowerCase();
+  const answersMap = new Map<string, any>();
+  (itemsQuestion?.answers || []).forEach((a: any) => answersMap.set(a.key, a));
+
+  const headingsTimeline: Record<string, number> = {};
+  itemKeys.forEach((key) => {
+    const ans = answersMap.get(key);
+    if (!ans || !isSeoOnetimeTimedItem(ans)) return;
+
+    const heading = ans.metadata?.heading || "General";
+    const tierMeta =
+      ans.metadata?.[normTier] ||
+      ans.metadata?.starter ||
+      ans.metadata?.standard ||
+      ans.metadata?.premium;
+
+    let days = 0;
+    if (tierMeta && typeof tierMeta === "object" && typeof tierMeta.t === "number") {
+      days = tierMeta.t;
+    }
+    if (days <= 0) return;
+
+    if (!headingsTimeline[heading] || days > headingsTimeline[heading]) {
+      headingsTimeline[heading] = days;
+    }
+  });
+
+  return Object.values(headingsTimeline).reduce((sum, d) => sum + d, 0);
+}
+
+export function seoModeNeedsTimeline(mode: string): boolean {
+  return mode === "onetime" || mode === "combination";
+}
+
+export function seoModeNeedsMonths(mode: string): boolean {
+  return mode === "monthly" || mode === "combination";
 }
 
 export function formatDaysToTimelineLabel(days: number): string {
@@ -713,7 +798,7 @@ export function isQuestionVisible(
       selections.SEO_SERVICE_TYPE?.answerKeys?.length ||
       selections["0"]?.answerKeys?.length
     );
-    return hasSeoTypeSelected && getSeoServiceMode(selections) === "monthly";
+    return hasSeoTypeSelected && seoModeNeedsMonths(getSeoServiceMode(selections));
   }
   if (question.key === "SEO_TIMELINE") {
     const hasSeoTypeSelected = !!(
@@ -721,7 +806,7 @@ export function isQuestionVisible(
       selections.SEO_SERVICE_TYPE?.answerKeys?.length ||
       selections["0"]?.answerKeys?.length
     );
-    return hasSeoTypeSelected && getSeoServiceMode(selections) === "onetime";
+    return hasSeoTypeSelected && seoModeNeedsTimeline(getSeoServiceMode(selections));
   }
 
   if (question.key && MARKETING_ALWAYS_VISIBLE_KEYS.has(question.key)) return true;
@@ -902,6 +987,16 @@ export function formatCalculatorAnswerLabel(
       roleId === 13 ||
       roleId === 14 ||
       /timeline/i.test(questionKey || ""))
+  ) {
+    if (baselineDays && baselineDays > 0) {
+      const rushType = getGraphicsRushTypeFromMetadata(metadata, text);
+      return formatGraphicsTimelineOptionLabel(baselineDays, rushType);
+    }
+  }
+
+  if (
+    categoryKey === "seo" &&
+    (questionKey === "SEO_TIMELINE" || roleId === 13 || roleId === 14)
   ) {
     if (baselineDays && baselineDays > 0) {
       const rushType = getGraphicsRushTypeFromMetadata(metadata, text);
