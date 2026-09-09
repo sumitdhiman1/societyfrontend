@@ -1,6 +1,98 @@
 import { authService } from "./authService";
-import { getProjectEstimatedDeadline } from "./calculatorUtils";
+import {
+  calculateSeoRawTimelineDays,
+  formatGraphicsTimelineLabel,
+  getSeoServiceMode,
+  resolveGraphicsTimelineAnswer,
+  snapGraphicsBaselineDays,
+  getProjectEstimatedDeadline,
+} from "./calculatorUtils";
 import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "./generateCalculatorProjectPDF";
+
+function resolveCalculatorEstimatedTimeline(data: any): string {
+  const specs = data.calculatorSpecs || data.requirements || {};
+  const categoryKey = data.categoryKey || specs.categoryKey || "";
+  const direct =
+    specs.estimatedTimeline ||
+    data.estimatedTimeline ||
+    data.timeline ||
+    data.totalDuration ||
+    specs.timeline ||
+    data.duration ||
+    "";
+
+  if (categoryKey !== "seo") return String(direct || "");
+
+  const rawSelections = specs.selections || data.selections || [];
+  if (!Array.isArray(rawSelections)) return String(direct || "");
+
+  const seoMode = getSeoServiceMode(
+    Object.fromEntries(
+      rawSelections
+        .filter((s: any) => /SEO_TYPE|SEO_SERVICE_TYPE|^0$/.test(s.questionKey || ""))
+        .map((s: any) => [s.questionKey, { questionKey: s.questionKey, answerKeys: s.answerKeys || [] }])
+    )
+  );
+  if (seoMode === "monthly") return "Monthly Service";
+
+  const itemsSel = rawSelections.find(
+    (s: any) => s.questionKey === "SEO_ITEMS" || s.questionKey === "2"
+  );
+  const tierSel = rawSelections.find(
+    (s: any) => s.questionKey === "SEO_TIER" || s.questionKey === "1"
+  );
+  const tierKey = tierSel?.answerKeys?.[0] || "starter";
+  const tier =
+    /premium/i.test(tierKey) ? "premium" : /standard/i.test(tierKey) ? "standard" : "starter";
+
+  let seoRawTimelineDays = 0;
+  if (itemsSel?.answerKeys?.length) {
+    const pseudoQuestion = {
+      key: itemsSel.questionKey,
+      answers: itemsSel.answerKeys.map((k: string) => ({
+        key: k,
+        metadata: itemsSel.answerMetadata?.[k],
+      })),
+    };
+    seoRawTimelineDays = calculateSeoRawTimelineDays(
+      pseudoQuestion,
+      { [itemsSel.questionKey]: { questionKey: itemsSel.questionKey, answerKeys: itemsSel.answerKeys } },
+      tier
+    );
+  }
+
+  const timelineSel = rawSelections.find(
+    (s: any) => /timeline/i.test(s.questionKey || "") || /timeline/i.test(s.questionText || "")
+  );
+  const tlKey = timelineSel?.answerKeys?.[0];
+  const tlMeta = tlKey ? timelineSel?.answerMetadata?.[tlKey] : undefined;
+  const tlRaw =
+    timelineSel?.answerTexts?.[0] ||
+    timelineSel?.answerKeys?.[0] ||
+    "";
+
+  if (tlRaw) {
+    const resolved = resolveGraphicsTimelineAnswer(String(tlRaw), {
+      directTimeline: direct,
+      baselineDays: seoRawTimelineDays,
+      metadata: tlMeta,
+    });
+    if (resolved) {
+      return resolved
+        .replace(/\s*\(.*?\)/g, "")
+        .replace(/:\s*\+\d+%.*$/i, "")
+        .replace(/:\s*No extra fee.*$/i, "")
+        .replace(/:\s*.*$/, "")
+        .trim();
+    }
+  }
+
+  if (direct) return String(direct);
+  if (seoRawTimelineDays > 0) {
+    return formatGraphicsTimelineLabel(snapGraphicsBaselineDays(seoRawTimelineDays));
+  }
+  return "";
+}
 
 function loadScript(src: string): Promise<void> {
   if (typeof document === "undefined") return Promise.resolve();
@@ -212,10 +304,11 @@ export function extractProjectDetails(data: any): ProjectPDFData {
       data.calculatorSpecs.categoryName ||
       data.serviceType ||
       "Website Development";
+    const resolvedTimeline = resolveCalculatorEstimatedTimeline(data);
     deliverables = [
       {
         name: categoryName,
-        duration: data.calculatorSpecs.estimatedTimeline || data.timeline || "14 Days",
+        duration: resolvedTimeline || data.calculatorSpecs.estimatedTimeline || data.timeline || "14 Days",
         amount: rawTotalPrice > 0 ? rawTotalPrice : Number(data.amountPaid || 0),
       },
     ];

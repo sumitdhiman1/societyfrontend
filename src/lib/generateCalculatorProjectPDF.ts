@@ -1,8 +1,10 @@
 import { authService } from "./authService";
 import {
   calculateGraphicsRawTimelineDays,
+  calculateSeoRawTimelineDays,
   formatGraphicsTimelineLabel,
   getProjectEstimatedDeadline,
+  getSeoServiceMode,
   parseDurationToDays,
   resolveGraphicsTimelineAnswer,
   snapGraphicsBaselineDays,
@@ -103,6 +105,7 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
   const calculatorSpecs = data.calculatorSpecs || data.requirements || {};
   const rawSelections = calculatorSpecs.selections || data.selections || [];
 
+  let timelineSelectionMetadata: { fee?: number; reduction?: number } | undefined;
   if (!foundTimelineAnswer && Array.isArray(rawSelections)) {
     const sel = rawSelections.find(
       (s: any) => /timeline/i.test(s.questionKey || "") || /timeline/i.test(s.questionText || "")
@@ -113,6 +116,10 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
         foundTimelineAnswer = sel.answerTexts[0];
       } else if (Array.isArray(sel.answerKeys) && sel.answerKeys.length > 0 && sel.answerKeys[0]) {
         foundTimelineAnswer = sel.answerKeys[0];
+        const tlKey = sel.answerKeys[0];
+        if (sel.answerMetadata?.[tlKey]) {
+          timelineSelectionMetadata = sel.answerMetadata[tlKey];
+        }
       } else if (sel.textValue) {
         foundTimelineAnswer = String(sel.textValue);
       }
@@ -132,8 +139,9 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
 
   const categoryKey = data.categoryKey || calculatorSpecs.categoryKey || "";
 
-  // Graphics baseline from item selections when API timeline not yet stored
+  // Baseline from item selections when API timeline not yet stored
   let graphicsRawTimelineDays = 0;
+  let seoRawTimelineDays = 0;
   if (categoryKey === "graphics" && Array.isArray(rawSelections)) {
     const itemsSel = rawSelections.find(
       (s: any) =>
@@ -162,6 +170,42 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
       );
     }
   }
+  if (categoryKey === "seo" && Array.isArray(rawSelections)) {
+    const itemsSel = rawSelections.find(
+      (s: any) => s.questionKey === "SEO_ITEMS" || s.questionKey === "2"
+    );
+    const tierSel = rawSelections.find(
+      (s: any) => s.questionKey === "SEO_TIER" || s.questionKey === "1"
+    );
+    const tierKey = tierSel?.answerKeys?.[0] || "starter";
+    const tier =
+      /premium/i.test(tierKey) ? "premium" : /standard/i.test(tierKey) ? "standard" : "starter";
+    if (itemsSel?.answerKeys?.length) {
+      const pseudoQuestion = {
+        key: itemsSel.questionKey,
+        answers: itemsSel.answerKeys.map((k: string) => {
+          const meta = itemsSel.answerMetadata?.[k];
+          return { key: k, metadata: meta };
+        }),
+      };
+      seoRawTimelineDays = calculateSeoRawTimelineDays(
+        pseudoQuestion,
+        { [itemsSel.questionKey]: { questionKey: itemsSel.questionKey, answerKeys: itemsSel.answerKeys } },
+        tier
+      );
+    }
+  }
+
+  const seoServiceMode =
+    categoryKey === "seo" && Array.isArray(rawSelections)
+      ? getSeoServiceMode(
+          Object.fromEntries(
+            rawSelections
+              .filter((s: any) => /SEO_TYPE|SEO_SERVICE_TYPE|^0$/.test(s.questionKey || ""))
+              .map((s: any) => [s.questionKey, { questionKey: s.questionKey, answerKeys: s.answerKeys || [] }])
+          )
+        )
+      : undefined;
 
   // Map known key codes to human readable labels
   const formatRawAnswer = (raw: string, metadata?: { fee?: number; reduction?: number }): string => {
@@ -179,15 +223,17 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     if (
       lower.startsWith("gfx_time") ||
       lower.startsWith("gd_time") ||
-      lower.startsWith("gfx_timeline")
+      lower.startsWith("gfx_timeline") ||
+      lower.startsWith("seo_time")
     ) {
+      const baselineDays =
+        lower.startsWith("seo_time") ? seoRawTimelineDays : graphicsRawTimelineDays;
       return resolveGraphicsTimelineAnswer(raw, {
         directTimeline: directTimeline,
-        baselineDays: graphicsRawTimelineDays,
+        baselineDays,
         metadata,
       });
     }
-    if (lower.startsWith("seo_timeline")) return "Monthly Service";
     if (categoryKey === "graphics" && /timeline|rushed|normal/i.test(raw)) {
       return resolveGraphicsTimelineAnswer(raw, {
         directTimeline: directTimeline,
@@ -195,12 +241,19 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
         metadata,
       });
     }
+    if (categoryKey === "seo" && /timeline|rushed|normal/i.test(raw)) {
+      return resolveGraphicsTimelineAnswer(raw, {
+        directTimeline: directTimeline,
+        baselineDays: seoRawTimelineDays,
+        metadata,
+      });
+    }
     return raw;
   };
 
   let finalTimelineAnswer =
-    formatRawAnswer(foundTimelineAnswer) ||
-    (directTimeline && categoryKey === "graphics"
+    formatRawAnswer(foundTimelineAnswer, timelineSelectionMetadata) ||
+    (directTimeline && (categoryKey === "graphics" || categoryKey === "seo")
       ? directTimeline
       : formatRawAnswer(directTimeline)) ||
     directTimeline;
@@ -222,8 +275,15 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
   }
 
   if (!duration) {
-    if (categoryKey === "seo") duration = "Monthly Service";
-    else if (categoryKey === "graphics") {
+    if (categoryKey === "seo") {
+      duration =
+        seoServiceMode === "monthly"
+          ? "Monthly Service"
+          : directTimeline ||
+            (seoRawTimelineDays > 0
+              ? formatGraphicsTimelineLabel(snapGraphicsBaselineDays(seoRawTimelineDays))
+              : "Monthly Service");
+    } else if (categoryKey === "graphics") {
       duration =
         directTimeline ||
         (graphicsRawTimelineDays > 0
