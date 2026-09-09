@@ -1691,7 +1691,7 @@ export default function CalculatorPage() {
 
       {/* Sticky Bottom Bar */}
       {showStickyPriceBar && (
-        <div className="sticky bottom-0 left-0 right-0 w-full border-t border-gray-200 shadow-lg z-40 h-20 bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.08)] flex items-center transition-all duration-300">
+        <div className="sticky bottom-0 left-0 right-0 w-full border-t border-gray-200 z-40 h-20 bg-white flex items-center transition-all duration-300">
           <div className="mx-auto max-w-[1536px] flex flex-col md:flex-row justify-center items-center gap-4 md:gap-10 px-4">
             <div className="flex items-center gap-4">
               <span className="text-[12px] md:text-[14px] uppercase text-[#002e8a] tracking-[0.1em] font-semibold">PROJECT TOTAL COST:</span>
