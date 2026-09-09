@@ -872,18 +872,6 @@ const CalculatorPaymentForm = ({
   });
   const [userCountry, setUserCountry] = useState("US");
   const [isEmailVerified, setIsEmailVerified] = useState(true);
-  const [bizInfo, setBizInfo] = useState({
-    personName: "",
-    personEmail: "",
-    personPhone: "",
-    preferredContactMethod: "email",
-    businessName: "",
-    businessEmail: "",
-    businessPhone: "",
-    businessAddress: "",
-    businessWebsite: "",
-    businessDescription: "",
-  });
 
   useEffect(() => {
     const user = authService.getUser();
@@ -891,10 +879,6 @@ const CalculatorPaymentForm = ({
       setIsEmailVerified(!!user.isEmailVerified);
       if (user.fullName) {
         setCardholderName(user.fullName);
-        setBizInfo((p) => ({ ...p, personName: user.fullName || "" }));
-      }
-      if (user.email) {
-        setBizInfo((p) => ({ ...p, personEmail: user.email || "" }));
       }
       (async () => {
         try {
@@ -928,12 +912,6 @@ const CalculatorPaymentForm = ({
       "cardNumber",
       "cardExpiry",
       "cardCvc",
-      "personName",
-      "personEmail",
-      "billingStreet",
-      "billingCity",
-      "billingState",
-      "billingZip",
     ];
     const firstKey = order.find((key) => errs[key]);
     if (!firstKey) return;
@@ -960,8 +938,6 @@ const CalculatorPaymentForm = ({
       (input as HTMLInputElement).focus();
     }
   };
-
-  const handleBizChange = (e: any) => setBizInfo({ ...bizInfo, [e.target.name]: e.target.value });
 
   const vatRate = 0;
   const currencyLabel = currency.toUpperCase();
@@ -1011,13 +987,6 @@ const CalculatorPaymentForm = ({
     const errs: any = {};
     const amount = getPayableAmount();
 
-    if (!bizInfo.personName.trim()) errs.personName = "Name is required.";
-    if (!bizInfo.personEmail.trim()) {
-      errs.personEmail = "Email is required.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bizInfo.personEmail)) {
-      errs.personEmail = "Invalid email format.";
-    }
-
     if (paymentOption === "custom") {
       if (!customAmount || parseFloat(customAmount) <= 0) {
         errs.amount = "Enter a valid amount.";
@@ -1029,12 +998,6 @@ const CalculatorPaymentForm = ({
     }
 
     if (!cardholderName.trim()) errs.cardHolderName = "Cardholder name is required.";
-    if (!billingSameAsBusiness) {
-      if (!billingAddress.street.trim()) errs.billingStreet = "Address is required.";
-      if (!billingAddress.city.trim()) errs.billingCity = "City is required.";
-      if (!billingAddress.state.trim()) errs.billingState = "State is required.";
-      if (!billingAddress.zip.trim()) errs.billingZip = "ZIP is required.";
-    }
     if (!cardStatus.number.complete) errs.cardNumber = cardStatus.number.error?.message || "Incomplete card number.";
     if (!cardStatus.expiry.complete) errs.cardExpiry = cardStatus.expiry.error?.message || "Incomplete expiry.";
     if (!cardStatus.cvc.complete) errs.cardCvc = cardStatus.cvc.error?.message || "Incomplete CVC.";
@@ -1067,6 +1030,7 @@ const CalculatorPaymentForm = ({
         };
       });
 
+      const user = authService.getUser();
       const proposalData = {
         categoryKey,
         selections: enrichedSelections,
@@ -1074,7 +1038,8 @@ const CalculatorPaymentForm = ({
         totalPrice,
         estimatedTimeline: timeline,
         timeline,
-        ...bizInfo,
+        personName: cardholderName || user?.fullName || "Valued Customer",
+        personEmail: user?.email || "customer@example.com",
       };
 
       const submitRes = await priceCalculatorService.submitQuote(proposalData);
@@ -1121,17 +1086,8 @@ const CalculatorPaymentForm = ({
         payment_method: {
           card: cardElement,
           billing_details: {
-            name: cardholderName || bizInfo.personName,
-            email: bizInfo.personEmail,
-            address: billingSameAsBusiness
-              ? undefined
-              : {
-                line1: billingAddress.street,
-                city: billingAddress.city,
-                state: billingAddress.state,
-                postal_code: billingAddress.zip,
-                country: billingAddress.country,
-              },
+            name: cardholderName || user?.fullName || "Valued Customer",
+            email: user?.email || undefined,
           },
         },
       });
@@ -1278,16 +1234,6 @@ const CalculatorPaymentForm = ({
           </div>
         </div>
 
-        <label className="flex items-center gap-3 mb-8 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={billingSameAsBusiness}
-            onChange={(e) => setBillingSameAsBusiness(e.target.checked)}
-            className="w-4 h-4 rounded border-gray-300 text-[#5356ff] focus:ring-[#5356ff]"
-          />
-          <span className="text-sm text-gray-700">Billing address is the same as Business details</span>
-        </label>
-
         <div className="space-y-6 font-sans">
           <div data-field="cardHolderName">
             <label className="block text-[15px] font-medium text-[#111827] mb-2">Name on the card:</label>
@@ -1326,53 +1272,6 @@ const CalculatorPaymentForm = ({
               {errors.cardCvc && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardCvc}</span>}
             </div>
           </div>
-        </div>
-      </div>
-
-      <p className="text-center text-[16px] text-gray-300 max-w-[680px] mx-auto font-sans">Please fill out your business information before paying.</p>
-
-      <div className="bg-white rounded-[10px] p-6 md:p-10 text-black space-y-6 max-w-[680px] mx-auto w-full font-sans shadow-2xl">
-        <div data-field="personName">
-          <label className="block text-[16px] font-bold mb-2">Contact person&apos;s name: *</label>
-          <input
-            ref={(el) => { fieldRefs.current.personName = el; }}
-            type="text" name="personName" value={bizInfo.personName} onChange={(e) => { handleBizChange(e); if (errors.personName) setErrors((p: any) => ({ ...p, personName: "" })); }} placeholder="Your answer" className={`w-full border-b ${errors.personName ? "border-red-500" : "border-black/80"} py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]`} />
-          {errors.personName && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.personName}</span>}
-        </div>
-        <div data-field="personEmail">
-          <label className="block text-[16px] font-bold mb-2">Contact person&apos;s email address: *</label>
-          <input
-            ref={(el) => { fieldRefs.current.personEmail = el; }}
-            type="email" name="personEmail" value={bizInfo.personEmail} onChange={(e) => { handleBizChange(e); if (errors.personEmail) setErrors((p: any) => ({ ...p, personEmail: "" })); }} placeholder="Your answer" className={`w-full border-b ${errors.personEmail ? "border-red-500" : "border-black/80"} py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]`} />
-          {errors.personEmail && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.personEmail}</span>}
-        </div>
-        <div>
-          <label className="block text-[16px] font-bold mb-2">Contact person&apos;s phone number:</label>
-          <input type="tel" name="personPhone" value={bizInfo.personPhone} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]" />
-        </div>
-        <div>
-          <label className="block text-[16px] font-bold mb-2">Business name:</label>
-          <input type="text" name="businessName" value={bizInfo.businessName} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]" />
-        </div>
-        <div>
-          <label className="block text-[16px] font-bold mb-2">Business email address:</label>
-          <input type="email" name="businessEmail" value={bizInfo.businessEmail} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]" />
-        </div>
-        <div>
-          <label className="block text-[16px] font-bold mb-2">Business phone number:</label>
-          <input type="tel" name="businessPhone" value={bizInfo.businessPhone} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]" />
-        </div>
-        <div>
-          <label className="block text-[16px] font-bold mb-2">Business address:</label>
-          <input type="text" name="businessAddress" value={bizInfo.businessAddress} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]" />
-        </div>
-        <div>
-          <label className="block text-[16px] font-bold mb-2">Business website:</label>
-          <input type="url" name="businessWebsite" value={bizInfo.businessWebsite} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px]" />
-        </div>
-        <div>
-          <label className="block text-[16px] font-bold mb-2">Business services and description:</label>
-          <textarea name="businessDescription" rows={1} value={bizInfo.businessDescription} onChange={handleBizChange} placeholder="Your answer" className="w-full border-b border-black/80 py-2 bg-transparent outline-none focus:border-black placeholder-gray-400 text-[16px] resize-none" />
         </div>
       </div>
 

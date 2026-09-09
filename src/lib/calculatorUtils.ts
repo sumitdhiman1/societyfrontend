@@ -827,6 +827,7 @@ export function formatCalculatorAnswerLabel(
     baselineDays?: number;
   }
 ): string {
+  if (!text) return "";
   const { categoryKey, roleId, metadata, baselineDays } = options ?? {};
 
   if (
@@ -852,16 +853,17 @@ export function formatCalculatorAnswerLabel(
     return label;
   }
 
-  return text.replace(/:\s*\+\d+% rush fee/i, "").trim();
+  return (text || "").replace(/:\s*\+\d+% rush fee/i, "").trim();
 }
 
 /** Append (Optional) for optional text/number on marketing, SEO, and graphics. */
 export function formatCalculatorQuestionText(
-  text: string,
+  text?: string,
   isRequired?: boolean,
   questionType?: string,
   categoryKey?: string
 ): string {
+  if (!text) return "";
   const trimmed = text.replace(/\s*\(Optional\)/gi, "").trim();
   const supportsOptionalLabel = questionType === "text" || questionType === "number";
   const showOptional =
