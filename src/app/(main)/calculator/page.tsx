@@ -220,38 +220,47 @@ const CategoryGrid = ({ categories, selectedCategoryKey, onSelect }: { categorie
   </div>
 );
 
+const STEP_MIN = 0;
+
 const NumberStepper = ({
   value,
   onChange,
-  min = 0,
+  validateMin = 0,
 }: {
   value: number;
   onChange: (n: number) => void;
-  min?: number;
+  validateMin?: number;
 }) => {
-  const [localVal, setLocalVal] = useState<string>(String(value ?? min));
+  const [localVal, setLocalVal] = useState<string>(String(value ?? validateMin));
 
   useEffect(() => {
-    setLocalVal(String(value ?? min));
-  }, [value, min]);
+    setLocalVal(String(value ?? validateMin));
+  }, [value, validateMin]);
+
+  const parseCurrent = (): number => {
+    const parsed = parseInt(localVal, 10);
+    if (!isNaN(parsed)) return parsed;
+    if (!isNaN(value)) return value;
+    return validateMin;
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, "");
     setLocalVal(raw);
     if (raw !== "") {
       const parsed = parseInt(raw, 10);
-      if (!isNaN(parsed)) {
-        onChange(Math.max(min, parsed));
+      if (!isNaN(parsed) && parsed >= STEP_MIN) {
+        onChange(parsed);
       }
     }
   };
 
   const handleBlur = () => {
     if (localVal === "" || isNaN(parseInt(localVal, 10))) {
-      setLocalVal(String(min));
-      onChange(min);
+      setLocalVal(String(validateMin));
+      onChange(validateMin);
     } else {
-      const parsed = Math.max(min, parseInt(localVal, 10));
+      const parsed = Math.max(STEP_MIN, parseInt(localVal, 10));
       setLocalVal(String(parsed));
       onChange(parsed);
     }
@@ -262,14 +271,12 @@ const NumberStepper = ({
       (e.target as HTMLInputElement).blur();
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      const current = parseInt(localVal, 10) || min;
-      const next = current + 1;
+      const next = parseCurrent() + 1;
       setLocalVal(String(next));
       onChange(next);
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
-      const current = parseInt(localVal, 10) || min;
-      const next = Math.max(min, current - 1);
+      const next = Math.max(STEP_MIN, parseCurrent() - 1);
       setLocalVal(String(next));
       onChange(next);
     }
@@ -281,8 +288,7 @@ const NumberStepper = ({
         <button
           type="button"
           onClick={() => {
-            const current = parseInt(localVal, 10) || value || min;
-            const next = Math.max(min, current - 1);
+            const next = Math.max(STEP_MIN, parseCurrent() - 1);
             setLocalVal(String(next));
             onChange(next);
           }}
@@ -299,13 +305,12 @@ const NumberStepper = ({
           onChange={handleInputChange}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          className="w-20 h-14 bg-white text-[#334155] text-2xl font-bold text-center outline-none focus:bg-blue-50/50 focus:text-[#4F46E5] transition-all border-x border-gray-200 tabular-nums select-all"
+          className="w-20 h-14 bg-white text-[#334155] text-2xl font-bold text-center outline-none focus:ring-2 focus:ring-[#4F46E5]/15 transition-all border-x border-gray-200 tabular-nums select-all"
         />
         <button
           type="button"
           onClick={() => {
-            const current = parseInt(localVal, 10) || value || min;
-            const next = current + 1;
+            const next = parseCurrent() + 1;
             setLocalVal(String(next));
             onChange(next);
           }}
@@ -410,7 +415,7 @@ const QuestionCard = ({
       {question.type === "number" && (
         <NumberStepper
           value={numVal}
-          min={question.config?.minValue ?? 0}
+          validateMin={question.config?.minValue ?? 0}
           onChange={(n) => onToggleAnswer(question.key, n, "number")}
         />
       )}
