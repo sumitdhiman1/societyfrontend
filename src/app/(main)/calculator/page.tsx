@@ -33,6 +33,7 @@ import {
   shouldShowPriceBar,
   selectionsToArray,
   filterQuestionAnswers,
+  filterSeoAnswers,
   isQuestionVisible,
   getSeoServiceMode,
   isMonthlyBillingCategory,
@@ -226,27 +227,96 @@ const NumberStepper = ({
   value: number;
   onChange: (n: number) => void;
   min?: number;
-}) => (
-  <div className="flex items-center gap-6 flex-wrap">
-    <div className="flex items-center gap-0 bg-gray-50 border border-gray-300 rounded-xl overflow-hidden shadow-sm">
-      <button
-        type="button"
-        onClick={() => onChange(Math.max(min, value - 1))}
-        className="w-12 h-14 flex items-center justify-center text-gray-600 hover:text-[#4F46E5] hover:bg-gray-200/60 transition-all text-xl font-bold select-none"
-      >
-        −
-      </button>
-      <div className="w-20 h-14 bg-white text-[#334155] text-2xl font-bold flex items-center justify-center outline-none focus:bg-blue-50/50 transition-all border-x border-gray-200 tabular-nums">{value}</div>
-      <button
-        type="button"
-        onClick={() => onChange(value + 1)}
-        className="w-12 h-14 flex items-center justify-center text-gray-600 hover:text-[#4F46E5] hover:bg-gray-200/60 transition-all text-xl font-bold select-none"
-      >
-        +
-      </button>
+}) => {
+  const [localVal, setLocalVal] = useState<string>(String(value ?? min));
+
+  useEffect(() => {
+    setLocalVal(String(value ?? min));
+  }, [value, min]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, "");
+    setLocalVal(raw);
+    if (raw !== "") {
+      const parsed = parseInt(raw, 10);
+      if (!isNaN(parsed)) {
+        onChange(Math.max(min, parsed));
+      }
+    }
+  };
+
+  const handleBlur = () => {
+    if (localVal === "" || isNaN(parseInt(localVal, 10))) {
+      setLocalVal(String(min));
+      onChange(min);
+    } else {
+      const parsed = Math.max(min, parseInt(localVal, 10));
+      setLocalVal(String(parsed));
+      onChange(parsed);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      (e.target as HTMLInputElement).blur();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const current = parseInt(localVal, 10) || min;
+      const next = current + 1;
+      setLocalVal(String(next));
+      onChange(next);
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const current = parseInt(localVal, 10) || min;
+      const next = Math.max(min, current - 1);
+      setLocalVal(String(next));
+      onChange(next);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-6 flex-wrap">
+      <div className="flex items-center gap-0 bg-gray-50 border border-gray-300 rounded-xl overflow-hidden shadow-sm">
+        <button
+          type="button"
+          onClick={() => {
+            const current = parseInt(localVal, 10) || value || min;
+            const next = Math.max(min, current - 1);
+            setLocalVal(String(next));
+            onChange(next);
+          }}
+          className="w-12 h-14 flex items-center justify-center text-gray-600 hover:text-[#4F46E5] hover:bg-gray-200/60 transition-all text-xl font-bold select-none cursor-pointer"
+          aria-label="Decrease"
+        >
+          −
+        </button>
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={localVal}
+          onChange={handleInputChange}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          className="w-20 h-14 bg-white text-[#334155] text-2xl font-bold text-center outline-none focus:bg-blue-50/50 focus:text-[#4F46E5] transition-all border-x border-gray-200 tabular-nums select-all"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            const current = parseInt(localVal, 10) || value || min;
+            const next = current + 1;
+            setLocalVal(String(next));
+            onChange(next);
+          }}
+          className="w-12 h-14 flex items-center justify-center text-gray-600 hover:text-[#4F46E5] hover:bg-gray-200/60 transition-all text-xl font-bold select-none cursor-pointer"
+          aria-label="Increase"
+        >
+          +
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const QuestionCard = ({
   question,
@@ -288,8 +358,11 @@ const QuestionCard = ({
       return null;
     }
   }
-  if (question.key === "SEO_SERVICE_TYPE") {
+  if (question.key === "SEO_SERVICE_TYPE" || question.key === "SEO_TYPE") {
     visibleAnswers = visibleAnswers.filter((a: any) => a.key !== "SEO_TYPE_COMBO");
+  }
+  if (question.key === "SEO_ITEMS" && seoServiceMode) {
+    visibleAnswers = filterSeoAnswers(visibleAnswers, seoServiceMode);
   }
   const answerGroups = groupAnswersByHeading(visibleAnswers);
 
@@ -890,6 +963,13 @@ const CalculatorPaymentForm = ({
           if (user.fullName) {
             setCardholderName(user.fullName);
           }
+          if (user && !user.isEmailVerified) {
+            authService.getProfile().then((freshUser) => {
+              if (freshUser) {
+                setIsEmailVerified(!!freshUser.isEmailVerified);
+              }
+            });
+          }
           (async () => {
             try {
               const { profileService } = await import("@/lib/profileService");
@@ -909,9 +989,11 @@ const CalculatorPaymentForm = ({
     const handleAuthChange = () => checkAuth();
     window.addEventListener("auth:login", handleAuthChange);
     window.addEventListener("auth:logout", handleAuthChange);
+    window.addEventListener("auth:user_update", handleAuthChange);
     return () => {
       window.removeEventListener("auth:login", handleAuthChange);
       window.removeEventListener("auth:logout", handleAuthChange);
+      window.removeEventListener("auth:user_update", handleAuthChange);
     };
   }, [currency]);
 
@@ -1430,7 +1512,7 @@ export default function CalculatorPage() {
     () => sortedQuestions.filter((q) => isQuestionVisible(q, selections, sortedQuestions)),
     [sortedQuestions, selections]
   );
-  const isMonthlyBilling = isMonthlyBillingCategory(selectedCategoryKey);
+  const isMonthlyBilling = isMonthlyBillingCategory(selectedCategoryKey, seoServiceMode);
   const hasUserSelections = useMemo(
     () => selectionsToArray(selections).length > 0,
     [selections]
@@ -1540,10 +1622,20 @@ export default function CalculatorPage() {
         const timelineKey = findTimelineQuestionKey(sortedQuestions);
         if (timelineKey) delete next[timelineKey];
       }
+      if (questionKey === "SEO_TYPE" || questionKey === "SEO_SERVICE_TYPE") {
+        const newMode = (value === "SEO_TYPE_MONTHLY" || value === "1" || String(value).toLowerCase().includes("monthly"))
+          ? "monthly"
+          : "onetime";
+        if (newMode === "monthly") {
+          delete next.SEO_TIMELINE;
+        } else {
+          delete next.SEO_MONTHS;
+        }
+      }
       if (questionKey === "SEO_ITEMS") {
         const keys = next.SEO_ITEMS?.answerKeys || [];
-        if (!keys.includes("SEO_ITEM_CONTENT")) delete next.SEO_WORDS;
-        if (!keys.includes("SEO_ITEM_BACKLINKS")) delete next.SEO_BACKLINKS;
+        if (!keys.includes("SEO_ITEM_CONTENT") && !keys.includes("SEO_ITEM_CONTENT_TEXT")) delete next.SEO_WORDS;
+        if (!keys.includes("SEO_ITEM_BACKLINKS") && !keys.includes("SEO_ITEM_LINK_BACK")) delete next.SEO_BACKLINKS;
       }
 
       return pruneHiddenSelections(next, sortedQuestions);
@@ -1691,7 +1783,7 @@ export default function CalculatorPage() {
 
       {/* Sticky Bottom Bar */}
       {showStickyPriceBar && (
-        <div className="sticky bottom-0 left-0 right-0 w-full border-t border-gray-200 shadow-lg z-40 h-20 bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.08)] flex items-center transition-all duration-300">
+        <div className="sticky bottom-0 left-0 right-0 w-full border-t border-gray-200 z-40 h-20 bg-white flex items-center transition-all duration-300">
           <div className="mx-auto max-w-[1536px] flex flex-col md:flex-row justify-center items-center gap-4 md:gap-10 px-4">
             <div className="flex items-center gap-4">
               <span className="text-[12px] md:text-[14px] uppercase text-[#002e8a] tracking-[0.1em] font-semibold">PROJECT TOTAL COST:</span>

@@ -278,7 +278,10 @@ function PaymentForm({
     if (e) e.preventDefault();
     if (!stripe || !elements) return;
 
-    const user = authService.getUser();
+    let user = authService.getUser();
+    if (user && !user.isEmailVerified) {
+      user = await authService.getProfile();
+    }
     if (user && !user.isEmailVerified) {
       setPopup({
         isOpen: true,

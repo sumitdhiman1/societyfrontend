@@ -157,11 +157,29 @@ export class AuthService {
     return !!this.getAccessToken() || !!this.getRefreshToken();
   }
 
+  async getProfile() {
+    if (!this.isAuthenticated()) return null;
+    try {
+      const client = new HttpClient(this.session);
+      const res = await client.get("/auth/me");
+      const user = res?.data?.user || res?.user || res?.data;
+      if (user) {
+        this.updateInternalUser(user);
+        return user;
+      }
+    } catch {
+      // ignore
+    }
+    return this.getUser();
+  }
+
   updateInternalUser(data: any) {
     const user = this.getUser();
-    if (user) {
-      const updatedUser = btoa(JSON.stringify({ ...user, ...data }));
-      document.cookie = `user_data=${updatedUser}; path=/; max-age=604800;`;
+    const updated = { ...(user || {}), ...data };
+    const updatedUser = btoa(JSON.stringify(updated));
+    document.cookie = `user_data=${updatedUser}; path=/; max-age=604800;`;
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("auth:user_update"));
     }
   }
 

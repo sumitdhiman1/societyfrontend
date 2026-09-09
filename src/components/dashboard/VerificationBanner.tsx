@@ -14,7 +14,16 @@ export default function VerificationBanner() {
 
   useEffect(() => {
     setMounted(true);
-    setUser(authService.getUser());
+    const initialUser = authService.getUser();
+    setUser(initialUser);
+
+    if (initialUser && !initialUser.isEmailVerified) {
+      authService.getProfile().then((freshUser) => {
+        if (freshUser) {
+          setUser(freshUser);
+        }
+      });
+    }
 
     const handleUpdate = () => setUser(authService.getUser());
     
