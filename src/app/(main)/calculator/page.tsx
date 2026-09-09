@@ -871,27 +871,43 @@ const CalculatorPaymentForm = ({
     country: "US",
   });
   const [userCountry, setUserCountry] = useState("US");
+  const [isAuth, setIsAuth] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(true);
 
   useEffect(() => {
-    const user = authService.getUser();
-    if (user) {
-      setIsEmailVerified(!!user.isEmailVerified);
-      if (user.fullName) {
-        setCardholderName(user.fullName);
-      }
-      (async () => {
-        try {
-          const { profileService } = await import("@/lib/profileService");
-          const profile = await profileService.getMyProfile();
-          if (profile?.data) {
-            setUserCountry(profile.data.country || profile.data.billingCountry || (currency === "eur" ? "DE" : "US"));
+    const checkAuth = () => {
+      const authenticated = authService.isAuthenticated();
+      setIsAuth(authenticated);
+      if (authenticated) {
+        const user = authService.getUser();
+        if (user) {
+          setIsEmailVerified(!!user.isEmailVerified);
+          if (user.fullName) {
+            setCardholderName(user.fullName);
           }
-        } catch {
-          setUserCountry(currency === "eur" ? "DE" : "US");
+          (async () => {
+            try {
+              const { profileService } = await import("@/lib/profileService");
+              const profile = await profileService.getMyProfile();
+              if (profile?.data) {
+                setUserCountry(profile.data.country || profile.data.billingCountry || (currency === "eur" ? "DE" : "US"));
+              }
+            } catch {
+              setUserCountry(currency === "eur" ? "DE" : "US");
+            }
+          })();
         }
-      })();
-    }
+      }
+    };
+
+    checkAuth();
+    const handleAuthChange = () => checkAuth();
+    window.addEventListener("auth:login", handleAuthChange);
+    window.addEventListener("auth:logout", handleAuthChange);
+    return () => {
+      window.removeEventListener("auth:login", handleAuthChange);
+      window.removeEventListener("auth:logout", handleAuthChange);
+    };
   }, [currency]);
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -960,16 +976,23 @@ const CalculatorPaymentForm = ({
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
+
+    // Redirect guests directly to login without checking validations
+    if (!authService.isAuthenticated()) {
+      try {
+        sessionStorage.setItem(
+          "pending_calculator_state",
+          JSON.stringify({ categoryKey, selections })
+        );
+      } catch {}
+      router.push("/login?redirect=/calculator");
+      return;
+    }
+
     if (!stripe || !elements) return;
 
     // Validate required questions and timeline selection inline without popup
     if (onValidateRequired && !onValidateRequired()) {
-      return;
-    }
-
-    // Redirect guests to login before allowing payment
-    if (!authService.isAuthenticated()) {
-      router.push("/login?redirect=/calculator");
       return;
     }
 
@@ -1234,50 +1257,64 @@ const CalculatorPaymentForm = ({
           </div>
         </div>
 
-        <div className="space-y-6 font-sans">
-          <div data-field="cardHolderName">
-            <label className="block text-[15px] font-medium text-[#111827] mb-2">Name on the card:</label>
-            <input
-              ref={(el) => { fieldRefs.current.cardHolderName = el; }}
-              type="text"
-              value={cardholderName}
-              onChange={(e) => { setCardholderName(e.target.value); if (errors.cardHolderName) setErrors((p: any) => ({ ...p, cardHolderName: "" })); }}
-              placeholder="Name on the card"
-              className={`w-full border-b ${errors.cardHolderName ? "border-red-500" : "border-[#e5e7eb]"} py-2.5 bg-transparent outline-none placeholder-gray-400 focus:border-[#4F46E5] text-[15px] transition-all`}
-            />
-            {errors.cardHolderName && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardHolderName}</span>}
+        {!isAuth ? (
+          <div className="p-6 bg-[#f8fafc] border border-gray-200 rounded-xl text-center space-y-2">
+            <div className="w-10 h-10 bg-indigo-50 text-[#4F46E5] rounded-full flex items-center justify-center mx-auto mb-2">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h4 className="text-[16px] font-bold text-[#111827]">Account Required</h4>
+            <p className="text-[14px] text-gray-600 max-w-md mx-auto">
+              Please log in or sign up to enter your payment details and begin your project.
+            </p>
           </div>
+        ) : (
+          <div className="space-y-6 font-sans">
+            <div data-field="cardHolderName">
+              <label className="block text-[15px] font-medium text-[#111827] mb-2">Name on the card:</label>
+              <input
+                ref={(el) => { fieldRefs.current.cardHolderName = el; }}
+                type="text"
+                value={cardholderName}
+                onChange={(e) => { setCardholderName(e.target.value); if (errors.cardHolderName) setErrors((p: any) => ({ ...p, cardHolderName: "" })); }}
+                placeholder="Name on the card"
+                className={`w-full border-b ${errors.cardHolderName ? "border-red-500" : "border-[#e5e7eb]"} py-2.5 bg-transparent outline-none placeholder-gray-400 focus:border-[#4F46E5] text-[15px] transition-all`}
+              />
+              {errors.cardHolderName && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardHolderName}</span>}
+            </div>
 
-          <div ref={(el) => { fieldRefs.current.cardNumber = el; }} data-field="cardNumber">
-            <label className="block text-[15px] font-medium text-[#111827] mb-2">Card number:</label>
-            <div className={`w-full border-b ${errors.cardNumber ? "border-red-500" : "border-gray-200"} py-2.5 focus-within:border-[#4F46E5] transition-all`}>
-              <CardNumberElement options={stripeCardNumberOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, number: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardNumber: "" })); }} />
+            <div ref={(el) => { fieldRefs.current.cardNumber = el; }} data-field="cardNumber">
+              <label className="block text-[15px] font-medium text-[#111827] mb-2">Card number:</label>
+              <div className={`w-full border-b ${errors.cardNumber ? "border-red-500" : "border-gray-200"} py-2.5 focus-within:border-[#4F46E5] transition-all`}>
+                <CardNumberElement options={stripeCardNumberOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, number: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardNumber: "" })); }} />
+              </div>
+              {errors.cardNumber && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardNumber}</span>}
             </div>
-            {errors.cardNumber && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardNumber}</span>}
-          </div>
 
-          <div className="grid grid-cols-2 gap-10">
-            <div ref={(el) => { fieldRefs.current.cardExpiry = el; }} data-field="cardExpiry">
-              <label className="block text-[15px] font-medium text-[#111827] mb-2">Expiry date:</label>
-              <div className={`w-full border-b ${errors.cardExpiry ? "border-red-500" : "border-black/80"} py-2.5 focus-within:border-black transition-all`}>
-                <CardExpiryElement options={stripeCardExpiryOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, expiry: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardExpiry: "" })); }} />
+            <div className="grid grid-cols-2 gap-10">
+              <div ref={(el) => { fieldRefs.current.cardExpiry = el; }} data-field="cardExpiry">
+                <label className="block text-[15px] font-medium text-[#111827] mb-2">Expiry date:</label>
+                <div className={`w-full border-b ${errors.cardExpiry ? "border-red-500" : "border-gray-200"} py-2.5 focus-within:border-[#4F46E5] transition-all`}>
+                  <CardExpiryElement options={stripeCardExpiryOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, expiry: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardExpiry: "" })); }} />
+                </div>
+                {errors.cardExpiry && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardExpiry}</span>}
               </div>
-              {errors.cardExpiry && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardExpiry}</span>}
-            </div>
-            <div ref={(el) => { fieldRefs.current.cardCvc = el; }} data-field="cardCvc">
-              <label className="block text-[15px] font-medium text-[#111827] mb-2">CVC:</label>
-              <div className={`w-full border-b ${errors.cardCvc ? "border-red-500" : "border-black/80"} py-2.5 focus-within:border-black transition-all`}>
-                <CardCvcElement options={stripeCardCvcOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, cvc: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardCvc: "" })); }} />
+              <div ref={(el) => { fieldRefs.current.cardCvc = el; }} data-field="cardCvc">
+                <label className="block text-[15px] font-medium text-[#111827] mb-2">CVC:</label>
+                <div className={`w-full border-b ${errors.cardCvc ? "border-red-500" : "border-gray-200"} py-2.5 focus-within:border-[#4F46E5] transition-all`}>
+                  <CardCvcElement options={stripeCardCvcOptions} className="w-full pl-1" onChange={(e) => { setCardStatus((p: any) => ({ ...p, cvc: { complete: e.complete, error: e.error } })); if (e.complete || !e.error) setErrors((p: any) => ({ ...p, cardCvc: "" })); }} />
+                </div>
+                {errors.cardCvc && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardCvc}</span>}
               </div>
-              {errors.cardCvc && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardCvc}</span>}
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       <button
         type="submit"
-        disabled={isProcessing || !stripe || !elements}
+        disabled={isProcessing || (isAuth && (!stripe || !elements))}
         className="w-full max-w-[680px] mx-auto py-4 px-6 rounded-[6px] bg-[#4343F0] text-white font-extrabold text-[16px] tracking-widest shadow-xl hover:bg-[#3232b7] transition-all disabled:opacity-75 disabled:cursor-not-allowed uppercase active:scale-[0.98] mt-4 flex items-center justify-center gap-3"
       >
         {isProcessing ? (
@@ -1293,6 +1330,8 @@ const CalculatorPaymentForm = ({
               {(paymentStep === "idle" || paymentStep === "error") && "PROCESSING..."}
             </span>
           </>
+        ) : !isAuth ? (
+          "LOG IN OR SIGN UP TO PAY"
         ) : (
           `PAY ${formatPaymentLine(totalPayable)} NOW`
         )}
@@ -1323,6 +1362,15 @@ export default function CalculatorPage() {
       try {
         const res = await priceCalculatorService.getCalculatorConfig();
         setConfig(res);
+        try {
+          const saved = sessionStorage.getItem("pending_calculator_state");
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed.categoryKey) setSelectedCategoryKey(parsed.categoryKey);
+            if (parsed.selections) setSelections(parsed.selections);
+            sessionStorage.removeItem("pending_calculator_state");
+          }
+        } catch {}
       } catch (err) {
         console.error("Failed to load calculator config", err);
       } finally {
@@ -1546,7 +1594,7 @@ export default function CalculatorPage() {
         </div>
       </div>
 
-      <main className="flex-grow w-full overflow-hidden flex flex-col relative z-10">
+      <main className="flex-grow w-full overflow-x-clip flex flex-col relative z-10">
 
         {/* Category Selection Section */}
         <div
@@ -1638,7 +1686,7 @@ export default function CalculatorPage() {
 
       {/* Sticky Bottom Bar */}
       {showStickyPriceBar && (
-        <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 shadow-lg z-[100] h-20 bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.05)] flex items-center transition-transform duration-500 ease-in-out translate-y-0">
+        <div className="sticky bottom-0 left-0 right-0 w-full border-t border-gray-200 shadow-lg z-40 h-20 bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.08)] flex items-center transition-all duration-300">
           <div className="mx-auto max-w-[1536px] flex flex-col md:flex-row justify-center items-center gap-4 md:gap-10 px-4">
             <div className="flex items-center gap-4">
               <span className="text-[12px] md:text-[14px] uppercase text-[#002e8a] tracking-[0.1em] font-semibold">PROJECT TOTAL COST:</span>
