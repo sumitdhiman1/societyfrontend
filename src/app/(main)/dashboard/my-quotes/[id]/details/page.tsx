@@ -245,6 +245,8 @@ export default function QuoteDetailsPage() {
   const [isSending, setIsSending] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isAccepting, setIsAccepting] = useState(false);
+  const acceptingRef = useRef(false);
+  const [hasAcceptedLocally, setHasAcceptedLocally] = useState(false);
   const [isOpeningProject, setIsOpeningProject] = useState(false);
   const [isDeclining, setIsDeclining] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -545,8 +547,11 @@ export default function QuoteDetailsPage() {
   const handleAcceptQuote = async () => {
     const currentUser = requireAuth();
     if (!currentUser) return;
+    if (acceptingRef.current || isAccepting || hasAcceptedLocally) return;
     if (quote) {
+      acceptingRef.current = true;
       setIsAccepting(true);
+      setHasAcceptedLocally(true);
       try {
         const res = await quoteService.updateQuote(quote._id, {
           action: "accept",
@@ -555,13 +560,29 @@ export default function QuoteDetailsPage() {
         });
         if (res.isSuccessful || res.statusCode === 200) {
           toast.success("Proposal accepted successfully!");
+          const updatedQuoteData = res.data || quote;
           if (res.data) setQuote(res.data);
           else refreshQuote(true);
+
+          try {
+            const createdProjectId = await resolveCreatedProjectId(updatedQuoteData);
+            if (createdProjectId) {
+              router.push(`/dashboard/my-projects/${createdProjectId}/details`);
+              return;
+            }
+          } catch (navErr) {
+            console.warn("Could not immediately navigate to project:", navErr);
+          }
+        } else {
+          setHasAcceptedLocally(false);
+          toast.error(res?.message || "Failed to accept proposal");
         }
       } catch (e) {
+        setHasAcceptedLocally(false);
         console.error("Failed to accept quote:", e);
         toast.error("Failed to accept proposal");
       } finally {
+        acceptingRef.current = false;
         setIsAccepting(false);
       }
     }
@@ -1009,6 +1030,7 @@ export default function QuoteDetailsPage() {
                 );
 
                 const isAccepted =
+                  hasAcceptedLocally ||
                   content.status === "accepted" ||
                   wasAcceptedAfterThis ||
                   (!hasLaterProposal && quote.status?.toLowerCase() === "approved");
@@ -1130,21 +1152,21 @@ export default function QuoteDetailsPage() {
                         <div className="flex flex-col sm:flex-row gap-3 justify-between w-full pt-6 mt-6 border-t border-gray-100">
                           <button
                             onClick={handleAcceptQuote}
-                            disabled={isAccepting || isDeclining}
+                            disabled={isAccepting || isDeclining || hasAcceptedLocally}
                             className="flex-1 bg-[#2E7D32] hover:bg-[#256628] text-white font-bold text-xs sm:text-sm py-3.5 px-6 rounded-lg shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
                           >
                             {isAccepting ? <LoadingDots text="Accepting" /> : "Accept Proposal"}
                           </button>
                           <button
                             onClick={handleRequestModification}
-                            disabled={isAccepting || isDeclining}
+                            disabled={isAccepting || isDeclining || hasAcceptedLocally}
                             className="flex-1 bg-[#1A365D] hover:bg-[#132846] text-white font-bold text-xs sm:text-sm py-3.5 px-6 rounded-lg shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
                           >
                             Request Modifications
                           </button>
                           <button
                             onClick={handleDeclineQuote}
-                            disabled={isAccepting || isDeclining}
+                            disabled={isAccepting || isDeclining || hasAcceptedLocally}
                             className="flex-1 bg-[#7A1C1C] hover:bg-[#631616] text-white font-bold text-xs sm:text-sm py-3.5 px-6 rounded-lg shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
                           >
                             {isDeclining ? <LoadingDots text="Declining" /> : "Decline Proposal"}

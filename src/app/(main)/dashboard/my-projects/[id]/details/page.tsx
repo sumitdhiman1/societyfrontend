@@ -252,6 +252,7 @@ export default function ProjectDetailsPage() {
 
   const [actionComment, setActionComment] = useState("");
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const actionLoadingRef = useRef(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -422,6 +423,8 @@ export default function ProjectDetailsPage() {
   };
 
   const handleAcceptProposal = async (proposalId: string) => {
+    if (actionLoadingRef.current || isActionLoading) return;
+    actionLoadingRef.current = true;
     setIsActionLoading(true);
     try {
       const username = currentUser?.fullName || currentUser?.username || "User";
@@ -434,6 +437,7 @@ export default function ProjectDetailsPage() {
     } catch (error) {
       console.error("Failed to accept proposal:", error);
     } finally {
+      actionLoadingRef.current = false;
       setIsActionLoading(false);
     }
   };
