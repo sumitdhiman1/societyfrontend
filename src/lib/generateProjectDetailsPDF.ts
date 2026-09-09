@@ -91,7 +91,7 @@ function resolveCalculatorEstimatedTimeline(data: any): string {
   if (seoRawTimelineDays > 0) {
     return formatGraphicsTimelineLabel(snapGraphicsBaselineDays(seoRawTimelineDays));
   }
-  return seoMode === "monthly" ? "Monthly Service" : "";
+  return "";
 }
 
 function loadScript(src: string): Promise<void> {
