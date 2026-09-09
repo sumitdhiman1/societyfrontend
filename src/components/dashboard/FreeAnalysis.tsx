@@ -193,7 +193,6 @@ export default function FreeAnalysis() {
           <div className="lg:hidden flex flex-col bg-white rounded-[10px] shadow-[0px_4px_20px_rgba(14,16,63,0.07)] relative overflow-hidden w-full max-w-[400px] md:max-w-[600px] mx-auto">
             <div className="lg:hidden flex flex-col bg-white rounded-[10px]  relative overflow-hidden w-full max-w-[400px] md:max-w-[600px] mx-auto">
               <div className="relative w-full flex justify-center md:bg-[#EBE9FA]">
-                <img src="/assets/mobile-check-bg.png" alt="" className="w-full h-auto object-cover" />
                 <div className="absolute inset-0 flex items-center justify-center pt-8">
                   <img src="/assets/mobile-check.svg" alt="Analysis Illustration" className="w-[66%] md:w-[60%] h-auto object-contain " />
                 </div>
