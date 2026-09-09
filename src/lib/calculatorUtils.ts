@@ -117,13 +117,25 @@ export function getTierQuestionKey(categoryKey: string): string {
 
 export function isGraphicsItemsQuestion(question: any): boolean {
   if (!question) return false;
-  return (
-    question.key === "GFX_ITEMS" ||
-    question.key === "GD_ITEMS" ||
-    question.roleId === 7 ||
-    /specific items/i.test(question.text || "") ||
-    /include in this project/i.test(question.text || "")
-  );
+  const key = String(question.key || "").toUpperCase();
+  if (
+    key.startsWith("SEO_") ||
+    key.startsWith("WEB_") ||
+    key.startsWith("MKT_")
+  ) {
+    return false;
+  }
+  if (key === "GFX_ITEMS" || key === "GD_ITEMS") {
+    return true;
+  }
+  if (key.startsWith("GFX_") || key.startsWith("GD_")) {
+    return (
+      question.roleId === 7 ||
+      /specific items/i.test(question.text || "") ||
+      /include in this project/i.test(question.text || "")
+    );
+  }
+  return false;
 }
 
 export function getGraphicsCategoryKeys(
@@ -663,13 +675,6 @@ export type ConditionalOn = {
   answerKeys?: string[];
 };
 
-const SEO_ALWAYS_VISIBLE_KEYS = new Set([
-  "SEO_WORDS",
-  "SEO_BACKLINKS",
-  "SEO_MONTHS",
-  "SEO_TIMELINE",
-]);
-
 const MARKETING_ALWAYS_VISIBLE_KEYS = new Set([
   "MKT_PAID_PLATFORMS",
   "MKT_AD_SPEND",
@@ -684,7 +689,41 @@ export function isQuestionVisible(
     const catKeys = getGraphicsCategoryKeys(selections, questions);
     return catKeys.length > 0;
   }
-  if (question.key && SEO_ALWAYS_VISIBLE_KEYS.has(question.key)) return true;
+
+  // SEO specific question visibility
+  if (question.key === "SEO_ITEMS") {
+    const hasSeoTypeSelected = !!(
+      selections.SEO_TYPE?.answerKeys?.length ||
+      selections.SEO_SERVICE_TYPE?.answerKeys?.length ||
+      selections["0"]?.answerKeys?.length
+    );
+    return hasSeoTypeSelected;
+  }
+  if (question.key === "SEO_WORDS") {
+    const items = selections.SEO_ITEMS?.answerKeys || selections["2"]?.answerKeys || [];
+    return items.includes("SEO_ITEM_CONTENT_TEXT") || items.includes("SEO_ITEM_CONTENT") || items.includes("5");
+  }
+  if (question.key === "SEO_BACKLINKS") {
+    const items = selections.SEO_ITEMS?.answerKeys || selections["2"]?.answerKeys || [];
+    return items.includes("SEO_ITEM_LINK_BACK") || items.includes("SEO_ITEM_BACKLINKS") || items.includes("8");
+  }
+  if (question.key === "SEO_MONTHS") {
+    const hasSeoTypeSelected = !!(
+      selections.SEO_TYPE?.answerKeys?.length ||
+      selections.SEO_SERVICE_TYPE?.answerKeys?.length ||
+      selections["0"]?.answerKeys?.length
+    );
+    return hasSeoTypeSelected && getSeoServiceMode(selections) === "monthly";
+  }
+  if (question.key === "SEO_TIMELINE") {
+    const hasSeoTypeSelected = !!(
+      selections.SEO_TYPE?.answerKeys?.length ||
+      selections.SEO_SERVICE_TYPE?.answerKeys?.length ||
+      selections["0"]?.answerKeys?.length
+    );
+    return hasSeoTypeSelected && getSeoServiceMode(selections) === "onetime";
+  }
+
   if (question.key && MARKETING_ALWAYS_VISIBLE_KEYS.has(question.key)) return true;
   const cond = question.conditionalOn;
   if (!cond) return true;
@@ -698,22 +737,49 @@ export function isQuestionVisible(
 export function getSeoServiceMode(
   selections: Record<string, CalculatorSelection>
 ): "onetime" | "monthly" | "combination" {
-  const key = selections.SEO_SERVICE_TYPE?.answerKeys?.[0];
-  if (key === "SEO_TYPE_MONTHLY") return "monthly";
-  if (key === "SEO_TYPE_COMBO") return "combination";
+  const key =
+    selections.SEO_TYPE?.answerKeys?.[0] ||
+    selections.SEO_SERVICE_TYPE?.answerKeys?.[0] ||
+    selections["0"]?.answerKeys?.[0];
+
+  if (!key) return "onetime";
+  if (key === "SEO_TYPE_MONTHLY" || key === "1" || key.toLowerCase().includes("monthly")) {
+    return "monthly";
+  }
+  if (key === "SEO_TYPE_COMBO" || key.toLowerCase().includes("combo")) {
+    return "combination";
+  }
   return "onetime";
 }
 
 export function filterSeoAnswers(answers: any[], mode: string) {
+  if (!answers || !answers.length) return [];
   return answers.filter((a) => {
-    const types = a.metadata?.serviceTypes as string[] | undefined;
-    if (!types?.length) return true;
-    return types.includes(mode);
+    const meta = a.metadata;
+    if (meta?.type) {
+      return meta.type === mode || meta.type === "both" || meta.type === "combination";
+    }
+    const types = meta?.serviceTypes as string[] | undefined;
+    if (types?.length) {
+      return types.includes(mode);
+    }
+    const key = a.key || "";
+    const isMonthlyKey =
+      key.includes("LOCAL") ||
+      key.includes("CONTENT_MONTHLY") ||
+      key.includes("NATIONAL") ||
+      key.includes("LINK_MONTHLY") ||
+      key.includes("INTL") ||
+      key.includes("REPORT");
+    if (mode === "monthly") return isMonthlyKey;
+    return !isMonthlyKey;
   });
 }
 
-export function isMonthlyBillingCategory(categoryKey: string | null): boolean {
-  return categoryKey === "marketing" || categoryKey === "seo";
+export function isMonthlyBillingCategory(categoryKey: string | null, seoMode?: string): boolean {
+  if (categoryKey === "marketing") return true;
+  if (categoryKey === "seo") return seoMode === "monthly";
+  return false;
 }
 
 const DEFAULT_CATEGORY_ILLUSTRATIONS: Record<string, string> = {
@@ -793,12 +859,16 @@ function isTimelineWithRushFees(
   if (
     questionKey === "GFX_TIMELINE" ||
     questionKey === "SEO_TIMELINE" ||
-    questionKey === "GD_TIMELINE"
+    questionKey === "GD_TIMELINE" ||
+    questionKey === "WEB_TIMELINE" ||
+    /timeline/i.test(questionKey || "")
   ) {
     return true;
   }
   if (categoryKey === "graphics" && (roleId === 13 || roleId === 14)) return true;
-  if (categoryKey === "seo" && roleId === 13) return true;
+  if (categoryKey === "seo" && (roleId === 13 || roleId === 14)) return true;
+  if (categoryKey === "website" && (roleId === 13 || roleId === 14)) return true;
+  if (roleId === 13 || roleId === 14) return true;
   return false;
 }
 
@@ -811,7 +881,7 @@ function appendRushFeeLabel(text: string, fee?: number): string {
   return `${base}: +${pct}% rush fee`;
 }
 
-/** Strip rush-fee suffix from timeline labels except graphics/SEO (live may use numeric keys). */
+/** Format calculator answer labels (preserves rush-fee text for website, graphics, and SEO). */
 export function formatCalculatorAnswerLabel(
   text: string,
   questionKey?: string,
@@ -843,12 +913,12 @@ export function formatCalculatorAnswerLabel(
     let label = appendRushFeeLabel(text, metadata?.fee);
     if (!/\+\d+% rush fee/i.test(label) && !/no extra fee/i.test(label)) {
       if (/super rushed/i.test(label)) label = appendRushFeeLabel(label, 0.5);
-      else if (/\(rushed\)/i.test(label)) label = appendRushFeeLabel(label, 0.25);
+      else if (/\(rushed\)/i.test(label) || /rushed/i.test(label)) label = appendRushFeeLabel(label, 0.25);
     }
     return label;
   }
 
-  return (text || "").replace(/:\s*\+\d+% rush fee/i, "").trim();
+  return text;
 }
 
 /** Append (Optional) for optional text/number on marketing, SEO, and graphics. */
@@ -961,6 +1031,25 @@ export function pruneHiddenSelections(
           next[gfxQ.key] = { ...next[gfxQ.key], answerKeys: filteredItemKeys };
         } else {
           delete next[gfxQ.key];
+        }
+      }
+    }
+  }
+
+  // Prune any SEO items that are no longer visible under selected SEO service mode
+  const seoMode = getSeoServiceMode(next);
+  const seoItemsQ = questions.find((q) => q.key === "SEO_ITEMS");
+  if (seoItemsQ?.key && next[seoItemsQ.key]?.answerKeys) {
+    if (seoItemsQ.answers) {
+      const allowedKeys = new Set(
+        filterSeoAnswers(seoItemsQ.answers, seoMode).map((a: any) => a.key)
+      );
+      const filteredItemKeys = next[seoItemsQ.key].answerKeys.filter((k) => allowedKeys.has(k));
+      if (filteredItemKeys.length !== next[seoItemsQ.key].answerKeys.length) {
+        if (filteredItemKeys.length > 0) {
+          next[seoItemsQ.key] = { ...next[seoItemsQ.key], answerKeys: filteredItemKeys };
+        } else {
+          delete next[seoItemsQ.key];
         }
       }
     }
