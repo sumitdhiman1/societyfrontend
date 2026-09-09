@@ -55,6 +55,28 @@ export function hasTimelineSelected(
   return false;
 }
 
+export const SEO_MONTHS_MAX = 20000;
+
+export function isSeoMonthsQuestion(question: { key?: string; roleId?: number }): boolean {
+  return question.key === "SEO_MONTHS" || question.roleId === 15;
+}
+
+export function getNumberQuestionMax(question: {
+  key?: string;
+  roleId?: number;
+  config?: { maxValue?: number };
+}): number | undefined {
+  if (question.config?.maxValue != null) return question.config.maxValue;
+  if (isSeoMonthsQuestion(question)) return SEO_MONTHS_MAX;
+  return undefined;
+}
+
+export function getNumberQuestionMin(question: {
+  config?: { minValue?: number };
+}): number {
+  return question.config?.minValue ?? 0;
+}
+
 export function getMissingRequiredQuestions(
   questions: any[],
   selections: Record<string, CalculatorSelection>
@@ -66,9 +88,12 @@ export function getMissingRequiredQuestions(
 
     if (q.type === "number") {
       const minVal = q.config?.minValue ?? 0;
+      const maxVal = getNumberQuestionMax(q);
       const sel = selections[q.key];
       const val = sel?.numericValue ?? 0;
-      return val < minVal;
+      if (val < minVal) return true;
+      if (maxVal != null && val > maxVal) return true;
+      return false;
     }
 
     const sel = selections[q.key];
@@ -777,12 +802,7 @@ export function isQuestionVisible(
 
   // SEO specific question visibility
   if (question.key === "SEO_ITEMS") {
-    const hasSeoTypeSelected = !!(
-      selections.SEO_TYPE?.answerKeys?.length ||
-      selections.SEO_SERVICE_TYPE?.answerKeys?.length ||
-      selections["0"]?.answerKeys?.length
-    );
-    return hasSeoTypeSelected;
+    return hasSeoTypeSelected(selections, questions);
   }
   if (question.key === "SEO_WORDS") {
     const items = selections.SEO_ITEMS?.answerKeys || selections["2"]?.answerKeys || [];
@@ -792,21 +812,21 @@ export function isQuestionVisible(
     const items = selections.SEO_ITEMS?.answerKeys || selections["2"]?.answerKeys || [];
     return items.includes("SEO_ITEM_LINK_BACK") || items.includes("SEO_ITEM_BACKLINKS") || items.includes("8");
   }
-  if (question.key === "SEO_MONTHS") {
-    const hasSeoTypeSelected = !!(
-      selections.SEO_TYPE?.answerKeys?.length ||
-      selections.SEO_SERVICE_TYPE?.answerKeys?.length ||
-      selections["0"]?.answerKeys?.length
+  if (question.key === "SEO_MONTHS" || question.roleId === 15) {
+    if (!findSeoServiceTypeQuestion(questions)) return true;
+    return (
+      hasSeoTypeSelected(selections, questions) &&
+      seoModeNeedsMonths(getSeoServiceMode(selections, questions))
     );
-    return hasSeoTypeSelected && seoModeNeedsMonths(getSeoServiceMode(selections));
   }
-  if (question.key === "SEO_TIMELINE") {
-    const hasSeoTypeSelected = !!(
-      selections.SEO_TYPE?.answerKeys?.length ||
-      selections.SEO_SERVICE_TYPE?.answerKeys?.length ||
-      selections["0"]?.answerKeys?.length
+  if (
+    question.key === "SEO_TIMELINE" ||
+    (isTimelineQuestion(question) && findSeoServiceTypeQuestion(questions))
+  ) {
+    return (
+      hasSeoTypeSelected(selections, questions) &&
+      seoModeNeedsTimeline(getSeoServiceMode(selections, questions))
     );
-    return hasSeoTypeSelected && seoModeNeedsTimeline(getSeoServiceMode(selections));
   }
 
   if (question.key && MARKETING_ALWAYS_VISIBLE_KEYS.has(question.key)) return true;
@@ -819,20 +839,83 @@ export function isQuestionVisible(
   return true;
 }
 
+function findSeoServiceTypeQuestion(questions?: any[]) {
+  return questions?.find(
+    (q) =>
+      ["SEO_TYPE", "SEO_SERVICE_TYPE", "0"].includes(q.key || "") ||
+      /what type of seo/i.test(q.text || "") ||
+      (q.answers || []).some((a: any) => a?.metadata?.serviceMode)
+  );
+}
+
+function findSeoServiceTypeSelection(
+  selections: Record<string, CalculatorSelection>,
+  questions?: any[]
+): CalculatorSelection | undefined {
+  const typeQ = findSeoServiceTypeQuestion(questions);
+  if (typeQ?.key && selections[typeQ.key]) {
+    return selections[typeQ.key];
+  }
+  if (questions?.length) {
+    for (const [selKey, sel] of Object.entries(selections)) {
+      if (!sel?.answerKeys?.length) continue;
+      const q = questions.find((qq) => qq.key === selKey);
+      if (!q) continue;
+      for (const ak of sel.answerKeys) {
+        const ans = q.answers?.find((a: any) => a.key === ak);
+        if (ans?.metadata?.serviceMode) return sel;
+      }
+    }
+  }
+  return selections.SEO_SERVICE_TYPE || selections.SEO_TYPE || selections["0"];
+}
+
+function hasSeoTypeSelected(
+  selections: Record<string, CalculatorSelection>,
+  questions?: any[]
+): boolean {
+  return !!findSeoServiceTypeSelection(selections, questions)?.answerKeys?.length;
+}
+
 export function getSeoServiceMode(
-  selections: Record<string, CalculatorSelection>
+  selections: Record<string, CalculatorSelection>,
+  questions?: any[]
 ): "onetime" | "monthly" | "combination" {
-  const key =
-    selections.SEO_TYPE?.answerKeys?.[0] ||
-    selections.SEO_SERVICE_TYPE?.answerKeys?.[0] ||
-    selections["0"]?.answerKeys?.[0];
+  const sel = findSeoServiceTypeSelection(selections, questions);
+  const key = sel?.answerKeys?.[0];
 
   if (!key) return "onetime";
-  if (key === "SEO_TYPE_MONTHLY" || key === "1" || key.toLowerCase().includes("monthly")) {
+
+  if (questions?.length) {
+    const typeQ = findSeoServiceTypeQuestion(questions);
+    const ans = typeQ?.answers?.find((a: any) => a.key === key);
+    const serviceMode = ans?.metadata?.serviceMode;
+    if (
+      serviceMode === "monthly" ||
+      serviceMode === "onetime" ||
+      serviceMode === "combination"
+    ) {
+      return serviceMode;
+    }
+  }
+
+  const answerText = (sel as any)?.answerTexts?.[0] || "";
+  if (
+    key === "SEO_TYPE_MONTHLY" ||
+    key.toLowerCase().includes("monthly") ||
+    /monthly/i.test(answerText)
+  ) {
     return "monthly";
   }
-  if (key === "SEO_TYPE_COMBO" || key.toLowerCase().includes("combo")) {
+  if (
+    key === "SEO_TYPE_COMBO" ||
+    key.toLowerCase().includes("combo") ||
+    /combo/i.test(answerText)
+  ) {
     return "combination";
+  }
+  if (key === "SEO_TYPE_ONETIME" || /one-?time/i.test(answerText)) {
+    return "onetime";
   }
   return "onetime";
 }
@@ -1132,7 +1215,7 @@ export function pruneHiddenSelections(
   }
 
   // Prune any SEO items that are no longer visible under selected SEO service mode
-  const seoMode = getSeoServiceMode(next);
+  const seoMode = getSeoServiceMode(next, questions);
   const seoItemsQ = questions.find((q) => q.key === "SEO_ITEMS");
   if (seoItemsQ?.key && next[seoItemsQ.key]?.answerKeys) {
     if (seoItemsQ.answers) {

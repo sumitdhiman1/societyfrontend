@@ -24,6 +24,8 @@ import {
   isTimelineQuestion,
   hasTimelineSelected,
   getMissingRequiredQuestions,
+  getNumberQuestionMax,
+  getNumberQuestionMin,
   isTierSourceQuestion,
   getGraphicsCategoryKeys,
   isGraphicsItemsQuestion,
@@ -220,16 +222,16 @@ const CategoryGrid = ({ categories, selectedCategoryKey, onSelect }: { categorie
   </div>
 );
 
-const STEP_MIN = 0;
-
 const NumberStepper = ({
   value,
   onChange,
   validateMin = 0,
+  validateMax,
 }: {
   value: number;
   onChange: (n: number) => void;
   validateMin?: number;
+  validateMax?: number;
 }) => {
   const [localVal, setLocalVal] = useState<string>(String(value ?? validateMin));
 
@@ -244,26 +246,35 @@ const NumberStepper = ({
     return validateMin;
   };
 
+  const clampValue = (n: number): number => {
+    let clamped = Math.max(validateMin, n);
+    if (validateMax != null) clamped = Math.min(validateMax, clamped);
+    return clamped;
+  };
+
+  const applyValue = (n: number) => {
+    const clamped = clampValue(n);
+    setLocalVal(String(clamped));
+    onChange(clamped);
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, "");
-    setLocalVal(raw);
-    if (raw !== "") {
-      const parsed = parseInt(raw, 10);
-      if (!isNaN(parsed) && parsed >= STEP_MIN) {
-        onChange(parsed);
-      }
+    if (raw === "") {
+      setLocalVal("");
+      return;
     }
+    const parsed = parseInt(raw, 10);
+    if (isNaN(parsed)) return;
+    applyValue(parsed);
   };
 
   const handleBlur = () => {
     if (localVal === "" || isNaN(parseInt(localVal, 10))) {
-      setLocalVal(String(validateMin));
-      onChange(validateMin);
-    } else {
-      const parsed = Math.max(STEP_MIN, parseInt(localVal, 10));
-      setLocalVal(String(parsed));
-      onChange(parsed);
+      applyValue(validateMin);
+      return;
     }
+    applyValue(parseInt(localVal, 10));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -271,14 +282,10 @@ const NumberStepper = ({
       (e.target as HTMLInputElement).blur();
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      const next = parseCurrent() + 1;
-      setLocalVal(String(next));
-      onChange(next);
+      applyValue(parseCurrent() + 1);
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
-      const next = Math.max(STEP_MIN, parseCurrent() - 1);
-      setLocalVal(String(next));
-      onChange(next);
+      applyValue(parseCurrent() - 1);
     }
   };
 
@@ -287,11 +294,7 @@ const NumberStepper = ({
       <div className="flex items-center gap-0 bg-gray-50 border border-gray-300 rounded-xl overflow-hidden shadow-sm">
         <button
           type="button"
-          onClick={() => {
-            const next = Math.max(STEP_MIN, parseCurrent() - 1);
-            setLocalVal(String(next));
-            onChange(next);
-          }}
+          onClick={() => applyValue(parseCurrent() - 1)}
           className="w-12 h-14 flex items-center justify-center text-gray-600 hover:text-[#4F46E5] hover:bg-gray-200/60 transition-all text-xl font-bold select-none cursor-pointer"
           aria-label="Decrease"
         >
@@ -309,11 +312,7 @@ const NumberStepper = ({
         />
         <button
           type="button"
-          onClick={() => {
-            const next = parseCurrent() + 1;
-            setLocalVal(String(next));
-            onChange(next);
-          }}
+          onClick={() => applyValue(parseCurrent() + 1)}
           className="w-12 h-14 flex items-center justify-center text-gray-600 hover:text-[#4F46E5] hover:bg-gray-200/60 transition-all text-xl font-bold select-none cursor-pointer"
           aria-label="Increase"
         >
@@ -415,7 +414,8 @@ const QuestionCard = ({
       {question.type === "number" && (
         <NumberStepper
           value={numVal}
-          validateMin={question.config?.minValue ?? 0}
+          validateMin={getNumberQuestionMin(question)}
+          validateMax={getNumberQuestionMax(question)}
           onChange={(n) => onToggleAnswer(question.key, n, "number")}
         />
       )}
@@ -730,6 +730,9 @@ const ProposalPreview = ({
           <h3 className="text-[#111827] text-[24px] md:text-[26px] font-bold tracking-tight mb-1">
             PROJECT TOTAL COST:{" "}
             <span className="text-[#4F46E5] font-black font-bold">{formatPriceLocal(totalPrice)}</span>
+            {isMonthly && (
+              <span className="text-[#64748B] text-[18px] md:text-[20px] font-medium"> /month</span>
+            )}
           </h3>
           {isMonthly && <p className="text-[#363636] text-[13px] font-medium mt-1 opacity-75">First month billed on start. Then auto-renewed monthly.</p>}
         </div>
@@ -1532,8 +1535,11 @@ export default function CalculatorPage() {
     [seoItemsQuestion, selections, tier]
   );
   const seoServiceMode = useMemo(
-    () => (selectedCategoryKey === "seo" ? getSeoServiceMode(selections) : undefined),
-    [selections, selectedCategoryKey]
+    () =>
+      selectedCategoryKey === "seo"
+        ? getSeoServiceMode(selections, sortedQuestions)
+        : undefined,
+    [selections, selectedCategoryKey, sortedQuestions]
   );
   const visibleQuestions = useMemo(
     () => sortedQuestions.filter((q) => isQuestionVisible(q, selections, sortedQuestions)),
@@ -1578,6 +1584,14 @@ export default function CalculatorPage() {
     if (missingQuestions.length > 0) {
       const newErrors: Record<string, string> = {};
       missingQuestions.forEach((q) => {
+        if (q.type === "number") {
+          const val = selections[q.key]?.numericValue ?? 0;
+          const maxVal = getNumberQuestionMax(q);
+          if (maxVal != null && val > maxVal) {
+            newErrors[q.key] = `Maximum value is ${maxVal}.`;
+            return;
+          }
+        }
         const isTimeline = isTimelineQuestion(q);
         newErrors[q.key] = isTimeline
           ? "Please select a project timeline."
@@ -1649,14 +1663,23 @@ export default function CalculatorPage() {
         const timelineKey = findTimelineQuestionKey(sortedQuestions);
         if (timelineKey) delete next[timelineKey];
       }
-      if (questionKey === "SEO_TYPE" || questionKey === "SEO_SERVICE_TYPE") {
-        const newMode = (value === "SEO_TYPE_MONTHLY" || value === "1" || String(value).toLowerCase().includes("monthly"))
-          ? "monthly"
-          : "onetime";
+      const seoTypeQuestion = sortedQuestions.find(
+        (q) =>
+          ["SEO_TYPE", "SEO_SERVICE_TYPE", "0"].includes(q.key || "") ||
+          /what type of seo/i.test(q.text || "")
+      );
+      if (seoTypeQuestion && questionKey === seoTypeQuestion.key) {
+        const newMode = getSeoServiceMode(next, sortedQuestions);
+        const timelineKey = findTimelineQuestionKey(sortedQuestions);
         if (newMode === "monthly") {
+          if (timelineKey) delete next[timelineKey];
           delete next.SEO_TIMELINE;
         } else {
           delete next.SEO_MONTHS;
+          const monthsQ = sortedQuestions.find(
+            (q) => q.key === "SEO_MONTHS" || q.roleId === 15
+          );
+          if (monthsQ?.key) delete next[monthsQ.key];
         }
       }
       if (questionKey === "SEO_ITEMS") {
