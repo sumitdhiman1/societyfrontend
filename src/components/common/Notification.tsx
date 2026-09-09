@@ -121,31 +121,33 @@ const Notification = ({
   };
 
   return (
-    <div className="relative flex items-center justify-center shrink-0" ref={notificationRef}>
-      <button
-        className="w-10 h-10 rounded-full bg-white text-gray-700 flex items-center justify-center transition-transform hover:scale-105 shadow-sm shrink-0"
-        onClick={() => setNotificationsOpen(!notificationsOpen)}
-      >
-        <BellIcon />
-      </button>
-      {unreadCount > 0 && (
-        <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#5356FF] text-[10px] font-bold text-white ring-2 ring-[#00102E] z-10 pointer-events-none">
-          {unreadCount}
-        </span>
-      )}
+    <div className="flex items-center justify-center shrink-0" ref={notificationRef}>
+      <div className="relative flex items-center justify-center shrink-0">
+        <button
+          className="w-10 h-10 rounded-full bg-white text-gray-700 flex items-center justify-center transition-transform hover:scale-105 shadow-sm shrink-0"
+          onClick={() => setNotificationsOpen(!notificationsOpen)}
+        >
+          <BellIcon />
+        </button>
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#5356FF] text-[10px] font-bold text-white ring-2 ring-[#00102E] z-10 pointer-events-none">
+            {unreadCount}
+          </span>
+        )}
+      </div>
 
       {notificationsOpen && (
-        <div className="absolute md:right-[-140px] right-0 mt-4 md:w-[500px] w-[350px] bg-white rounded-lg shadow-2xl z-50 border border-gray-100 text-left overflow-hidden">
-          <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-white">
-            <h3 className="font-bold text-[#434343] text-xl">Notifications</h3>
-            <div className="flex items-center gap-4">
+        <div className="absolute left-auto top-[100%] rounded-[16px]  right-[120px] mt-[14px] w-[500px] bg-white shadow-2xl z-50  text-left overflow-hidden formobile-cs">
+          <div className="px-6 sm:px-8 py-5 sm:py-6 border-b border-gray-100 bg-white flex justify-between items-center">
+            <h3 className="font-bold text-gray-700 text-base sm:text-lg">Notifications</h3>
+            <div className="flex items-center gap-3 sm:gap-4">
               {unreadCount > 0 && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     markAllRead();
                   }}
-                  className="text-xs font-semibold text-[#5356ff] hover:text-[#3232b7] hover:underline transition-colors"
+                  className="text-xs font-semibold text-[#4343F0] hover:text-[#3232b7] hover:underline transition-colors"
                 >
                   Mark all read
                 </button>
@@ -162,7 +164,7 @@ const Notification = ({
             </div>
           </div>
           <div
-            className="max-h-[350px] overflow-y-auto"
+            className="max-h-[263px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent"
             onScroll={handleScroll}
           >
             {notifications.length === 0 ? (
@@ -173,18 +175,18 @@ const Notification = ({
               notifications.map((n) => (
                 <div
                   key={n._id}
-                  className={`px-8 py-6 border-b border-gray-100 flex items-center gap-5 transition-colors ${n.isRead ? "bg-white" : "bg-blue-50/30"}`}
+                  className={`px-5 sm:px-8 py-4 sm:py-6 order-b border-gray-100 flex items-center gap-5 transition-colors ${n.isRead ? "bg-white" : "bg-[#f7faff]  hover:bg-blue-100/50"}`}
                 >
-                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-500 flex items-center justify-center shrink-0">
                     <BellIcon />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p
-                      className={`text-base font-bold truncate ${n.isRead ? "text-gray-600" : "text-gray-800"}`}
+                      className={`text-base sm:text-base font-bold truncate mb-1 ${n.isRead ? "text-gray-600" : "text-gray-700"}`}
                     >
                       {n.title}
                     </p>
-                    <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-gray-500 line-clamp-2 leading-relaxed">
                       {n.message}
                     </p>
                   </div>
@@ -193,7 +195,7 @@ const Notification = ({
                       e.stopPropagation();
                       handleNotificationClick(n);
                     }}
-                    className="flex items-center gap-2 bg-[#5356ff] hover:bg-[#3232b7] text-white text-xs font-bold px-6 py-3 rounded-[4px] shadow-sm transition-colors shrink-0"
+                    className="flex items-center gap-1.5 sm:gap-2 bg-[#4343f0] hover:bg-[#5c5cf2] text-white text-xs font-bold px-3 sm:px-6 py-2 sm:py-3 rounded-[4px] shadow-sm transition-colors shrink-0"
                   >
                     <EyeIcon className="w-4 h-4 pointer-events-none" />
                     View

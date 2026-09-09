@@ -344,7 +344,8 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
 
         {/* Mobile Search - Visible only on mobile/tablet */}
         {!shouldHideMenu && (
-          <div className="flex-1 mx-4 h-10 bg-white rounded-md flex items-center overflow-hidden lg:hidden max-w-[400px]">
+          <div className="flex-1 mx-4 h-10 bg-white rounded-md flex items-center overflow-hidden lg:hidden max-w-[400px]
+          hidden lg:block flex-1 max-w-md xl:max-w-2xl lg:mx-4 xl:mx-8 px-4 relative">
             <input
               type="text"
               placeholder="Search"

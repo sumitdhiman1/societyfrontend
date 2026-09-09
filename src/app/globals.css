@@ -325,3 +325,11 @@ body {
     padding-right: .99rem;
   }
 }
+
+@media screen and (max-width: 920px) {
+  .formobile-cs {
+    right: -58px;
+    width: 364px;
+    top: 38px;
+  }
+}

@@ -12,8 +12,8 @@ import RequestAnalysis from "@/components/dashboard/RequestAnalysis";
 export default function DashboardPage() {
   return (
     <>
-      <div className="flex flex-col w-full pb-8 md:pb-12 lg:pb-16">
-        <div className="max-w-[1600px] w-full mx-auto px-4 md:px-8 lg:px-[54px] pt-6 md:pt-6 lg:pt-[32px]">
+      <div className="flex flex-col w-full pb-8 md:pb-12 lg:pb-16 bg-[#F3F4F6] ">
+        <div className="max-w-[1536px] w-full mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-6 md:pt-6 lg:pt-[32px]">
           {/* Top Section: Welcome and Promo */}
           <div className="flex flex-col gap-5 md:gap-6 lg:grid lg:grid-cols-[404px_1fr] lg:gap-[53px]">
             <UserWelcome />
