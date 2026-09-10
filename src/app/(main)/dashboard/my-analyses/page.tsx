@@ -296,7 +296,7 @@ export default function MyAnalysesPage() {
 
         {/* Support & Newsletter Section */}
         <div className="mt-10 md:mt-14 mb-2">
-          <SupportNewsletter />
+          <SupportNewsletter noPadding />
         </div>
       </main>
     </div>

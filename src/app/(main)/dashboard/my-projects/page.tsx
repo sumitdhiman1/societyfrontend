@@ -284,7 +284,7 @@ export default function MyProjectsPage() {
         </div>
 
         <div className="mt-16">
-          <SupportNewsletter />
+          <SupportNewsletter noPadding />
         </div>
       </main>
     </div>
