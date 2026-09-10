@@ -14,6 +14,7 @@ import AuthPromptModal from "@/components/common/AuthPromptModal";
 import DeadlineTooltip from "@/components/common/DeadlineTooltip";
 import RecommendedSolutions from "@/components/common/RecommendedSolutions";
 import CalculatorSpecsCard from "@/components/common/CalculatorSpecsCard";
+import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import { getMainCalculatorCategory, getProjectEstimatedDeadline } from "@/lib/calculatorUtils";
 import { capitalizeCurrencyInText } from "@/lib/currencyUtils";
 import { toast } from "sonner";
@@ -633,11 +634,12 @@ export default function ProjectDetailsPage() {
                     project.type === "bundle" ? `Bundle Project (${project.billingType === "fixed" ? "Setup Phase" : "Maintenance Phase"})` :
                       project.type === "custom" ? "Custom Project Details" : "Package Details"}
                 </h2>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {project.type === "bundle" && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded uppercase border border-purple-200">Bundle</span>}
-                  {project.type === "custom" && !project.calculatorSpecs && <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded uppercase border border-blue-200">Custom Quote</span>}
-                  {project.type === "package" && <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase border border-green-200">Standard Package</span>}
-                </div>
+                {(project.type === "bundle" || project.type === "package") && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {project.type === "bundle" && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded uppercase border border-purple-200">Bundle</span>}
+                    {project.type === "package" && <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase border border-green-200">Standard Package</span>}
+                  </div>
+                )}
               </div>
               <span className="text-[10px] sm:text-xs text-gray-400 font-medium whitespace-nowrap">
                 Project #{project.projectNumber || ((project._id || project.id || project.projectId || project.project_id || project.orderId || project.uuid || project.uid || project.project?._id || project.project?.id || "XXXXXXXX").slice(-8).toUpperCase())}
@@ -682,43 +684,47 @@ export default function ProjectDetailsPage() {
                 </div>
               </div>
             ) : (
-              <div className="mb-8 text-sm text-gray-700 leading-relaxed font-medium">
-                <p className="text-gray-600 font-normal">{project.description}</p>
+              <div className="mb-10">
+                <div className="text-sm text-gray-700 leading-relaxed font-medium">
+                  <p style={{ color: '#334155', fontSize: '13.5px', lineHeight: '1.6', margin: '0 0 12px 0', fontWeight: 400, whiteSpace: 'pre-line' }}>
+                    {project.description}
+                  </p>
+                </div>
               </div>
             )}
 
             {/* Deliverables Table — hidden for calculator projects (specs card covers it) */}
             {!project.calculatorSpecs && (
-              <div className="border border-gray-300 rounded-lg overflow-x-auto mb-6">
+              <div className="border border-gray-400 rounded-lg overflow-x-auto mb-4">
                 <table className="w-full min-w-[500px] sm:min-w-0">
                   <thead>
-                    <tr className="border-b border-gray-300 bg-white">
-                      <th className="px-4 sm:px-6 py-3.5 text-left text-xs sm:text-sm font-bold text-gray-700 w-1/2">Item</th>
-                      <th className="px-4 sm:px-6 py-3.5 text-center text-xs sm:text-sm font-bold text-gray-700">Duration</th>
-                      <th className="px-4 sm:px-6 py-3.5 text-right text-xs sm:text-sm font-bold text-gray-700">Amount</th>
+                    <tr className="border-b border-gray-400">
+                      <th className="px-3 sm:px-6 py-4 text-left text-xs sm:text-sm font-bold text-gray-600 bg-white w-1/2">Item</th>
+                      <th className="px-3 sm:px-6 py-4 text-center text-xs sm:text-sm font-bold text-gray-600 bg-white">Duration</th>
+                      <th className="px-3 sm:px-6 py-4 text-right text-xs sm:text-sm font-bold text-gray-600 bg-white">Amount</th>
                     </tr>
                   </thead>
                   <tbody>
                     {project.deliverableItems && project.deliverableItems.length > 0 ? (
                       project.deliverableItems.map((item: any, idx: number) => (
-                        <tr key={item.description + idx} className={idx < project.deliverableItems.length - 1 ? "border-b border-gray-200" : ""}>
-                          <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 align-top">
-                            <div className="font-semibold text-gray-800 mb-0.5">{item.description || item.title || item.name}</div>
+                        <tr key={item.description + idx} className={idx < project.deliverableItems.length - 1 ? "border-b border-gray-400" : ""}>
+                          <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
+                            <div className="font-medium text-gray-700 mb-1">{item.description || item.title || item.name}</div>
                             {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
                           </td>
-                          <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
+                          <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
                             {item.duration}
                           </td>
-                          <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
+                          <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top">
                             {formatCurrency(item.amount ?? 0)}
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 font-semibold">{project.title}</td>
-                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 text-center">-</td>
-                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold">
+                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-semibold">{project.title}</td>
+                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-center">-</td>
+                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-800 text-right font-bold">
                           {formatCurrency(project.price ?? 0)}
                         </td>
                       </tr>
@@ -731,15 +737,15 @@ export default function ProjectDetailsPage() {
                         </tr>
                         {project.addons.map((addon: any, aIdx: number) => (
                           addon.deliverableItems.map((item: any, iIdx: number) => (
-                            <tr key={`addon-${aIdx}-${iIdx}`} className={(aIdx === project.addons.length - 1 && iIdx === addon.deliverableItems.length - 1) ? "" : "border-b border-gray-200"}>
-                              <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 align-top">
-                                <div className="font-semibold text-gray-800 mb-0.5">{item.description}</div>
+                            <tr key={`addon-${aIdx}-${iIdx}`} className={(aIdx === project.addons.length - 1 && iIdx === addon.deliverableItems.length - 1) ? "" : "border-b border-gray-400"}>
+                              <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
+                                <div className="font-medium text-gray-700 mb-1">{item.description}</div>
                                 {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
                               </td>
-                              <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
+                              <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
                                 {item.duration} {item.unit || "Days"}
                               </td>
-                              <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
+                              <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
                                 {formatCurrency(item.amount ?? 0)}
                               </td>
                             </tr>
@@ -921,19 +927,14 @@ export default function ProjectDetailsPage() {
                   <h4 className="text-lg font-bold text-gray-800 mb-1">{name}</h4>
                   <p className="text-sm text-gray-500 font-medium uppercase tracking-wider text-[10px]">PROJECT MANAGER</p>
 
-                  {name !== "Unassigned" && (
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                      <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1">Status</div>
-                      <div className="text-xs font-semibold text-gray-600">Online & Active</div>
-                    </div>
-                  )}
+
                 </div>
               );
             })()}
           </div>
 
-          {/* Subscription & Auto-Renewal Card */}
-          {project.billingType === "monthly" && !project.calculatorSpecs && (
+          {/* Subscription & Auto-Renewal Card — only for genuine monthly/recurring projects */}
+          {project.billingType === "monthly" && !project.calculatorSpecs && project.autoRenewal !== undefined && (
             <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 sm:p-7 mt-8">
               <h3 className="text-xs font-bold text-[#1E293B] uppercase tracking-wider mb-2 font-sans">
                 SUBSCRIPTION &amp; AUTO-RENEWAL
@@ -1798,6 +1799,9 @@ export default function ProjectDetailsPage() {
         description="Please log in or register to message our team and upload files for this project."
         redirectUrl={project?._id ? `/dashboard/my-projects/${project._id}/details` : undefined}
       />
+
+      {/* Help & Support / Newsletter Section */}
+      <SupportNewsletter noPadding />
     </div>
   );
 }
