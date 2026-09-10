@@ -786,13 +786,132 @@ export type ConditionalOn = {
   answerKeys?: string[];
 };
 
-const MARKETING_ALWAYS_VISIBLE_KEYS = new Set([
-  "MKT_PAID_PLATFORMS",
-  "MKT_AD_SPEND",
+const MARKETING_ORGANIC_FOCUS_KEYS = new Set([
+  "MKT_ORGANIC_CONTENT",
+  "MKT_COMMUNITY",
+  "MKT_SHORT_VIDEO",
+  "MKT_INFLUENCER",
+  "MKT_CRISIS",
+  "MC_AREA_ORG_CONT",
+  "MC_AREA_COMM_MGMT",
+  "MC_AREA_SHORT_VID",
+  "MC_AREA_INF_MGMT",
+  "MC_AREA_CRISIS",
+  "0",
+  "1",
+  "2",
+  "3",
+  "4",
 ]);
 
+function findMarketingFocusQuestion(questions?: any[]) {
+  return questions?.find(
+    (q) =>
+      q.key === "MKT_FOCUS" ||
+      q.key === "MC_AREAS" ||
+      q.key === "1" ||
+      q.roleId === 8 ||
+      /which areas do you want to focus/i.test(q.text || "")
+  );
+}
+
+function getMarketingTargetCategory(question: any): "organic" | "paid" | null {
+  const targetCategory = question?.config?.targetCategory;
+  if (targetCategory === "organic" || targetCategory === "paid") return targetCategory;
+
+  const key = String(question?.key || "");
+  if (
+    key === "MKT_ORGANIC_PLATFORMS" ||
+    key === "MKT_POSTS_WEEK" ||
+    key === "MC_PLAT_ORG" ||
+    key === "MC_POSTS" ||
+    key === "2" ||
+    key === "3" ||
+    question?.roleId === 9 ||
+    question?.roleId === 10
+  ) {
+    return "organic";
+  }
+  if (
+    key === "MKT_PAID_PLATFORMS" ||
+    key === "MKT_AD_SPEND" ||
+    key === "MC_PLAT_PAID" ||
+    key === "MC_ADSPEND" ||
+    key === "4" ||
+    key === "5" ||
+    question?.roleId === 11 ||
+    question?.roleId === 12
+  ) {
+    return "paid";
+  }
+  return null;
+}
+
+function hasMarketingFocusSelection(
+  selections: Record<string, CalculatorSelection>,
+  questions?: any[]
+): boolean {
+  const focusQ = findMarketingFocusQuestion(questions);
+  if (!focusQ?.key) return false;
+  return (selections[focusQ.key]?.answerKeys?.length ?? 0) > 0;
+}
+
+function hasMarketingOrganicSelected(
+  selections: Record<string, CalculatorSelection>,
+  questions?: any[]
+): boolean {
+  const focusQ = findMarketingFocusQuestion(questions);
+  if (!focusQ) return false;
+  const selectedKeys = selections[focusQ.key]?.answerKeys || [];
+  return selectedKeys.some((answerKey) => {
+    if (MARKETING_ORGANIC_FOCUS_KEYS.has(answerKey)) return true;
+    const answer = focusQ.answers?.find((a: any) => a.key === answerKey);
+    const category = answer?.metadata?.category || answer?.metadata?.segment;
+    return category === "organic";
+  });
+}
+
+function hasMarketingPaidSelected(
+  selections: Record<string, CalculatorSelection>,
+  questions?: any[]
+): boolean {
+  const focusQ = findMarketingFocusQuestion(questions);
+  if (!focusQ) return false;
+  const selectedKeys = selections[focusQ.key]?.answerKeys || [];
+  return selectedKeys.some((answerKey) => {
+    if (answerKey === "MKT_PAID" || answerKey === "MC_AREA_PAID_ADS" || answerKey === "5") {
+      return true;
+    }
+    const answer = focusQ.answers?.find((a: any) => a.key === answerKey);
+    const category = answer?.metadata?.category || answer?.metadata?.segment;
+    return category === "paid";
+  });
+}
+
+function isMarketingSegmentQuestionVisible(
+  question: any,
+  selections: Record<string, CalculatorSelection>,
+  questions?: any[]
+): boolean | null {
+  const segment = getMarketingTargetCategory(question);
+  if (!segment) return null;
+  if (segment === "organic") {
+    return hasMarketingOrganicSelected(selections, questions);
+  }
+  // Paid platforms default when focus not picked yet (local parity).
+  if (!hasMarketingFocusSelection(selections, questions)) return true;
+  return hasMarketingPaidSelected(selections, questions);
+}
+
 export function isQuestionVisible(
-  question: { key?: string; roleId?: number; text?: string; order?: number; conditionalOn?: ConditionalOn },
+  question: {
+    key?: string;
+    roleId?: number;
+    text?: string;
+    order?: number;
+    conditionalOn?: ConditionalOn;
+    config?: { targetCategory?: string };
+  },
   selections: Record<string, CalculatorSelection>,
   questions?: any[]
 ): boolean {
@@ -830,13 +949,17 @@ export function isQuestionVisible(
     );
   }
 
-  if (question.key && MARKETING_ALWAYS_VISIBLE_KEYS.has(question.key)) return true;
+  const marketingVisible = isMarketingSegmentQuestionVisible(question, selections, questions);
+  if (marketingVisible !== null) return marketingVisible;
+
   const cond = question.conditionalOn;
-  if (!cond) return true;
-  const dep = selections[cond.questionKey];
-  const keys = dep?.answerKeys || [];
-  if (cond.answerKey) return keys.includes(cond.answerKey);
-  if (cond.answerKeys?.length) return cond.answerKeys.some((k) => keys.includes(k));
+  if (cond) {
+    const keys = selections[cond.questionKey]?.answerKeys || [];
+    if (cond.answerKey) return keys.includes(cond.answerKey);
+    if (cond.answerKeys?.length) return cond.answerKeys.some((k) => keys.includes(k));
+    return keys.length > 0;
+  }
+
   return true;
 }
 
@@ -1100,20 +1223,18 @@ export function formatCalculatorAnswerLabel(
   return text;
 }
 
-/** Append (Optional) for optional text/number questions across all calculators (website, marketing, SEO, graphics). */
 export function formatCalculatorQuestionText(
   text?: string,
   isRequired?: boolean,
   questionType?: string,
-  categoryKey?: string
+  _categoryKey?: string
 ): string {
   if (!text) return "";
   let trimmed = text.replace(/\s*\(Optional\)/gi, "").trim();
   if (/Tell us more about your goals and target audience$/i.test(trimmed)) {
     trimmed = `${trimmed}:`;
   }
-  const supportsOptionalLabel = questionType === "text" || questionType === "number";
-  if (supportsOptionalLabel && isRequired !== true) {
+  if (questionType === "text" && isRequired !== true) {
     return `${trimmed} (Optional)`;
   }
   return trimmed;
