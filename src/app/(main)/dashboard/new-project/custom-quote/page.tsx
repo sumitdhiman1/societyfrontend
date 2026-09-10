@@ -230,7 +230,7 @@ export default function CustomQuotePage() {
   };
 
   return (
-    <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12 bg-white min-h-screen">
+    <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-6 lg:px-8 pt-8 md:pt-10 pb-12 bg-white min-h-screen">
       <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100 mb-8 md:mb-12">New Quote</h1>
 
       {/* Tell us about your project box */}
