@@ -46,6 +46,7 @@ export default function MyProjectsPage() {
         const seenIds = new Set<string>();
         const seenQuoteIds = new Set<string>();
         const deduplicatedProjects = pList.filter((p: any) => {
+          if (p.type === "analysis" || p.isAnalysis) return false;
           const pId = String(p._id || p.id || "");
           const qId = String(p.quoteId || "");
           if (pId && seenIds.has(pId)) return false;

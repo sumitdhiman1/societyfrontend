@@ -173,12 +173,12 @@ function PackagesContent() {
                 minTimeline: prod.timelineInDays || (isCheck ? 14 : 5),
                 columns: [{ timeline: prod.timelineInDays || (isCheck ? 14 : 5) }],
                 visibleFormFields: prod.visibleFormFields || {
-                  urlToCheck: true,
-                  whoCompletedWork: isCheck,
-                  agreementDetails: isCheck,
-                  whatToLookAt: false,
-                  shareAccess: isCheck,
-                  additionalInfo: true,
+                  urlToCheck: prod.showWebsiteUrl ?? true,
+                  whoCompletedWork: prod.showWhoCompletedWork ?? isCheck,
+                  agreementDetails: prod.showAgreementDetails ?? isCheck,
+                  whatToLookAt: prod.showScopeOfWork ?? isCheck,
+                  shareAccess: prod.showLoginsDetails ?? isCheck,
+                  additionalInfo: prod.showAdditionalComments ?? true,
                 },
                 order: prod.order !== undefined ? prod.order : idx + 1,
               };

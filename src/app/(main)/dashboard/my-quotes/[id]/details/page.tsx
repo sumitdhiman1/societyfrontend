@@ -601,17 +601,56 @@ export default function QuoteDetailsPage() {
     return `${str} Days`;
   };
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+  const formatFileSize = (bytes: number): string => {
+    if (!bytes || bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return;
     const files = Array.from(e.target.files);
     e.target.value = "";
 
-    const newItems = files.map((file) => ({
+    const currentUser = authService.getUser();
+    if (currentUser && currentUser.isEmailVerified === false) {
+      toast.error(
+        "To protect your data, file uploads are restricted for unverified accounts. Please verify your email."
+      );
+      return;
+    }
+
+    const validFiles: File[] = [];
+    const oversizedFiles: string[] = [];
+
+    files.forEach((file) => {
+      if (file.size > MAX_FILE_SIZE) {
+        oversizedFiles.push(`${file.name} (${formatFileSize(file.size)})`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (oversizedFiles.length > 0) {
+      toast.error("File size limit exceeded (Max 10 MB)", {
+        description: `The following file(s) exceed 10 MB: ${oversizedFiles.join(", ")}`,
+        duration: 10000,
+      });
+    }
+
+    if (validFiles.length === 0) return;
+
+    const newItems = validFiles.map((file) => ({
       id: Math.random().toString(36).substring(7),
       name: file.name,
       status: "uploading" as const,
       file,
       url: "",
+      size: file.size,
     }));
 
     setAttachments((prev) => [...prev, ...newItems]);
@@ -622,10 +661,12 @@ export default function QuoteDetailsPage() {
           file: item.file,
           folder: `quotes/${quote?._id}/messages`,
         });
-        const url = res.data?.secure_url || res.data?.url || res.secure_url || "";
+        const url = res?.data?.secure_url || res?.data?.url || res?.secure_url || res?.url || "";
+        if (!url) throw new Error("Failed to retrieve uploaded file URL");
         setAttachments((prev) => prev.map((a) => (a.id === item.id ? { ...a, status: "done", url } : a)));
       } catch (error) {
         console.error("Upload failed for file:", item.name, error);
+        toast.error(`Upload failed for ${item.name}`);
         setAttachments((prev) => prev.map((a) => (a.id === item.id ? { ...a, status: "error" } : a)));
       }
     }
@@ -638,7 +679,24 @@ export default function QuoteDetailsPage() {
   const handleSendMessage = async () => {
     const currentUser = requireAuth();
     if (!currentUser) return;
-    if (attachments.some((a) => a.status === "uploading")) return;
+
+    if (attachments.some((a) => a.status === "uploading")) {
+      toast.info("Please wait for file upload to complete before sending.");
+      return;
+    }
+
+    if (attachments.length > 0 && currentUser.isEmailVerified === false) {
+      toast.error(
+        "To protect your data, file uploads are restricted for unverified accounts. Please verify your email."
+      );
+      return;
+    }
+
+    const failedAttachments = attachments.filter((a) => a.status === "error");
+    if (failedAttachments.length > 0) {
+      toast.error("Some file uploads failed. Please remove them before sending.");
+      return;
+    }
 
     const uploadedUrls = attachments.filter((a) => a.status === "done" && a.url).map((a) => a.url);
 
@@ -1472,8 +1530,8 @@ export default function QuoteDetailsPage() {
               const rawAttachments = msg.content?.attachedFiles || msg.attachments || msg.attachedFiles || msg.content?.attachedFilesUrl || msg.attachedFilesUrl || [];
               const attachmentList = (Array.isArray(rawAttachments) ? rawAttachments : []).map((file: any) =>
                 typeof file === "string"
-                  ? { url: file, filename: file.split("/").pop()?.split("?")[0] || "File" }
-                  : { url: file.url, filename: file.filename || file.name || (file.url ? file.url.split("/").pop()?.split("?")[0] : "File") }
+                  ? { url: file, filename: file.split("/").pop()?.split("?")[0] || "File", size: 0 }
+                  : { url: file.url, filename: file.filename || file.name || (file.url ? file.url.split("/").pop()?.split("?")[0] : "File"), size: file.size || 0 }
               ).filter((f: any) => Boolean(f.url));
 
               return (
@@ -1531,8 +1589,11 @@ export default function QuoteDetailsPage() {
                                   </div>
                                 </div>
                               </div>
-                              <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex items-center justify-center h-10 min-h-[40px]">
-                                <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={filename}>{filename}</span>
+                              <div className="bg-gray-50 px-2 py-1.5 border-t border-gray-200 flex flex-col items-center justify-center min-h-[40px]">
+                                <span className="text-[10px] font-medium text-gray-700 truncate w-full px-1" title={filename}>{filename}</span>
+                                {file.size > 0 && (
+                                  <span className="text-[9px] text-gray-400 font-normal">{formatFileSize(file.size)}</span>
+                                )}
                               </div>
                             </a>
                           );
@@ -1631,7 +1692,8 @@ export default function QuoteDetailsPage() {
                       <p className="text-[11px] font-medium text-gray-700 truncate w-full" title={att.name}>
                         {att.name}
                       </p>
-                      <p className="text-[10px] text-gray-400 font-medium capitalize">
+                      <p className="text-[10px] text-gray-400 font-medium truncate">
+                        {(att.size || att.file?.size) ? `${formatFileSize(att.size || att.file?.size)} · ` : ""}
                         {att.status === "done" ? "Ready" : att.status === "uploading" ? "Uploading..." : "Failed"}
                       </p>
                     </div>
@@ -1647,7 +1709,7 @@ export default function QuoteDetailsPage() {
               type="file"
               multiple
               className="hidden"
-              accept="image/*,.pdf,.doc,.docx"
+              accept="*/*"
               onChange={handleFileChange}
             />
             <button

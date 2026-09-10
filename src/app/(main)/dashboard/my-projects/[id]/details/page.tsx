@@ -362,31 +362,73 @@ export default function ProjectDetailsPage() {
     }
   };
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+  const formatFileSize = (bytes: number): string => {
+    if (!bytes || bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files).map(file => ({
+      const files = Array.from(e.target.files);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+
+      const user = authService.getUser();
+      if (user && user.isEmailVerified === false) {
+        toast.error(
+          "To protect your data, file uploads are restricted for unverified accounts. Please verify your email."
+        );
+        return;
+      }
+
+      const validFiles: File[] = [];
+      const oversizedFiles: string[] = [];
+
+      files.forEach((file) => {
+        if (file.size > MAX_FILE_SIZE) {
+          oversizedFiles.push(`${file.name} (${formatFileSize(file.size)})`);
+        } else {
+          validFiles.push(file);
+        }
+      });
+
+      if (oversizedFiles.length > 0) {
+        toast.error("File size limit exceeded (Max 10 MB)", {
+          description: `The following file(s) exceed 10 MB: ${oversizedFiles.join(", ")}`,
+          duration: 10000,
+        });
+      }
+
+      if (validFiles.length === 0) return;
+
+      const newFiles = validFiles.map((file) => ({
         id: Math.random().toString(36).slice(2, 11),
         file,
         status: "uploading",
         name: file.name,
-        type: file.type
+        type: file.type,
       }));
 
-      setAttachments(prev => [...prev, ...newFiles]);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setAttachments((prev) => [...prev, ...newFiles]);
 
       for (const att of newFiles) {
         try {
           const pId = project._id || project.id || project.projectId || project.project_id || project.orderId || project.uuid || project.uid || project.project?._id || project.project?.id;
           const res = await mediaService.uploadImage({
             file: att.file,
-            folder: `project-attachments/${pId}`
+            folder: `project-attachments/${pId}`,
           });
 
           const url = res.data?.secure_url || res.data?.url || res.secure_url || "";
+          if (!url) throw new Error("Failed to get URL");
           updateAttachment(att.id, { status: "done", url });
         } catch (error) {
           console.error("Upload failed for file:", att.name, error);
+          toast.error(`Upload failed for ${att.name}`);
           updateAttachment(att.id, { status: "error" });
         }
       }
@@ -394,18 +436,35 @@ export default function ProjectDetailsPage() {
   };
 
   const updateAttachment = (id: string, updates: any) => {
-    setAttachments(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+    setAttachments((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates } : a)));
   };
 
   const removeAttachment = (id: string) => {
-    setAttachments(prev => prev.filter(a => a.id !== id));
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
   };
 
   const handleSendMessage = async () => {
     if (!requireAuth()) return;
-    if (attachments.some(a => a.status === "uploading")) return;
+    if (attachments.some((a) => a.status === "uploading")) {
+      toast.info("Please wait for file upload to complete before sending.");
+      return;
+    }
 
-    const uploadedUrls = attachments.filter(a => a.status === "done" && a.url).map(a => a.url);
+    const user = authService.getUser();
+    if (attachments.length > 0 && user && user.isEmailVerified === false) {
+      toast.error(
+        "To protect your data, file uploads are restricted for unverified accounts. Please verify your email."
+      );
+      return;
+    }
+
+    const failedAttachments = attachments.filter((a) => a.status === "error");
+    if (failedAttachments.length > 0) {
+      toast.error("Some file uploads failed. Please remove them before sending.");
+      return;
+    }
+
+    const uploadedUrls = attachments.filter((a) => a.status === "done" && a.url).map((a) => a.url);
 
     if (messageText.trim() || uploadedUrls.length > 0) {
       setIsSending(true);
@@ -419,6 +478,7 @@ export default function ProjectDetailsPage() {
         }
       } catch (error) {
         console.error("Failed to send message:", error);
+        toast.error("Failed to send message");
       } finally {
         setIsSending(false);
       }
@@ -1728,7 +1788,8 @@ export default function ProjectDetailsPage() {
                         <p className="text-[11px] font-medium text-gray-700 truncate w-full" title={att.name}>
                           {att.name}
                         </p>
-                        <p className="text-[10px] text-gray-400 font-medium capitalize">
+                        <p className="text-[10px] text-gray-400 font-medium truncate">
+                          {(att.size || att.file?.size) ? `${formatFileSize(att.size || att.file?.size)} · ` : ""}
                           {att.status === "uploading" ? "Uploading..." : att.status === "done" ? "Ready" : att.status}
                         </p>
                       </div>
@@ -1759,7 +1820,7 @@ export default function ProjectDetailsPage() {
                 </span>
               )}
             </button>
-            <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileUpload} />
+            <input type="file" ref={fileInputRef} className="hidden" multiple accept="*/*" onChange={handleFileUpload} />
 
             <div className="flex gap-3 w-full sm:w-auto justify-end">
               <button

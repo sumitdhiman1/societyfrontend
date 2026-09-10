@@ -145,23 +145,25 @@ export default function ProjectTabs() {
         try {
           const res = await projectService.getDashboardStats(activeTab);
           if (res?.data) {
-            const mapped = res.data.projects.map((p: any) => {
-              const pid = p._id || p.id || p.projectId;
-              return {
-                id: pid,
-                name: p.title,
-                number: pid ? `#${pid.slice(-8).toUpperCase()}` : "#00000000",
-                started: new Date(p.startDate).toLocaleDateString("en-US", {
-                  month: "numeric",
-                  day: "numeric",
-                  year: "2-digit",
-                }),
-                deadline: "Ongoing",
-                status: p.status.toLowerCase() === "cancelled" ? "canceled" : p.status.toLowerCase(),
-                messages: p.unreadMessagesCount,
-                infoUrl: p.infoUrl || `/dashboard/my-projects/${pid}`,
-              };
-            });
+            const mapped = res.data.projects
+              .filter((p: any) => p.type !== "analysis" && !p.isAnalysis)
+              .map((p: any) => {
+                const pid = p._id || p.id || p.projectId;
+                return {
+                  id: pid,
+                  name: p.title,
+                  number: pid ? `#${pid.slice(-8).toUpperCase()}` : "#00000000",
+                  started: new Date(p.startDate).toLocaleDateString("en-US", {
+                    month: "numeric",
+                    day: "numeric",
+                    year: "2-digit",
+                  }),
+                  deadline: "Ongoing",
+                  status: p.status.toLowerCase() === "cancelled" ? "canceled" : p.status.toLowerCase(),
+                  messages: p.unreadMessagesCount,
+                  infoUrl: p.infoUrl || `/dashboard/my-projects/${pid}`,
+                };
+              });
             setProjects(mapped);
             if (res.data.counts) setCounts(res.data.counts);
           }
