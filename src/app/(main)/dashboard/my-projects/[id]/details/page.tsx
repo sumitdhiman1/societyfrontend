@@ -581,7 +581,7 @@ export default function ProjectDetailsPage() {
         </div>
       )}
 
-      {project.status === "completed" && project.billingType === "monthly" && !project.calculatorSpecs && (
+      {project.status === "completed" && project.billingType === "monthly" && project.type !== "custom" && !project.quoteId && !project.calculatorSpecs && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <span className="text-2xl" aria-hidden="true">🔄</span>
           <div className="flex-1">
@@ -934,7 +934,7 @@ export default function ProjectDetailsPage() {
           </div>
 
           {/* Subscription & Auto-Renewal Card — only for genuine monthly/recurring projects */}
-          {project.billingType === "monthly" && !project.calculatorSpecs && project.autoRenewal !== undefined && (
+          {project.billingType === "monthly" && project.type !== "custom" && !project.quoteId && project.type !== "analysis" && !project.calculatorSpecs && (
             <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 sm:p-7 mt-8">
               <h3 className="text-xs font-bold text-[#1E293B] uppercase tracking-wider mb-2 font-sans">
                 SUBSCRIPTION &amp; AUTO-RENEWAL
