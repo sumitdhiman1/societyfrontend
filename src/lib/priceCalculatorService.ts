@@ -24,7 +24,12 @@ export interface CalculatorQuestion {
     answerKey?: string;
     answerKeys?: string[];
   };
-  config?: { placeholder?: string; minValue?: number };
+  config?: {
+    placeholder?: string;
+    minValue?: number;
+    maxValue?: number;
+    targetCategory?: string;
+  };
   answers: CalculatorAnswer[];
 }
 
