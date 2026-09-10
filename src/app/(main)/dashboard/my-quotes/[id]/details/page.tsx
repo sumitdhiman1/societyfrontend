@@ -1554,7 +1554,14 @@ export default function QuoteDetailsPage() {
                       (!messageText.trim() && attachments.length === 0) ||
                       attachments.some((a) => a.status === "uploading"))
                   }
-                  className="flex-1 sm:flex-none bg-[#7B8BF5] hover:bg-[#5356ff] text-white font-bold text-xs py-2.5 px-7 rounded-lg transition-colors cursor-pointer shadow-sm disabled:opacity-50"
+                  className={`flex-1 sm:flex-none font-bold text-xs py-2.5 px-7 rounded-lg transition-colors shadow-sm ${
+                    isLoggedIn &&
+                    (isSending ||
+                      (!messageText.trim() && attachments.length === 0) ||
+                      attachments.some((a) => a.status === "uploading"))
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-[#4343F0] hover:bg-[#3232b7] text-white cursor-pointer active:scale-95"
+                  }`}
                 >
                   {isSending ? <LoadingDots text="Sending" /> : "Send Message"}
                 </button>
