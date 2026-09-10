@@ -11,6 +11,7 @@ import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
 import { io, Socket } from "socket.io-client";
+import { toast } from "sonner";
 
 const formatStatusTitle = (rawTitle: string): string => {
   if (!rawTitle) return "System notification";
@@ -512,7 +513,7 @@ export default function AnalysisDetailsPage() {
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
-  const formatFileSize = (bytes: number): string => {
+  const formatFileSize = (bytes?: number): string => {
     if (!bytes || bytes === 0) return "0 B";
     const k = 1024;
     const sizes = ["B", "KB", "MB", "GB"];

@@ -348,7 +348,7 @@ export default function QuoteDetailsPage() {
   const [editedTitle, setEditedTitle] = useState("");
   const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [attachments, setAttachments] = useState<
-    Array<{ id: string; name: string; status: "uploading" | "done" | "error"; url?: string; file?: File }>
+    Array<{ id: string; name: string; status: "uploading" | "done" | "error"; url?: string; file?: File; size?: number }>
   >([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -603,7 +603,7 @@ export default function QuoteDetailsPage() {
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
-  const formatFileSize = (bytes: number): string => {
+  const formatFileSize = (bytes?: number): string => {
     if (!bytes || bytes === 0) return "0 B";
     const k = 1024;
     const sizes = ["B", "KB", "MB", "GB"];
