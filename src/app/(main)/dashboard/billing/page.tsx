@@ -350,7 +350,7 @@ export default function BillingPage() {
                         {new Date(inv.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 text-sm font-black text-gray-800">
-                        {new Intl.NumberFormat("en-US", { style: "currency", currency: inv.currency || "USD" }).format(inv.amount)}
+                        {new Intl.NumberFormat("en-US", { style: "currency", currency: (inv.currency || "USD").toUpperCase() }).format(inv.amount)}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${

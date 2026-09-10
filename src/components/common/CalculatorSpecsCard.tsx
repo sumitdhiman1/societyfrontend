@@ -123,6 +123,14 @@ function renderAnswerValue(sel: CalculatorSelection): React.ReactNode {
   );
 }
 
+function cleanQuestionTitle(text?: string): string {
+  if (!text) return "";
+  let cleaned = text.trim();
+  // Strip trailing colon after ? or . or standalone : to keep only the original question
+  cleaned = cleaned.replace(/\?:\s*$/, "?").replace(/\.:\s*$/, ".").replace(/:\s*$/, "").trim();
+  return cleaned;
+}
+
 export default function CalculatorSpecsCard({ specs }: Props) {
   if (!specs) return null;
 
@@ -230,7 +238,7 @@ export default function CalculatorSpecsCard({ specs }: Props) {
         {questionSelections.length > 0 ? (
           questionSelections.map((sel, idx) => {
             // Use stored questionText if available, otherwise fall back to questionKey
-            const qTitle = sel.questionText || sel.questionKey;
+            const qTitle = cleanQuestionTitle(sel.questionText || sel.questionKey);
             return (
               <div
                 key={idx}
@@ -249,7 +257,7 @@ export default function CalculatorSpecsCard({ specs }: Props) {
                     marginBottom: "6px",
                   }}
                 >
-                  {qTitle}:
+                  {qTitle}
                 </div>
                 <div
                   style={{
@@ -284,7 +292,7 @@ export default function CalculatorSpecsCard({ specs }: Props) {
                   marginBottom: "4px",
                 }}
               >
-                {item.item}:
+                {cleanQuestionTitle(item.item)}
               </div>
               <div
                 style={{
@@ -317,7 +325,7 @@ export default function CalculatorSpecsCard({ specs }: Props) {
               marginBottom: "6px",
             }}
           >
-            What is your desired project timeline?:
+            What is your desired project timeline?
           </div>
           <div
             style={{

@@ -1104,7 +1104,7 @@ export default function ProjectDetailsPage() {
                           <p className="text-xs sm:text-sm text-[#3B82F6] font-medium mb-1.5">{description}</p>
                         ) : null}
                         <div className="flex items-baseline gap-1">
-                          <span className="text-xl sm:text-2xl font-black text-[#1E3A8A]">${amount.toFixed(0)}</span>
+                          <span className="text-xl sm:text-2xl font-black text-[#1E3A8A]">{currency === "EUR" ? "€" : "$"}{amount.toFixed(0)}</span>
                           <span className="text-[11px] font-bold text-[#3B82F6] uppercase">{currency}</span>
                         </div>
                       </div>

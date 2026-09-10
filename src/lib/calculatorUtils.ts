@@ -721,17 +721,18 @@ export function seoModeNeedsMonths(mode: string): boolean {
 }
 
 export function formatDaysToTimelineLabel(days: number): string {
-  if (days <= 2) return "24 - 48 hours";
-  if (days <= 3.5) return "3 - 4 days";
-  if (days <= 5) return "3 - 5 business days";
+  if (days <= 0) return "";
+  if (days === 1) return "1 day";
+  if (days <= 4) return `${days} days`;
   if (days <= 7) return "1 week";
-  if (days <= 10) return "7 - 10 business days";
+  if (days <= 10) return "10 days";
   if (days <= 14) return "2 weeks";
   if (days <= 21) return "3 weeks";
   if (days <= 28) return "4 weeks";
   if (days <= 35) return "5 weeks";
   if (days <= 42) return "6 weeks";
   if (days <= 60) return "8 weeks";
+  if (days <= 90) return "12 weeks";
   return `${Math.ceil(days / 7)} weeks`;
 }
 
@@ -1099,7 +1100,7 @@ export function formatCalculatorAnswerLabel(
   return text;
 }
 
-/** Append (Optional) for optional text/number on marketing, SEO, and graphics. */
+/** Append (Optional) for optional text/number questions across all calculators (website, marketing, SEO, graphics). */
 export function formatCalculatorQuestionText(
   text?: string,
   isRequired?: boolean,
@@ -1107,11 +1108,12 @@ export function formatCalculatorQuestionText(
   categoryKey?: string
 ): string {
   if (!text) return "";
-  const trimmed = text.replace(/\s*\(Optional\)/gi, "").trim();
+  let trimmed = text.replace(/\s*\(Optional\)/gi, "").trim();
+  if (/Tell us more about your goals and target audience$/i.test(trimmed)) {
+    trimmed = `${trimmed}:`;
+  }
   const supportsOptionalLabel = questionType === "text" || questionType === "number";
-  const showOptional =
-    categoryKey === "marketing" || categoryKey === "seo" || categoryKey === "graphics";
-  if (showOptional && supportsOptionalLabel && isRequired !== true) {
+  if (supportsOptionalLabel && isRequired !== true) {
     return `${trimmed} (Optional)`;
   }
   return trimmed;

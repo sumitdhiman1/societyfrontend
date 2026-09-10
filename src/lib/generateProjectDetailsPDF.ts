@@ -510,7 +510,7 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
                 <tr style="background-color: #FFFFFF; border-top: ${idx > 0 ? "1px solid #E2E8F0" : "none"};">
                   <td style="padding: 14px 20px; font-size: 13px; font-weight: 700; color: #111827; text-align: left;">${item.name}</td>
                   <td style="padding: 14px 20px; font-size: 13px; font-weight: 600; color: #111827; text-align: center;">${item.duration}</td>
-                  <td style="padding: 14px 20px; font-size: 13px; font-weight: 700; color: #111827; text-align: right;">${new Intl.NumberFormat("en-US", { style: "currency", currency: d.currency, minimumFractionDigits: 2 }).format(item.amount)}</td>
+                  <td style="padding: 14px 20px; font-size: 13px; font-weight: 700; color: #111827; text-align: right;">${new Intl.NumberFormat("en-US", { style: "currency", currency: (d.currency || "USD").toUpperCase(), minimumFractionDigits: 2 }).format(item.amount)}</td>
               </tr>
             `
               )
@@ -527,7 +527,7 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
                   <tr style="background-color: #FFFFFF; border-bottom: 1px solid #E2E8F0;">
                     <td style="padding: 14px 20px; font-size: 13px; font-weight: 700; color: #111827; text-align: left;">${addon.name}</td>
                     <td style="padding: 14px 20px; font-size: 13px; font-weight: 600; color: #111827; text-align: center;">${addon.duration}</td>
-                    <td style="padding: 14px 20px; font-size: 13px; font-weight: 700; color: #111827; text-align: right;">${new Intl.NumberFormat("en-US", { style: "currency", currency: d.currency, minimumFractionDigits: 2 }).format(addon.amount)}</td>
+                    <td style="padding: 14px 20px; font-size: 13px; font-weight: 700; color: #111827; text-align: right;">${new Intl.NumberFormat("en-US", { style: "currency", currency: (d.currency || "USD").toUpperCase(), minimumFractionDigits: 2 }).format(addon.amount)}</td>
                 </tr>
               `
                 )

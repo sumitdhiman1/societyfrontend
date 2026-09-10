@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 export type PaymentProcessStep =
   | "idle"
@@ -75,6 +76,11 @@ export default function PaymentProcessingModal({
 }: PaymentProcessingModalProps) {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -91,6 +97,7 @@ export default function PaymentProcessingModal({
   }, [isOpen]);
 
   if (!shouldRender || step === "idle") return null;
+  if (!mounted || typeof document === "undefined") return null;
 
   const currentInfo =
     step === "error"
@@ -105,10 +112,10 @@ export default function PaymentProcessingModal({
   const displayDesc = customMessage || currentInfo.description;
   const isSuccess = step === "success";
 
-  return (
+  const content = (
     <div
-      className={`fixed inset-0 z-[9999] flex items-center justify-center transition-opacity duration-300 px-4 select-none ${
-        isOpen ? "opacity-100" : "opacity-0"
+      className={`fixed inset-0 z-[99999] flex items-center justify-center transition-opacity duration-300 px-4 select-none ${
+        isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
       }`}
     >
       {/* Dimmed backdrop */}
@@ -224,4 +231,6 @@ export default function PaymentProcessingModal({
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import CloseIcon from "@/components/icons/close";
 
 interface StatusPopupProps {
@@ -24,6 +25,11 @@ export default function StatusPopup({
   actionButton,
 }: StatusPopupProps) {
   const [shouldRender, setRender] = useState(isOpen);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (isOpen) setRender(true);
@@ -34,15 +40,17 @@ export default function StatusPopup({
   }, [isOpen]);
 
   if (!shouldRender && !isOpen) return null;
+  if (!mounted || typeof document === "undefined") return null;
 
   const isSuccess = type === "success";
   const iconColor = isSuccess ? "text-[#5356ff]" : "text-red-500";
   const bgColor = isSuccess ? "bg-[#5356ff]/10" : "bg-red-50";
 
-  return (
+  const content = (
     <div
-      className={`fixed inset-0 z-[100] flex items-center justify-center transition-opacity duration-300 px-4 ${isOpen ? "opacity-100" : "opacity-0"
-        }`}
+      className={`fixed inset-0 z-[99999] flex items-center justify-center transition-opacity duration-300 px-4 ${
+        isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+      }`}
     >
       <button
         type="button"
@@ -51,8 +59,9 @@ export default function StatusPopup({
         aria-label="Close popup"
       />
       <div
-        className={`relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-8 transform transition-all duration-300 ${isOpen ? "scale-100 translate-y-0" : "scale-95 translate-y-4"
-          }`}
+        className={`relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-8 transform transition-all duration-300 ${
+          isOpen ? "scale-100 translate-y-0" : "scale-95 translate-y-4"
+        }`}
       >
         <button
           type="button"
@@ -101,8 +110,9 @@ export default function StatusPopup({
           <button
             type="button"
             onClick={actionButton?.onClick || onClose}
-            className={`w-full py-3.5 rounded-xl font-bold text-white transition-all shadow-lg hover:shadow-xl active:scale-[0.98] cursor-pointer ${isSuccess ? "bg-[#5356ff] hover:bg-[#3232b7]" : "bg-red-500 hover:bg-red-600"
-              }`}
+            className={`w-full py-3.5 rounded-xl font-bold text-white transition-all shadow-lg hover:shadow-xl active:scale-[0.98] cursor-pointer ${
+              isSuccess ? "bg-[#5356ff] hover:bg-[#3232b7]" : "bg-red-500 hover:bg-red-600"
+            }`}
           >
             {actionButton?.text || (isSuccess ? "Continue" : "Try Again")}
           </button>
@@ -110,4 +120,6 @@ export default function StatusPopup({
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }

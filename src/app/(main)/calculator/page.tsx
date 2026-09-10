@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { loadStripe } from "@stripe/stripe-js";
 import {
@@ -822,8 +823,8 @@ const ProposalPreview = ({
       </div>
 
       {/* Website Email Proposal Modal */}
-      {isEmailModalOpen && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-[#00102E]/60 backdrop-blur-sm animate-in fade-in duration-200">
+      {isEmailModalOpen && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-[#00102E]/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div
             className="fixed inset-0 cursor-default"
             onClick={() => {
@@ -935,7 +936,8 @@ const ProposalPreview = ({
               </form>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

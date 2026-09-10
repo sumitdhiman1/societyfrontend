@@ -111,7 +111,7 @@ export default function RenewalsPage() {
                       <div className="text-right">
                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Renewal Cost</p>
                         <p className="text-xl font-black text-gray-800">
-                          {new Intl.NumberFormat("en-US", { style: "currency", currency: project.currency || "USD" }).format(renewalPrice)}
+                          {new Intl.NumberFormat("en-US", { style: "currency", currency: (project.currency || "USD").toUpperCase() }).format(renewalPrice)}
                         </p>
                       </div>
                       <div className="flex items-center gap-4">
