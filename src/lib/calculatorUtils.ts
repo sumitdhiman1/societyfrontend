@@ -903,17 +903,16 @@ function isMarketingSegmentQuestionVisible(
   return hasMarketingPaidSelected(selections, questions);
 }
 
+type QuestionVisibilityInput = Partial<CalculatorQuestion> & {
+  key?: string;
+  text?: string;
+  config?: CalculatorQuestion["config"];
+};
+
 export function isQuestionVisible(
-  question: {
-    key?: string;
-    roleId?: number;
-    text?: string;
-    order?: number;
-    conditionalOn?: ConditionalOn;
-    config?: { targetCategory?: string };
-  },
+  question: QuestionVisibilityInput,
   selections: Record<string, CalculatorSelection>,
-  questions?: any[]
+  questions?: QuestionVisibilityInput[]
 ): boolean {
   if (isGraphicsItemsQuestion(question)) {
     const catKeys = getGraphicsCategoryKeys(selections, questions);
@@ -1309,10 +1308,11 @@ export function formatCalculatorDisplayAmount(
 
 export function pruneHiddenSelections(
   selections: Record<string, CalculatorSelection>,
-  questions: { key: string; roleId?: number; text?: string; order?: number; conditionalOn?: ConditionalOn; answers?: any[] }[]
+  questions: QuestionVisibilityInput[]
 ): Record<string, CalculatorSelection> {
   const next = { ...selections };
   for (const q of questions) {
+    if (!q.key) continue;
     if (!isQuestionVisible(q, next, questions)) delete next[q.key];
   }
 
