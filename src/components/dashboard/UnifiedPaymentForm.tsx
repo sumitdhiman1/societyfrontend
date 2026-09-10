@@ -13,6 +13,7 @@ import {
 import { paymentService } from "@/lib/paymentService";
 import { authService } from "@/lib/authService";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useCurrency } from "@/context/CurrencyContext";
 import StatusPopup from "@/components/common/StatusPopup";
 type PaymentProcessStep = "idle" | "preparing" | "gateway" | "bank_auth" | "confirming" | "activating" | "success" | "error";
@@ -945,9 +946,9 @@ function PaymentForm({
                 </label>
                 <p className="mt-2 text-[10px] text-gray-500 italic">
                   NOTE: Business details saved in your account are always used for invoicing.
-                  <a href="/dashboard/settings" className="ml-1 text-indigo-600 hover:underline">
+                  <Link href="/dashboard/myAccount" className="ml-1 text-indigo-600 hover:underline">
                     Link to account section
-                  </a>
+                  </Link>
                 </p>
               </div>
 

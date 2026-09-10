@@ -27,6 +27,9 @@ export class QuoteService {
   }
 
   async updateQuote(id: string, data: any) {
+    if (data?.projectTitle && !data?.action) {
+      return await this.renameQuote(id, data.projectTitle);
+    }
     return await this.client.put(`/quotes/user/updatequote/${id}`, data);
   }
 

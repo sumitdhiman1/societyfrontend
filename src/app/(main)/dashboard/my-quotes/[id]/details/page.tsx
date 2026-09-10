@@ -893,7 +893,14 @@ export default function QuoteDetailsPage() {
                     type="text"
                     value={editedTitle}
                     onChange={(e) => setEditedTitle(e.target.value)}
-                    className="text-[24px] md:text-[30px] font-bold text-gray-800 border-b-2 border-blue-500 focus:outline-none bg-transparent"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveTitle();
+                      if (e.key === "Escape") {
+                        setIsEditingTitle(false);
+                        setEditedTitle(quote.projectTitle || "");
+                      }
+                    }}
+                    className="text-[24px] md:text-[30px] font-bold text-gray-800 border-b-2 border-[#4343F0] focus:outline-none bg-transparent"
                     autoFocus
                   />
                   <button
