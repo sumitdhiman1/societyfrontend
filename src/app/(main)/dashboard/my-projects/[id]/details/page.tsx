@@ -15,10 +15,12 @@ import DeadlineTooltip from "@/components/common/DeadlineTooltip";
 import RecommendedSolutions from "@/components/common/RecommendedSolutions";
 import CalculatorSpecsCard from "@/components/common/CalculatorSpecsCard";
 import { getMainCalculatorCategory, getProjectEstimatedDeadline } from "@/lib/calculatorUtils";
+import { capitalizeCurrencyInText } from "@/lib/currencyUtils";
 import { toast } from "sonner";
 import { paymentService } from "@/lib/paymentService";
 
-const renderStatusMessageText = (text: string, attachments?: any[]) => {
+const renderStatusMessageText = (rawText: string, attachments?: any[]) => {
+  const text = capitalizeCurrencyInText(rawText);
   if (!text) return null;
 
   const pdfAttachment = attachments?.find((a: any) => {
@@ -1164,7 +1166,7 @@ export default function ProjectDetailsPage() {
                     </h3>
                     {rawText ? (
                       <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
-                        {rawText}
+                        {capitalizeCurrencyInText(rawText)}
                       </p>
                     ) : null}
                   </div>

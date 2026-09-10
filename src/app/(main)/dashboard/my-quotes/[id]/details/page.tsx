@@ -11,6 +11,7 @@ import { projectService } from "@/lib/projectService";
 import { mediaService } from "@/lib/mediaService";
 import { packagesService } from "@/lib/packagesService";
 import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
+import { capitalizeCurrencyInText } from "@/lib/currencyUtils";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
 import { io, Socket } from "socket.io-client";
 
@@ -973,8 +974,8 @@ export default function QuoteDetailsPage() {
 
                 return (
                   <div key={msgId} className="text-center py-6 px-4 bg-white/70 rounded-xl border border-gray-200" ref={isLast ? messagesEndRef : null}>
-                    <h3 className="text-lg font-bold text-gray-700 mb-1">{title}</h3>
-                    <p className="text-sm font-medium text-gray-500">{text}</p>
+                    <h3 className="text-lg font-bold text-gray-700 mb-1">{capitalizeCurrencyInText(title)}</h3>
+                    <p className="text-sm font-medium text-gray-500">{capitalizeCurrencyInText(text)}</p>
                   </div>
                 );
               }

@@ -71,3 +71,9 @@ export function formatActiveCurrency(
   }).format(val);
 }
 
+export function capitalizeCurrencyInText(text?: string): string {
+  if (!text) return "";
+  return text.replace(/\b(eur|usd|gbp|cad|aud)\b/gi, (match) => match.toUpperCase());
+}
+
+

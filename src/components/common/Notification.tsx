@@ -1,6 +1,7 @@
 import BellIcon from "@/components/icons/bell";
 import EyeIcon from "@/components/icons/eye";
 import { notificationService } from "@/lib/services";
+import { capitalizeCurrencyInText } from "@/lib/currencyUtils";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -184,10 +185,10 @@ const Notification = ({
                     <p
                       className={`text-base sm:text-base font-bold truncate mb-1 ${n.isRead ? "text-gray-600" : "text-gray-700"}`}
                     >
-                      {n.title}
+                      {capitalizeCurrencyInText(n.title)}
                     </p>
                     <p className="text-xs sm:text-sm text-gray-500 line-clamp-2 leading-relaxed">
-                      {n.message}
+                      {capitalizeCurrencyInText(n.message)}
                     </p>
                   </div>
                   <button
