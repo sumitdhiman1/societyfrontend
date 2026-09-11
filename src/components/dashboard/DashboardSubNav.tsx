@@ -11,7 +11,6 @@ const navItems = [
   { name: "Payment History", href: "/dashboard/payment-history" },
   { name: "Renewals", href: "/dashboard/renewals" },
   { name: "Credits", href: "/dashboard/credits" },
-  { name: "Referrals", href: "/dashboard/referrals" },
   { name: "Notification Settings", href: "/dashboard/settings" },
 ];
 

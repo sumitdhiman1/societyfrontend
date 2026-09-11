@@ -115,16 +115,6 @@ export const Profile = ({
           >
             Help & Support
           </button>
-          <button
-            onMouseDown={(e) => {
-              e.preventDefault();
-              setProfileDropdownOpen(false);
-              router.push("/dashboard/referrals");
-            }}
-            className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors"
-          >
-            Refer a Friend (Get Free Credits!)
-          </button>
 
           <div className="border-t border-gray-200 my-2" />
 
