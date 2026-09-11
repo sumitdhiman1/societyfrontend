@@ -8,6 +8,7 @@ import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";
 import { packagesService } from "@/lib/packagesService";
 import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
+import LoadingDots from "@/components/common/LoadingDots";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
 import { io, Socket } from "socket.io-client";
@@ -420,7 +421,7 @@ export default function AnalysisDetailsPage() {
       if (isCancelled) return;
 
       const user = authService.getUser();
-      const uId = user?.id || user?._id;
+      const uId = user?.id || user?._id || authService.getUserId();
 
       const socketUrl =
         process.env.NEXT_PUBLIC_SOCKET_URL ||
@@ -1551,9 +1552,16 @@ export default function AnalysisDetailsPage() {
                         (!messageText.trim() &&
                           attachments.filter((a) => a.status === "done").length === 0))
                     }
-                    className="flex-1 sm:flex-none px-7 py-2.5 bg-[#7B8BF5] hover:bg-[#5356ff] text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-sm"
+                    className={`flex-1 sm:flex-none px-7 py-2.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                      isLoggedIn &&
+                      (isSending ||
+                        isUploading ||
+                        (!messageText.trim() && attachments.filter((a) => a.status === "done").length === 0))
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
+                        : "bg-[#4343F0] hover:bg-[#3232b7] text-white cursor-pointer active:scale-95"
+                    }`}
                   >
-                    {isSending ? "Sending..." : "Send Message"}
+                    {isSending ? <LoadingDots text="Sending" /> : isUploading ? "Uploading..." : "Send Message"}
                   </button>
                 </div>
               </div>

@@ -328,8 +328,10 @@ body {
 
 @media screen and (max-width: 920px) {
   .formobile-cs {
-    right: -58px;
-    width: 364px;
-    top: 38px;
+    right: 55px;
+    width: calc(100vw - 70px);
+    max-width: 360px;
+    top: 100%;
+    margin-top: 10px;
   }
 }

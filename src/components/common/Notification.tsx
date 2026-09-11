@@ -31,13 +31,14 @@ const Notification = ({
   const [notifications, setNotifications] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const loadNotifications = async (page: number, append = false) => {
+  const loadNotifications = async (page: number, append = false, forceFresh = false) => {
     if (!isAuthenticated || (loading && !append)) return;
     try {
       setLoading(true);
       const res = await notificationService.getAllNotifications({
         page,
         limit: 10,
+        forceFresh,
       });
       const { notifications: items, pagination } = res.data || {
         notifications: [],
@@ -59,7 +60,7 @@ const Notification = ({
 
   useEffect(() => {
     if (notificationsOpen && isAuthenticated) {
-      loadNotifications(1, false);
+      loadNotifications(1, false, true);
     }
   }, [notificationsOpen, isAuthenticated]);
 
@@ -125,6 +126,7 @@ const Notification = ({
     <div className="flex items-center justify-center shrink-0" ref={notificationRef}>
       <div className="relative flex items-center justify-center shrink-0">
         <button
+          type="button"
           className="w-10 h-10 rounded-full bg-white text-gray-700 flex items-center justify-center transition-transform hover:scale-105 shadow-sm shrink-0"
           onClick={() => setNotificationsOpen(!notificationsOpen)}
         >
@@ -138,12 +140,16 @@ const Notification = ({
       </div>
 
       {notificationsOpen && (
-        <div className="absolute left-auto top-[100%] rounded-[16px]  right-[120px] mt-[14px] w-[500px] bg-white shadow-2xl z-50  text-left overflow-hidden formobile-cs">
+        <div
+          className="absolute top-[100%] mt-[14px] right-[120px] rounded-[16px] w-[500px] bg-white shadow-2xl z-50 text-left overflow-hidden formobile-cs pointer-events-auto"
+          onMouseDown={(e) => e.stopPropagation()}
+        >
           <div className="px-6 sm:px-8 py-5 sm:py-6 border-b border-gray-100 bg-white flex justify-between items-center">
             <h3 className="font-bold text-gray-700 text-base sm:text-lg">Notifications</h3>
             <div className="flex items-center gap-3 sm:gap-4">
               {unreadCount > 0 && (
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     markAllRead();
@@ -154,6 +160,7 @@ const Notification = ({
                 </button>
               )}
               <button
+                type="button"
                 onClick={() => {
                   router.push("/dashboard/notifications");
                   setNotificationsOpen(false);
@@ -192,6 +199,7 @@ const Notification = ({
                     </p>
                   </div>
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleNotificationClick(n);
@@ -212,6 +220,7 @@ const Notification = ({
           </div>
           <div className="px-8 py-5 border-t border-gray-100 bg-white text-center">
             <button
+              type="button"
               onClick={() => {
                 router.push("/dashboard/notifications");
                 setNotificationsOpen(false);
