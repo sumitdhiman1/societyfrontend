@@ -116,6 +116,11 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       });
 
       const handleMessageUpdate = (data: any) => {
+        // Drop any internal note events immediately
+        if (data?.isInternal || data?.message?.isInternal || data?.type === "internal_note" || data?.message?.type === "internal_note") {
+          return;
+        }
+
         const incomingId =
           data?.projectId ||
           data?.id ||
@@ -124,8 +129,14 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
           data?.project?.id;
         if (!incomingId || String(incomingId) === String(projectId)) {
           if (data?.project && (String(data.project._id || data.project.id) === String(projectId))) {
-            setProject((prev: any) => ({ ...prev, ...data.project }));
-          } else if (data?.message) {
+            const sanitizedProject = {
+              ...data.project,
+              messages: Array.isArray(data.project.messages)
+                ? data.project.messages.filter((m: any) => !m.isInternal && m.type !== "internal_note")
+                : data.project.messages,
+            };
+            setProject((prev: any) => ({ ...prev, ...sanitizedProject }));
+          } else if (data?.message && !data.message.isInternal && data.message.type !== "internal_note") {
             setProject((prev: any) => {
               if (!prev) return prev;
               const existingMsgs = prev.messages || [];

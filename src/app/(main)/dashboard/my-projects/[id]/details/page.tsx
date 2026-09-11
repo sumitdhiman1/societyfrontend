@@ -603,8 +603,11 @@ export default function ProjectDetailsPage() {
   // Date for delivery due divider
   const deliveryDueStr = project.deadline ? formatSubmittedDate(project.deadline) : "";
 
-  // Display all project messages and action notifications (filter out initial project creation/requirements/scope overview boilerplate)
+  // Display all project messages and action notifications (filter out internal notes and initial project creation/requirements/scope overview boilerplate)
   const displayMessages = (project.messages || []).filter((msg: any) => {
+    if (msg.isInternal || msg.content?.isInternal || msg.type === "internal_note" || msg.content?.type === "internal_note") {
+      return false;
+    }
     const rawTitle = (msg.content?.systemText || msg.message || "").toLowerCase();
     const cleanTitle = rawTitle
       .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}⏸▶️💳🛠️🎉✅🔄👤🚀📌🔔]/gu, "")
