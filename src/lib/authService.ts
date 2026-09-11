@@ -255,14 +255,18 @@ export class AuthService {
     if (!this.isAuthenticated()) return null;
     try {
       const client = new HttpClient(this.session);
-      const res = await client.get("/auth/me");
-      const user = res?.data?.user || res?.user || res?.data;
-      if (user) {
-        this.updateInternalUser(user);
-        return user;
+      let res = await client.get("/auth/me");
+      let user = res?.data?.user || res?.user || res?.data;
+      if (!user || (!user.id && !user._id && !user.email)) {
+        res = await client.get("/profile/getmyprofile");
+        user = res?.data?.user || res?.user || res?.data;
       }
-    } catch {
-      // ignore
+      if (user && (user.id || user._id || user.email)) {
+        this.updateInternalUser(user);
+        return this.getUser() || user;
+      }
+    } catch (e) {
+      console.warn("[AuthService] getProfile error:", e);
     }
     return this.getUser();
   }
@@ -270,8 +274,12 @@ export class AuthService {
   updateInternalUser(data: any) {
     const user = this.getUser();
     const updated = { ...(user || {}), ...data };
-    const updatedUser = btoa(JSON.stringify(updated));
-    document.cookie = `user_data=${updatedUser}; path=/; max-age=604800;`;
+    try {
+      const updatedUser = this.encodeUserData(updated);
+      document.cookie = `user_data=${updatedUser}; path=/; max-age=604800; SameSite=Lax;`;
+    } catch (e) {
+      console.error("Failed to update user_data cookie:", e);
+    }
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("auth:user_update"));
     }
@@ -298,8 +306,12 @@ export class AuthService {
       this.setTokens(accessToken, refreshToken || "");
     }
     if (user) {
-      const userData = btoa(JSON.stringify(user));
-      document.cookie = `user_data=${userData}; path=/; max-age=604800;`;
+      try {
+        const userData = this.encodeUserData(user);
+        document.cookie = `user_data=${userData}; path=/; max-age=604800; SameSite=Lax;`;
+      } catch (e) {
+        console.error("Failed to encode user data in social callback:", e);
+      }
     }
     window.dispatchEvent(new Event("auth:login"));
     claimPendingAnalyses();
