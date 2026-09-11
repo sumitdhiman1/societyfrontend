@@ -1835,6 +1835,7 @@ export default function ProjectDetailsPage() {
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={(e) => {
                   if (!requireAuth()) {
                     e.preventDefault();
@@ -1842,10 +1843,22 @@ export default function ProjectDetailsPage() {
                   }
                   handleSendMessage();
                 }}
-                disabled={isLoggedIn && (isSending || isUploading || (!messageText.trim() && attachments.filter(a => a.status === "done").length === 0))}
-                className="flex-1 sm:flex-none px-7 py-2.5 bg-[#7B8BF5] hover:bg-[#5356ff] text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                disabled={
+                  isLoggedIn &&
+                  (isSending ||
+                    isUploading ||
+                    (!messageText.trim() && attachments.filter((a) => a.status === "done").length === 0))
+                }
+                className={`flex-1 sm:flex-none px-7 py-2.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                  isLoggedIn &&
+                  (isSending ||
+                    isUploading ||
+                    (!messageText.trim() && attachments.filter((a) => a.status === "done").length === 0))
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
+                    : "bg-[#4343F0] hover:bg-[#3232b7] text-white cursor-pointer active:scale-95"
+                }`}
               >
-                {isSending ? "Sending..." : isUploading ? "Uploading..." : "Send Message"}
+                {isSending ? <LoadingDots text="Sending" /> : isUploading ? "Uploading..." : "Send Message"}
               </button>
             </div>
           </div>
