@@ -420,7 +420,7 @@ export default function AnalysisDetailsPage() {
       if (isCancelled) return;
 
       const user = authService.getUser();
-      const uId = user?.id || user?._id;
+      const uId = user?.id || user?._id || authService.getUserId();
 
       const socketUrl =
         process.env.NEXT_PUBLIC_SOCKET_URL ||

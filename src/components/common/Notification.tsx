@@ -31,13 +31,14 @@ const Notification = ({
   const [notifications, setNotifications] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const loadNotifications = async (page: number, append = false) => {
+  const loadNotifications = async (page: number, append = false, forceFresh = false) => {
     if (!isAuthenticated || (loading && !append)) return;
     try {
       setLoading(true);
       const res = await notificationService.getAllNotifications({
         page,
         limit: 10,
+        forceFresh,
       });
       const { notifications: items, pagination } = res.data || {
         notifications: [],
@@ -59,7 +60,7 @@ const Notification = ({
 
   useEffect(() => {
     if (notificationsOpen && isAuthenticated) {
-      loadNotifications(1, false);
+      loadNotifications(1, false, true);
     }
   }, [notificationsOpen, isAuthenticated]);
 

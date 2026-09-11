@@ -75,7 +75,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       if (isCancelled) return;
 
       const currentUserObj = authService.getUser();
-      const uId = currentUserObj?.id || currentUserObj?._id;
+      const uId = currentUserObj?.id || currentUserObj?._id || authService.getUserId();
 
       const socketUrl =
         process.env.NEXT_PUBLIC_SOCKET_URL ||

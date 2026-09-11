@@ -116,10 +116,19 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
       setIsAuthenticated(auth);
       if (auth) {
         const u = authService.getUser();
-        setCurrentUser(u);
-        if (u) setAvatar(u.avatar || null);
+        if (u) {
+          setCurrentUser(u);
+          if (u.avatar) setAvatar(u.avatar);
+        }
+        authService.getProfile().then((profile) => {
+          if (profile) {
+            setCurrentUser(profile);
+            if (profile.avatar) setAvatar(profile.avatar);
+          }
+        });
       } else {
         setCurrentUser(null);
+        setAvatar(null);
       }
     };
     initAuth();
@@ -128,6 +137,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
       setIsAuthenticated(false);
       setAvatar(null);
       setCurrentUser(null);
+      setUnreadCount(0);
     };
     const handleLogin = () => {
       setIsAuthenticated(true);
@@ -142,7 +152,10 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
     };
   }, []);
 
-  const userId = currentUser?._id || currentUser?.id;
+  const userId =
+    currentUser?._id ||
+    currentUser?.id ||
+    authService.getUserId();
   const user = currentUser || authService.getUser() || {};
 
   // Real-time notifications socket connection
@@ -154,12 +167,22 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
       console.log("[Frontend Navbar Socket] ⏳ Waiting for userId before connecting...");
       return;
     }
-    if (socketRef.current) {
-      console.log("[Frontend Navbar Socket] ✅ Socket already open, skipping re-connect.");
-      return;
-    }
+
+    const refreshCountFromServer = () => {
+      notificationService.getUnreadCount(true).then((res: any) => {
+        const count = res.data?.count ?? (typeof res.data === "number" ? res.data : null);
+        if (typeof count === "number") {
+          setUnreadCount(count);
+        }
+      });
+    };
 
     const connectSocket = async () => {
+      if (socketRef.current?.connected) {
+        console.log("[Frontend Navbar Socket] ✅ Socket already open, skipping re-connect.");
+        return;
+      }
+
       let token = authService.getAccessToken();
       if (!token) {
         console.log("[Frontend Navbar Socket] 🔄 Access token missing, attempting refresh...");
@@ -174,16 +197,25 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
       }
 
       const socketUrl =
+        process.env.NEXT_PUBLIC_SOCKET_URL ||
         process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
         "http://localhost:5001";
 
       console.log("[Frontend Navbar Socket] 🔌 Connecting to", socketUrl, "| userId:", userId);
 
+      const authPayload: Record<string, any> = { token };
+      const queryPayload: Record<string, any> = { token };
+      if (userId && String(userId) !== "undefined" && String(userId) !== "null") {
+        authPayload.userId = String(userId);
+        queryPayload.userId = String(userId);
+      }
+
       const sock = io(socketUrl, {
         path: "/socket.io",
         transports: ["websocket", "polling"],
-        auth: { token, userId },
-        query: { token, userId },
+        auth: authPayload,
+        query: queryPayload,
+        reconnection: true,
         reconnectionDelay: 2000,
         reconnectionDelayMax: 10000,
       });
@@ -193,6 +225,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
 
       sock.on("connect", () => {
         console.log("[Frontend Navbar Socket] ✅ Connected! Socket ID:", sock.id, "| userId room: user-" + userId);
+        refreshCountFromServer();
       });
 
       sock.on("disconnect", (reason) => {
@@ -209,40 +242,76 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
 
       sock.on("notification", (notif: any) => {
         console.log("[Frontend Navbar Socket] 🔔 Notification received:", notif);
-        setUnreadCount((prev) => {
-          console.log("[Frontend Navbar Socket] Badge count:", prev, "→", prev + 1);
-          return prev + 1;
-        });
+        setUnreadCount((prev) => prev + 1);
+        refreshCountFromServer();
         window.dispatchEvent(new CustomEvent("notification:received", { detail: notif }));
         window.dispatchEvent(new CustomEvent("notification:new", { detail: notif }));
       });
 
+      sock.on("unread_count_updated", (data: any) => {
+        console.log("[Frontend Navbar Socket] 🔢 unread_count_updated received:", data);
+        if (typeof data?.count === "number") {
+          setUnreadCount(data.count);
+        }
+      });
+
       sock.on("project_message", (data: any) => {
         console.log("[Frontend Navbar Socket] 💬 project_message received:", data);
+        refreshCountFromServer();
         window.dispatchEvent(new CustomEvent("project_message", { detail: data }));
       });
 
       sock.on("project_updated", (data: any) => {
         console.log("[Frontend Navbar Socket] 🔄 project_updated received:", data);
+        refreshCountFromServer();
         window.dispatchEvent(new CustomEvent("project_updated", { detail: data }));
       });
 
       sock.on("quote_message", (data: any) => {
         console.log("[Frontend Navbar Socket] 💬 quote_message received:", data);
+        refreshCountFromServer();
         window.dispatchEvent(new CustomEvent("quote_message", { detail: data }));
       });
 
       sock.on("quote_updated", (data: any) => {
         console.log("[Frontend Navbar Socket] 🔄 quote_updated received:", data);
+        refreshCountFromServer();
         window.dispatchEvent(new CustomEvent("quote_updated", { detail: data }));
       });
     };
 
     connectSocket();
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        if (!socketRef.current?.connected) {
+          console.log("[Frontend Navbar Socket] 👁️ Tab visible, socket reconnecting...");
+          connectSocket();
+        }
+        refreshCountFromServer();
+      }
+    };
+
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted || !socketRef.current?.connected) {
+        console.log("[Frontend Navbar Socket] 🔄 pageshow event (bfcache restored), reconnecting...");
+        connectSocket();
+        refreshCountFromServer();
+      }
+    };
+
+    const handleForceRefresh = () => refreshCountFromServer();
+
+    window.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pageshow", handlePageShow);
+    window.addEventListener("notification:refresh", handleForceRefresh);
+
     return () => {
       isCancelled = true;
       console.log("[Frontend Navbar Socket] 🧹 Cleaning up socket for userId:", userId);
+      window.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pageshow", handlePageShow);
+      window.removeEventListener("notification:refresh", handleForceRefresh);
       if (activeSocket) {
         activeSocket.disconnect();
       }
@@ -254,16 +323,15 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
   useEffect(() => {
     if (isAuthenticated) {
       const fetchCount = () => {
-        notificationService.getUnreadCount().then((res: any) => {
-          setUnreadCount(
-            res.data?.count ?? (typeof res.data === "number" ? res.data : 0),
-          );
+        notificationService.getUnreadCount(true).then((res: any) => {
+          const count = res.data?.count ?? (typeof res.data === "number" ? res.data : 0);
+          setUnreadCount(count);
         });
       };
 
       fetchCount();
 
-      const interval = setInterval(fetchCount, 30000);
+      const interval = setInterval(fetchCount, 25000);
       return () => clearInterval(interval);
     }
   }, [isAuthenticated]);
