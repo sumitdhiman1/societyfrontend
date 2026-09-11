@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { notificationService } from "@/lib/services";
 import { authService } from "@/lib/authService";
 import { capitalizeCurrencyInText } from "@/lib/currencyUtils";
+import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 const BellIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -236,7 +237,9 @@ export default function NotificationsPage() {
           )}
         </div>
 
-
+        <div className="mt-16">
+          <SupportNewsletter noPadding />
+        </div>
       </main>
     </div>
   );

@@ -345,6 +345,8 @@ function PaymentForm({
         saveCard: selectedMethod === "new" && saveCard,
         metadata: {
           ...extraMetadata,
+          title: title || extraMetadata?.title,
+          lineItems: extraMetadata?.lineItems || (deliverableItems && deliverableItems.length > 0 ? deliverableItems.map((d: any) => d.description).join(", ") : undefined),
           type,
           [`${type.toLowerCase()}Id`]: entityId,
           [`${type.toLowerCase()}Number`]: entityNumber,

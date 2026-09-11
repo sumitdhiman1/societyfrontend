@@ -548,8 +548,13 @@ function PackageDetailsContent() {
                       metadata={{
                         packageId,
                         packageName: pkg.name,
+                        tierId: selectedTier?.id,
                         tierTitle: selectedTier?.title,
-                        projectNo
+                        projectNo,
+                        billingType: selectedTier?.billingType || (pkg.paymentType?.toLowerCase().includes("month") ? "monthly" : "fixed"),
+                        recurringAmount: parsePrice(selectedTier?.recurringAmount || selectedTier?.recurringPrice || selectedTier?.price || 0),
+                        recurringDuration: selectedTier?.period || "month",
+                        isRecurring: selectedTier?.billingType === "monthly" || pkg.paymentType?.toLowerCase().includes("month")
                       }}
                     />
 

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
+import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 export default function ReferralsPage() {
   const [referralCode, setReferralCode] = useState("john-doe");
@@ -75,6 +76,10 @@ export default function ReferralsPage() {
               </button>
             </div>
           </div>
+        </div>
+
+        <div className="mt-16">
+          <SupportNewsletter noPadding />
         </div>
       </main>
     </div>

@@ -193,7 +193,13 @@ export default function MyProjectsPage() {
               <div key={projectId || Math.random()} className="border border-gray-200 rounded-[8px] p-6 bg-white hover:shadow-sm transition-shadow">
                 <div className="flex flex-col gap-4">
                   <div className="flex-grow">
-                    <h3 className="text-lg font-bold text-gray-800 mb-2">{project.title}</h3>
+                    <h3 className="text-lg font-bold text-gray-800 mb-2">
+                      {project.title && project.title !== "Package Purchase"
+                        ? project.title
+                        : project.package?.name
+                        ? `${project.package.name}${project.tierTitle ? ` - ${project.tierTitle}` : ""}`
+                        : project.title}
+                    </h3>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
                     <div className="flex flex-wrap items-center gap-4">

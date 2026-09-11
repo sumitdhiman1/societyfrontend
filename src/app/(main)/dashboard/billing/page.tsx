@@ -12,6 +12,7 @@ import {
   CardElement,
 } from "@stripe/react-stripe-js";
 import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
+import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 // Stripe initialization
 const stripePromise = loadStripe(
@@ -376,6 +377,10 @@ export default function BillingPage() {
             </table>
           </div>
         </section>
+
+        <div className="mt-16">
+          <SupportNewsletter noPadding />
+        </div>
       </main>
 
       {/* Add Card Modal */}
