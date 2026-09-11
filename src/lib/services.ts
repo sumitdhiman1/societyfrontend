@@ -52,12 +52,20 @@ export class NotificationService {
 
   async markAllRead() {
     const client = new HttpClient(this.session);
-    return await client.post("/notifications/markallread", {});
+    const result = await client.post("/notifications/markallread", {});
+    // Invalidate all notification caches so the next open fetches fresh data
+    CacheManager.getInstance().deleteByPrefix("all_notifications_");
+    CacheManager.getInstance().delete("unread_count");
+    return result;
   }
 
   async markRead(id: string) {
     const client = new HttpClient(this.session);
-    return await client.post(`/notifications/markread/${id}`, {});
+    const result = await client.post(`/notifications/markread/${id}`, {});
+    // Invalidate caches so the updated read state is reflected on next fetch
+    CacheManager.getInstance().deleteByPrefix("all_notifications_");
+    CacheManager.getInstance().delete("unread_count");
+    return result;
   }
 }
 

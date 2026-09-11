@@ -47,4 +47,17 @@ export default class CacheManager {
     const expiry = Date.now() + ttl;
     this.cache.set(key, { data, expiry });
   }
+
+  delete(key: string) {
+    this.cache.delete(key);
+    this.inflight.delete(key);
+  }
+
+  deleteByPrefix(prefix: string) {
+    for (const key of Array.from(this.cache.keys())) {
+      if (key.startsWith(prefix)) {
+        this.cache.delete(key);
+      }
+    }
+  }
 }

@@ -102,6 +102,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
   const router = useRouter();
   const shouldHideMenu = hideMenu;
   const notificationRef = useRef<HTMLDivElement>(null);
+  const notificationContainerRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -270,8 +271,13 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
-      if (notificationRef.current && !notificationRef.current.contains(target))
-        setNotificationsOpen(false);
+      // Use notificationContainerRef which wraps both desktop & mobile Notification
+      // instances — avoids the stale ref problem when the same ref is passed to two
+      // components and the mobile one overwrites the desktop one.
+      const insideNotification =
+        (notificationContainerRef.current && notificationContainerRef.current.contains(target)) ||
+        (notificationRef.current && notificationRef.current.contains(target));
+      if (!insideNotification) setNotificationsOpen(false);
       if (profileRef.current && !profileRef.current.contains(target))
         setProfileDropdownOpen(false);
       if (searchRef.current && !searchRef.current.contains(target))
@@ -472,6 +478,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
               </button>
 
               <div className="flex items-center gap-4 pl-2">
+              <div ref={notificationContainerRef} className="flex items-center">
                 <Notification
                   notificationRef={notificationRef}
                   notificationsOpen={notificationsOpen}
@@ -481,6 +488,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
                   unreadCount={unreadCount}
                   setUnreadCount={setUnreadCount}
                 />
+              </div>
 
                 <button
                   onClick={openChat}
