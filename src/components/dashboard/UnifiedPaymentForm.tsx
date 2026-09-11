@@ -67,6 +67,7 @@ interface UnifiedPaymentFormProps {
   metadata?: any;
   hideHeader?: boolean;
   vatRate?: number;
+  containerClassName?: string;
 }
 
 function PaymentForm({
@@ -92,6 +93,7 @@ function PaymentForm({
   metadata: extraMetadata,
   hideHeader = false,
   vatRate: propVatRate,
+  containerClassName,
 }: UnifiedPaymentFormProps & { hideHeader?: boolean }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -463,7 +465,7 @@ function PaymentForm({
   const pendingAmount = deliverablesSum > 0 ? Math.max(0, deliverablesSum - amountPaid) : totalCost;
 
   return (
-    <div className="bg-white border border-gray-300 rounded-lg p-4 sm:p-6 md:p-8">
+    <div className={containerClassName !== undefined ? containerClassName : "bg-white border border-gray-300 rounded-lg p-4 sm:p-6 md:p-8"}>
       <StatusPopup
         isOpen={popup.isOpen}
         onClose={() => setPopup({ ...popup, isOpen: false })}

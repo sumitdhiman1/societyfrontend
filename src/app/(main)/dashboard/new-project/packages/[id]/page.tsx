@@ -238,9 +238,57 @@ function PackageDetailsContent() {
     return rate > 0 ? (amount * rate) / 100 : 0;
   };
 
+  const getTimelineDisplay = (col: any, featureList: any[] = [], idx: number = 0) => {
+    if (!col) return "-";
+
+    // 1. Direct col.timeline or recurringTimeline
+    const t = col.timeline ?? col.recurringTimeline;
+    if (t !== undefined && t !== null && t !== "") {
+      if (typeof t === "object" && t.value !== undefined) {
+        const val = t.value;
+        const type = t.type || "weeks";
+        return `${val} ${val === 1 ? type.replace(/s$/, "") : type}`;
+      }
+      if (typeof t === "number" && t > 0) {
+        return `${t} week${t > 1 ? "s" : ""}`;
+      }
+      if (typeof t === "string" && t.trim() !== "" && t !== "0" && t !== "-") {
+        if (/^\d+$/.test(t.trim())) {
+          const num = parseInt(t.trim(), 10);
+          return `${num} week${num > 1 ? "s" : ""}`;
+        }
+        return t;
+      }
+    }
+
+    // 2. Look in features for a feature with key/name 'timeline'
+    const timelineFeature = (featureList || []).find(
+      (f: any) => f.key === "timeline" || f.name?.toLowerCase() === "timeline" || /timeline|duration/i.test(f.name)
+    );
+    if (timelineFeature && timelineFeature.values?.[col.id] != null) {
+      const fVal = timelineFeature.values[col.id];
+      if (typeof fVal === "number" && fVal > 0) {
+        return `${fVal} week${fVal > 1 ? "s" : ""}`;
+      }
+      if (typeof fVal === "string" && fVal.trim() !== "" && fVal !== "-") {
+        if (/^\d+$/.test(fVal.trim())) {
+          const num = parseInt(fVal.trim(), 10);
+          return `${num} week${num > 1 ? "s" : ""}`;
+        }
+        return fVal;
+      }
+    }
+
+    // 3. Fallback to period if available
+    if (col.period) return col.period;
+
+    return "-";
+  };
+
   const getDurationLabel = (tier: any) => {
     if (!tier) return "1 Week";
-    if (tier.timeline) return `${tier.timeline} Week${tier.timeline > 1 ? "s" : ""}`;
+    const display = getTimelineDisplay(tier, features);
+    if (display && display !== "-") return display;
     return tier.period || "1 Week";
   };
 
@@ -320,11 +368,11 @@ function PackageDetailsContent() {
                         <div className="text-[#646464]">
                           {parsePrice(col.price) > 0 || parsePrice(col.recurringAmount) > 0 ? (
                             <div className="flex flex-col">
-                              <span className="text-[32px] md:text-[40px] font-black leading-none">{formatPrice(parsePrice(col.price || col.recurringAmount))}</span>
-                              <span className="text-[10px] md:text-[12px] font-bold text-gray-400 uppercase tracking-tighter mt-1">{col.billingType === 'monthly' ? "Per Month" : "Starting Price"}</span>
+                              <span className="text-[28px] md:text-[32px] font-bold leading-none text-gray-700">{formatPrice(parsePrice(col.price || col.recurringAmount))}</span>
+                              <span className="text-[10px] md:text-[12px] font-medium text-gray-400 uppercase tracking-tighter mt-1">{col.billingType === 'monthly' ? "Per Month" : "Starting Price"}</span>
                             </div>
                           ) : (
-                            <div className="text-[#646464] font-extrabold text-[20px] md:text-[28px] leading-tight">{col.price || "Get A Quote"}</div>
+                            <div className="text-[#646464] font-bold text-[18px] md:text-[22px] leading-tight">{col.price || "Get A Quote"}</div>
                           )}
                         </div>
                       </div>
@@ -351,6 +399,15 @@ function PackageDetailsContent() {
                         })}
                       </div>
                     ))}
+                    {/* Timeline Row */}
+                    <div className="grid divide-x divide-gray-50 bg-gray-50/30 border-t border-gray-100" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
+                      <div className="p-4 md:p-5 px-6 md:px-8 font-bold text-[#808080] text-[13px] md:text-[15px] flex items-center">Timeline</div>
+                      {columns.map((col: any, idx: number) => (
+                        <div key={idx} className="p-5 flex items-center justify-center text-center">
+                          <span className="text-[15px] font-bold text-[#646464]">{getTimelineDisplay(col, features, idx)}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="grid divide-x divide-gray-100 border-t border-gray-100 bg-white" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
@@ -412,7 +469,7 @@ function PackageDetailsContent() {
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           <div className="flex items-center gap-4">
-                            <div className="text-[42px] md:text-[48px] font-black text-[#646464] leading-none">
+                            <div className="text-[34px] md:text-[40px] font-bold text-[#646464] leading-none">
                               {formatPrice(parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0) + getVatAmount(parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0)))}
                             </div>
                             <div className="relative">

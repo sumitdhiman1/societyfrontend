@@ -578,98 +578,99 @@ function PackagesContent() {
 
             <div className="w-full h-px bg-gray-200" />
 
-            {/* Timeline Range Section */}
-            <div className="bg-transparent">
-              <button
-                onClick={() => setShowTimelineFilter(!showTimelineFilter)}
-                className="flex items-center justify-between w-full group py-3.5 cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5 font-bold text-[#404040] text-sm sm:text-[15px]">
-                  <svg className="w-5 h-5 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>Timeline Range</span>
-                </div>
-                <svg
-                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${showTimelineFilter ? "rotate-180" : ""}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
+{categoryCodeParam === "ANALYSIS" && (
+  <div className="bg-transparent">
+    <button
+      onClick={() => setShowTimelineFilter(!showTimelineFilter)}
+      className="flex items-center justify-between w-full group py-3.5 cursor-pointer"
+    >
+      <div className="flex items-center gap-2.5 font-bold text-[#404040] text-sm sm:text-[15px]">
+        <svg className="w-5 h-5 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>Timeline Range</span>
+      </div>
+      <svg
+        className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${showTimelineFilter ? "rotate-180" : ""}`}
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+      </svg>
+    </button>
 
-              {showTimelineFilter && (
-                <div className="px-1 pb-3">
-                  {/* Slider Bar */}
-                  <div className="relative w-full mb-6">
-                    <div className="relative h-1 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="absolute h-full bg-[#4343F0] rounded-full"
-                        style={{
-                          left: `${timelineMinPercent}%`,
-                          right: `${Math.max(0, 100 - timelineMaxPercent)}%`,
-                        }}
-                      />
-                    </div>
-                    <input
-                      type="range"
-                      min={timelineRangeMin}
-                      max={timelineRangeMax}
-                      value={currentMinTimelineVal}
-                      onChange={(e) => {
-                        const val = Math.min(Number(e.target.value), currentMaxTimelineVal);
-                        setMinTimeline(val.toString());
-                      }}
-                      className="absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#4343F0] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#4343F0] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:hover:scale-110 [&::-moz-range-thumb]:transition-transform"
-                    />
-                    <input
-                      type="range"
-                      min={timelineRangeMin}
-                      max={timelineRangeMax}
-                      value={currentMaxTimelineVal}
-                      onChange={(e) => {
-                        const val = Math.max(Number(e.target.value), currentMinTimelineVal);
-                        setMaxTimeline(val.toString());
-                      }}
-                      className="absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#4343F0] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#4343F0] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:hover:scale-110 [&::-moz-range-thumb]:transition-transform"
-                    />
-                  </div>
+    {showTimelineFilter && (
+      <div className="px-1 pb-3">
+        {/* Slider Bar */}
+        <div className="relative w-full mb-6">
+          <div className="relative h-1 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="absolute h-full bg-[#4343F0] rounded-full"
+              style={{
+                left: `${timelineMinPercent}%`,
+                right: `${Math.max(0, 100 - timelineMaxPercent)}%`,
+              }}
+            />
+          </div>
+          <input
+            type="range"
+            min={timelineRangeMin}
+            max={timelineRangeMax}
+            value={currentMinTimelineVal}
+            onChange={(e) => {
+              const val = Math.min(Number(e.target.value), currentMaxTimelineVal);
+              setMinTimeline(val.toString());
+            }}
+            className="absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#4343F0] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#4343F0] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:hover:scale-110 [&::-moz-range-thumb]:transition-transform"
+          />
+          <input
+            type="range"
+            min={timelineRangeMin}
+            max={timelineRangeMax}
+            value={currentMaxTimelineVal}
+            onChange={(e) => {
+              const val = Math.max(Number(e.target.value), currentMinTimelineVal);
+              setMaxTimeline(val.toString());
+            }}
+            className="absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#4343F0] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#4343F0] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:hover:scale-110 [&::-moz-range-thumb]:transition-transform"
+          />
+        </div>
 
-                  {/* Range labels below slider */}
-                  <div className="flex items-center justify-between text-xs text-gray-400 mb-4">
-                    <span>{timelineRangeMin} days</span>
-                    <span>{timelineRangeMax} days</span>
-                  </div>
+        {/* Range labels below slider */}
+        <div className="flex items-center justify-between text-xs text-gray-400 mb-4">
+          <span>{timelineRangeMin} days</span>
+          <span>{timelineRangeMax} days</span>
+        </div>
 
-                  {/* Min / Max Inputs */}
-                  <div className="flex gap-2">
-                    <div className="border border-gray-300 rounded px-3 py-2 bg-white flex-1">
-                      <span className="text-gray-400 text-xs block mb-0.5">Min days</span>
-                      <input
-                        type="number"
-                        className="w-full text-sm outline-none text-gray-600 font-medium"
-                        placeholder={String(timelineRangeMin)}
-                        value={minTimeline}
-                        onChange={(e) => setMinTimeline(e.target.value)}
-                      />
-                    </div>
-                    <div className="self-center text-gray-400">-</div>
-                    <div className="border border-gray-300 rounded px-3 py-2 bg-white flex-1">
-                      <span className="text-gray-400 text-xs block mb-0.5">Max days</span>
-                      <input
-                        type="number"
-                        className="w-full text-sm outline-none text-gray-600 font-medium"
-                        placeholder={String(timelineRangeMax)}
-                        value={maxTimeline}
-                        onChange={(e) => setMaxTimeline(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+        {/* Min / Max Inputs */}
+        <div className="flex gap-2">
+          <div className="border border-gray-300 rounded px-3 py-2 bg-white flex-1">
+            <span className="text-gray-400 text-xs block mb-0.5">Min days</span>
+            <input
+              type="number"
+              className="w-full text-sm outline-none text-gray-600 font-medium"
+              placeholder={String(timelineRangeMin)}
+              value={minTimeline}
+              onChange={(e) => setMinTimeline(e.target.value)}
+            />
+          </div>
+          <div className="self-center text-gray-400">-</div>
+          <div className="border border-gray-300 rounded px-3 py-2 bg-white flex-1">
+            <span className="text-gray-400 text-xs block mb-0.5">Max days</span>
+            <input
+              type="number"
+              className="w-full text-sm outline-none text-gray-600 font-medium"
+              placeholder={String(timelineRangeMax)}
+              value={maxTimeline}
+              onChange={(e) => setMaxTimeline(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+)}
 
             <div className="w-full h-px bg-gray-200" />
           </aside>
@@ -694,7 +695,7 @@ function PackagesContent() {
                   const billingTypes = pkg.columns && pkg.columns.length > 0 ? [...new Set(pkg.columns.map((c: any) => c.billingType).filter(Boolean))] : [];
                   const isMonthly = billingTypes.includes("monthly");
                   const isFixed = billingTypes.includes("fixed");
-                  const billingLabel = isMonthly && isFixed ? "Monthly / Fixed" : isMonthly ? "Monthly" : isFixed ? "Fixed Price" : null;
+                  const billingLabel = isMonthly && isFixed ? "Monthly / Fixed" : isMonthly ? "Monthly" : null;
 
                   const categoryLabel = pkg.isAnalysis
                     ? "ANALYSIS"

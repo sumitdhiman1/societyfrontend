@@ -53,7 +53,7 @@ export function formatPriceWithCurrency(
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: (targetCurrency || "usd").toUpperCase(),
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(converted);
 }
@@ -66,7 +66,7 @@ export function formatActiveCurrency(
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: (targetCurrency || "usd").toUpperCase(),
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(val);
 }
