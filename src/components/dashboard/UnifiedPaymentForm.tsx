@@ -1137,6 +1137,12 @@ function PaymentForm({
             </div>
           )}
 
+          {!stripePromise && (
+            <div className="p-3 mb-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+              <span>⚠️ Stripe is not initialized. Please configure <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> in environment.</span>
+            </div>
+          )}
+
           <button
             onClick={handleSubmit}
             disabled={isProcessing || !stripe || !elements || !stripePromise}
