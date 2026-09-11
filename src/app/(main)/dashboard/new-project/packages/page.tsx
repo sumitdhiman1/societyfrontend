@@ -14,6 +14,126 @@ const PRICE_ASC = "price_asc";
 const PRICE_DESC = "price_desc";
 const NEWEST = "newest";
 
+const extractPackagePrices = (pkg: any): { min: number; max: number } => {
+  if (!pkg) return { min: 0, max: 0 };
+  if (pkg.isFree || String(pkg.amount || "").toUpperCase() === "FREE") {
+    return { min: 0, max: 0 };
+  }
+
+  const parseMoneyString = (str: string): number[] => {
+    if (!str || typeof str !== "string") return [];
+    if (/\b(day|days|week|weeks|month|months|year|years)\b/i.test(str) && !/[\$€£]/.test(str)) {
+      return [];
+    }
+    const sanitized = str.replace(/,/g, "");
+    const matches = sanitized.match(/\d+(?:\.\d+)?/g);
+    if (!matches) return [];
+    
+    return matches
+      .map(m => parseFloat(m))
+      .filter(num => !isNaN(num) && num > 0);
+  };
+
+  // 1. Primary source: pkg.amount string (matches what is displayed on the card e.g. "$2200 - $10000/month")
+  if (pkg.amount && typeof pkg.amount === "string") {
+    const pricesFromAmount = parseMoneyString(pkg.amount);
+    if (pricesFromAmount.length > 0) {
+      return {
+        min: Math.min(...pricesFromAmount),
+        max: Math.max(...pricesFromAmount),
+      };
+    }
+  }
+
+  // 2. If explicit minPrice and maxPrice numbers exist on package/bundle object
+  if (typeof pkg.minPrice === "number" && pkg.minPrice > 0 && typeof pkg.maxPrice === "number" && pkg.maxPrice > 0) {
+    return {
+      min: Math.min(pkg.minPrice, pkg.maxPrice),
+      max: Math.max(pkg.minPrice, pkg.maxPrice),
+    };
+  }
+
+  const foundPrices: number[] = [];
+
+  // 3. Check columns for monetary price fields
+  const checkColumnsArray = (colsArray: any[]) => {
+    if (!Array.isArray(colsArray) || colsArray.length === 0) return;
+    colsArray.forEach((c: any) => {
+      if (!c) return;
+      [c.price, c.amount, c.recurringPrice, c.recurringAmount].forEach(val => {
+        if (typeof val === "number" && val > 0) foundPrices.push(val);
+        else if (typeof val === "string") parseMoneyString(val).forEach(p => foundPrices.push(p));
+      });
+
+      if (c.pricing && typeof c.pricing === "object") {
+        [c.pricing.amount, c.pricing.recurringAmount].forEach(val => {
+          if (typeof val === "number" && val > 0) foundPrices.push(val);
+          else if (typeof val === "string") parseMoneyString(val).forEach(p => foundPrices.push(p));
+        });
+      }
+    });
+  };
+
+  checkColumnsArray(pkg.columns);
+  checkColumnsArray(pkg.config?.oneTimeDeliverables?.columns);
+  checkColumnsArray(pkg.config?.recurringDeliverables?.columns);
+
+  // 4. Check tierPricing
+  if (pkg.tierPricing && typeof pkg.tierPricing === "object") {
+    Object.values(pkg.tierPricing).forEach((tier: any) => {
+      if (tier && typeof tier === "object") {
+        [tier.amount, tier.recurringAmount].forEach(val => {
+          if (typeof val === "number" && val > 0) foundPrices.push(val);
+          else if (typeof val === "string") parseMoneyString(val).forEach(p => foundPrices.push(p));
+        });
+      }
+    });
+  }
+
+  if (typeof pkg.minPrice === "number" && pkg.minPrice > 0) foundPrices.push(pkg.minPrice);
+  if (typeof pkg.maxPrice === "number" && pkg.maxPrice > 0) foundPrices.push(pkg.maxPrice);
+
+  if (foundPrices.length === 0) {
+    return { min: 0, max: 0 };
+  }
+
+  return {
+    min: Math.min(...foundPrices),
+    max: Math.max(...foundPrices),
+  };
+};
+
+const extractPackageTimelineInWeeks = (pkg: any): number => {
+  let days = 0;
+  if (pkg.minTimeline != null && typeof pkg.minTimeline === "number" && pkg.minTimeline > 0) {
+    days = pkg.minTimeline;
+  } else if (pkg.timelineInDays != null && typeof pkg.timelineInDays === "number" && pkg.timelineInDays > 0) {
+    days = pkg.timelineInDays;
+  } else {
+    const checkTimelines = (cols: any[]): number => {
+      if (!Array.isArray(cols) || cols.length === 0) return 0;
+      const valid = cols
+        .map((c: any) => {
+          const val = c?.timeline ?? c?.recurringTimeline ?? c?.timelineValue;
+          if (typeof val === "number") return val;
+          if (typeof val === "object" && val?.value) return Number(val.value);
+          return parseInt(val, 10);
+        })
+        .filter((t: number) => !isNaN(t) && t > 0);
+      return valid.length > 0 ? Math.min(...valid) : 0;
+    };
+
+    const t1 = checkTimelines(pkg.columns);
+    const t2 = checkTimelines(pkg.config?.oneTimeDeliverables?.columns);
+    const t3 = checkTimelines(pkg.config?.recurringDeliverables?.columns);
+    const valid = [t1, t2, t3].filter(t => t > 0);
+    if (valid.length > 0) days = Math.min(...valid);
+  }
+
+  if (days <= 0) return 0;
+  return Math.max(1, Math.round(days / 7));
+};
+
 function PackagesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -215,21 +335,23 @@ function PackagesContent() {
 
       // Derive min and max bounds for sliders
       if (fetchedPkgs.length > 0) {
-        const prices = fetchedPkgs.map(p => {
-          if (p.isFree || p.amount === "FREE") return 0;
-          if (p.minPrice != null && !isNaN(p.minPrice)) return p.minPrice;
-          const match = /\$\s*([\d,]+)/.exec(p.amount || "");
-          return match ? parseInt(match[1].replace(/,/g, ""), 10) : 0;
-        }).filter(p => !isNaN(p));
+        const allPrices = fetchedPkgs.flatMap(p => {
+          const { min, max } = extractPackagePrices(p);
+          return [min, max];
+        });
 
-        const maxFromPrices = prices.length > 0 ? Math.max(...prices) : 0;
-        const minFromPrices = prices.length > 0 ? Math.min(...prices) : 0;
+        const minFromPrices = allPrices.length > 0 ? Math.min(...allPrices) : 0;
+        const maxFromPrices = allPrices.length > 0 ? Math.max(...allPrices) : 1000;
 
-        setPriceRangeMin(Math.min(minFromPrices, 0));
-        setPriceRangeMax(Math.max(maxFromPrices, 430));
+        setPriceRangeMin(Math.max(0, minFromPrices));
+        setPriceRangeMax(Math.max(maxFromPrices, 100));
 
-        setTimelineRangeMin(1);
-        setTimelineRangeMax(52);
+        const allTimelinesInWeeks = fetchedPkgs.map(p => extractPackageTimelineInWeeks(p)).filter(t => t > 0);
+        const minFromTimelines = allTimelinesInWeeks.length > 0 ? Math.min(...allTimelinesInWeeks) : 1;
+        const maxFromTimelines = allTimelinesInWeeks.length > 0 ? Math.max(...allTimelinesInWeeks) : 52;
+
+        setTimelineRangeMin(Math.max(1, minFromTimelines));
+        setTimelineRangeMax(Math.max(maxFromTimelines, minFromTimelines + 1, 12));
       }
     } catch (error) {
       console.error("Failed to fetch packages:", error);
@@ -244,43 +366,26 @@ function PackagesContent() {
 
   // Filtered packages
   const filteredPackages = useMemo(() => {
-    const minP = minPrice === "" ? NaN : parseInt(minPrice, 10);
-    const maxP = maxPrice === "" ? NaN : parseInt(maxPrice, 10);
+    const minP = minPrice === "" ? NaN : parseFloat(minPrice);
+    const maxP = maxPrice === "" ? NaN : parseFloat(maxPrice);
     const minT = minTimeline === "" ? NaN : parseInt(minTimeline, 10);
     const maxT = maxTimeline === "" ? NaN : parseInt(maxTimeline, 10);
 
     let result = packages.filter((pkg) => {
       // Price Filter
       if (!isNaN(minP) || !isNaN(maxP)) {
-        let pkgPrice = 0;
-        if (pkg.isFree || pkg.amount === "FREE") {
-          pkgPrice = 0;
-        } else if (pkg.minPrice != null && !isNaN(pkg.minPrice)) {
-          pkgPrice = pkg.minPrice;
-        } else {
-          const match = /\$\s*([\d,]+)/.exec(pkg.amount || "");
-          if (match) {
-            pkgPrice = parseInt(match[1].replace(/,/g, ""), 10) || 0;
-          }
-        }
-
-        if (!isNaN(minP) && pkgPrice < minP) return false;
-        if (!isNaN(maxP) && pkgPrice > maxP) return false;
+        const { min: pkgMin, max: pkgMax } = extractPackagePrices(pkg);
+        if (!isNaN(minP) && pkgMax < minP) return false;
+        if (!isNaN(maxP) && pkgMin > maxP) return false;
       }
 
-      // Timeline Filter
+      // Timeline Filter (in Weeks)
       if (!isNaN(minT) || !isNaN(maxT)) {
-        let pkgWeeks = 1;
-        if (pkg.minTimeline != null && pkg.minTimeline > 0) {
-          pkgWeeks = Math.max(1, Math.round(pkg.minTimeline / 7));
-        } else if (pkg.columns && pkg.columns.length > 0) {
-          const minDays = pkg.columns.reduce((acc: any, col: any) =>
-            col.timeline && (acc === null || col.timeline < acc) ? col.timeline : acc, null);
-          if (minDays) pkgWeeks = Math.max(1, Math.round(minDays / 7));
+        const pkgWeeks = extractPackageTimelineInWeeks(pkg);
+        if (pkgWeeks > 0) {
+          if (!isNaN(minT) && pkgWeeks < minT) return false;
+          if (!isNaN(maxT) && pkgWeeks > maxT) return false;
         }
-
-        if (!isNaN(minT) && pkgWeeks < minT) return false;
-        if (!isNaN(maxT) && pkgWeeks > maxT) return false;
       }
 
       return true;
@@ -295,10 +400,10 @@ function PackagesContent() {
         result.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
         break;
       case PRICE_ASC:
-        result.sort((a, b) => (a.minPrice || 0) - (b.minPrice || 0));
+        result.sort((a, b) => extractPackagePrices(a).min - extractPackagePrices(b).min);
         break;
       case PRICE_DESC:
-        result.sort((a, b) => (b.minPrice || 0) - (a.minPrice || 0));
+        result.sort((a, b) => extractPackagePrices(b).max - extractPackagePrices(a).max);
         break;
       case NEWEST:
         result.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
@@ -527,7 +632,7 @@ function PackagesContent() {
                         const val = Math.min(Number(e.target.value), currentMaxPriceVal);
                         setMinPrice(val.toString());
                       }}
-                      className="absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#4343F0] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#4343F0] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:hover:scale-110 [&::-moz-range-thumb]:transition-transform"
+                      className={`absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#4343F0] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#4343F0] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:hover:scale-110 [&::-moz-range-thumb]:transition-transform ${currentMinPriceVal > priceRangeMax * 0.5 ? "z-20" : "z-10"}`}
                     />
                     <input
                       type="range"
@@ -538,7 +643,7 @@ function PackagesContent() {
                         const val = Math.max(Number(e.target.value), currentMinPriceVal);
                         setMaxPrice(val.toString());
                       }}
-                      className="absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#4343F0] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#4343F0] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:hover:scale-110 [&::-moz-range-thumb]:transition-transform"
+                      className={`absolute w-full h-1 top-0 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#4343F0] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#4343F0] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:hover:scale-110 [&::-moz-range-thumb]:transition-transform ${currentMinPriceVal > priceRangeMax * 0.5 ? "z-10" : "z-20"}`}
                     />
                   </div>
 
@@ -578,8 +683,7 @@ function PackagesContent() {
 
             <div className="w-full h-px bg-gray-200" />
 
-{categoryCodeParam === "ANALYSIS" && (
-  <div className="bg-transparent">
+            <div className="bg-transparent">
     <button
       onClick={() => setShowTimelineFilter(!showTimelineFilter)}
       className="flex items-center justify-between w-full group py-3.5 cursor-pointer"
@@ -639,14 +743,14 @@ function PackagesContent() {
 
         {/* Range labels below slider */}
         <div className="flex items-center justify-between text-xs text-gray-400 mb-4">
-          <span>{timelineRangeMin} days</span>
-          <span>{timelineRangeMax} days</span>
+          <span>{timelineRangeMin} {timelineRangeMin === 1 ? "week" : "weeks"}</span>
+          <span>{timelineRangeMax} {timelineRangeMax === 1 ? "week" : "weeks"}</span>
         </div>
 
         {/* Min / Max Inputs */}
         <div className="flex gap-2">
           <div className="border border-gray-300 rounded px-3 py-2 bg-white flex-1">
-            <span className="text-gray-400 text-xs block mb-0.5">Min days</span>
+            <span className="text-gray-400 text-xs block mb-0.5">Min weeks</span>
             <input
               type="number"
               className="w-full text-sm outline-none text-gray-600 font-medium"
@@ -657,7 +761,7 @@ function PackagesContent() {
           </div>
           <div className="self-center text-gray-400">-</div>
           <div className="border border-gray-300 rounded px-3 py-2 bg-white flex-1">
-            <span className="text-gray-400 text-xs block mb-0.5">Max days</span>
+            <span className="text-gray-400 text-xs block mb-0.5">Max weeks</span>
             <input
               type="number"
               className="w-full text-sm outline-none text-gray-600 font-medium"
@@ -670,7 +774,6 @@ function PackagesContent() {
       </div>
     )}
   </div>
-)}
 
             <div className="w-full h-px bg-gray-200" />
           </aside>
@@ -691,15 +794,11 @@ function PackagesContent() {
             ) : filteredPackages.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 transition-opacity duration-200 opacity-100">
                 {filteredPackages.map((pkg) => {
-                  const minT = pkg.columns && pkg.columns.length > 0 ? pkg.columns.reduce((acc: any, col: any) => col.timeline && (acc === null || col.timeline < acc) ? col.timeline : acc, null) : null;
-                  const billingTypes = pkg.columns && pkg.columns.length > 0 ? [...new Set(pkg.columns.map((c: any) => c.billingType).filter(Boolean))] : [];
-                  const isMonthly = billingTypes.includes("monthly");
-                  const isFixed = billingTypes.includes("fixed");
-                  const billingLabel = isMonthly && isFixed ? "Monthly / Fixed" : isMonthly ? "Monthly" : null;
-
                   const categoryLabel = pkg.isAnalysis
                     ? "ANALYSIS"
                     : sidebarCategories.find(c => (c.categorycode || "").toUpperCase() === (pkg.categorycode || "").toUpperCase())?.name?.toUpperCase() || (pkg.isBundle ? "BUNDLES" : "PACKAGE");
+
+                  const displayAmount = pkg.amount ? String(pkg.amount).replace(/\.00(?!\d)/g, "") : "";
 
                   return (
                     <div
@@ -737,34 +836,22 @@ function PackagesContent() {
                         {pkg.description || "Our standard free analysis offer covering brand, UI/UX, functionalities, AI potentiality, tech stack."}
                       </p>
 
-                      {/* Footer: Price & Timeline */}
+                      {/* Footer: Price & Timeline (Timeline only for Analysis) */}
                       <div className="mt-auto w-full border-t border-gray-100 pt-4 space-y-2">
                         <div className="text-[22px] font-bold text-[#808080]">
-                          {pkg.amount}
+                          {displayAmount}
                         </div>
 
-                        <div className="flex flex-wrap gap-2 items-center justify-center">
-                          {billingLabel && (
-                            <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${isMonthly && !isFixed ? "bg-blue-50 text-blue-600" : isFixed && !isMonthly ? "bg-purple-50 text-purple-600" : "bg-gray-100 text-gray-600"}`}>
-                              {billingLabel}
-                            </span>
-                          )}
-                          {pkg.isAnalysis ? (
+                        {pkg.isAnalysis && (
+                          <div className="flex flex-wrap gap-2 items-center justify-center">
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 flex items-center gap-1">
                               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
                               Timeline: {pkg.minTimeline || 5} days
                             </span>
-                          ) : minT !== null && minT > 0 ? (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 flex items-center gap-1">
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              {isMonthly && !isFixed ? "30 days / month" : `${minT} days`}
-                            </span>
-                          ) : null}
-                        </div>
+                          </div>
+                        )}
                       </div>
 
                     </div>
