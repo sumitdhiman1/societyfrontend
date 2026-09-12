@@ -1275,7 +1275,7 @@ const CalculatorPaymentForm = ({
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl p-6 md:p-10 shadow-2xl mx-auto w-full max-w-[680px] border border-white">
+      <div className="bg-white text-[#111827] rounded-2xl p-6 md:p-10 shadow-2xl mx-auto w-full max-w-[680px] border border-white">
         <div className="flex justify-between items-center mb-8">
           <h3 className="text-[#111827] font-bold text-[18px]">Amount:</h3>
           <div className="flex bg-gray-100 rounded-lg p-1">
@@ -1390,7 +1390,7 @@ const CalculatorPaymentForm = ({
                 value={cardholderName}
                 onChange={(e) => { setCardholderName(e.target.value); if (errors.cardHolderName) setErrors((p: any) => ({ ...p, cardHolderName: "" })); }}
                 placeholder="Name on the card"
-                className={`w-full border-b ${errors.cardHolderName ? "border-red-500" : "border-[#e5e7eb]"} py-2.5 bg-transparent outline-none placeholder-gray-400 focus:border-[#4F46E5] text-[15px] transition-all`}
+                className={`w-full border-b ${errors.cardHolderName ? "border-red-500" : "border-[#e5e7eb]"} py-2.5 bg-transparent outline-none placeholder-gray-400 focus:border-[#4F46E5] text-[15px] text-[#111827] font-medium transition-all`}
               />
               {errors.cardHolderName && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardHolderName}</span>}
             </div>
