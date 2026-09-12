@@ -160,7 +160,7 @@ const InputField = ({
   onActionClick,
   placeholder = "",
 }: any) => (
-  <div className={`flex flex-col gap-1.5 ${className}`}>
+  <div className={`flex flex-col gap-2 ${className}`}>
     <label className="text-xs font-bold text-gray-700">{label}</label>
     <div className="relative">
       <input
@@ -169,11 +169,10 @@ const InputField = ({
         onChange={onChange}
         readOnly={readOnly}
         placeholder={placeholder}
-        className={`w-full rounded-[4px] px-3.5 py-2.5 text-sm transition-all ${
-          readOnly
-            ? "bg-[#F9FAFB] border border-gray-200 text-gray-600 cursor-default"
-            : "bg-white border border-gray-200 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#4545F0] focus:ring-1 focus:ring-[#4545F0]"
-        }`}
+        className={`w-full rounded-[4px] px-3.5 py-2.5 text-sm transition-all ${readOnly
+          ? "bg-[#F9FAFB] border border-gray-200 text-gray-600 cursor-default"
+          : "bg-white border border-gray-200 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#4545F0] focus:ring-1 focus:ring-[#4545F0]"
+          }`}
       />
       {actionText && (
         <button
@@ -189,9 +188,9 @@ const InputField = ({
 );
 
 const SectionHeader = ({ title }: { title: string }) => (
-  <div className="mb-4">
-    <h2 className="text-[19px] md:text-[20px] font-semibold text-gray-900 mb-2">{title}</h2>
-    <div className="h-[3px] bg-[#4545F0] w-14 rounded-full" />
+  <div className="mb-8">
+    <h2 className="text-[22px] font-medium text-primary-100 mb-4">{title}</h2>
+    <div className="h-[2px] bg-primary-300 w-[100px]" />
   </div>
 );
 
@@ -427,19 +426,19 @@ export default function MyAccountPage() {
   return (
     <div className="bg-white min-h-screen flex flex-col font-sans">
       <DashboardSubNav />
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-10 pb-16">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
         {/* Page Title */}
-        <h1 className="text-[26px] md:text-[30px] font-bold text-gray-900 mb-8">
+        <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100 mb-8 md:mb-12">
           Account Details
         </h1>
 
         {/* 1. Login & Profile Settings */}
-        <section className="mb-10">
+        <section className="mb-8">
           <SectionHeader title="Login & Profile Settings" />
-          <div className="bg-white border border-gray-200 rounded-lg p-6 md:p-8">
-            <div className="flex flex-col md:flex-row gap-8 items-stretch">
+          <div className="border border-gray-300 rounded-[4px] p-8 md:p-10">
+            <div className="flex flex-col md:flex-row gap-8 items-start">
               {/* Form Grid (Left) */}
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+              <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Email Address */}
                 <InputField
                   label="Email Address"
@@ -466,28 +465,26 @@ export default function MyAccountPage() {
                 />
 
                 {/* Preferred Currency */}
-                <div className="flex flex-col gap-1.5">
+                <div>
                   <label className="text-xs font-bold text-gray-700">Preferred Currency</label>
-                  <div className="flex bg-[#F3F4F6] rounded-xl p-1 w-fit border border-gray-200/80">
+                  <div className="flex bg-gray-100 rounded-lg p-1 w-fit border border-gray-200">
                     <button
                       type="button"
                       onClick={() => setCurrency("usd")}
-                      className={`px-6 py-2 text-xs font-bold rounded-lg transition-all ${
-                        currency === "usd"
-                          ? "bg-[#4545F0] text-white shadow-sm"
-                          : "text-gray-600 hover:text-gray-900"
-                      }`}
+                      className={`px-8 py-2.5 text-xs font-bold rounded-md uppercase transition-all duration-200 ${currency === "usd"
+                        ? "bg-[#4343f0] text-white shadow-sm"
+                        : "text-gray-500 hover:text-gray-700"
+                        }`}
                     >
                       USD ($)
                     </button>
                     <button
                       type="button"
                       onClick={() => setCurrency("eur")}
-                      className={`px-6 py-2 text-xs font-bold rounded-lg transition-all ${
-                        currency === "eur"
-                          ? "bg-[#4545F0] text-white shadow-sm"
-                          : "text-gray-600 hover:text-gray-900"
-                      }`}
+                      className={`px-6 py-2 text-xs font-bold rounded-lg transition-all ${currency === "eur"
+                        ? "bg-[#4545F0] text-white shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                        }`}
                     >
                       EUR (€)
                     </button>
@@ -528,7 +525,7 @@ export default function MyAccountPage() {
               </div>
 
               {/* Avatar Column (Right) */}
-              <div className="border-l-0 md:border-l border-gray-200 pl-0 md:pl-10 md:w-[220px] flex items-center justify-center flex-shrink-0 pt-4 md:pt-0">
+              <div className="md:w-[200px] flex justify-center md:justify-end border-l-0 md:border-l border-gray-200 pl-0 md:pl-8 pt-4 md:pt-0">
                 <div
                   className="relative group cursor-pointer"
                   onClick={() => fileInputRef.current?.click()}
@@ -546,9 +543,8 @@ export default function MyAccountPage() {
                       <img
                         src={user.avatar}
                         alt="User Avatar"
-                        className={`w-full h-full object-cover rounded-full ${
-                          isUploading ? "opacity-40" : ""
-                        }`}
+                        className={`w-full h-full object-cover rounded-full ${isUploading ? "opacity-40" : ""
+                          }`}
                       />
                     ) : (
                       <svg
@@ -914,9 +910,8 @@ export default function MyAccountPage() {
             type="button"
             onClick={handleSaveProfile}
             disabled={isUpdating || isUploading}
-            className={`bg-[#4545F0] hover:bg-[#3737D8] text-white text-xs font-bold px-8 py-3 rounded-lg shadow-sm transition-all ${
-              isUpdating || isUploading ? "opacity-60 cursor-not-allowed" : ""
-            }`}
+            className={`bg-[#4545F0] hover:bg-[#3737D8] text-white text-xs font-bold px-8 py-3 rounded-lg shadow-sm transition-all ${isUpdating || isUploading ? "opacity-60 cursor-not-allowed" : ""
+              }`}
           >
             {isUpdating ? <LoadingDots text="Saving" /> : "Save Profile Changes"}
           </button>
