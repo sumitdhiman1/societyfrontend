@@ -17,6 +17,43 @@ export function findQuestionByRoleId(
   return questions.find((q) => q.roleId === roleId);
 }
 
+const NUMERIC_CALCULATOR_ROLE_IDS = new Set([3, 4, 10, 11, 12, 15]);
+const NUMERIC_CALCULATOR_ROLE_NAMES = new Set([
+  "DEPENDENT_NUMERIC",
+  "NUMERIC_ADDON",
+  "NUMERIC_STEP_MULTIPLIER",
+  "NUMERIC_INCREMENTAL",
+  "PERCENTAGE_ADDON",
+  "DURATION_MULTIPLIER",
+]);
+
+/** Prod DB/CMS may store numeric pricing questions as type single. */
+export function resolveCalculatorQuestionType(question: {
+  type?: string;
+  roleId?: number;
+  role?: string;
+}): string {
+  const explicit = String(question?.type || "").toLowerCase();
+  if (explicit === "number" || explicit === "text" || explicit === "multi") {
+    return explicit;
+  }
+  const roleId = Number(question?.roleId ?? 0);
+  const role = String(question?.role || "").toUpperCase();
+  if (NUMERIC_CALCULATOR_ROLE_IDS.has(roleId) || NUMERIC_CALCULATOR_ROLE_NAMES.has(role)) {
+    return "number";
+  }
+  return explicit || "single";
+}
+
+export function normalizeCalculatorQuestionsForUi<T extends { type?: string; roleId?: number; role?: string }>(
+  questions: T[]
+): T[] {
+  return questions.map((q) => ({
+    ...q,
+    type: resolveCalculatorQuestionType(q),
+  }));
+}
+
 export function findTimelineQuestionKey(questions: CalculatorQuestion[]): string | undefined {
   const known = questions.find((q) =>
     ["WEB_TIMELINE", "GFX_TIMELINE", "SEO_TIMELINE"].includes(q.key || "")
