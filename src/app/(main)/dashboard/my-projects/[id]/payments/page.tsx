@@ -374,9 +374,10 @@ export default function ProjectPaymentsPage() {
       "2 weeks";
 
     const totalPaidAmount = Number(
+      activeProject.amountPaid ??
+      totalPaidFromTransactions ??
       activeProject.totalCost ??
       activeProject.price ??
-      activeProject.amountPaid ??
       activeProject.totalPrice ??
       totalProjectCost ??
       0
