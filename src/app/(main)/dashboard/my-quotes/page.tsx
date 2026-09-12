@@ -61,10 +61,10 @@ export default function MyQuotesPage() {
       const quoteList = Array.isArray(payload)
         ? payload
         : Array.isArray(payload?.quotes)
-        ? payload.quotes
-        : Array.isArray(payload?.data)
-        ? payload.data
-        : [];
+          ? payload.quotes
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
       setQuotes(quoteList);
 
       const pag = res?.pagination || payload?.pagination || {};
@@ -171,8 +171,8 @@ export default function MyQuotesPage() {
                     setCurrentPage(1);
                   }}
                   className={`pb-3 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 ${activeTab === tab.id
-                      ? "text-primary-300 border-b-2 border-primary-300"
-                      : "text-gray-500 hover:text-gray-700"
+                    ? "text-primary-300 border-b-2 border-primary-300"
+                    : "text-gray-500 hover:text-gray-700"
                     }`}
                 >
                   {tab.label} ({tab.count})
@@ -294,8 +294,8 @@ export default function MyQuotesPage() {
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
               className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${currentPage === 1
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95"
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95"
                 }`}
             >
               Previous
@@ -306,8 +306,8 @@ export default function MyQuotesPage() {
                   key={i + 1}
                   onClick={() => setCurrentPage(i + 1)}
                   className={`w-10 h-10 flex items-center justify-center rounded-[4px] text-sm font-bold transition-all ${currentPage === i + 1
-                      ? "bg-primary-300 text-white shadow-lg shadow-blue-500/20"
-                      : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
+                    ? "bg-primary-300 text-white shadow-lg shadow-blue-500/20"
+                    : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
                     }`}
                 >
                   {i + 1}
@@ -318,8 +318,8 @@ export default function MyQuotesPage() {
               onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
               disabled={currentPage === pagination.totalPages}
               className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${currentPage === pagination.totalPages
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95"
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95"
                 }`}
             >
               Next
