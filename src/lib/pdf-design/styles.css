@@ -1,0 +1,541 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* --------------------------------------------------------------------------
+   CSS Reset & Base Rules
+   -------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  background-color: #f1f5f9;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  color: #202124;
+  background-color: #f1f5f9;
+  line-height: 1.5;
+  margin: 0;
+  padding: 40px 0;
+}
+
+/* --------------------------------------------------------------------------
+   Document Container (Optimized for 1283px Content Width / A4 Aspect)
+   -------------------------------------------------------------------------- */
+.proposal-page {
+  width: 1283px;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 60px 40px 80px;
+  background-color: #FFFFFF;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* --------------------------------------------------------------------------
+   Header Section
+   -------------------------------------------------------------------------- */
+.proposal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 40px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+/* Logo & Branding */
+.header-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.header-logo img {
+    width: 100%;
+    max-width: 328px;
+    height: auto;
+}
+
+.brand-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.brand-letter {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 800;
+  font-size: 46px;
+  line-height: 1;
+  color: #2A2AA0;
+  letter-spacing: -0.01em;
+}
+
+.brand-icon {
+  width: 44px;
+  height: 44px;
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0 1px;
+}
+
+.brand-subtitle {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 36.5275px;
+  line-height: 44px;
+  letter-spacing: 0.06em;
+  color: #2A2AA0;
+  margin-top: 8px;
+}
+
+/* Company / Header Details (Right-Aligned) */
+.header-details {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.proposal-title {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 51.5694px;
+  line-height: 62px;
+  letter-spacing: -0.025em;
+  color: #2A2AA0;
+  margin: 0 0 8px 0;
+  text-align: right;
+}
+
+.company-name {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 28.2625px;
+  line-height: 34px;
+  color: #111827;
+  margin-bottom: 6px;
+  text-align: right;
+}
+
+.company-address {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 27.8981px;
+  line-height: 40px;
+  color: #202124;
+  margin: 0 0 8px 0;
+  text-align: right;
+}
+
+.company-email {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 26.9167px;
+  line-height: 40px;
+  text-align: right;
+}
+
+.company-email a {
+  color: #2A2AA0;
+  text-decoration: none;
+}
+
+/* --------------------------------------------------------------------------
+   Quote Details Card
+   -------------------------------------------------------------------------- */
+.quote-card {
+  box-sizing: border-box;
+  width: 100%;
+  background: #F9FAFC;
+  border: 2px solid #D9D9D9;
+  border-radius: 22px;
+  padding: 48px 60px;
+  margin: 40px 0 60px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.card-meta-label {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 24px;
+  letter-spacing: 0.13em;
+  color: #879095;
+  text-transform: uppercase;
+  margin: 0 0 24px 0;
+}
+
+/* Client Column */
+.quote-client {
+  display: flex;
+  flex-direction: column;
+}
+
+.client-name {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 36px;
+  line-height: 44px;
+  letter-spacing: -0.01em;
+  color: #22293B;
+  margin-bottom: 8px;
+}
+
+.client-email {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 29px;
+  color: #879095;
+}
+
+/* Meta Key-Value Column */
+.quote-meta {
+  width: 580px;
+  display: flex;
+  flex-direction: column;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.meta-row:last-child {
+  margin-bottom: 0;
+}
+
+.meta-label {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 27px;
+  letter-spacing: -0.01em;
+  color: #202124;
+}
+
+.meta-value {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 27px;
+  letter-spacing: -0.01em;
+  color: #111827;
+  text-align: right;
+}
+
+.meta-value-highlight {
+  color: #A53E3F;
+}
+
+/* --------------------------------------------------------------------------
+   Project Scope Overview Section
+   -------------------------------------------------------------------------- */
+.scope-overview {
+  margin-bottom: 60px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.section-title {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 38.1176px;
+  line-height: 46px;
+  letter-spacing: 0.005em;
+  color: #2A2AA0;
+  margin: 0 0 30px 0;
+}
+
+.section-lead {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 27.2506px;
+  line-height: 52px;
+  text-align: justify;
+  letter-spacing: -0.015em;
+  color: #202124;
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Scope Questionnaire Items
+   -------------------------------------------------------------------------- */
+.scope-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+  margin-bottom: 60px;
+}
+
+.scope-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.question-title {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 31.0588px;
+  line-height: 38px;
+  letter-spacing: -0.01em;
+  color: #111827;
+  margin: 0;
+}
+
+.answer-text {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 39px;
+  letter-spacing: -0.015em;
+  color: #202124;
+  margin: 18px 0 0 0;
+}
+
+.answer-list {
+  list-style: none;
+  padding: 0;
+  margin: 18px 0 0 0;
+}
+
+.answer-list li {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 39px;
+  letter-spacing: -0.015em;
+  color: #202124;
+  position: relative;
+  padding-left: 24px;
+}
+
+.answer-list li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #202124;
+  font-size: 24px;
+  line-height: 39px;
+}
+
+/* --------------------------------------------------------------------------
+   Summary Card (Timeline & Investment)
+   -------------------------------------------------------------------------- */
+.summary-card {
+  width: 609px;
+  margin-left: auto;
+  margin-bottom: 60px;
+  border-radius: 14px;
+  overflow: hidden;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 35px;
+  box-sizing: border-box;
+}
+
+.summary-timeline {
+  background-color: #0F172A;
+  height: 91px;
+}
+
+.summary-timeline .summary-label {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 24px;
+  letter-spacing: 0.08em;
+  color: #879095;
+  text-transform: uppercase;
+}
+
+.summary-timeline .summary-value {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 29px;
+  letter-spacing: -0.04em;
+  color: #FFFFFF;
+}
+
+.summary-investment {
+  background-color: #2A2AA0;
+  height: 136px;
+}
+
+.summary-investment .summary-label {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 27px;
+  letter-spacing: 0.03em;
+  color: #FFFFFF;
+  text-transform: uppercase;
+}
+
+.summary-investment .summary-value {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 48px;
+  line-height: 58px;
+  letter-spacing: -0.06em;
+  color: #FFFFFF;
+}
+
+/* --------------------------------------------------------------------------
+   Divider Rule
+   -------------------------------------------------------------------------- */
+.proposal-divider {
+  border: none;
+  border-top: 2px solid #D9D9D9;
+  margin: 0 0 45px 0;
+  width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   Legal & Closing Footer
+   -------------------------------------------------------------------------- */
+.proposal-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 39px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.footer-disclaimers {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.disclaimer-text {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 26px;
+  letter-spacing: -0.01em;
+  color: #879095;
+  margin: 0;
+  text-align: center;
+}
+
+.disclaimer-highlight {
+  font-weight: 700;
+  letter-spacing: -0.005em;
+}
+
+.disclaimer-text a {
+  color: #879095;
+  text-decoration: none;
+}
+
+.disclaimer-text a:hover {
+  text-decoration: underline;
+}
+
+.footer-watermark {
+  font-family: 'Inter', sans-serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 29px;
+  letter-spacing: 0.13em;
+  color: #D0D7E1;
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   Print Document Constraints (@media print)
+   ========================================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html,
+  body {
+    background: #FFFFFF !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .proposal-page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 20mm;
+    margin: 0 auto;
+    box-sizing: border-box;
+    box-shadow: none;
+    zoom: 0.54;
+  }
+
+  .proposal-header,
+  .quote-card,
+  .scope-overview,
+  .scope-item,
+  .summary-card,
+  .proposal-footer {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
