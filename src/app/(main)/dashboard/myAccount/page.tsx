@@ -161,7 +161,7 @@ const InputField = ({
   placeholder = "",
 }: any) => (
   <div className={`flex flex-col gap-2 ${className}`}>
-    <label className="text-xs font-bold text-gray-700">{label}</label>
+    <label className="text-sm font-bold text-gray-700">{label}</label>
     <div className="relative">
       <input
         type={type}
@@ -169,8 +169,8 @@ const InputField = ({
         onChange={onChange}
         readOnly={readOnly}
         placeholder={placeholder}
-        className={`w-full rounded-[4px] px-3.5 py-2.5 text-sm transition-all ${readOnly
-          ? "bg-[#F9FAFB] border border-gray-200 text-gray-600 cursor-default"
+        className={`w-full rounded-[4px] px-4 py-3 text-sm transition-all ${readOnly
+          ? "bg-gray-100 border border-gray-200 text-gray-500 cursor-not-allowed"
           : "bg-white border border-gray-200 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#4545F0] focus:ring-1 focus:ring-[#4545F0]"
           }`}
       />
@@ -178,7 +178,7 @@ const InputField = ({
         <button
           type="button"
           onClick={onActionClick}
-          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[#4545F0] hover:text-[#3333D0]"
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-primary-300 hover:text-primary-200"
         >
           {actionText}
         </button>
@@ -195,9 +195,9 @@ const SectionHeader = ({ title }: { title: string }) => (
 );
 
 const InfoBox = ({ title, text }: { title?: string; text: string }) => (
-  <div className="pl-0 lg:pl-8 border-l-0 lg:border-l border-gray-200 h-full flex flex-col justify-start">
-    {title && <h4 className="font-bold text-sm text-gray-800 mb-3">{title}</h4>}
-    <p className="text-xs text-gray-400 leading-relaxed">{text}</p>
+  <div className="pl-0 lg:pl-8 border-l-0 lg:border-l border-gray-200 h-full">
+    {title && <h4 className="font-bold text-sm text-gray-800 mb-4">{title}</h4>}
+    <p className="text-xs text-gray-500 leading-relaxed max-w-[250px]">{text}</p>
   </div>
 );
 
@@ -466,7 +466,7 @@ export default function MyAccountPage() {
 
                 {/* Preferred Currency */}
                 <div>
-                  <label className="text-xs font-bold text-gray-700">Preferred Currency</label>
+                  <label className="text-sm font-bold text-gray-700 mb-2 block">Preferred Currency</label>
                   <div className="flex bg-gray-100 rounded-lg p-1 w-fit border border-gray-200">
                     <button
                       type="button"
@@ -481,9 +481,9 @@ export default function MyAccountPage() {
                     <button
                       type="button"
                       onClick={() => setCurrency("eur")}
-                      className={`px-6 py-2 text-xs font-bold rounded-lg transition-all ${currency === "eur"
+                      className={`px-8 py-2.5 text-xs font-bold rounded-md uppercase transition-all ${currency === "eur"
                         ? "bg-[#4545F0] text-white shadow-sm"
-                        : "text-gray-600 hover:text-gray-900"
+                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/5"
                         }`}
                     >
                       EUR (€)
@@ -492,11 +492,11 @@ export default function MyAccountPage() {
                 </div>
 
                 {/* Time Zone */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-gray-700">Time Zone</label>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-bold text-gray-700">Time Zone</label>
                   <div className="relative">
                     <select
-                      className="w-full bg-white border border-gray-200 rounded-[4px] px-3.5 py-2.5 text-sm text-gray-700 focus:outline-none focus:border-[#4545F0] focus:ring-1 focus:ring-[#4545F0] appearance-none cursor-pointer pr-10"
+                      className="w-full bg-white border border-gray-300 rounded-[4px] px-4 py-3 text-sm text-gray-700 focus:outline-none focus:border-primary-300 focus:ring-1 focus:ring-primary-300 appearance-none cursor-pointer"
                       value={user?.timeZone || ""}
                       onChange={(e) => updateField("timeZone", e.target.value)}
                     >
@@ -538,29 +538,13 @@ export default function MyAccountPage() {
                     className="hidden"
                     accept="image/*"
                   />
-                  <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center bg-transparent relative border border-transparent">
-                    {user?.avatar ? (
-                      <img
-                        src={user.avatar}
-                        alt="User Avatar"
-                        className={`w-full h-full object-cover rounded-full ${isUploading ? "opacity-40" : ""
-                          }`}
-                      />
-                    ) : (
-                      <svg
-                        width="54"
-                        height="54"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="#0D1939"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                      </svg>
-                    )}
+                  <div className="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center bg-gray-100 relative">
+                    <img
+                      src={user?.avatar || "/images/loggedoutaccount.svg"}
+                      alt="User Avatar"
+                      className={`w-full h-full object-cover rounded-full ${isUploading ? "opacity-40" : ""
+                        }`}
+                    />
                     {isUploading && (
                       <div className="absolute inset-0 bg-white/70 flex items-center justify-center rounded-full">
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#4545F0]"></div>
@@ -570,21 +554,9 @@ export default function MyAccountPage() {
                   {/* Plus badge */}
                   <button
                     type="button"
-                    className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full border border-gray-300 flex items-center justify-center text-gray-400 hover:text-gray-700 shadow-sm"
+                    className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 text-gray-500"
                   >
-                    <svg
-                      width="10"
-                      height="10"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <line x1="12" y1="5" x2="12" y2="19" />
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                   </button>
                 </div>
               </div>
@@ -593,9 +565,9 @@ export default function MyAccountPage() {
         </section>
 
         {/* 2. Account Owner Details */}
-        <section className="mb-10">
+        <section className="mb-8">
           <SectionHeader title="Account Owner Details" />
-          <div className="bg-white border border-gray-200 rounded-lg p-6 md:p-8">
+          <div className="border border-gray-300 rounded-[4px] p-8 md:p-10">
             <div className="flex flex-col lg:flex-row gap-10 items-stretch">
               {/* Form Grid (Left) */}
               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
@@ -651,7 +623,7 @@ export default function MyAccountPage() {
               </div>
 
               {/* Info Sidebar (Right) */}
-              <div className="border-l-0 lg:border-l border-gray-200 pl-0 lg:pl-8 lg:w-[280px] xl:w-[320px] flex-shrink-0">
+              <div className="bw-full lg:w-[320px]">
                 <InfoBox
                   title="Info"
                   text="The information saved here identifies the legal owner of the SWSCRM account and all client services."
@@ -662,10 +634,10 @@ export default function MyAccountPage() {
         </section>
 
         {/* 3. Business Details */}
-        <section className="mb-10">
+        <section className="mb-8">
           <SectionHeader title="Business Details" />
-          <div className="bg-white border border-gray-200 rounded-lg p-6 md:p-8">
-            <div className="flex flex-col lg:flex-row gap-10 items-stretch">
+          <div className="border border-gray-300 rounded-[4px] p-8 md:p-10">
+            <div className="flex flex-col lg:flex-row gap-12">
               {/* Form Grid (Left) */}
               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                 {/* Row 1: Company Name | Registration Number */}
@@ -697,7 +669,7 @@ export default function MyAccountPage() {
                   <label className="text-xs font-bold text-gray-700">Country</label>
                   <div className="relative">
                     <select
-                      className="w-full bg-white border border-gray-200 rounded-[4px] px-3.5 py-2.5 text-sm text-gray-700 focus:outline-none focus:border-[#4545F0] focus:ring-1 focus:ring-[#4545F0] appearance-none cursor-pointer pr-10"
+                      className="w-full bg-white border appearance-none border-gray-300 rounded-[4px] px-4 py-3 text-sm text-gray-700 focus:outline-none focus:border-primary-300 focus:ring-1 focus:ring-primary-300 transition-all pr-10 cursor-pointer "
                       value={user?.country || ""}
                       onChange={(e) => updateField("country", e.target.value)}
                     >
@@ -721,16 +693,8 @@ export default function MyAccountPage() {
                         </>
                       )}
                     </select>
-                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
-                      <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
-                        <path
-                          d="M1 1L5 5L9 1"
-                          stroke="#666"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-600">
+                      <svg className="w-4 h-4 transition-transform duration-200 " fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
                   </div>
                 </div>
@@ -762,7 +726,7 @@ export default function MyAccountPage() {
               </div>
 
               {/* Info Sidebar (Right) */}
-              <div className="border-l-0 lg:border-l border-gray-200 pl-0 lg:pl-8 lg:w-[280px] xl:w-[320px] flex-shrink-0">
+              <div className="w-full lg:w-[320px]">
                 <InfoBox
                   title="Info"
                   text="The information saved here identifies the details of the business associated with this SWSCRM account and all client services"
@@ -775,26 +739,26 @@ export default function MyAccountPage() {
         {/* 4. Billing Details */}
         <section className="mb-6">
           <SectionHeader title="Billing Details" />
-          <div className="bg-white border border-gray-200 rounded-lg p-6 md:p-8">
-            <div className="flex flex-col lg:flex-row gap-10 items-stretch">
+          <div className="border border-gray-300 rounded-[4px] p-8 md:p-10">
+            <div className="flex flex-col lg:flex-row gap-12">
               {/* Left Content Area */}
-              <div className="flex-1 flex flex-col gap-6">
+              <div className="flex-1">
                 {/* Switch Toggle Container Box */}
-                <div className="bg-[#F9FAFB] border border-gray-200/80 rounded-xl p-5 md:p-6 flex items-center gap-4">
-                  <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <div className="flex items-center gap-3 mb-8 bg-gray-50 p-4 rounded-[10px] border border-gray-200">
+                  <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
                       className="sr-only peer"
                       checked={user?.useSeparateBillingAddress || false}
                       onChange={(e) => updateField("useSeparateBillingAddress", e.target.checked)}
                     />
-                    <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#4545F0]"></div>
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-300"></div>
                   </label>
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-800">
+                  <div className="flex flex-col">
+                    <h4 className="text-sm font-bold text-gray-700">
                       Use separate billing address
                     </h4>
-                    <p className="text-xs text-gray-400 font-normal mt-0.5">
+                    <p className="text-[11px] text-gray-400 font-medium">
                       Enable this if your billing information differs from your business details.
                     </p>
                   </div>
@@ -802,7 +766,7 @@ export default function MyAccountPage() {
 
                 {/* Expanded Billing Form Fields */}
                 {user?.useSeparateBillingAddress && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mb-10 animate-in fade-in duration-300">
                     <InputField
                       label="Billing Company Name"
                       value={user?.billingCompanyName || ""}
@@ -825,11 +789,11 @@ export default function MyAccountPage() {
                       onChange={(e: any) => updateField("billingPhoneNumber", e.target.value)}
                     />
 
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-2">
                       <label className="text-xs font-bold text-gray-700">Billing Country</label>
                       <div className="relative">
                         <select
-                          className="w-full bg-white border border-gray-200 rounded-[4px] px-3.5 py-2.5 text-sm text-gray-700 focus:outline-none focus:border-[#4545F0] focus:ring-1 focus:ring-[#4545F0] appearance-none cursor-pointer pr-10"
+                          className="w-full bg-white border border-gray-300 rounded-[4px] px-4 py-3 text-sm text-gray-700 focus:outline-none focus:border-primary-300 focus:ring-1 focus:ring-primary-300 appearance-none cursor-pointer"
                           value={user?.billingCountry || ""}
                           onChange={(e) => updateField("billingCountry", e.target.value)}
                         >
@@ -853,16 +817,8 @@ export default function MyAccountPage() {
                             </>
                           )}
                         </select>
-                        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
-                          <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
-                            <path
-                              d="M1 1L5 5L9 1"
-                              stroke="#666"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                          <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="#666" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
                         </div>
                       </div>
                     </div>
@@ -894,7 +850,7 @@ export default function MyAccountPage() {
               </div>
 
               {/* Info Sidebar (Right) */}
-              <div className="border-l-0 lg:border-l border-gray-200 pl-0 lg:pl-8 lg:w-[280px] xl:w-[320px] flex-shrink-0">
+              <div className="w-full lg:w-[320px]">
                 <InfoBox
                   title="Billing Information"
                   text="This address will be used for all invoices and payment receipts generated by the system. If disabled, your business details will be used instead."
@@ -910,7 +866,7 @@ export default function MyAccountPage() {
             type="button"
             onClick={handleSaveProfile}
             disabled={isUpdating || isUploading}
-            className={`bg-[#4545F0] hover:bg-[#3737D8] text-white text-xs font-bold px-8 py-3 rounded-lg shadow-sm transition-all ${isUpdating || isUploading ? "opacity-60 cursor-not-allowed" : ""
+            className={`bg-[#4343f0] hover:bg-[#162a5c] text-white text-xs font-bold px-12 py-3.5 rounded-[4px] transition-all shadow-md ${isUpdating || isUploading ? "opacity-60 cursor-not-allowed" : ""
               }`}
           >
             {isUpdating ? <LoadingDots text="Saving" /> : "Save Profile Changes"}
