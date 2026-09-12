@@ -515,8 +515,6 @@ const ProposalPreview = ({
     getTierQuestionKey(category.categoryKey || ""),
     sortedQuestions
   );
-  const firstQuestionKey = sortedQuestions[0]?.key;
-  let subtitle = "";
   const breakdown: { question: string; answers: string[] }[] = [];
 
   sortedQuestions.forEach((q: any) => {
@@ -524,12 +522,6 @@ const ProposalPreview = ({
 
     const sel = selections[q.key];
     if (!sel) return;
-
-    if (q.key === firstQuestionKey && q.type === "single" && sel.answerKeys?.[0]) {
-      const ans = q.answers.find((a: any) => a.key === sel.answerKeys[0]);
-      if (ans) subtitle = ans.text;
-      return;
-    }
 
     const ansTexts: string[] = [];
     if (q.type === "number" && sel.numericValue !== undefined) {
@@ -588,13 +580,13 @@ const ProposalPreview = ({
     try {
       await downloadCalculatorPdf({
         categoryName: category.categoryName,
-        subtitle,
         breakdownItems: breakdown,
         totalPrice,
         timeline: timeline || category.timeline,
         currency: currency,
         conversionRate,
         categoryKey: category.categoryKey,
+        billingType: isMonthly ? "monthly" : undefined,
       });
       if (onDownloadPdf) onDownloadPdf();
     } catch (err) {
@@ -644,7 +636,7 @@ const ProposalPreview = ({
 
     try {
       const subject = `Estimate: ${category.categoryName}`;
-      let body = `Hello,\n\nHere is your project estimate breakdown:\n\n* Category: ${category.categoryName}\n${subtitle ? `* Subtitle: ${subtitle}\n` : ""}`;
+      let body = `Hello,\n\nHere is your project estimate breakdown:\n\n* Category: ${category.categoryName}\n`;
 
       breakdown.forEach(item => {
         body += `\n- ${item.question}:\n  ${item.answers.join(", ")}`;
@@ -654,13 +646,13 @@ const ProposalPreview = ({
 
       const pdfBase64 = await getCalculatorPdfBase64({
         categoryName: category.categoryName,
-        subtitle,
         breakdownItems: breakdown,
         totalPrice,
         timeline: timeline || category.timeline,
         currency: currency,
         conversionRate,
         categoryKey: category.categoryKey,
+        billingType: isMonthly ? "monthly" : undefined,
       });
 
       const res = await fetch("/api-gateway/quotes/email-calculator-proposal", {
@@ -699,12 +691,7 @@ const ProposalPreview = ({
         <h3 className="text-[#111827] font-bold text-[24px] md:text-[26px] mb-1 leading-tight">
           {displayName}
         </h3>
-        {subtitle && (
-          <p className="text-[#64748B] text-[15px] font-normal mb-8 leading-normal font-sans">
-            {subtitle}
-          </p>
-        )}
-        {!subtitle && <div className="mb-10" />}
+        <div className="mb-10" />
 
         <div className="space-y-7">
           {breakdown.map((item, idx) => (
