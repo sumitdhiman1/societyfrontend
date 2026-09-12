@@ -662,8 +662,13 @@ const ProposalPreview = ({
           email: cleanEmail,
           subject,
           messageBody: body,
-          pdfBase64
-        })
+          categoryName: category.categoryName,
+          subtitle: category.subtitle || "",
+          totalPrice: formatPriceLocal(totalPrice),
+          timeline: displayTimeline || category.timeline || "",
+          breakdownItems: breakdown,
+          pdfBase64,
+        }),
       });
 
       if (res.ok) {

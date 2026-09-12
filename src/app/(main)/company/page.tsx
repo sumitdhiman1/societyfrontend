@@ -146,12 +146,12 @@ export default function CompanyPage() {
             <div className="flex flex-row items-center justify-center gap-[4px] mt-2 mb-4">
               <button className="w-[58px] h-[58px] flex items-center justify-center transition-all opacity-40 cursor-not-allowed">
                 <div className="flex items-center justify-center text-[#4343F0] rounded-full bg-white shadow-sm slider-btn-cs">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path></svg>
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 19l-7-7 7-7"></path></svg>
                 </div>
               </button>
               <button className="w-[58px] h-[58px] flex items-center justify-center transition-all hover:opacity-80 active:scale-95 cursor-pointer">
                 <div className="flex items-center justify-center text-[#4343F0] rounded-full bg-white shadow-sm slider-btn-cs">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7"></path></svg>
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 5l7 7-7 7"></path></svg>
                 </div>
               </button>
             </div>
