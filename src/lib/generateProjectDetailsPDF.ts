@@ -269,16 +269,22 @@ export function extractProjectDetails(data: any): ProjectPDFData {
 
   const currency = (data.currency || "USD").toUpperCase();
 
+  const calculatorSettlement =
+    data.calculatorSpecs && Number(data.amountPaid || 0) > 0
+      ? Number(data.amountPaid)
+      : null;
+
   const rawTotalPrice = Number(
-    data.totalCost ||
-    data.price ||
-    data.amount ||
-    data.totalPrice ||
-    data.total ||
-    data.package?.price ||
-    data.bundle?.price ||
-    data.amountPaid ||
-    0
+    calculatorSettlement ??
+      (data.totalCost ||
+        data.price ||
+        data.amount ||
+        data.totalPrice ||
+        data.total ||
+        data.package?.price ||
+        data.bundle?.price ||
+        data.amountPaid ||
+        0)
   );
 
   // Deliverables extraction

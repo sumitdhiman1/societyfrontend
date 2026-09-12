@@ -599,6 +599,12 @@ export default function ProjectDetailsPage() {
   const vatRate = Number(project.vatRate ?? project.vatPercentage ?? (project.taxPercentage != null ? project.taxPercentage : 0));
   const vatAmount = Number(project.vatAmount ?? project.tax ?? 0);
   const totalCost = Number(project.totalCost ?? project.totalAmount ?? (project.price != null ? project.price : baseAmount + vatAmount));
+  const calculatorPaidTotal =
+    project.calculatorSpecs && Number(project.amountPaid || 0) > 0
+      ? Number(project.amountPaid)
+      : totalCost;
+  const calculatorBaseAmount = project.calculatorSpecs ? calculatorPaidTotal : baseAmount;
+  const calculatorVatAmount = project.calculatorSpecs ? 0 : vatAmount;
 
   // Date for delivery due divider
   const deliveryDueStr = project.deadline ? formatSubmittedDate(project.deadline) : "";
@@ -859,7 +865,7 @@ export default function ProjectDetailsPage() {
                         {project.calculatorSpecs?.estimatedTimeline || project.timeline || "-"}
                       </td>
                       <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top">
-                        {formatCurrency(totalCost)}
+                        {formatCurrency(calculatorPaidTotal)}
                       </td>
                     </tr>
                   </tbody>
@@ -871,17 +877,17 @@ export default function ProjectDetailsPage() {
             <div className={`flex flex-row justify-end gap-6 sm:gap-12 text-xs sm:text-sm ${project.calculatorSpecs ? "mb-4" : "mb-8"}`}>
               <div className="text-center">
                 <div className="text-gray-500 font-bold mb-1 sm:mb-2">Base Amount</div>
-                <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(baseAmount)}</div>
+                <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(calculatorBaseAmount)}</div>
               </div>
               <div className="text-center">
                 <div className="text-gray-500 font-bold mb-1 sm:mb-2">VAT ({vatRate}%)</div>
-                <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(vatAmount)}</div>
+                <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(calculatorVatAmount)}</div>
               </div>
               <div className="text-center">
                 <div className={`font-bold mb-1 sm:mb-2 ${project.calculatorSpecs ? "text-gray-500" : "text-gray-800"}`}>
                   {project.calculatorSpecs ? "Total Paid" : "Total Cost"}
                 </div>
-                <div className={project.calculatorSpecs ? "font-bold text-gray-800" : "font-bold text-gray-900"}>{formatCurrency(totalCost)}</div>
+                <div className={project.calculatorSpecs ? "font-bold text-gray-800" : "font-bold text-gray-900"}>{formatCurrency(calculatorPaidTotal)}</div>
               </div>
             </div>
 
