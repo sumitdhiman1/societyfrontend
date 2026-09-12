@@ -31,20 +31,7 @@ const SearchIcon = ({ className = "h-5 w-5", ...props }: any) => (
 );
 
 const ChatIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-6 w-6"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-    />
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
 );
 
 const MenuIcon = () => (
@@ -546,21 +533,21 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
               </button>
 
               <div className="flex items-center gap-4 pl-2">
-              <div ref={notificationContainerRef} className="flex items-center">
-                <Notification
-                  notificationRef={notificationRef}
-                  notificationsOpen={notificationsOpen}
-                  setNotificationsOpen={setNotificationsOpen}
-                  setMobileMenuOpen={setMobileMenuOpen}
-                  isAuthenticated={isAuthenticated}
-                  unreadCount={unreadCount}
-                  setUnreadCount={setUnreadCount}
-                />
-              </div>
+                <div ref={notificationContainerRef} className="flex items-center justify-center shrink-0">
+                  <Notification
+                    notificationRef={notificationRef}
+                    notificationsOpen={notificationsOpen}
+                    setNotificationsOpen={setNotificationsOpen}
+                    setMobileMenuOpen={setMobileMenuOpen}
+                    isAuthenticated={isAuthenticated}
+                    unreadCount={unreadCount}
+                    setUnreadCount={setUnreadCount}
+                  />
+                </div>
 
                 <button
                   onClick={openChat}
-                  className="w-10 h-10 rounded-full bg-white text-gray-700 flex items-center justify-center transition-transform hover:scale-105 shadow-sm"
+                  className="w-10 h-10 rounded-full bg-white text-gray-700 flex items-center justify-center transition-transform hover:scale-105 shadow-sm shrink-0"
                 >
                   <ChatIcon />
                 </button>

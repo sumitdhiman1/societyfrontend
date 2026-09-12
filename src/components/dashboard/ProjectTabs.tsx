@@ -311,7 +311,7 @@ export default function ProjectTabs() {
       </div>
 
       {viewMode === "cards" && (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 xl:gap-x-[62px] xl:gap-y-[48px] mt-6 md:mt-8 ">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 items-stretch mt-6 md:mt-8 lg:mt-8">
           {loading ? (
             [1, 2].map((i) => (
               <div
@@ -338,12 +338,12 @@ export default function ProjectTabs() {
                     </h3>
                   </div>
                   <div className="flex flex-col w-full gap-8 lg:gap-4">
-                    <div className="grid grid-cols-3 gap-3 xl:gap-4 flex-1">
-                      <div>
+                    <div className="hidden lg:grid grid-cols-3 gap-3 xl:gap-4 flex-1">
+                      <div className="flex flex-col gap-1">
                         <p className="text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
                           Project #
                         </p>
-                        <p className="text-[#363636] text-[13px] xl:text-[15px] font-medium">
+                        <p className="text-[#363636] text-[13px] xl:text-[15px] font-medium leading-[18px]">
                           {p.number}
                         </p>
                       </div>
@@ -351,32 +351,31 @@ export default function ProjectTabs() {
                         <p className="text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
                           Started
                         </p>
-                        <p className="text-[#363636] text-[13px] xl:text-[15px] font-medium">
+                        <p className="text-[#363636] text-[13px] xl:text-[15px] font-medium leading-[18px]">
                           {p.started}
                         </p>
                       </div>
                       <div>
                         <div className="flex items-center">
-                          <p className="text-[#4343F0] md:hidden block text-[11px] xl:text-[13px] font-bold">
+                          <p className="text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
                             Deadline
                           </p>
-                          <p className="hidden md:block text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
+                          <p className="hidden text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
                             Exp. Deadline
                           </p>
                           {/* <DeadlineTooltip /> */}
                         </div>
-                        <p className="text-[#363636] text-[13px] xl:text-[15px] font-medium">
+                        <p className="text-[#363636] text-[13px] xl:text-[15px] font-medium leading-[18px]">
                           {p.deadline}
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-4 lg:gap-[16px] items-center 
-                    justify-between lg:justify-end w-full">
+                    <div className="flex gap-4 lg:gap-[16px] items-center justify-start lg:justify-end w-full">
                       <button
                         onClick={() =>
                           router.push(`${p.infoUrl}/details#messages`)
                         }
-                        className="bg-[#E3E6F5] text-[#4343F0] min-w-[120px] px-6 py-2.5 rounded-[8px] lg:rounded-[6px] text-[14px] lg:text-[13px] font-bold relative hover:bg-[#d4d8f0]"
+                        className="bg-[#E3E6F5] text-[#4343F0] flex-1 lg:flex-none lg:w-[105px] lg:h-[38px] py-3 lg:py-0 rounded-[8px] lg:rounded-[6px] text-[14px] lg:text-[13px] font-bold relative hover:bg-[#d4d8f0] lg:hover:bg-[#cdd1ec] transition-colors"
                       >
                         {p.messages > 0 && (
                           <span className="absolute -top-[10px] -left-[10px] bg-[#363636] text-white rounded-full w-[24px] h-[24px] flex items-center justify-center text-[12px] font-bold">
@@ -387,8 +386,7 @@ export default function ProjectTabs() {
                       </button>
                       <button
                         onClick={() => router.push(p.infoUrl)}
-                        className="bg-[#E3E6F5] text-[#5356ff] min-w-[120px] px-6 py-2.5 
-                        rounded-[8px] lg:rounded-[6px] text-[14px] lg:text-[13px] font-bold hover:bg-[#d4d8f0]"
+                        className="bg-[#E3E6F5] text-[#4343F0] flex-1 lg:flex-none lg:w-[75px] lg:h-[38px] py-3 lg:py-0 rounded-[8px] lg:rounded-[6px] text-[14px] lg:text-[13px] font-bold hover:bg-[#d4d8f0] lg:hover:bg-[#cdd1ec] transition-colors"
                       >
                         Info
                       </button>

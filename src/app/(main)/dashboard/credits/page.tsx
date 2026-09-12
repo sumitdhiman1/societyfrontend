@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import { authService } from "@/lib/authService";
+import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 export default function CreditsPage() {
   const [credits, setCredits] = useState(0);
@@ -63,6 +64,10 @@ export default function CreditsPage() {
               final amount due. Credits are automatically applied when you select the option in the payment form.
             </p>
           </div>
+        </div>
+
+        <div className="mt-16">
+          <SupportNewsletter noPadding />
         </div>
       </main>
     </div>

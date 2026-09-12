@@ -72,11 +72,11 @@ export default function MyAnalysesPage() {
               displayTarget: cleanTarget,
               submittedDate: item.createdAt
                 ? new Date(item.createdAt).toLocaleString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })
                 : "Recently",
               status: normalizedStatus,
             };
@@ -177,11 +177,10 @@ export default function MyAnalysesPage() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`pb-3 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 rounded-none cursor-pointer ${
-                      isActive
-                        ? "text-primary-300 border-b-2 border-primary-300 font-bold"
-                        : "text-gray-500 hover:text-gray-700 font-normal"
-                    }`}
+                    className={`pb-3 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 rounded-none cursor-pointer ${isActive
+                      ? "text-primary-300 border-b-2 border-primary-300 font-bold"
+                      : "text-gray-500 hover:text-gray-700 font-normal"
+                      }`}
                   >
                     {tab.label} ({tab.count})
                   </button>
@@ -217,7 +216,7 @@ export default function MyAnalysesPage() {
               </div>
             ))
           ) : filteredAnalyses.length === 0 ? (
-            <div className="border border-gray-200 rounded-[8px] p-12 bg-white text-center">
+            <div className="border border-gray-200 rounded-[8px] p-6 bg-white hover:shadow-sm transition-shadow">
               <h3 className="text-base font-bold text-gray-800 mb-1">
                 No analysis projects found
               </h3>

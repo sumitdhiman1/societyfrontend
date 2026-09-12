@@ -7,7 +7,7 @@ import { authService } from "@/lib/authService";
 
 const navItems = [
   { name: "Account Details", href: "/dashboard/myAccount" },
-  { name: "Billing Details", href: "/dashboard/billing" },
+  { name: "Saved Cards", href: "/dashboard/billing" },
   { name: "Payment History", href: "/dashboard/payment-history" },
   { name: "Renewals", href: "/dashboard/renewals" },
   { name: "Credits", href: "/dashboard/credits" },

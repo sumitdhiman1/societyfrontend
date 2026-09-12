@@ -699,14 +699,26 @@ export default function ProjectDetailsPage() {
             <div className="pb-4 sm:pb-6 flex flex-col sm:flex-row justify-between items-start gap-2">
               <div className="flex flex-col gap-1">
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-700">
-                  {project.type === "analysis" ? "Analysis Report Details" :
-                    project.type === "bundle" ? `Bundle Project (${project.billingType === "fixed" ? "Setup Phase" : "Maintenance Phase"})` :
-                      project.type === "custom" ? "Custom Project Details" : "Package Details"}
+                  {project.title && project.title !== "Package Purchase"
+                    ? project.title
+                    : project.package?.name
+                    ? `${project.package.name}${project.tierTitle ? ` - ${project.tierTitle}` : ""}`
+                    : project.type === "analysis"
+                    ? "Analysis Report Details"
+                    : project.type === "bundle"
+                    ? `Bundle Project (${project.billingType === "fixed" ? "Setup Phase" : "Maintenance Phase"})`
+                    : project.type === "custom"
+                    ? "Custom Project Details"
+                    : "Package Details"}
                 </h2>
                 {(project.type === "bundle" || project.type === "package") && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {project.type === "bundle" && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded uppercase border border-purple-200">Bundle</span>}
-                    {project.type === "package" && <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase border border-green-200">Standard Package</span>}
+                    {project.type === "package" && (
+                      <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase border border-green-200">
+                        {project.tierTitle ? `${project.tierTitle} Plan` : project.billingType === "monthly" ? "Monthly Subscription Plan" : "Standard Package"}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>

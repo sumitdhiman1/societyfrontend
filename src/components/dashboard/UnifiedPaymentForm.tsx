@@ -345,6 +345,8 @@ function PaymentForm({
         saveCard: selectedMethod === "new" && saveCard,
         metadata: {
           ...extraMetadata,
+          title: title || extraMetadata?.title,
+          lineItems: extraMetadata?.lineItems || (deliverableItems && deliverableItems.length > 0 ? deliverableItems.map((d: any) => d.description).join(", ") : undefined),
           type,
           [`${type.toLowerCase()}Id`]: entityId,
           [`${type.toLowerCase()}Number`]: entityNumber,
@@ -1134,6 +1136,12 @@ function PaymentForm({
               </div>
               <p className="text-green-800 font-bold">Fully Covered by Credits!</p>
               <p className="text-xs text-green-600 mt-1">No credit card required for this transaction.</p>
+            </div>
+          )}
+
+          {!stripePromise && (
+            <div className="p-3 mb-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+              <span>⚠️ Stripe is not initialized. Please configure <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> in environment.</span>
             </div>
           )}
 

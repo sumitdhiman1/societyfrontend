@@ -12,6 +12,7 @@ import {
   CardElement,
 } from "@stripe/react-stripe-js";
 import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
+import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 // Stripe initialization
 const stripePromise = loadStripe(
@@ -354,8 +355,10 @@ export default function BillingPage() {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                          inv.status === "PAID" 
-                            ? "bg-green-50 text-green-700 border-green-200" 
+                          (inv.status || "").toUpperCase() === "PAID" 
+                            ? "bg-green-50 text-green-700 border-green-200"
+                            : (inv.status || "").toUpperCase() === "OVERDUE"
+                            ? "bg-rose-50 text-rose-700 border-rose-200 font-bold"
                             : "bg-amber-50 text-amber-700 border-amber-200"
                         }`}>
                           {inv.status}
@@ -376,6 +379,10 @@ export default function BillingPage() {
             </table>
           </div>
         </section>
+
+        <div className="mt-16">
+          <SupportNewsletter noPadding />
+        </div>
       </main>
 
       {/* Add Card Modal */}

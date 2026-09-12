@@ -15,7 +15,7 @@ function DashboardContent() {
   const message = searchParams.get("message");
 
   return (
-    <div className="w-full flex-grow space-y-12 md:space-y-16">
+    <div className="w-full flex-grow space-y-12 md:space-y-16 pb-8">
       <div className="max-w-[1536px] w-full mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px]">
 
 
