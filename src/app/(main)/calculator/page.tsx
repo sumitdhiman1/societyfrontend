@@ -377,7 +377,7 @@ const QuestionCard = ({
       id={`question-${question.key}`}
       data-question-key={question.key}
       tabIndex={-1}
-      className={`animate-in fade-in duration-700 bg-white p-8 md:p-12 rounded-2xl shadow-xl text-left max-w-[680px] mx-auto scroll-mt-28 focus:outline-none transition-all duration-300 ${error
+      className={`animate-in fade-in duration-700 bg-white text-[#111827] p-8 md:p-12 rounded-2xl shadow-xl text-left max-w-[680px] mx-auto scroll-mt-28 focus:outline-none transition-all duration-300 ${error
         ? "border-2 border-red-500 ring-4 ring-red-100/80 shadow-red-100"
         : "border border-gray-100/80"
         }`}
@@ -472,7 +472,7 @@ const QuestionCard = ({
                         </div>
                       )}
                     </div>
-                    <div className="text-[16px] md:text-[17px] leading-relaxed transition-colors text-[#475569] font-normal group-hover:text-[#334155]">
+                    <div className="text-[16px] md:text-[17px] leading-relaxed transition-colors text-[#111827] font-normal group-hover:text-[#111827]">
                       {formatCalculatorAnswerLabel(ans.text, question.key, {
                         categoryKey: categoryKey ?? undefined,
                         roleId: question.roleId,
@@ -687,7 +687,7 @@ const ProposalPreview = ({
   return (
     <div className="w-full max-w-[680px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 my-6">
       <h2 className="text-[24px] md:text-[26px] font-medium text-white text-center mb-8 tracking-normal">YOUR PROPOSAL</h2>
-      <div className="bg-white rounded-[10px] p-8 md:p-10 shadow-2xl text-left border border-white">
+      <div className="bg-white text-[#111827] rounded-[10px] p-8 md:p-10 shadow-2xl text-left border border-white">
         <h3 className="text-[#111827] font-bold text-[24px] md:text-[26px] mb-1 leading-tight">
           {displayName}
         </h3>
@@ -700,11 +700,11 @@ const ProposalPreview = ({
                 {item.question}
               </h4>
               {item.answers.length === 1 ? (
-                <p className="text-[#475569] text-[16px] font-normal leading-relaxed pl-5">
+                <p className="text-[#111827] text-[16px] font-normal leading-relaxed pl-5">
                   {item.answers[0]}
                 </p>
               ) : (
-                <ul className="list-disc pl-5 text-[#5a6a7a] text-[16px] md:text-[17px] font-normal leading-relaxed space-y-1">
+                <ul className="list-disc pl-5 text-[#111827] text-[16px] md:text-[17px] font-normal leading-relaxed space-y-1">
                   {item.answers.map((ans, aIdx) => (
                     <li key={aIdx}>{ans}</li>
                   ))}
