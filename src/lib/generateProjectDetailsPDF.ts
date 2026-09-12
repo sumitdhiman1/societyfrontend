@@ -276,15 +276,15 @@ export function extractProjectDetails(data: any): ProjectPDFData {
 
   const rawTotalPrice = Number(
     calculatorSettlement ??
-    data.totalCost ||
-    data.price ||
-    data.amount ||
-    data.totalPrice ||
-    data.total ||
-    data.package?.price ||
-    data.bundle?.price ||
-    data.amountPaid ||
-    0
+      (data.totalCost ||
+        data.price ||
+        data.amount ||
+        data.totalPrice ||
+        data.total ||
+        data.package?.price ||
+        data.bundle?.price ||
+        data.amountPaid ||
+        0)
   );
 
   // Deliverables extraction
