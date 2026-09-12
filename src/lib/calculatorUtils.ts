@@ -116,14 +116,16 @@ export function getNumberQuestionMin(question: {
 
 export function getMissingRequiredQuestions(
   questions: any[],
-  selections: Record<string, CalculatorSelection>
+  selections: Record<string, CalculatorSelection>,
+  categoryKey?: string | null
 ): any[] {
   return questions.filter((q) => {
-    if (!isQuestionVisible(q, selections, questions)) return false;
+    if (!isQuestionVisible(q, selections, questions, categoryKey)) return false;
     const isRequired = q.isRequired || isTimelineQuestion(q) || q.roleId === 1 || q.roleId === 2;
     if (!isRequired) return false;
 
-    if (q.type === "number") {
+    const qType = resolveCalculatorQuestionType(q);
+    if (qType === "number") {
       const minVal = q.config?.minValue ?? 0;
       const maxVal = getNumberQuestionMax(q);
       const sel = selections[q.key];
@@ -135,7 +137,7 @@ export function getMissingRequiredQuestions(
 
     const sel = selections[q.key];
     if (!sel) return true;
-    if (q.type === "text") return !sel.textValue || sel.textValue.trim() === "";
+    if (qType === "text") return !sel.textValue || sel.textValue.trim() === "";
     return !sel.answerKeys || sel.answerKeys.length === 0;
   });
 }
@@ -177,8 +179,11 @@ export function getTierQuestionKey(categoryKey: string): string {
   return "WEB_TIER";
 }
 
-export function isGraphicsItemsQuestion(question: any): boolean {
+export function isGraphicsItemsQuestion(question: any, categoryKey?: string | null): boolean {
   if (!question) return false;
+  if (categoryKey && categoryKey !== "graphics") return false;
+  const roleId = Number(question.roleId ?? 0);
+  if ([1, 2, 3, 4, 5, 13, 14, 15].includes(roleId)) return false;
   const key = String(question.key || "").toUpperCase();
   if (
     key.startsWith("SEO_") ||
@@ -192,7 +197,7 @@ export function isGraphicsItemsQuestion(question: any): boolean {
   }
   if (key.startsWith("GFX_") || key.startsWith("GD_")) {
     return (
-      question.roleId === 7 ||
+      roleId === 7 ||
       /specific items/i.test(question.text || "") ||
       /include in this project/i.test(question.text || "")
     );
@@ -846,26 +851,51 @@ function findMarketingFocusQuestion(questions?: any[]) {
     (q) =>
       q.key === "MKT_FOCUS" ||
       q.key === "MC_AREAS" ||
-      q.key === "1" ||
+      (q.key === "1" && /focus|area|marketing|social/i.test(q.text || "")) ||
       q.roleId === 8 ||
       /which areas do you want to focus/i.test(q.text || "")
   );
 }
 
-function getMarketingTargetCategory(question: any): "organic" | "paid" | null {
+function isMarketingCategory(categoryKey?: string | null): boolean {
+  if (!categoryKey) return false;
+  const c = categoryKey.toLowerCase();
+  return c === "marketing" || c.includes("market") || c.includes("social");
+}
+
+function getMarketingTargetCategory(
+  question: any,
+  categoryKey?: string | null,
+  questions?: any[]
+): "organic" | "paid" | null {
+  if (categoryKey && !isMarketingCategory(categoryKey)) return null;
+
+  // Website and graphics questions are never marketing
+  const roleId = Number(question?.roleId ?? 0);
+  if ([1, 2, 3, 4, 5, 7, 13, 14, 15].includes(roleId)) return null;
+
+  const key = String(question?.key || "");
+  if (key.startsWith("WEB_") || key.startsWith("SEO_") || key.startsWith("GFX_") || key.startsWith("GD_")) {
+    return null;
+  }
+
   const targetCategory = question?.config?.targetCategory;
   if (targetCategory === "organic" || targetCategory === "paid") return targetCategory;
 
-  const key = String(question?.key || "");
+  const isExplicitMarketing =
+    isMarketingCategory(categoryKey) ||
+    key.startsWith("MKT_") ||
+    key.startsWith("MC_") ||
+    (questions && questions.some((q) => q.key?.startsWith("MKT_") || q.key?.startsWith("MC_") || /marketing|social media/i.test(q.text || "")));
+
   if (
     key === "MKT_ORGANIC_PLATFORMS" ||
     key === "MKT_POSTS_WEEK" ||
     key === "MC_PLAT_ORG" ||
     key === "MC_POSTS" ||
-    key === "2" ||
-    key === "3" ||
-    question?.roleId === 9 ||
-    question?.roleId === 10
+    (isExplicitMarketing && (key === "2" || key === "3")) ||
+    roleId === 9 ||
+    roleId === 10
   ) {
     return "organic";
   }
@@ -874,10 +904,9 @@ function getMarketingTargetCategory(question: any): "organic" | "paid" | null {
     key === "MKT_AD_SPEND" ||
     key === "MC_PLAT_PAID" ||
     key === "MC_ADSPEND" ||
-    key === "4" ||
-    key === "5" ||
-    question?.roleId === 11 ||
-    question?.roleId === 12
+    (isExplicitMarketing && (key === "4" || key === "5")) ||
+    roleId === 11 ||
+    roleId === 12
   ) {
     return "paid";
   }
@@ -928,9 +957,11 @@ function hasMarketingPaidSelected(
 function isMarketingSegmentQuestionVisible(
   question: any,
   selections: Record<string, CalculatorSelection>,
-  questions?: any[]
+  questions?: any[],
+  categoryKey?: string | null
 ): boolean | null {
-  const segment = getMarketingTargetCategory(question);
+  if (categoryKey && !isMarketingCategory(categoryKey)) return null;
+  const segment = getMarketingTargetCategory(question, categoryKey, questions);
   if (!segment) return null;
   if (segment === "organic") {
     return hasMarketingOrganicSelected(selections, questions);
@@ -949,51 +980,91 @@ type QuestionVisibilityInput = Partial<CalculatorQuestion> & {
 export function isQuestionVisible(
   question: QuestionVisibilityInput,
   selections: Record<string, CalculatorSelection>,
-  questions?: QuestionVisibilityInput[]
+  questions?: QuestionVisibilityInput[],
+  categoryKey?: string | null
 ): boolean {
-  if (isGraphicsItemsQuestion(question)) {
+  if (!question) return false;
+
+  const roleId = Number(question?.roleId ?? 0);
+  const key = String(question?.key || "").toUpperCase();
+
+  // 1. Website category or website-specific questions: never filtered by graphics/seo/marketing
+  if (
+    categoryKey === "website" ||
+    key.startsWith("WEB_") ||
+    roleId === 1 ||
+    roleId === 2 ||
+    roleId === 3 ||
+    roleId === 4
+  ) {
+    const cond = question.conditionalOn as { questionKey?: string; answerKey?: string; answerKeys?: string[] } | undefined;
+    if (cond && typeof cond.questionKey === "string" && cond.questionKey.trim() !== "") {
+      const parentSel = selections[cond.questionKey];
+      const keys = parentSel?.answerKeys || [];
+      if (cond.answerKey) return keys.includes(cond.answerKey);
+      if (cond.answerKeys?.length) return cond.answerKeys.some((k) => keys.includes(k));
+      return (
+        keys.length > 0 ||
+        (parentSel?.numericValue !== undefined && parentSel.numericValue > 0) ||
+        (parentSel?.textValue !== undefined && parentSel.textValue.trim() !== "")
+      );
+    }
+    return true;
+  }
+
+  // 2. Graphics items visibility
+  if (categoryKey === "graphics" || isGraphicsItemsQuestion(question, categoryKey)) {
     const catKeys = getGraphicsCategoryKeys(selections, questions);
     return catKeys.length > 0;
   }
 
-  // SEO specific question visibility
-  if (question.key === "SEO_ITEMS") {
-    return hasSeoTypeSelected(selections, questions);
-  }
-  if (question.key === "SEO_WORDS") {
-    const items = selections.SEO_ITEMS?.answerKeys || selections["2"]?.answerKeys || [];
-    return items.includes("SEO_ITEM_CONTENT_TEXT") || items.includes("SEO_ITEM_CONTENT") || items.includes("5");
-  }
-  if (question.key === "SEO_BACKLINKS") {
-    const items = selections.SEO_ITEMS?.answerKeys || selections["2"]?.answerKeys || [];
-    return items.includes("SEO_ITEM_LINK_BACK") || items.includes("SEO_ITEM_BACKLINKS") || items.includes("8");
-  }
-  if (question.key === "SEO_MONTHS" || question.roleId === 15) {
-    if (!findSeoServiceTypeQuestion(questions)) return true;
-    return (
-      hasSeoTypeSelected(selections, questions) &&
-      seoModeNeedsMonths(getSeoServiceMode(selections, questions))
-    );
-  }
-  if (
-    question.key === "SEO_TIMELINE" ||
-    (isTimelineQuestion(question) && findSeoServiceTypeQuestion(questions))
-  ) {
-    return (
-      hasSeoTypeSelected(selections, questions) &&
-      seoModeNeedsTimeline(getSeoServiceMode(selections, questions))
-    );
+  // 3. SEO specific question visibility
+  if (categoryKey === "seo" || key.startsWith("SEO_") || roleId === 15) {
+    if (question.key === "SEO_ITEMS") {
+      return hasSeoTypeSelected(selections, questions);
+    }
+    if (question.key === "SEO_WORDS") {
+      const items = selections.SEO_ITEMS?.answerKeys || selections["2"]?.answerKeys || [];
+      return items.includes("SEO_ITEM_CONTENT_TEXT") || items.includes("SEO_ITEM_CONTENT") || items.includes("5");
+    }
+    if (question.key === "SEO_BACKLINKS") {
+      const items = selections.SEO_ITEMS?.answerKeys || selections["2"]?.answerKeys || [];
+      return items.includes("SEO_ITEM_LINK_BACK") || items.includes("SEO_ITEM_BACKLINKS") || items.includes("8");
+    }
+    if (question.key === "SEO_MONTHS" || question.roleId === 15) {
+      if (!findSeoServiceTypeQuestion(questions)) return true;
+      return (
+        hasSeoTypeSelected(selections, questions) &&
+        seoModeNeedsMonths(getSeoServiceMode(selections, questions))
+      );
+    }
+    if (
+      question.key === "SEO_TIMELINE" ||
+      (isTimelineQuestion(question) && findSeoServiceTypeQuestion(questions))
+    ) {
+      return (
+        hasSeoTypeSelected(selections, questions) &&
+        seoModeNeedsTimeline(getSeoServiceMode(selections, questions))
+      );
+    }
   }
 
-  const marketingVisible = isMarketingSegmentQuestionVisible(question, selections, questions);
+  // 4. Marketing segment question visibility
+  const marketingVisible = isMarketingSegmentQuestionVisible(question, selections, questions, categoryKey);
   if (marketingVisible !== null) return marketingVisible;
 
-  const cond = question.conditionalOn;
-  if (cond) {
-    const keys = selections[cond.questionKey]?.answerKeys || [];
+  // 5. Generic conditionalOn
+  const cond = question.conditionalOn as { questionKey?: string; answerKey?: string; answerKeys?: string[] } | undefined;
+  if (cond && typeof cond.questionKey === "string" && cond.questionKey.trim() !== "") {
+    const parentSel = selections[cond.questionKey];
+    const keys = parentSel?.answerKeys || [];
     if (cond.answerKey) return keys.includes(cond.answerKey);
     if (cond.answerKeys?.length) return cond.answerKeys.some((k) => keys.includes(k));
-    return keys.length > 0;
+    return (
+      keys.length > 0 ||
+      (parentSel?.numericValue !== undefined && parentSel.numericValue > 0) ||
+      (parentSel?.textValue !== undefined && parentSel.textValue.trim() !== "")
+    );
   }
 
   return true;
@@ -1345,12 +1416,13 @@ export function formatCalculatorDisplayAmount(
 
 export function pruneHiddenSelections(
   selections: Record<string, CalculatorSelection>,
-  questions: QuestionVisibilityInput[]
+  questions: QuestionVisibilityInput[],
+  categoryKey?: string | null
 ): Record<string, CalculatorSelection> {
   const next = { ...selections };
   for (const q of questions) {
     if (!q.key) continue;
-    if (!isQuestionVisible(q, next, questions)) delete next[q.key];
+    if (!isQuestionVisible(q, next, questions, categoryKey)) delete next[q.key];
   }
 
   // Prune any graphics items that are no longer visible under selected graphics categories

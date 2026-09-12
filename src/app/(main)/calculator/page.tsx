@@ -19,6 +19,8 @@ import { authService } from "@/lib/authService";
 import { paymentService } from "@/lib/paymentService";
 import { priceCalculatorService, CalculatorCategory, CalculatorConfig, CalculatorSelection } from "@/lib/priceCalculatorService";
 import {
+  resolveCalculatorQuestionType,
+  normalizeCalculatorQuestionsForUi,
   getSelectedTier,
   getTierQuestionKey,
   findTimelineQuestionKey,
@@ -345,6 +347,7 @@ const QuestionCard = ({
   seoServiceMode?: string;
   error?: string;
 }) => {
+  const qType = resolveCalculatorQuestionType(question);
   const [textVal, setTextVal] = useState(selection?.textValue || "");
   const numVal = selection?.numericValue ?? 0;
 
@@ -355,7 +358,7 @@ const QuestionCard = ({
   const activeKeys = selection?.answerKeys || [];
   const filteredQuestion = filterQuestionAnswers(question, tier);
   let visibleAnswers = filteredQuestion.answers || [];
-  if (isGraphicsItemsQuestion(question)) {
+  if (isGraphicsItemsQuestion(question, categoryKey)) {
     if (!categorySelections || categorySelections.length === 0) {
       return null;
     }
@@ -387,7 +390,7 @@ const QuestionCard = ({
           className={`text-[20px] md:text-[22px] font-medium tracking-normal leading-snug transition-colors ${error ? "text-red-900 font-semibold" : "text-[#475569]"
             }`}
         >
-          {formatCalculatorQuestionText(question.text, question.isRequired, question.type, categoryKey ?? undefined)}
+          {formatCalculatorQuestionText(question.text, question.isRequired, qType, categoryKey ?? undefined)}
         </h2>
 
         {error && (
@@ -402,7 +405,7 @@ const QuestionCard = ({
         )}
       </div>
 
-      {question.type === "text" && (
+      {qType === "text" && (
         <textarea
           value={textVal}
           onChange={(e) => setTextVal(e.target.value)}
@@ -412,7 +415,7 @@ const QuestionCard = ({
         />
       )}
 
-      {question.type === "number" && (
+      {qType === "number" && (
         <NumberStepper
           value={numVal}
           validateMin={getNumberQuestionMin(question)}
@@ -421,7 +424,7 @@ const QuestionCard = ({
         />
       )}
 
-      {(question.type === "single" || question.type === "multi") &&
+      {(qType === "single" || qType === "multi") &&
         answerGroups.map((group, gIdx) => (
           <div key={gIdx} className={gIdx > 0 ? "mt-8" : ""}>
             {group.heading && (
@@ -507,9 +510,9 @@ const ProposalPreview = ({
 
   const isMonthly = billingType === "monthly";
 
-  const sortedQuestions = [...(category.questions || [])].sort(
-    (a: any, b: any) => (a.order || 0) - (b.order || 0)
-  );
+  const sortedQuestions = normalizeCalculatorQuestionsForUi([
+    ...(category.questions || []),
+  ]).sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
   const tier = getSelectedTier(
     selections,
     getTierQuestionKey(category.categoryKey || ""),
@@ -518,15 +521,16 @@ const ProposalPreview = ({
   const breakdown: { question: string; answers: string[] }[] = [];
 
   sortedQuestions.forEach((q: any) => {
-    if (!isQuestionVisible(q, selections, sortedQuestions)) return;
+    if (!isQuestionVisible(q, selections, sortedQuestions, category.categoryKey)) return;
 
     const sel = selections[q.key];
     if (!sel) return;
 
+    const qType = resolveCalculatorQuestionType(q);
     const ansTexts: string[] = [];
-    if (q.type === "number" && sel.numericValue !== undefined) {
+    if (qType === "number" && sel.numericValue !== undefined) {
       ansTexts.push(String(sel.numericValue));
-    } else if (q.type === "text" && sel.textValue?.trim()) {
+    } else if (qType === "text" && sel.textValue?.trim()) {
       ansTexts.push(sel.textValue.trim());
     } else if (sel.answerKeys?.length) {
       sel.answerKeys.forEach((k: string) => {
@@ -540,7 +544,7 @@ const ProposalPreview = ({
               baselineDays:
                 category.categoryKey === "graphics"
                   ? calculateGraphicsRawTimelineDays(
-                      sortedQuestions.find((sq: any) => isGraphicsItemsQuestion(sq)),
+                      sortedQuestions.find((sq: any) => isGraphicsItemsQuestion(sq, category.categoryKey)),
                       selections,
                       tier
                     )
@@ -559,7 +563,7 @@ const ProposalPreview = ({
 
     if (ansTexts.length > 0) {
       breakdown.push({
-        question: formatCalculatorQuestionText(q.text, q.isRequired, q.type, category.categoryKey),
+        question: formatCalculatorQuestionText(q.text, q.isRequired, qType, category.categoryKey),
         answers: ansTexts,
       });
     }
@@ -1490,7 +1494,9 @@ export default function CalculatorPage() {
   const sortedQuestions = useMemo(
     () =>
       selectedCategory
-        ? [...selectedCategory.questions].sort((a, b) => (a.order || 0) - (b.order || 0))
+        ? normalizeCalculatorQuestionsForUi([...selectedCategory.questions]).sort(
+            (a, b) => (a.order || 0) - (b.order || 0)
+          )
         : [],
     [selectedCategory]
   );
@@ -1508,8 +1514,8 @@ export default function CalculatorPage() {
     [selections, sortedQuestions]
   );
   const graphicsItemsQuestion = useMemo(
-    () => sortedQuestions.find((q) => isGraphicsItemsQuestion(q)),
-    [sortedQuestions]
+    () => sortedQuestions.find((q) => isGraphicsItemsQuestion(q, selectedCategoryKey)),
+    [sortedQuestions, selectedCategoryKey]
   );
   const graphicsRawTimelineDays = useMemo(
     () => calculateGraphicsRawTimelineDays(graphicsItemsQuestion, selections, tier),
@@ -1531,8 +1537,11 @@ export default function CalculatorPage() {
     [selections, selectedCategoryKey, sortedQuestions]
   );
   const visibleQuestions = useMemo(
-    () => sortedQuestions.filter((q) => isQuestionVisible(q, selections, sortedQuestions)),
-    [sortedQuestions, selections]
+    () =>
+      sortedQuestions.filter((q) =>
+        isQuestionVisible(q, selections, sortedQuestions, selectedCategoryKey)
+      ),
+    [sortedQuestions, selections, selectedCategoryKey]
   );
   const isMonthlyBilling = isMonthlyBillingCategory(selectedCategoryKey, seoServiceMode);
   const hasUserSelections = useMemo(
@@ -1569,11 +1578,12 @@ export default function CalculatorPage() {
 
   const validateRequiredSelections = () => {
     if (!selectedCategory) return false;
-    const missingQuestions = getMissingRequiredQuestions(selectedCategory.questions || [], selections);
+    const missingQuestions = getMissingRequiredQuestions(sortedQuestions, selections, selectedCategoryKey);
     if (missingQuestions.length > 0) {
       const newErrors: Record<string, string> = {};
       missingQuestions.forEach((q) => {
-        if (q.type === "number") {
+        const qType = resolveCalculatorQuestionType(q);
+        if (qType === "number") {
           const val = selections[q.key]?.numericValue ?? 0;
           const maxVal = getNumberQuestionMax(q);
           if (maxVal != null && val > maxVal) {
@@ -1677,7 +1687,7 @@ export default function CalculatorPage() {
         if (!keys.includes("SEO_ITEM_BACKLINKS") && !keys.includes("SEO_ITEM_LINK_BACK")) delete next.SEO_BACKLINKS;
       }
 
-      return pruneHiddenSelections(next, sortedQuestions);
+      return pruneHiddenSelections(next, sortedQuestions, selectedCategoryKey);
     });
   };
 
