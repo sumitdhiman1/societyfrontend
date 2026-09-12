@@ -47,14 +47,25 @@ export default function LiveChatWidget() {
     }
 
     const token = authService.getAccessToken();
-    const user = authService.getUser();
-    const userId = user?.id || user?._id;
+    const userId = authService.getUserId();
 
     const socketUrl =
+      process.env.NEXT_PUBLIC_SOCKET_URL ||
       process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
       (typeof window !== "undefined"
         ? `${window.location.protocol}//${window.location.hostname}:5000`
         : "http://localhost:5000");
+
+    const authPayload: Record<string, any> = {};
+    const queryPayload: Record<string, any> = {};
+    if (token) {
+      authPayload.token = token;
+      queryPayload.token = token;
+    }
+    if (userId && String(userId) !== "undefined" && String(userId) !== "null") {
+      authPayload.userId = String(userId);
+      queryPayload.userId = String(userId);
+    }
 
     const newSocket = io(socketUrl, {
       path: "/socket.io",
@@ -64,8 +75,8 @@ export default function LiveChatWidget() {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      auth: token ? { token, userId } : undefined,
-      query: token ? { token, userId } : undefined,
+      auth: Object.keys(authPayload).length > 0 ? authPayload : undefined,
+      query: Object.keys(queryPayload).length > 0 ? queryPayload : undefined,
     });
 
     newSocket.on("connect", () => {

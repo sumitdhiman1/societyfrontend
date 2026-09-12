@@ -13,10 +13,8 @@ import {
 import { paymentService } from "@/lib/paymentService";
 import { authService } from "@/lib/authService";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useCurrency } from "@/context/CurrencyContext";
-import VisaIcon from "@/components/icons/visa";
-import MastercardIcon from "@/components/icons/mastercard";
-import AmexIcon from "@/components/icons/amex";
 import StatusPopup from "@/components/common/StatusPopup";
 type PaymentProcessStep = "idle" | "preparing" | "gateway" | "bank_auth" | "confirming" | "activating" | "success" | "error";
 import InvoicePreviewModal from "./InvoicePreviewModal";
@@ -69,6 +67,7 @@ interface UnifiedPaymentFormProps {
   metadata?: any;
   hideHeader?: boolean;
   vatRate?: number;
+  containerClassName?: string;
 }
 
 function PaymentForm({
@@ -94,6 +93,7 @@ function PaymentForm({
   metadata: extraMetadata,
   hideHeader = false,
   vatRate: propVatRate,
+  containerClassName,
 }: UnifiedPaymentFormProps & { hideHeader?: boolean }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -345,6 +345,8 @@ function PaymentForm({
         saveCard: selectedMethod === "new" && saveCard,
         metadata: {
           ...extraMetadata,
+          title: title || extraMetadata?.title,
+          lineItems: extraMetadata?.lineItems || (deliverableItems && deliverableItems.length > 0 ? deliverableItems.map((d: any) => d.description).join(", ") : undefined),
           type,
           [`${type.toLowerCase()}Id`]: entityId,
           [`${type.toLowerCase()}Number`]: entityNumber,
@@ -465,7 +467,7 @@ function PaymentForm({
   const pendingAmount = deliverablesSum > 0 ? Math.max(0, deliverablesSum - amountPaid) : totalCost;
 
   return (
-    <div className="bg-white border border-gray-300 rounded-lg p-4 sm:p-6 md:p-8">
+    <div className={containerClassName !== undefined ? containerClassName : "bg-white border border-gray-300 rounded-lg p-4 sm:p-6 md:p-8"}>
       <StatusPopup
         isOpen={popup.isOpen}
         onClose={() => setPopup({ ...popup, isOpen: false })}
@@ -686,10 +688,10 @@ function PaymentForm({
         <div>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <h3 className="text-gray-700 font-bold text-lg">Pay Amount</h3>
-            <div className="flex gap-4 items-center opacity-80 scale-90 sm:scale-100 origin-left">
-              <VisaIcon />
-              <MastercardIcon />
-              <AmexIcon />
+            <div className="flex gap-2 items-center opacity-100">
+              <img alt="Visa" className="h-6 w-auto object-contain" src="/assets/visa blue.svg" />
+              <img alt="Mastercard" className="h-6 w-auto object-contain" src="/assets/metroblue.svg" />
+              <img alt="American Express" className="h-6 w-auto object-contain" src="/assets/American blue.svg" />
             </div>
           </div>
 
@@ -780,7 +782,7 @@ function PaymentForm({
               )}
             </div>
 
-            {availableCredits >= 0 && (
+            {availableCredits > 0 && (
               <div className="p-5 border border-gray-200 rounded-lg bg-gray-50/50 mt-8">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
@@ -879,9 +881,9 @@ function PaymentForm({
                         </span>
                       </div>
                     </div>
-                    {method.brand === "visa" && <VisaIcon />}
-                    {method.brand === "mastercard" && <MastercardIcon />}
-                    {method.brand === "amex" && <AmexIcon />}
+                    {method.brand === "visa" && <img alt="Visa" className="h-6 w-auto object-contain" src="/assets/visa blue.svg" />}
+                    {method.brand === "mastercard" && <img alt="Mastercard" className="h-6 w-auto object-contain" src="/assets/metroblue.svg" />}
+                    {method.brand === "amex" && <img alt="American Express" className="h-6 w-auto object-contain" src="/assets/American blue.svg" />}
                   </label>
                 ))}
 
@@ -948,9 +950,9 @@ function PaymentForm({
                 </label>
                 <p className="mt-2 text-[10px] text-gray-500 italic">
                   NOTE: Business details saved in your account are always used for invoicing.
-                  <a href="/dashboard/settings" className="ml-1 text-indigo-600 hover:underline">
+                  <Link href="/dashboard/myAccount" className="ml-1 text-indigo-600 hover:underline">
                     Link to account section
-                  </a>
+                  </Link>
                 </p>
               </div>
 
@@ -1137,10 +1139,16 @@ function PaymentForm({
             </div>
           )}
 
+          {!stripePromise && (
+            <div className="p-3 mb-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+              <span>⚠️ Stripe is not initialized. Please configure <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> in environment.</span>
+            </div>
+          )}
+
           <button
             onClick={handleSubmit}
             disabled={isProcessing || !stripe || !elements || !stripePromise}
-            className="w-full bg-[#1e293b] hover:bg-[#0f172a] text-white font-medium py-3 rounded-md transition-colors text-sm mt-4 disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-[#1e293b] hover:bg-[#0f172a] text-white font-medium py-3 rounded-md transition-colors text-sm mt-4 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isProcessing ? (
               <>

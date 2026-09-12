@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { notificationService } from "@/lib/services";
 import { authService } from "@/lib/authService";
+import { capitalizeCurrencyInText } from "@/lib/currencyUtils";
+import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 const BellIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -207,14 +209,14 @@ export default function NotificationsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <p className={`text-base font-bold truncate ${!notif.isRead ? "text-gray-800" : "text-gray-600"}`}>
-                        {notif.title}
+                        {capitalizeCurrencyInText(notif.title)}
                       </p>
                       <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap ml-2">
                         {formatTime(notif.createdAt)}
                       </span>
                     </div>
                     <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">
-                      {notif.message}
+                      {capitalizeCurrencyInText(notif.message)}
                     </p>
                   </div>
                   <button
@@ -235,7 +237,9 @@ export default function NotificationsPage() {
           )}
         </div>
 
-
+        <div className="mt-16">
+          <SupportNewsletter noPadding />
+        </div>
       </main>
     </div>
   );

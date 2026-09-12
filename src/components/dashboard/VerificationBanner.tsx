@@ -17,15 +17,17 @@ export default function VerificationBanner() {
     const initialUser = authService.getUser();
     setUser(initialUser);
 
-    if (initialUser && !initialUser.isEmailVerified) {
-      authService.getProfile().then((freshUser) => {
-        if (freshUser) {
-          setUser(freshUser);
-        }
-      });
-    }
+    // Fetch fresh profile from backend to ensure status is up to date
+    authService.getProfile().then((freshUser) => {
+      if (freshUser) {
+        setUser(freshUser);
+      }
+    });
 
-    const handleUpdate = () => setUser(authService.getUser());
+    const handleUpdate = () => {
+      const u = authService.getUser();
+      setUser(u);
+    };
     
     window.addEventListener("auth:login", handleUpdate);
     window.addEventListener("auth:logout", () => setUser(null));
@@ -38,7 +40,14 @@ export default function VerificationBanner() {
     };
   }, []);
 
-  if (!mounted || !user || user.isEmailVerified || !show) return null;
+  const isVerified =
+    user?.isEmailVerified === true ||
+    String(user?.isEmailVerified) === "true" ||
+    user?.emailVerified === true;
+
+  // Don't show if mounted is false, no user, already verified, explicitly hidden,
+  // or isEmailVerified is undefined (still loading profile)
+  if (!mounted || !user || isVerified || !show || user.isEmailVerified === undefined) return null;
 
   const handleResend = async () => {
     if (!user.email || loading) return;
@@ -48,13 +57,51 @@ export default function VerificationBanner() {
     
     try {
       const res = await authService.resendVerificationEmail(user.email);
-      if (res.isSuccessful) {
+      const isAlreadyVerified =
+        res?.message?.toLowerCase().includes("already verified") ||
+        res?.errorCode === "EMAIL_IS_ALREADY_VERIFIED" ||
+        res?.error === "EMAIL_IS_ALREADY_VERIFIED";
+
+      if (res && res.isSuccessful) {
         toast.success("Verification link sent! Please check your inbox.", { id: toastId });
+      } else if (isAlreadyVerified) {
+        toast.success("Your email is already verified!", { id: toastId });
+        authService.updateInternalUser({ isEmailVerified: true });
+        setUser((prev: any) => ({ ...prev, isEmailVerified: true }));
       } else {
-        toast.error(res.message || "Failed to send verification email.", { id: toastId });
+        toast.error(res?.message || "Failed to send verification email.", { id: toastId });
       }
-    } catch (error) {
-      toast.error("An error occurred. Please try again later.", { id: toastId });
+    } catch (error: any) {
+      const msg = error?.message || error?.data?.message || "";
+      if (msg.toLowerCase().includes("already verified")) {
+        toast.success("Your email is already verified!", { id: toastId });
+        authService.updateInternalUser({ isEmailVerified: true });
+        setUser((prev: any) => ({ ...prev, isEmailVerified: true }));
+      } else {
+        toast.error("An error occurred. Please try again later.", { id: toastId });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCheckVerification = async () => {
+    setLoading(true);
+    const toastId = toast.loading("Checking verification status...");
+    try {
+      const freshUser = await authService.getProfile();
+      const verified =
+        freshUser?.isEmailVerified === true ||
+        String(freshUser?.isEmailVerified) === "true";
+      if (verified) {
+        toast.success("Your email is verified!", { id: toastId });
+        authService.updateInternalUser({ isEmailVerified: true });
+        setUser((prev: any) => ({ ...prev, isEmailVerified: true }));
+      } else {
+        toast.info("Email is not verified yet. Please check your inbox.", { id: toastId });
+      }
+    } catch {
+      toast.error("Could not check status right now.", { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -87,6 +134,17 @@ export default function VerificationBanner() {
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
             Support
+          </button>
+          <button
+            onClick={handleCheckVerification}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white/20 border border-white/30 text-white rounded-lg text-xs font-bold hover:bg-white/30 transition-all active:scale-95 backdrop-blur-sm disabled:opacity-50"
+            title="Check if email is already verified"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={loading ? "animate-spin" : ""}>
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+            </svg>
+            I've Verified
           </button>
           <button
             onClick={handleResend}

@@ -8,7 +8,15 @@ import HttpClient from "@/lib/HttpClient";
 
 const httpClient = new HttpClient();
 
-export default function SupportNewsletter() {
+interface SupportNewsletterProps {
+  noPadding?: boolean;
+  className?: string;
+}
+
+export default function SupportNewsletter({
+  noPadding = false,
+  className = "",
+}: SupportNewsletterProps) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState({
@@ -76,7 +84,13 @@ export default function SupportNewsletter() {
   };
 
   return (
-    <div className="max-w-[1536px] w-full mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] \">
+    <div
+      className={`${
+        noPadding
+          ? "w-full"
+          : "max-w-[1536px] w-full mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px]"
+      } ${className}`}
+    >
       <StatusPopup
         isOpen={popup.isOpen}
         onClose={() => setPopup({ ...popup, isOpen: false })}
@@ -86,19 +100,19 @@ export default function SupportNewsletter() {
       />
 
       <div
-        className="w-full grid grid-cols-1 lg:grid-cols-2  md:gap-8 font-sans font-sans gap-8 mb-12 mt-8 md:mt-12"
+        className="support-section w-full grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 font-sans mt-8 md:mt-12"
         style={{ fontFamily: "var(--font-inter), sans-serif" }}
       >
         {/* Support Card */}
-        <div className="bg-white rounded-[12px] shadow-[0px_10px_35px_rgba(0,0,0,0.06)] md:shadow-[0px_5px_25px_#0000000D] flex flex-col md:flex-row items-center justify-between relative overflow-hidden h-auto min-h-[251px] flex-1 pr-0 md:pr-8 py-8 px-6 md:px-8 py-8 xl:py-0 md:py-0">
+        <div className="bg-white rounded-lg shadow-[0px_10px_35px_rgba(0,0,0,0.06)] md:shadow-[0px_5px_25px_#0000000D] flex flex-col md:flex-row items-center justify-between relative overflow-hidden h-auto min-h-[251px] flex-1 px-6 md:px-8 py-8 xl:py-0">
           <Image
             src="/images/Group 2878.svg"
             alt="Decoration"
             width={278}
             height={150}
-            className="absolute bottom-0 left-0 z-0 opacity-40 md:opacity-100"
+            className="absolute bottom-0 left-0 z-0 opacity-40 md:opacity-100 pointer-events-none select-none"
           />
-          <div className="w-full md:w-[238px] relative z-10 flex items-center justify-center mb-6 md:mb-0">
+          <div className="w-full md:w-[220px] shrink-0 relative z-10 flex items-center justify-center mb-6 md:mb-0">
             <Image
               src="/images/Active Support-rafiki.svg"
               alt="Support"
@@ -107,15 +121,14 @@ export default function SupportNewsletter() {
               className="object-contain max-w-full h-auto max-h-[170px] md:max-h-[200px]"
             />
           </div>
-          <div className="w-full md:w-2/3 flex flex-col items-center md:items-start z-10 text-center md:text-left space-y-4 md:space-y-8 md:space-y-[40px] px-6 p-inline-set">
-            <h3 className="text-[26px] mb-5 md:text-[25px] leading-[34px] md:leading-[30px] font-semibold md:font-bold text-[#434343] capitalize font-sans">
-              Visit Help & Support
+          <div className="w-full md:flex-1 flex flex-col items-center md:items-start z-10 text-center md:text-left space-y-4 xl:space-y-5 px-6 md:px-0 md:pl-6 md:pr-4 py-0">
+            <h3 className="text-[28px] md:text-[25px] leading-[34px] md:leading-[30px] font-bold text-[#434343] capitalize font-sans">
+              Visit Help &amp; Support
             </h3>
-            <Link href="/help-support" className="w-full    ">
+            <Link href="/help-support" className="w-full max-w-[400px] md:max-w-none">
               <button
-                className="bg-[#4343F0] font-semibold   hover:bg-[#5c5cf2]
-               text-white md:font-bold h-[54px] md:h-[50px] w-full flex items-center 
-               justify-center rounded-lg shadow-lg md:shadow-md text-sm transition-all px-4 font-sanstracking-widest"
+                type="button"
+                className="bg-[#4343F0] hover:bg-[#3232b7] text-white font-bold h-[54px] md:h-[50px] w-full flex items-center justify-center rounded-lg shadow-md text-sm transition-all px-4 font-sans cursor-pointer"
               >
                 Contact Our Support Team
               </button>
@@ -124,15 +137,15 @@ export default function SupportNewsletter() {
         </div>
 
         {/* Newsletter Card */}
-        <div className="bg-white rounded-[12px] shadow-[0px_10px_35px_rgba(0,0,0,0.06)] md:shadow-[0px_5px_25px_#0000000D] flex flex-col md:flex-row items-center justify-between relative overflow-hidden h-auto min-h-[251px] flex-1 gap-0  md:px-8 py-8 md:py-0">
+        <div className="bg-white rounded-lg shadow-[0px_10px_35px_rgba(0,0,0,0.06)] md:shadow-[0px_5px_25px_#0000000D] flex flex-col md:flex-row items-center justify-between relative overflow-hidden h-auto min-h-[251px] flex-1 px-6 md:px-8 py-8 xl:py-0">
           <Image
             src="/images/Group 2878.svg"
             alt="Decoration"
             width={278}
             height={150}
-            className="absolute bottom-0 left-0 z-0 opacity-[0.25] md:opacity-50"
+            className="absolute bottom-0 left-0 z-0 opacity-[0.25] md:opacity-50 pointer-events-none select-none"
           />
-          <div className="w-[220px] relative z-10 flex items-center justify-center mb-6 md:mb-0">
+          <div className="w-full md:w-[220px] shrink-0 relative z-10 flex items-center justify-center mb-6 md:mb-0">
             <Image
               src="/images/Group 2882.svg"
               alt="Newsletter"
@@ -141,8 +154,8 @@ export default function SupportNewsletter() {
               className="object-contain max-w-full h-auto max-h-[170px] md:max-h-[200px]"
             />
           </div>
-          <div className="flex w-[362px] pr-4 pl-6 flex-col items-center md:items-start z-10 text-center md:text-left space-y-4 md:space-y-8md:space-y-[40px] px-6s">
-            <h3 className="text-[26px] mb-5 md:text-[25px] leading-[34px] md:leading-[30px] font-semibold md:font-bold text-[#434343] capitalize font-sans">
+          <div className="w-full md:flex-1 flex flex-col items-center md:items-start z-10 text-center md:text-left space-y-4 xl:space-y-5 px-6 md:px-0 md:pl-6 md:pr-4 py-0">
+            <h3 className="text-[28px] md:text-[25px] leading-[34px] md:leading-[30px] font-bold text-[#434343] capitalize font-sans">
               Sign Up For Updates!
             </h3>
             <form
@@ -155,13 +168,13 @@ export default function SupportNewsletter() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email Address"
                 disabled={loading}
-                className="w-full px-4 md:px-4 bg-transparent  rounded-[6px] text-gray-700 text-sm placeholder-gray-500 outline-none disabled:opacity-50"
+                className="w-full px-4 md:px-4 bg-transparent text-gray-700 text-sm placeholder-gray-500 outline-none disabled:opacity-50 font-sans"
                 required
               />
               <button
                 type="submit"
                 disabled={loading}
-                className="bg-[#4343F0] hover:bg-[#5c5cf2] text-white font-semibold md:font-bold px-6   text-sm h-full whitespace-nowrap shrink-0 disabled:opacity-75 flex items-center justify-center min-w-[110px] md:min-w-[100px] transition-colors uppercase tracking-widest"
+                className="bg-[#4343F0] hover:bg-[#3232b7] text-white font-bold px-6 md:px-8 text-sm h-full whitespace-nowrap shrink-0 disabled:opacity-75 flex items-center justify-center min-w-[110px] md:min-w-[100px] transition-colors font-sans cursor-pointer"
               >
                 {loading ? (
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />

@@ -225,14 +225,41 @@ export default function AnalysisOrderPage() {
       ? "/images/free_checking_of_work.jpg"
       : "/images/free_website_analysis.jpg");
 
+  const isCheckingOfWork = title.toLowerCase().includes("check") || title.toLowerCase().includes("work");
+
   const vf = product?.visibleFormFields || {};
+  const isFieldVisible = (vfKey: string, rootKey?: string, defaultForCheck: boolean = false) => {
+    // 1. If explicitly configured in visibleFormFields
+    if (vf && typeof vf === 'object' && vf[vfKey] !== undefined) {
+      if (vf[vfKey] === true || vf[vfKey] === 'true' || vf[vfKey] === 1) return true;
+      if (vf[vfKey] === false || vf[vfKey] === 'false' || vf[vfKey] === 0) {
+        // If rootKey is true, allow it
+        if (rootKey && product && (product[rootKey] === true || product[rootKey] === 'true' || product[rootKey] === 1)) {
+          return true;
+        }
+        return false;
+      }
+    }
+    // 2. If root-level flag is present
+    if (rootKey && product && product[rootKey] !== undefined) {
+      if (product[rootKey] === true || product[rootKey] === 'true' || product[rootKey] === 1) return true;
+      if (product[rootKey] === false || product[rootKey] === 'false' || product[rootKey] === 0) return false;
+    }
+    // 3. Fallback for Checking of Work
+    if (isCheckingOfWork) {
+      return defaultForCheck;
+    }
+    // 4. Default: URL and Additional Info are visible by default
+    return vfKey === 'urlToCheck' || vfKey === 'additionalInfo';
+  };
+
   const visibleFields = {
-    urlToCheck: vf.urlToCheck !== undefined ? vf.urlToCheck : (product?.showWebsiteUrl !== undefined ? product.showWebsiteUrl : true),
-    additionalInfo: vf.additionalInfo !== undefined ? vf.additionalInfo : (product?.showAdditionalComments !== undefined ? product.showAdditionalComments : true),
-    whatToLookAt: vf.whatToLookAt !== undefined ? vf.whatToLookAt : (product?.showScopeOfWork !== undefined ? product.showScopeOfWork : false),
-    whoCompletedWork: vf.whoCompletedWork !== undefined ? vf.whoCompletedWork : (product?.showWhoCompletedWork !== undefined ? product.showWhoCompletedWork : false),
-    agreementDetails: vf.agreementDetails !== undefined ? vf.agreementDetails : (product?.showAgreementDetails !== undefined ? product.showAgreementDetails : false),
-    shareAccess: vf.shareAccess !== undefined ? vf.shareAccess : (product?.showLoginsDetails !== undefined ? product.showLoginsDetails : false),
+    urlToCheck: isFieldVisible('urlToCheck', 'showWebsiteUrl', true),
+    whoCompletedWork: isFieldVisible('whoCompletedWork', 'showWhoCompletedWork', true),
+    agreementDetails: isFieldVisible('agreementDetails', 'showAgreementDetails', true),
+    whatToLookAt: isFieldVisible('whatToLookAt', 'showScopeOfWork', true),
+    shareAccess: isFieldVisible('shareAccess', 'showLoginsDetails', true),
+    additionalInfo: isFieldVisible('additionalInfo', 'showAdditionalComments', true),
   };
 
   const isFree = product?.isFree !== false && (product?.amount === 0 || product?.amount === undefined);

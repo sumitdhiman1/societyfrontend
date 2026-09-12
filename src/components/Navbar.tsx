@@ -31,20 +31,7 @@ const SearchIcon = ({ className = "h-5 w-5", ...props }: any) => (
 );
 
 const ChatIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-6 w-6"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-    />
-  </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
 );
 
 const MenuIcon = () => (
@@ -102,6 +89,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
   const router = useRouter();
   const shouldHideMenu = hideMenu;
   const notificationRef = useRef<HTMLDivElement>(null);
+  const notificationContainerRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -115,10 +103,19 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
       setIsAuthenticated(auth);
       if (auth) {
         const u = authService.getUser();
-        setCurrentUser(u);
-        if (u) setAvatar(u.avatar || null);
+        if (u) {
+          setCurrentUser(u);
+          if (u.avatar) setAvatar(u.avatar);
+        }
+        authService.getProfile().then((profile) => {
+          if (profile) {
+            setCurrentUser(profile);
+            if (profile.avatar) setAvatar(profile.avatar);
+          }
+        });
       } else {
         setCurrentUser(null);
+        setAvatar(null);
       }
     };
     initAuth();
@@ -127,6 +124,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
       setIsAuthenticated(false);
       setAvatar(null);
       setCurrentUser(null);
+      setUnreadCount(0);
     };
     const handleLogin = () => {
       setIsAuthenticated(true);
@@ -141,7 +139,10 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
     };
   }, []);
 
-  const userId = currentUser?._id || currentUser?.id;
+  const userId =
+    currentUser?._id ||
+    currentUser?.id ||
+    authService.getUserId();
   const user = currentUser || authService.getUser() || {};
 
   // Real-time notifications socket connection
@@ -153,12 +154,22 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
       console.log("[Frontend Navbar Socket] ⏳ Waiting for userId before connecting...");
       return;
     }
-    if (socketRef.current) {
-      console.log("[Frontend Navbar Socket] ✅ Socket already open, skipping re-connect.");
-      return;
-    }
+
+    const refreshCountFromServer = () => {
+      notificationService.getUnreadCount(true).then((res: any) => {
+        const count = res.data?.count ?? (typeof res.data === "number" ? res.data : null);
+        if (typeof count === "number") {
+          setUnreadCount(count);
+        }
+      });
+    };
 
     const connectSocket = async () => {
+      if (socketRef.current?.connected) {
+        console.log("[Frontend Navbar Socket] ✅ Socket already open, skipping re-connect.");
+        return;
+      }
+
       let token = authService.getAccessToken();
       if (!token) {
         console.log("[Frontend Navbar Socket] 🔄 Access token missing, attempting refresh...");
@@ -173,16 +184,25 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
       }
 
       const socketUrl =
+        process.env.NEXT_PUBLIC_SOCKET_URL ||
         process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
         "http://localhost:5001";
 
       console.log("[Frontend Navbar Socket] 🔌 Connecting to", socketUrl, "| userId:", userId);
 
+      const authPayload: Record<string, any> = { token };
+      const queryPayload: Record<string, any> = { token };
+      if (userId && String(userId) !== "undefined" && String(userId) !== "null") {
+        authPayload.userId = String(userId);
+        queryPayload.userId = String(userId);
+      }
+
       const sock = io(socketUrl, {
         path: "/socket.io",
         transports: ["websocket", "polling"],
-        auth: { token, userId },
-        query: { token, userId },
+        auth: authPayload,
+        query: queryPayload,
+        reconnection: true,
         reconnectionDelay: 2000,
         reconnectionDelayMax: 10000,
       });
@@ -192,6 +212,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
 
       sock.on("connect", () => {
         console.log("[Frontend Navbar Socket] ✅ Connected! Socket ID:", sock.id, "| userId room: user-" + userId);
+        refreshCountFromServer();
       });
 
       sock.on("disconnect", (reason) => {
@@ -208,40 +229,76 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
 
       sock.on("notification", (notif: any) => {
         console.log("[Frontend Navbar Socket] 🔔 Notification received:", notif);
-        setUnreadCount((prev) => {
-          console.log("[Frontend Navbar Socket] Badge count:", prev, "→", prev + 1);
-          return prev + 1;
-        });
+        setUnreadCount((prev) => prev + 1);
+        refreshCountFromServer();
         window.dispatchEvent(new CustomEvent("notification:received", { detail: notif }));
         window.dispatchEvent(new CustomEvent("notification:new", { detail: notif }));
       });
 
+      sock.on("unread_count_updated", (data: any) => {
+        console.log("[Frontend Navbar Socket] 🔢 unread_count_updated received:", data);
+        if (typeof data?.count === "number") {
+          setUnreadCount(data.count);
+        }
+      });
+
       sock.on("project_message", (data: any) => {
         console.log("[Frontend Navbar Socket] 💬 project_message received:", data);
+        refreshCountFromServer();
         window.dispatchEvent(new CustomEvent("project_message", { detail: data }));
       });
 
       sock.on("project_updated", (data: any) => {
         console.log("[Frontend Navbar Socket] 🔄 project_updated received:", data);
+        refreshCountFromServer();
         window.dispatchEvent(new CustomEvent("project_updated", { detail: data }));
       });
 
       sock.on("quote_message", (data: any) => {
         console.log("[Frontend Navbar Socket] 💬 quote_message received:", data);
+        refreshCountFromServer();
         window.dispatchEvent(new CustomEvent("quote_message", { detail: data }));
       });
 
       sock.on("quote_updated", (data: any) => {
         console.log("[Frontend Navbar Socket] 🔄 quote_updated received:", data);
+        refreshCountFromServer();
         window.dispatchEvent(new CustomEvent("quote_updated", { detail: data }));
       });
     };
 
     connectSocket();
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        if (!socketRef.current?.connected) {
+          console.log("[Frontend Navbar Socket] 👁️ Tab visible, socket reconnecting...");
+          connectSocket();
+        }
+        refreshCountFromServer();
+      }
+    };
+
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted || !socketRef.current?.connected) {
+        console.log("[Frontend Navbar Socket] 🔄 pageshow event (bfcache restored), reconnecting...");
+        connectSocket();
+        refreshCountFromServer();
+      }
+    };
+
+    const handleForceRefresh = () => refreshCountFromServer();
+
+    window.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pageshow", handlePageShow);
+    window.addEventListener("notification:refresh", handleForceRefresh);
+
     return () => {
       isCancelled = true;
       console.log("[Frontend Navbar Socket] 🧹 Cleaning up socket for userId:", userId);
+      window.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pageshow", handlePageShow);
+      window.removeEventListener("notification:refresh", handleForceRefresh);
       if (activeSocket) {
         activeSocket.disconnect();
       }
@@ -253,16 +310,15 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
   useEffect(() => {
     if (isAuthenticated) {
       const fetchCount = () => {
-        notificationService.getUnreadCount().then((res: any) => {
-          setUnreadCount(
-            res.data?.count ?? (typeof res.data === "number" ? res.data : 0),
-          );
+        notificationService.getUnreadCount(true).then((res: any) => {
+          const count = res.data?.count ?? (typeof res.data === "number" ? res.data : 0);
+          setUnreadCount(count);
         });
       };
 
       fetchCount();
 
-      const interval = setInterval(fetchCount, 30000);
+      const interval = setInterval(fetchCount, 25000);
       return () => clearInterval(interval);
     }
   }, [isAuthenticated]);
@@ -270,8 +326,13 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
-      if (notificationRef.current && !notificationRef.current.contains(target))
-        setNotificationsOpen(false);
+      // Use notificationContainerRef which wraps both desktop & mobile Notification
+      // instances — avoids the stale ref problem when the same ref is passed to two
+      // components and the mobile one overwrites the desktop one.
+      const insideNotification =
+        (notificationContainerRef.current && notificationContainerRef.current.contains(target)) ||
+        (notificationRef.current && notificationRef.current.contains(target));
+      if (!insideNotification) setNotificationsOpen(false);
       if (profileRef.current && !profileRef.current.contains(target))
         setProfileDropdownOpen(false);
       if (searchRef.current && !searchRef.current.contains(target))
@@ -472,19 +533,21 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
               </button>
 
               <div className="flex items-center gap-4 pl-2">
-                <Notification
-                  notificationRef={notificationRef}
-                  notificationsOpen={notificationsOpen}
-                  setNotificationsOpen={setNotificationsOpen}
-                  setMobileMenuOpen={setMobileMenuOpen}
-                  isAuthenticated={isAuthenticated}
-                  unreadCount={unreadCount}
-                  setUnreadCount={setUnreadCount}
-                />
+                <div ref={notificationContainerRef} className="flex items-center justify-center shrink-0">
+                  <Notification
+                    notificationRef={notificationRef}
+                    notificationsOpen={notificationsOpen}
+                    setNotificationsOpen={setNotificationsOpen}
+                    setMobileMenuOpen={setMobileMenuOpen}
+                    isAuthenticated={isAuthenticated}
+                    unreadCount={unreadCount}
+                    setUnreadCount={setUnreadCount}
+                  />
+                </div>
 
                 <button
                   onClick={openChat}
-                  className="w-10 h-10 rounded-full bg-white text-gray-700 flex items-center justify-center transition-transform hover:scale-105 shadow-sm"
+                  className="w-10 h-10 rounded-full bg-white text-gray-700 flex items-center justify-center transition-transform hover:scale-105 shadow-sm shrink-0"
                 >
                   <ChatIcon />
                 </button>

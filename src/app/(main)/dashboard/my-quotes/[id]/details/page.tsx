@@ -11,7 +11,9 @@ import { projectService } from "@/lib/projectService";
 import { mediaService } from "@/lib/mediaService";
 import { packagesService } from "@/lib/packagesService";
 import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
+import { capitalizeCurrencyInText } from "@/lib/currencyUtils";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
+import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import { io, Socket } from "socket.io-client";
 
 // Helper components
@@ -180,6 +182,98 @@ const PackageCard = ({
   );
 };
 
+const renderFileThumbnail = (safeUrl: string, fileName: string, isSvg = false) => {
+  const clean = (fileName || safeUrl || "").toLowerCase();
+  const ext = (clean.split(".").pop() || "FILE").toUpperCase();
+  const isImage =
+    isImageUrl(safeUrl) ||
+    ["PNG", "JPG", "JPEG", "WEBP", "GIF", "BMP", "SVG", "ICO"].includes(ext) ||
+    isImageUrl(fileName);
+  const isPdf = ext === "PDF" || clean.includes(".pdf");
+  const isWord = ["DOC", "DOCX"].includes(ext) || clean.includes(".doc");
+  const isExcel = ["XLS", "XLSX", "CSV"].includes(ext) || clean.includes("sheet") || clean.includes("excel");
+  const isPpt = ["PPT", "PPTX"].includes(ext);
+  const isArchive = ["ZIP", "RAR", "7Z", "TAR", "GZ"].includes(ext);
+
+  if (isImage && safeUrl) {
+    return (
+      <img
+        src={safeUrl}
+        alt={fileName}
+        className={
+          isSvg
+            ? "w-full h-full object-contain p-2.5 group-hover:scale-105 transition-transform duration-300"
+            : "w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        }
+        onError={(e) => {
+          const target = e.currentTarget;
+          if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
+            target.src = target.src.replace("http:", "https:");
+          }
+        }}
+      />
+    );
+  }
+
+  if (isPdf) {
+    return (
+      <div className="h-full w-full flex items-center justify-center bg-gray-100">
+        <span className="text-red-600 font-extrabold text-xs sm:text-sm uppercase tracking-wider">
+          PDF
+        </span>
+      </div>
+    );
+  }
+
+  if (isWord) {
+    return (
+      <div className="h-full w-full flex items-center justify-center bg-gray-100">
+        <span className="text-blue-600 font-extrabold text-xs sm:text-sm uppercase tracking-wider">
+          {ext === "DOCX" ? "DOCX" : "DOC"}
+        </span>
+      </div>
+    );
+  }
+
+  if (isExcel) {
+    return (
+      <div className="h-full w-full flex items-center justify-center bg-gray-100">
+        <span className="text-emerald-600 font-extrabold text-xs sm:text-sm uppercase tracking-wider">
+          {ext}
+        </span>
+      </div>
+    );
+  }
+
+  if (isPpt) {
+    return (
+      <div className="h-full w-full flex items-center justify-center bg-gray-100">
+        <span className="text-amber-600 font-extrabold text-xs sm:text-sm uppercase tracking-wider">
+          {ext}
+        </span>
+      </div>
+    );
+  }
+
+  if (isArchive) {
+    return (
+      <div className="h-full w-full flex items-center justify-center bg-gray-100">
+        <span className="text-purple-600 font-extrabold text-xs sm:text-sm uppercase tracking-wider">
+          {ext}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full w-full flex items-center justify-center bg-gray-100">
+      <span className="text-gray-600 font-extrabold text-xs sm:text-sm uppercase tracking-wider">
+        {ext.slice(0, 4)}
+      </span>
+    </div>
+  );
+};
+
 const toIdString = (value: any): string => {
   if (!value) return "";
   if (typeof value === "string") {
@@ -245,16 +339,49 @@ export default function QuoteDetailsPage() {
   const [isSending, setIsSending] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isAccepting, setIsAccepting] = useState(false);
+  const acceptingRef = useRef(false);
+  const [hasAcceptedLocally, setHasAcceptedLocally] = useState(false);
   const [isOpeningProject, setIsOpeningProject] = useState(false);
   const [isDeclining, setIsDeclining] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState("");
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [attachments, setAttachments] = useState<
-    Array<{ id: string; name: string; status: "uploading" | "done" | "error"; url?: string; file?: File }>
+    Array<{ id: string; name: string; status: "uploading" | "done" | "error"; url?: string; file?: File; size?: number }>
   >([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (quote?.projectTitle) {
+      setEditedTitle(quote.projectTitle);
+    }
+  }, [quote?.projectTitle]);
+
+  const handleSaveTitle = async () => {
+    if (!editedTitle.trim() || !quote?._id) return;
+    setIsSavingTitle(true);
+    try {
+      const res = await quoteService.updateQuote(quote._id, {
+        projectTitle: editedTitle.trim(),
+      });
+      if (res?.isSuccessful || res?.statusCode === 200 || res?.data) {
+        toast.success("Quote title updated");
+        if (res.data) setQuote(res.data);
+        else refreshQuote(true);
+        setIsEditingTitle(false);
+      } else {
+        toast.error(res?.message || "Failed to update title");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to update title");
+    } finally {
+      setIsSavingTitle(false);
+    }
+  };
 
   useEffect(() => {
     const hydrateUser = async () => {
@@ -311,7 +438,7 @@ export default function QuoteDetailsPage() {
       if (isCancelled) return;
 
       const currentUserObj = authService.getUser();
-      const uId = currentUserObj?.id || currentUserObj?._id;
+      const uId = currentUserObj?.id || currentUserObj?._id || authService.getUserId();
 
       const socketUrl =
         process.env.NEXT_PUBLIC_SOCKET_URL ||
@@ -435,26 +562,27 @@ export default function QuoteDetailsPage() {
   const getStatusBadgeClass = (status: string) => {
     const s = (status || "PENDING").toUpperCase();
     switch (s) {
-      case "SENT":
-      case "SUBMITTED":
       case "PENDING":
       case "REQUESTED":
-      case "OFFER_SENT":
-      case "PROPOSAL_SENT":
+      case "SUBMITTED":
       case "REVIEW":
       case "UNDER_REVIEW":
       case "IN_REVIEW":
-        return "bg-[#DBEAFE] text-[#1D4ED8]";
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
       case "APPROVED":
       case "ACCEPTED":
       case "COMPLETED":
-        return "bg-[#DCFCE7] text-[#15803D]";
+        return "bg-[#E1FCEF] text-[#14804A] border-[#E1FCEF]";
       case "DECLINED":
       case "REJECTED":
       case "CANCELLED":
-        return "bg-[#FEE2E2] text-[#B91C1C]";
+        return "bg-red-100 text-red-800 border-red-200";
+      case "SENT":
+      case "OFFER_SENT":
+      case "PROPOSAL_SENT":
+        return "bg-[#DBEAFE] text-[#1D4ED8] border-[#DBEAFE]";
       default:
-        return "bg-[#DBEAFE] text-[#1D4ED8]";
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
     }
   };
 
@@ -473,17 +601,56 @@ export default function QuoteDetailsPage() {
     return `${str} Days`;
   };
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+  const formatFileSize = (bytes?: number): string => {
+    if (!bytes || bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return;
     const files = Array.from(e.target.files);
     e.target.value = "";
 
-    const newItems = files.map((file) => ({
+    const currentUser = authService.getUser();
+    if (currentUser && currentUser.isEmailVerified === false) {
+      toast.error(
+        "To protect your data, file uploads are restricted for unverified accounts. Please verify your email."
+      );
+      return;
+    }
+
+    const validFiles: File[] = [];
+    const oversizedFiles: string[] = [];
+
+    files.forEach((file) => {
+      if (file.size > MAX_FILE_SIZE) {
+        oversizedFiles.push(`${file.name} (${formatFileSize(file.size)})`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (oversizedFiles.length > 0) {
+      toast.error("File size limit exceeded (Max 10 MB)", {
+        description: `The following file(s) exceed 10 MB: ${oversizedFiles.join(", ")}`,
+        duration: 10000,
+      });
+    }
+
+    if (validFiles.length === 0) return;
+
+    const newItems = validFiles.map((file) => ({
       id: Math.random().toString(36).substring(7),
       name: file.name,
       status: "uploading" as const,
       file,
       url: "",
+      size: file.size,
     }));
 
     setAttachments((prev) => [...prev, ...newItems]);
@@ -494,10 +661,12 @@ export default function QuoteDetailsPage() {
           file: item.file,
           folder: `quotes/${quote?._id}/messages`,
         });
-        const url = res.data?.secure_url || res.data?.url || res.secure_url || "";
+        const url = res?.data?.secure_url || res?.data?.url || res?.secure_url || res?.url || "";
+        if (!url) throw new Error("Failed to retrieve uploaded file URL");
         setAttachments((prev) => prev.map((a) => (a.id === item.id ? { ...a, status: "done", url } : a)));
       } catch (error) {
         console.error("Upload failed for file:", item.name, error);
+        toast.error(`Upload failed for ${item.name}`);
         setAttachments((prev) => prev.map((a) => (a.id === item.id ? { ...a, status: "error" } : a)));
       }
     }
@@ -510,7 +679,24 @@ export default function QuoteDetailsPage() {
   const handleSendMessage = async () => {
     const currentUser = requireAuth();
     if (!currentUser) return;
-    if (attachments.some((a) => a.status === "uploading")) return;
+
+    if (attachments.some((a) => a.status === "uploading")) {
+      toast.info("Please wait for file upload to complete before sending.");
+      return;
+    }
+
+    if (attachments.length > 0 && currentUser.isEmailVerified === false) {
+      toast.error(
+        "To protect your data, file uploads are restricted for unverified accounts. Please verify your email."
+      );
+      return;
+    }
+
+    const failedAttachments = attachments.filter((a) => a.status === "error");
+    if (failedAttachments.length > 0) {
+      toast.error("Some file uploads failed. Please remove them before sending.");
+      return;
+    }
 
     const uploadedUrls = attachments.filter((a) => a.status === "done" && a.url).map((a) => a.url);
 
@@ -545,8 +731,11 @@ export default function QuoteDetailsPage() {
   const handleAcceptQuote = async () => {
     const currentUser = requireAuth();
     if (!currentUser) return;
+    if (acceptingRef.current || isAccepting || hasAcceptedLocally) return;
     if (quote) {
+      acceptingRef.current = true;
       setIsAccepting(true);
+      setHasAcceptedLocally(true);
       try {
         const res = await quoteService.updateQuote(quote._id, {
           action: "accept",
@@ -555,13 +744,29 @@ export default function QuoteDetailsPage() {
         });
         if (res.isSuccessful || res.statusCode === 200) {
           toast.success("Proposal accepted successfully!");
+          const updatedQuoteData = res.data || quote;
           if (res.data) setQuote(res.data);
           else refreshQuote(true);
+
+          try {
+            const createdProjectId = await resolveCreatedProjectId(updatedQuoteData);
+            if (createdProjectId) {
+              router.push(`/dashboard/my-projects/${createdProjectId}/details`);
+              return;
+            }
+          } catch (navErr) {
+            console.warn("Could not immediately navigate to project:", navErr);
+          }
+        } else {
+          setHasAcceptedLocally(false);
+          toast.error(res?.message || "Failed to accept proposal");
         }
       } catch (e) {
+        setHasAcceptedLocally(false);
         console.error("Failed to accept quote:", e);
         toast.error("Failed to accept proposal");
       } finally {
+        acceptingRef.current = false;
         setIsAccepting(false);
       }
     }
@@ -734,168 +939,210 @@ export default function QuoteDetailsPage() {
       : [];
 
   return (
-    <div className="flex flex-col gap-8 w-full font-sans max-w-[1440px] mx-auto">
+    <div className="w-full font-sans">
       {/* Top Header Title & Description */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-          {quote.projectTitle || "website ff"}
-        </h1>
-        <p className="text-sm text-gray-500 font-normal leading-relaxed">
-          {quote.projectDescription || "Thank you for submitting your request! Our team is reviewing and will provide a custom quote shortly."}
-        </p>
-      </div>
-      {/* Top 2 Cards Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Left Card: Quote Request Summary Card (col-span-2) */}
-        <div className="lg:col-span-2 bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-xs flex flex-col justify-between">
-          <div>
-            {/* Top Row: Client Info + Status Badge + Date */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6">
-              <div className="flex items-center gap-3.5">
-                {clientAvatar ? (
-                  <img src={clientAvatar} alt={clientName} className="w-11 h-11 rounded-full object-cover shadow-sm" />
-                ) : (
-                  <div className="w-11 h-11 rounded-full bg-[#18233A] text-white flex items-center justify-center font-bold text-sm shadow-sm flex-shrink-0">
-                    {clientInitials}
-                  </div>
-                )}
-                <div>
-                  <h3 className="font-bold text-gray-900 text-sm sm:text-base">{clientName}</h3>
-                  <p className="text-xs text-gray-400 font-medium">Quote #{quoteNumber}</p>
+      <div className="mb-10">
+        <div className="flex flex-col gap-3 mb-8 md:mb-12">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3 group">
+              {isEditingTitle ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <input
+                    type="text"
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveTitle();
+                      if (e.key === "Escape") {
+                        setIsEditingTitle(false);
+                        setEditedTitle(quote.projectTitle || "");
+                      }
+                    }}
+                    className="text-[24px] md:text-[30px] font-bold text-gray-800 border-b-2 border-[#4343F0] focus:outline-none bg-transparent"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveTitle}
+                    disabled={isSavingTitle}
+                    className="px-3 py-1 bg-[#4343F0] text-white text-xs font-bold rounded cursor-pointer"
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingTitle(false);
+                      setEditedTitle(quote.projectTitle || "");
+                    }}
+                    className="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-bold rounded cursor-pointer"
+                  >
+                    Cancel
+                  </button>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${getStatusBadgeClass(quoteStatus)}`}>
-                  {quoteStatus}
-                </span>
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  {submittedTimestamp}
-                </span>
-              </div>
-            </div>
-
-            {/* Details Section */}
-            <div className="space-y-4 pt-2">
-              <div>
-                <span className="text-[10px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
-                  PROJECT TITLE
-                </span>
-                <h4 className="font-bold text-gray-900 text-base sm:text-lg">{quote.projectTitle || "website ff"}</h4>
-              </div>
-
-              <div className="border-t border-gray-100 my-5" />
-
-              <div>
-                <span className="text-[10px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
-                  PROJECT DESCRIPTION
-                </span>
-                <p className="text-xs sm:text-sm text-gray-600 leading-relaxed font-normal">
-                  {quote.projectDescription || "Thank you for submitting your request! Our team is reviewing and will provide a custom quote shortly."}
-                </p>
-              </div>
-
-              {quoteAttachedFiles.length > 0 && (
+              ) : (
                 <>
-                  <div className="border-t border-gray-100 my-5" />
-                  <div>
-                    <span className="text-xs sm:text-[13px] font-bold text-gray-900 block mb-3.5">
-                      Attached Files
-                    </span>
-                    <div className="flex items-center gap-4 overflow-x-auto pb-1 scrollbar-hide">
-                      {quoteAttachedFiles.map((fileItem: any, idx: number) => {
-                        const url = typeof fileItem === "string" ? fileItem : (fileItem.url || fileItem.path || fileItem.secure_url || "");
-                        const rawName = typeof fileItem === "string" ? fileItem.split("/").pop() || `File-${idx + 1}` : (fileItem.filename || fileItem.name || fileItem.fileName || url.split("/").pop() || `File-${idx + 1}`);
-                        const fileName = decodeURIComponent(rawName.split("?")[0]);
-                        const safeUrl = getSafeUrl(url);
-                        const isImg = isImageUrl(safeUrl) || /\.(svg|png|jpg|jpeg|webp|gif|bmp|ico|avif)$/i.test(fileName) || isImageUrl(fileName);
-
-                        return (
-                          <a
-                            key={idx}
-                            href={safeUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-[140px] h-[140px] sm:w-[150px] sm:h-[150px] bg-white border border-gray-200 rounded-[10px] overflow-hidden flex flex-col hover:border-gray-300 hover:shadow-sm transition-all flex-shrink-0 group relative"
-                          >
-                            <div className="flex-1 w-full bg-white flex items-center justify-center p-3 overflow-hidden relative">
-                              {isImg ? (
-                                <img
-                                  src={safeUrl}
-                                  alt={fileName}
-                                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200"
-                                  onError={(e) => {
-                                    const target = e.currentTarget;
-                                    if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
-                                      target.src = target.src.replace("http:", "https:");
-                                    }
-                                  }}
-                                />
-                              ) : (
-                                <svg
-                                  className="w-10 h-10 text-gray-400 group-hover:text-gray-600 transition-colors"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="1.5"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                  />
-                                </svg>
-                              )}
-
-                              {/* Hover download / view icon */}
-                              <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                                <div className="w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center text-blue-600">
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                  </svg>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="bg-[#F8FAFC] border-t border-gray-100 px-2 py-2 text-center w-full">
-                              <span className="text-[10px] sm:text-[11px] text-gray-500 font-normal truncate block w-full" title={fileName}>
-                                {fileName}
-                              </span>
-                            </div>
-                          </a>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  <h1 className="text-[28px] md:text-[32px] font-bold text-gray-800 leading-tight">
+                    {quote.projectTitle || "Custom Quote"}
+                  </h1>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditedTitle(quote.projectTitle || "");
+                      setIsEditingTitle(true);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded mt-1 cursor-pointer"
+                    title="Edit quote title"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                    </svg>
+                  </button>
                 </>
               )}
             </div>
+            {quote.projectDescription && (
+              <p className="text-gray-500 text-sm md:text-base leading-relaxed mt-2 max-w-4xl whitespace-pre-wrap">
+                {quote.projectDescription}
+              </p>
+            )}
           </div>
-        </div>
-        {/* Right Card: Project Manager Card (col-span-1) */}
-        <div className="lg:col-span-1 bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-xs flex flex-col items-center justify-center text-center self-start h-auto min-h-[220px]">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full mx-auto mb-4 flex items-center justify-center shadow-inner overflow-hidden bg-gradient-to-b from-[#C4CAD4] to-[#94A3B8] flex-shrink-0">
-            {manager?.avatar ? (
-              <img src={manager.avatar} alt={managerName} className="w-full h-full object-cover" />
-            ) : null}
-          </div>
-          <h4 className="font-bold text-gray-900 text-sm sm:text-base mb-1">
-            {manager ? managerName : "Not assigned yet"}
-          </h4>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">PROJECT MANAGER</p>
         </div>
       </div>
 
-      {/* Center Section Divider */}
-      <div className="relative py-4 flex items-center justify-center w-full my-2">
-        <div className="flex-grow border-t border-gray-200"></div>
-        <span className="px-4 text-xs font-semibold text-gray-400 bg-white">
-          Quote Request Submitted
-        </span>
-        <div className="flex-grow border-t border-gray-200"></div>
-      </div>
+      <div className="mt-8">
+        <div className="flex flex-col gap-10">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            {/* Left Card: Quote Request Summary Card (col-span-2) */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-300 overflow-hidden w-full">
+                <div className="p-4 sm:p-6 md:p-8">
+                  <div className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-4">
+                    <div className="flex items-center gap-4">
+                      {clientAvatar ? (
+                        <img src={clientAvatar} alt={clientName} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover shadow-sm" />
+                      ) : (
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-sm bg-gray-800">
+                          {clientInitials}
+                        </div>
+                      )}
+                      <div>
+                        <h4 className="font-bold text-gray-800 text-base sm:text-lg">{clientName}</h4>
+                        <span className="text-xs text-gray-400 font-medium">Quote #{quoteNumber}</span>
+                      </div>
+                    </div>
 
-          {/* Messages and Proposals Feed */}
+                    <div className="flex items-center gap-3">
+                      <span className={`w-fit px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border uppercase ${getStatusBadgeClass(quoteStatus)}`}>
+                        {quoteStatus}
+                      </span>
+                      <span className="text-[10px] sm:text-sm text-gray-500 font-bold uppercase tracking-wide whitespace-nowrap">
+                        {submittedTimestamp}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pl-0 md:pl-[64px] mb-2 space-y-4">
+                    <div className="pb-3 border-b border-gray-100">
+                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        Project Title
+                      </span>
+                      <h3 className="text-base sm:text-lg font-bold text-gray-800">
+                        {quote.projectTitle || "Custom Quote"}
+                      </h3>
+                    </div>
+
+                    <div className="pt-1">
+                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        Project Description
+                      </span>
+                      <p className="text-gray-600 text-sm whitespace-pre-wrap leading-relaxed">
+                        {quote.projectDescription || "No description provided."}
+                      </p>
+                    </div>
+
+                    {quoteAttachedFiles.length > 0 && (
+                      <div className="pt-4">
+                        <h5 className="text-sm font-bold text-gray-700 mb-3">Attached Files</h5>
+                        <div className="border-t border-gray-200 mb-4"></div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
+                          {quoteAttachedFiles.map((fileItem: any, idx: number) => {
+                            const url = typeof fileItem === "string" ? fileItem : (fileItem.url || fileItem.path || fileItem.secure_url || "");
+                            const rawName = typeof fileItem === "string" ? fileItem.split("/").pop() || `File-${idx + 1}` : (fileItem.filename || fileItem.name || fileItem.fileName || url.split("/").pop() || `File-${idx + 1}`);
+                            const fileName = decodeURIComponent(rawName.split("?")[0]);
+                            const safeUrl = getSafeUrl(url);
+                            const isSvg = url.toLowerCase().includes(".svg");
+
+                            return (
+                              <a
+                                key={idx}
+                                href={safeUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
+                              >
+                                <div className="flex-grow flex items-center justify-center bg-gray-50 relative overflow-hidden">
+                                  {renderFileThumbnail(safeUrl, fileName, isSvg)}
+                                  <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
+                                    <div className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center">
+                                      <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                      </svg>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex items-center justify-center h-10 min-h-[40px]">
+                                  <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={fileName}>
+                                    {fileName}
+                                  </span>
+                                </div>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Card: Project Manager Card (col-span-1) */}
+            <div className="lg:col-span-1 space-y-6">
+              <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-8">
+                <div className="text-center">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gray-100 border border-gray-200">
+                    {manager?.avatar ? (
+                      <img src={manager.avatar} alt={managerName} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white text-3xl font-bold">
+                        {manager ? managerInitial : ""}
+                      </div>
+                    )}
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-800 mb-1">
+                    {manager ? managerName : "Not assigned yet"}
+                  </h4>
+                  <p className="text-sm text-gray-500 mb-4 font-medium uppercase tracking-wider text-[10px]">
+                    Project Manager
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Center Timeline / Divider */}
           <div className="flex flex-col gap-6 w-full">
+            <div className="relative py-6 flex items-center justify-center w-full my-2">
+              <div className="flex-grow border-t border-gray-300"></div>
+              <span className="px-4 text-xs sm:text-sm font-medium text-gray-500 text-center whitespace-normal sm:whitespace-nowrap">
+                Quote Request Submitted
+              </span>
+              <div className="flex-grow border-t border-gray-300"></div>
+            </div>
+
+            {/* Messages feed */}
+            <div className="flex flex-col gap-6 w-full">
             {allMessages.map((msg: any, i: number) => {
               const msgId = msg.id || msg._id || `msg-${i}`;
               const isLast = i === allMessages.length - 1;
@@ -952,8 +1199,8 @@ export default function QuoteDetailsPage() {
 
                 return (
                   <div key={msgId} className="text-center py-6 px-4 bg-white/70 rounded-xl border border-gray-200" ref={isLast ? messagesEndRef : null}>
-                    <h3 className="text-lg font-bold text-gray-700 mb-1">{title}</h3>
-                    <p className="text-sm font-medium text-gray-500">{text}</p>
+                    <h3 className="text-lg font-bold text-gray-700 mb-1">{capitalizeCurrencyInText(title)}</h3>
+                    <p className="text-sm font-medium text-gray-500">{capitalizeCurrencyInText(text)}</p>
                   </div>
                 );
               }
@@ -1009,6 +1256,7 @@ export default function QuoteDetailsPage() {
                 );
 
                 const isAccepted =
+                  hasAcceptedLocally ||
                   content.status === "accepted" ||
                   wasAcceptedAfterThis ||
                   (!hasLaterProposal && quote.status?.toLowerCase() === "approved");
@@ -1030,127 +1278,154 @@ export default function QuoteDetailsPage() {
                 return (
                   <div key={msgId} ref={isLast ? messagesEndRef : null} className="w-full">
                     {/* Header above offer card */}
-                    <div className="text-center my-8">
-                      <h2 className="text-2xl sm:text-3xl font-extrabold text-[#111827] mb-2">
-                        You received an offer
-                      </h2>
-                      <p className="text-sm font-medium text-gray-500">
+                    <div className="w-full text-center py-8 sm:py-12 px-4 my-6">
+                      <h3 className="text-3xl sm:text-4xl font-extrabold text-[#444444] mb-3 tracking-tight">
+                        You Received an Offer
+                      </h3>
+                      <p className="text-base sm:text-lg font-medium text-gray-600 max-w-2xl mx-auto leading-relaxed">
                         We’ve prepared a custom proposal for your project.
                       </p>
                     </div>
 
                     {/* Proposal Card */}
-                    <div className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 md:p-10 shadow-sm">
-                      {/* Card Header: SUBMITTED - Date & Status Badge */}
-                      <div className="flex items-center gap-3 pb-4 mb-6 border-b border-gray-100">
-                        <span className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wide">
-                          SUBMITTED - {formatQuoteDate(msgDate)}
-                        </span>
-                        {isSuperseded ? (
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold border border-gray-300 text-gray-500 bg-white">
-                            Superseded
-                          </span>
-                        ) : isDeclined ? (
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold border border-red-500 text-red-500 bg-white">
-                            Declined
-                          </span>
-                        ) : isAccepted ? (
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold border border-emerald-500 text-emerald-600 bg-white">
-                            Accepted
-                          </span>
-                        ) : canAct ? (
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold border border-blue-500 text-blue-600 bg-white">
-                            Offer Sent
-                          </span>
-                        ) : null}
+                    <div className="flex flex-col gap-4">
+                      <div className="bg-white rounded-xl shadow-sm border border-gray-300 overflow-hidden transition-all duration-300 hover:shadow-md">
+                        <div className="p-4 sm:p-6 md:p-8">
+                          {/* Card Header: SUBMITTED - Date & Status Badge */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                            <div className="flex flex-wrap items-center gap-3">
+                              <span className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-tight">
+                                Submitted - {formatQuoteDate(msgDate)}
+                              </span>
+                              {isSuperseded ? (
+                                <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-gray-300 text-gray-500 bg-gray-50">
+                                  Superseded
+                                </span>
+                              ) : isDeclined ? (
+                                <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-red-300 text-red-600 bg-red-50">
+                                  Declined
+                                </span>
+                              ) : isAccepted ? (
+                                <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-emerald-300 text-emerald-600 bg-emerald-50">
+                                  Accepted
+                                </span>
+                              ) : canAct ? (
+                                <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-blue-400 text-blue-600 bg-blue-50">
+                                  Offer Sent
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className="border-t border-gray-200 mb-6 sm:mb-8"></div>
+
+                          {/* Card Title Row: Title on Left, From on Right */}
+                          <div className="pb-4 sm:pb-6 flex flex-col sm:flex-row justify-between items-start gap-2">
+                            <h2 className="text-xl sm:text-2xl font-bold text-gray-600">Project Proposal</h2>
+                            {senderName && (
+                              <span className="text-[10px] sm:text-xs text-gray-400 font-medium">
+                                From: {senderName}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Proposal Description */}
+                          {proposalDesc && (
+                            <div className="mb-10 text-sm text-gray-500 leading-relaxed font-medium whitespace-pre-wrap">
+                              {proposalDesc}
+                            </div>
+                          )}
+
+                          {/* Line Items Table */}
+                          {propItems.length > 0 && (
+                            <div className="border border-gray-400 rounded-lg overflow-x-auto mb-6">
+                              <table className="w-full min-w-[500px] sm:min-w-0">
+                                <thead>
+                                  <tr className="border-b border-gray-400">
+                                    <th className="px-3 sm:px-6 py-4 text-left text-xs sm:text-sm font-bold text-gray-600 bg-white w-1/2">
+                                      Item
+                                    </th>
+                                    <th className="px-3 sm:px-6 py-4 text-center text-xs sm:text-sm font-bold text-gray-600 bg-white">
+                                      Duration
+                                    </th>
+                                    <th className="px-3 sm:px-6 py-4 text-right text-xs sm:text-sm font-bold text-gray-600 bg-white">
+                                      Amount
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {propItems.map((item: any, idx: number) => (
+                                    <tr key={idx} className="border-b border-gray-400 last:border-0">
+                                      <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
+                                        <div className="font-medium text-gray-700 mb-1">
+                                          {item.description || item.name || item.title}
+                                        </div>
+                                        {item.details && (
+                                          <div className="text-[11px] text-gray-400 font-normal">
+                                            {item.details}
+                                          </div>
+                                        )}
+                                      </td>
+                                      <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
+                                        {formatDuration(item.duration)}
+                                      </td>
+                                      <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top">
+                                        {formatCurrency(item.amount ?? item.cost ?? 0, proposalCurrency)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+
+                          {/* Total Duration & Cost */}
+                          <div className="flex flex-row justify-end gap-6 sm:gap-16 text-xs sm:text-sm mb-6">
+                            <div className="text-center">
+                              <div className="text-gray-500 font-bold mb-1 sm:mb-2 flex items-center justify-center gap-1">
+                                Total Duration
+                              </div>
+                              <div className="font-medium text-gray-600">{formatDuration(totalDuration)}</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-gray-500 font-bold mb-1 sm:mb-2">Total Cost</div>
+                              <div className="font-medium text-gray-600">
+                                {formatCurrency(totalCost, proposalCurrency)}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons (Accept, Request Modifications, Decline) */}
+                          {canAct && (
+                            <div className="flex flex-col sm:flex-row gap-4 justify-between w-full pt-6 mt-6 border-t border-gray-100">
+                              <button
+                                type="button"
+                                onClick={handleAcceptQuote}
+                                disabled={isAccepting || isDeclining || hasAcceptedLocally}
+                                className="flex-1 bg-[#327334] hover:bg-[#285c29] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
+                              >
+                                {isAccepting ? <LoadingDots text="Accepting" /> : "Accept Proposal"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleRequestModification}
+                                disabled={isAccepting || isDeclining || hasAcceptedLocally}
+                                className="flex-1 bg-[#1C446F] hover:bg-[#153455] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all cursor-pointer text-center"
+                              >
+                                Request Modifications
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleDeclineQuote}
+                                disabled={isAccepting || isDeclining || hasAcceptedLocally}
+                                className="flex-1 bg-[#7D1A1A] hover:bg-[#651515] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
+                              >
+                                {isDeclining ? <LoadingDots text="Declining" /> : "Decline Proposal"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-
-                      {/* Card Title Row: Title on Left, From on Right */}
-                      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-4">
-                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Project proposal</h3>
-                        {senderName && (
-                          <span className="text-xs sm:text-sm text-gray-400 font-normal">
-                            From: {senderName}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Proposal Description */}
-                      {proposalDesc && (
-                        <p className="text-xs sm:text-sm text-gray-500 mb-6 font-normal leading-relaxed">
-                          {proposalDesc}
-                        </p>
-                      )}
-
-                      {/* Line Items Table */}
-                      {propItems.length > 0 && (
-                        <div className="border border-gray-200 rounded-xl overflow-x-auto mb-6">
-                          <table className="w-full min-w-[500px] sm:min-w-0">
-                            <thead>
-                              <tr className="border-b border-gray-200 bg-white">
-                                <th className="px-6 py-3.5 text-left text-xs font-bold text-gray-700 w-1/2">Item</th>
-                                <th className="px-6 py-3.5 text-center text-xs font-bold text-gray-700">Duration</th>
-                                <th className="px-6 py-3.5 text-right text-xs font-bold text-gray-700">Amount</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {propItems.map((item: any, idx: number) => (
-                                <tr key={idx} className="border-b border-gray-100 last:border-0">
-                                  <td className="px-6 py-4 text-xs font-semibold text-gray-800 align-middle">
-                                    <div>{item.description || item.name || item.title}</div>
-                                    {item.details && <div className="text-[10px] text-gray-400 font-normal mt-0.5">{item.details}</div>}
-                                  </td>
-                                  <td className="px-6 py-4 text-xs text-gray-600 font-medium text-center align-middle whitespace-nowrap">
-                                    {formatDuration(item.duration)}
-                                  </td>
-                                  <td className="px-6 py-4 text-xs text-gray-900 font-bold text-right align-middle">
-                                    {formatCurrency(item.amount ?? item.cost ?? 0, proposalCurrency)}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-
-                      {/* Total Duration & Cost */}
-                      <div className="flex justify-end gap-12 sm:gap-16 text-xs mb-2">
-                        <div className="text-center">
-                          <div className="text-gray-400 font-bold text-[11px] uppercase tracking-wider mb-1">Total Duration</div>
-                          <div className="text-gray-800 font-bold text-sm sm:text-base">{formatDuration(totalDuration)}</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-gray-400 font-bold text-[11px] uppercase tracking-wider mb-1">Total Cost</div>
-                          <div className="text-gray-900 font-extrabold text-sm sm:text-base">{formatCurrency(totalCost, proposalCurrency)}</div>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons (Accept, Request Modifications, Decline) */}
-                      {canAct && (
-                        <div className="flex flex-col sm:flex-row gap-3 justify-between w-full pt-6 mt-6 border-t border-gray-100">
-                          <button
-                            onClick={handleAcceptQuote}
-                            disabled={isAccepting || isDeclining}
-                            className="flex-1 bg-[#2E7D32] hover:bg-[#256628] text-white font-bold text-xs sm:text-sm py-3.5 px-6 rounded-lg shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
-                          >
-                            {isAccepting ? <LoadingDots text="Accepting" /> : "Accept Proposal"}
-                          </button>
-                          <button
-                            onClick={handleRequestModification}
-                            disabled={isAccepting || isDeclining}
-                            className="flex-1 bg-[#1A365D] hover:bg-[#132846] text-white font-bold text-xs sm:text-sm py-3.5 px-6 rounded-lg shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
-                          >
-                            Request Modifications
-                          </button>
-                          <button
-                            onClick={handleDeclineQuote}
-                            disabled={isAccepting || isDeclining}
-                            className="flex-1 bg-[#7A1C1C] hover:bg-[#631616] text-white font-bold text-xs sm:text-sm py-3.5 px-6 rounded-lg shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
-                          >
-                            {isDeclining ? <LoadingDots text="Declining" /> : "Decline Proposal"}
-                          </button>
-                        </div>
-                      )}
                     </div>
 
                     {/* Fallback Quote Declined section only if no quote_action message exists in the feed */}
@@ -1255,8 +1530,8 @@ export default function QuoteDetailsPage() {
               const rawAttachments = msg.content?.attachedFiles || msg.attachments || msg.attachedFiles || msg.content?.attachedFilesUrl || msg.attachedFilesUrl || [];
               const attachmentList = (Array.isArray(rawAttachments) ? rawAttachments : []).map((file: any) =>
                 typeof file === "string"
-                  ? { url: file, filename: file.split("/").pop()?.split("?")[0] || "File" }
-                  : { url: file.url, filename: file.filename || file.name || (file.url ? file.url.split("/").pop()?.split("?")[0] : "File") }
+                  ? { url: file, filename: file.split("/").pop()?.split("?")[0] || "File", size: 0 }
+                  : { url: file.url, filename: file.filename || file.name || (file.url ? file.url.split("/").pop()?.split("?")[0] : "File"), size: file.size || 0 }
               ).filter((f: any) => Boolean(f.url));
 
               return (
@@ -1292,9 +1567,7 @@ export default function QuoteDetailsPage() {
                           const url = file.url;
                           const filename = file.filename || "file";
                           const safeUrl = getSafeUrl(url);
-                          const isImg = isImageUrl(url);
                           const isSvg = url.toLowerCase().includes(".svg");
-                          const isPdf = url.toLowerCase().includes(".pdf");
 
                           return (
                             <a
@@ -1306,36 +1579,8 @@ export default function QuoteDetailsPage() {
                               rel="noopener noreferrer"
                               className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
                             >
-                              <div className="flex-grow flex items-center justify-center bg-white relative overflow-hidden">
-                                {isImg ? (
-                                  <img
-                                    src={safeUrl}
-                                    alt={filename}
-                                    className={
-                                      isSvg
-                                        ? "w-full h-full object-contain p-2.5 group-hover:scale-105 transition-transform duration-300"
-                                        : "w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                    }
-                                    onError={(e) => {
-                                      const target = e.currentTarget;
-                                      if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
-                                        target.src = target.src.replace("http:", "https:");
-                                      }
-                                    }}
-                                  />
-                                ) : isPdf ? (
-                                  <div className="flex flex-col items-center gap-1">
-                                    <svg className="w-12 h-12 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                                      <path d="M11.363 2c4.155 0 2.637 6 2.637 6s6-1.518 6 2.638c0 4.155-3.345 7.518-7.5 7.518s-7.5-3.363-7.5-7.518c0-4.155 3.345-7.518 7.5-7.518zm1.5 7h-3v1h3v-1zm0 2h-3v1h3v-1zm0 2h-3v1h3v-1z" />
-                                      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM6 4h7v5h5v11H6V4z" />
-                                    </svg>
-                                    <span className="text-[10px] font-bold text-red-600 uppercase">PDF</span>
-                                  </div>
-                                ) : (
-                                  <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                  </svg>
-                                )}
+                              <div className="flex-grow flex items-center justify-center bg-gray-50 relative overflow-hidden">
+                                {renderFileThumbnail(safeUrl, filename, isSvg)}
                                 <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
                                   <div className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center">
                                     <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1344,8 +1589,11 @@ export default function QuoteDetailsPage() {
                                   </div>
                                 </div>
                               </div>
-                              <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex items-center justify-center h-10 min-h-[40px]">
-                                <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={filename}>{filename}</span>
+                              <div className="bg-gray-50 px-2 py-1.5 border-t border-gray-200 flex flex-col items-center justify-center min-h-[40px]">
+                                <span className="text-[10px] font-medium text-gray-700 truncate w-full px-1" title={filename}>{filename}</span>
+                                {file.size > 0 && (
+                                  <span className="text-[9px] text-gray-400 font-normal">{formatFileSize(file.size)}</span>
+                                )}
                               </div>
                             </a>
                           );
@@ -1381,172 +1629,167 @@ export default function QuoteDetailsPage() {
               );
             })}
           </div>
+        </div>
 
-          {/* New Message / Reply Box */}
-          <div ref={messageInputRef} className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden mt-2">
-            {/* Box Top Header */}
-            <div className="p-6 pb-4 border-b border-gray-100 flex items-center justify-between bg-white">
-              <div className="flex items-center gap-3">
-                {user?.avatar ? (
-                  <img src={user.avatar} alt="You" className="w-10 h-10 rounded-full object-cover shadow-sm" />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-[#183B7B] text-white font-bold flex items-center justify-center text-sm shadow-sm">
-                    {userInitial}
-                  </div>
-                )}
-                <div>
-                  <h4 className="font-bold text-gray-900 text-sm">{user?.fullName || clientName}</h4>
-                  <p className="text-xs text-gray-400 font-medium">New Message</p>
-                </div>
-              </div>
-              <span className="text-xs text-gray-400 font-medium">{nowFormatted}</span>
-            </div>
-
-            {/* Textarea */}
-            <div className="p-6">
-              <textarea
-                className="w-full text-sm text-gray-800 placeholder-gray-400 border-0 focus:outline-none min-h-[100px] resize-none bg-transparent cursor-pointer"
-                placeholder={isLoggedIn ? "Type a message..." : "Please log in or register to message our team..."}
-                value={messageText}
-                onChange={(e) => {
-                  if (!requireAuth()) return;
-                  setMessageText(e.target.value);
-                }}
-                onClick={() => {
-                  requireAuth();
-                }}
-              />
-
-              {/* Attachments Preview Grid */}
-              {attachments.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap gap-3">
-                  {attachments.map((att) => {
-                    const isImg = (att.url ? isImageUrl(att.url) : false) || att.file?.type?.startsWith("image/") || /\.(svg|png|jpg|jpeg|webp|gif|bmp|ico|avif)$/i.test(att.name);
-                    const displayUrl = getSafeUrl(att.url || (att.file ? URL.createObjectURL(att.file) : ""));
-                    return (
-                      <div
-                        key={att.id}
-                        className="w-24 h-24 sm:w-28 sm:h-28 border border-gray-200 rounded-xl p-2 flex flex-col items-center justify-between bg-white relative group shadow-sm hover:border-gray-300 transition-all"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => removeAttachment(att.id)}
-                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow cursor-pointer hover:bg-red-600"
-                          title="Remove file"
-                        >
-                          ×
-                        </button>
-                        <div className="w-full flex-1 flex items-center justify-center overflow-hidden">
-                          {isImg && displayUrl ? (
-                            <img
-                              src={displayUrl}
-                              alt={att.name}
-                              className="w-full h-full object-contain"
-                              onError={(e) => {
-                                const target = e.currentTarget;
-                                if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
-                                  target.src = target.src.replace("http:", "https:");
-                                }
-                              }}
-                            />
-                          ) : (
-                            <div className="flex flex-col items-center justify-center text-gray-400">
-                              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                            </div>
-                          )}
-                        </div>
-                        <div className="w-full text-center mt-1">
-                          <p className="text-[11px] font-medium text-gray-700 truncate w-full" title={att.name}>
-                            {att.name}
-                          </p>
-                          <p className="text-[10px] text-gray-400 font-medium capitalize">
-                            {att.status === "done" ? "Ready" : att.status === "uploading" ? "Uploading..." : "Failed"}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
+        {/* New Message / Reply Box */}
+        <div ref={messageInputRef} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6">
+          {/* Box Top Header */}
+          <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100 bg-gray-50/50">
+            <div className="flex items-center gap-4">
+              {user?.avatar ? (
+                <img src={user.avatar} alt="You" className="w-12 h-12 rounded-full object-cover shadow-sm ring-2 ring-white" />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-blue-900 flex items-center justify-center text-white font-bold text-base shadow-sm ring-2 ring-white">
+                  {userInitial}
                 </div>
               )}
-            </div>
-            <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!requireAuth()) return;
-                    fileInputRef.current?.click();
-                  }}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-bold text-xs py-2 px-4 rounded-lg transition-colors cursor-pointer"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                    />
-                  </svg>
-                  Attach Files
-                  {attachments.length > 0 && (
-                    <span className="inline-flex items-center justify-center w-5 h-5 bg-[#4343F0] text-white text-[11px] font-bold rounded-full ml-1">
-                      {attachments.length}
-                    </span>
-                  )}
-                </button>
-              </div>
-
-              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMessageText("");
-                    setAttachments([]);
-                  }}
-                  className="flex-1 sm:flex-none bg-[#7A1C1C] hover:bg-[#631616] text-white font-bold text-xs py-2.5 px-6 rounded-lg transition-colors cursor-pointer shadow-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    if (!requireAuth()) {
-                      e.preventDefault();
-                      return;
-                    }
-                    handleSendMessage();
-                  }}
-                  disabled={
-                    isLoggedIn &&
-                    (isSending ||
-                      (!messageText.trim() && attachments.length === 0) ||
-                      attachments.some((a) => a.status === "uploading"))
-                  }
-                  className="flex-1 sm:flex-none bg-[#7B8BF5] hover:bg-[#5356ff] text-white font-bold text-xs py-2.5 px-7 rounded-lg transition-colors cursor-pointer shadow-sm disabled:opacity-50"
-                >
-                  {isSending ? <LoadingDots text="Sending" /> : "Send Message"}
-                </button>
+              <div>
+                <h3 className="font-bold text-gray-800 text-base">{user?.fullName || clientName}</h3>
+                <p className="text-xs text-gray-500">New Message</p>
               </div>
             </div>
+            <span className="text-xs text-gray-400 font-medium">{nowFormatted}</span>
           </div>
 
-          {/* Auth Prompt Modal */}
-          <AuthPromptModal
-            isOpen={showAuthModal}
-            onClose={() => setShowAuthModal(false)}
-            title="Join the Conversation"
-            description="Please log in or register to message our team and collaborate on this quote."
-            redirectUrl={quote?._id ? `/dashboard/my-quotes/${quote._id}/details` : undefined}
-          />
+          {/* Textarea */}
+          <div className="p-6 pb-2">
+            <textarea
+              className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent"
+              placeholder={isLoggedIn ? "Type a message..." : "Please log in or register to message our team..."}
+              value={messageText}
+              onChange={(e) => {
+                if (!requireAuth()) return;
+                setMessageText(e.target.value);
+              }}
+              onClick={() => {
+                requireAuth();
+              }}
+            />
+          </div>
+
+          {/* Attachments Preview Grid */}
+          {attachments.length > 0 && (
+            <div className="px-6 pb-3 pt-1 flex flex-wrap gap-3">
+              {attachments.map((att) => {
+                const displayUrl = getSafeUrl(att.url || (att.file ? URL.createObjectURL(att.file) : ""));
+                return (
+                  <div
+                    key={att.id}
+                    className="w-24 h-24 sm:w-28 sm:h-28 border border-gray-200 rounded-xl p-2 flex flex-col items-center justify-between bg-white relative group shadow-sm hover:border-gray-300 transition-all"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(att.id)}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow cursor-pointer hover:bg-red-600"
+                      title="Remove file"
+                    >
+                      ×
+                    </button>
+                    <div className="w-full flex-1 flex items-center justify-center overflow-hidden">
+                      {renderFileThumbnail(displayUrl, att.name)}
+                    </div>
+                    <div className="w-full text-center mt-1">
+                      <p className="text-[11px] font-medium text-gray-700 truncate w-full" title={att.name}>
+                        {att.name}
+                      </p>
+                      <p className="text-[10px] text-gray-400 font-medium truncate">
+                        {(att.size || att.file?.size) ? `${formatFileSize(att.size || att.file?.size)} · ` : ""}
+                        {att.status === "done" ? "Ready" : att.status === "uploading" ? "Uploading..." : "Failed"}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="px-6 pb-6 pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-100">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              accept="*/*"
+              onChange={handleFileChange}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (!requireAuth()) return;
+                fileInputRef.current?.click();
+              }}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2.5 rounded-md border-2 border-blue-600 hover:bg-blue-50 shadow-sm cursor-pointer"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                />
+              </svg>
+              Attach Files
+              {attachments.length > 0 && (
+                <span className="inline-flex items-center justify-center w-5 h-5 bg-[#4343F0] text-white text-[11px] font-bold rounded-full ml-1">
+                  {attachments.length}
+                </span>
+              )}
+            </button>
+
+            <div className="flex gap-3 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  setMessageText("");
+                  setAttachments([]);
+                }}
+                className="flex-1 sm:flex-none px-6 py-2.5 bg-[#800020] hover:bg-[#600018] text-white font-bold text-sm rounded-md transition-colors shadow-sm cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  if (!requireAuth()) {
+                    e.preventDefault();
+                    return;
+                  }
+                  handleSendMessage();
+                }}
+                disabled={
+                  isLoggedIn &&
+                  (isSending ||
+                    (!messageText.trim() && attachments.length === 0) ||
+                    attachments.some((a) => a.status === "uploading"))
+                }
+                className={`flex-1 sm:flex-none px-8 py-2.5 rounded-[8px] text-sm font-bold transition-all ${
+                  isLoggedIn &&
+                  (isSending ||
+                    (!messageText.trim() && attachments.length === 0) ||
+                    attachments.some((a) => a.status === "uploading"))
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed opacity-50"
+                    : "bg-[#4343F0] hover:bg-[#3333D0] text-white cursor-pointer active:scale-95"
+                }`}
+              >
+                {isSending ? <LoadingDots text="Sending" /> : "Send Message"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Support Newsletter Section */}
+        <SupportNewsletter noPadding />
+      </div>
     </div>
-  );
+
+    {/* Auth Prompt Modal */}
+    <AuthPromptModal
+      isOpen={showAuthModal}
+      onClose={() => setShowAuthModal(false)}
+      title="Join the Conversation"
+      description="Please log in or register to message our team and collaborate on this quote."
+      redirectUrl={quote?._id ? `/dashboard/my-quotes/${quote._id}/details` : undefined}
+    />
+  </div>
+);
 }

@@ -14,11 +14,14 @@ import AuthPromptModal from "@/components/common/AuthPromptModal";
 import DeadlineTooltip from "@/components/common/DeadlineTooltip";
 import RecommendedSolutions from "@/components/common/RecommendedSolutions";
 import CalculatorSpecsCard from "@/components/common/CalculatorSpecsCard";
+import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import { getMainCalculatorCategory, getProjectEstimatedDeadline } from "@/lib/calculatorUtils";
+import { capitalizeCurrencyInText } from "@/lib/currencyUtils";
 import { toast } from "sonner";
 import { paymentService } from "@/lib/paymentService";
 
-const renderStatusMessageText = (text: string, attachments?: any[]) => {
+const renderStatusMessageText = (rawText: string, attachments?: any[]) => {
+  const text = capitalizeCurrencyInText(rawText);
   if (!text) return null;
 
   const pdfAttachment = attachments?.find((a: any) => {
@@ -252,6 +255,7 @@ export default function ProjectDetailsPage() {
 
   const [actionComment, setActionComment] = useState("");
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const actionLoadingRef = useRef(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -358,31 +362,73 @@ export default function ProjectDetailsPage() {
     }
   };
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+  const formatFileSize = (bytes?: number): string => {
+    if (!bytes || bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files).map(file => ({
+      const files = Array.from(e.target.files);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+
+      const user = authService.getUser();
+      if (user && user.isEmailVerified === false) {
+        toast.error(
+          "To protect your data, file uploads are restricted for unverified accounts. Please verify your email."
+        );
+        return;
+      }
+
+      const validFiles: File[] = [];
+      const oversizedFiles: string[] = [];
+
+      files.forEach((file) => {
+        if (file.size > MAX_FILE_SIZE) {
+          oversizedFiles.push(`${file.name} (${formatFileSize(file.size)})`);
+        } else {
+          validFiles.push(file);
+        }
+      });
+
+      if (oversizedFiles.length > 0) {
+        toast.error("File size limit exceeded (Max 10 MB)", {
+          description: `The following file(s) exceed 10 MB: ${oversizedFiles.join(", ")}`,
+          duration: 10000,
+        });
+      }
+
+      if (validFiles.length === 0) return;
+
+      const newFiles = validFiles.map((file) => ({
         id: Math.random().toString(36).slice(2, 11),
         file,
         status: "uploading",
         name: file.name,
-        type: file.type
+        type: file.type,
       }));
 
-      setAttachments(prev => [...prev, ...newFiles]);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setAttachments((prev) => [...prev, ...newFiles]);
 
       for (const att of newFiles) {
         try {
           const pId = project._id || project.id || project.projectId || project.project_id || project.orderId || project.uuid || project.uid || project.project?._id || project.project?.id;
           const res = await mediaService.uploadImage({
             file: att.file,
-            folder: `project-attachments/${pId}`
+            folder: `project-attachments/${pId}`,
           });
 
           const url = res.data?.secure_url || res.data?.url || res.secure_url || "";
+          if (!url) throw new Error("Failed to get URL");
           updateAttachment(att.id, { status: "done", url });
         } catch (error) {
           console.error("Upload failed for file:", att.name, error);
+          toast.error(`Upload failed for ${att.name}`);
           updateAttachment(att.id, { status: "error" });
         }
       }
@@ -390,18 +436,35 @@ export default function ProjectDetailsPage() {
   };
 
   const updateAttachment = (id: string, updates: any) => {
-    setAttachments(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+    setAttachments((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates } : a)));
   };
 
   const removeAttachment = (id: string) => {
-    setAttachments(prev => prev.filter(a => a.id !== id));
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
   };
 
   const handleSendMessage = async () => {
     if (!requireAuth()) return;
-    if (attachments.some(a => a.status === "uploading")) return;
+    if (attachments.some((a) => a.status === "uploading")) {
+      toast.info("Please wait for file upload to complete before sending.");
+      return;
+    }
 
-    const uploadedUrls = attachments.filter(a => a.status === "done" && a.url).map(a => a.url);
+    const user = authService.getUser();
+    if (attachments.length > 0 && user && user.isEmailVerified === false) {
+      toast.error(
+        "To protect your data, file uploads are restricted for unverified accounts. Please verify your email."
+      );
+      return;
+    }
+
+    const failedAttachments = attachments.filter((a) => a.status === "error");
+    if (failedAttachments.length > 0) {
+      toast.error("Some file uploads failed. Please remove them before sending.");
+      return;
+    }
+
+    const uploadedUrls = attachments.filter((a) => a.status === "done" && a.url).map((a) => a.url);
 
     if (messageText.trim() || uploadedUrls.length > 0) {
       setIsSending(true);
@@ -415,6 +478,7 @@ export default function ProjectDetailsPage() {
         }
       } catch (error) {
         console.error("Failed to send message:", error);
+        toast.error("Failed to send message");
       } finally {
         setIsSending(false);
       }
@@ -422,6 +486,8 @@ export default function ProjectDetailsPage() {
   };
 
   const handleAcceptProposal = async (proposalId: string) => {
+    if (actionLoadingRef.current || isActionLoading) return;
+    actionLoadingRef.current = true;
     setIsActionLoading(true);
     try {
       const username = currentUser?.fullName || currentUser?.username || "User";
@@ -434,6 +500,7 @@ export default function ProjectDetailsPage() {
     } catch (error) {
       console.error("Failed to accept proposal:", error);
     } finally {
+      actionLoadingRef.current = false;
       setIsActionLoading(false);
     }
   };
@@ -532,12 +599,21 @@ export default function ProjectDetailsPage() {
   const vatRate = Number(project.vatRate ?? project.vatPercentage ?? (project.taxPercentage != null ? project.taxPercentage : 0));
   const vatAmount = Number(project.vatAmount ?? project.tax ?? 0);
   const totalCost = Number(project.totalCost ?? project.totalAmount ?? (project.price != null ? project.price : baseAmount + vatAmount));
+  const calculatorPaidTotal =
+    project.calculatorSpecs && Number(project.amountPaid || 0) > 0
+      ? Number(project.amountPaid)
+      : totalCost;
+  const calculatorBaseAmount = project.calculatorSpecs ? calculatorPaidTotal : baseAmount;
+  const calculatorVatAmount = project.calculatorSpecs ? 0 : vatAmount;
 
   // Date for delivery due divider
   const deliveryDueStr = project.deadline ? formatSubmittedDate(project.deadline) : "";
 
-  // Display all project messages and action notifications (filter out initial project creation/requirements/scope overview boilerplate)
+  // Display all project messages and action notifications (filter out internal notes and initial project creation/requirements/scope overview boilerplate)
   const displayMessages = (project.messages || []).filter((msg: any) => {
+    if (msg.isInternal || msg.content?.isInternal || msg.type === "internal_note" || msg.content?.type === "internal_note") {
+      return false;
+    }
     const rawTitle = (msg.content?.systemText || msg.message || "").toLowerCase();
     const cleanTitle = rawTitle
       .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}⏸▶️💳🛠️🎉✅🔄👤🚀📌🔔]/gu, "")
@@ -574,7 +650,7 @@ export default function ProjectDetailsPage() {
         </div>
       )}
 
-      {project.status === "completed" && project.billingType === "monthly" && !project.calculatorSpecs && (
+      {project.status === "completed" && project.billingType === "monthly" && project.type !== "custom" && !project.quoteId && !project.calculatorSpecs && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <span className="text-2xl" aria-hidden="true">🔄</span>
           <div className="flex-1">
@@ -623,15 +699,28 @@ export default function ProjectDetailsPage() {
             <div className="pb-4 sm:pb-6 flex flex-col sm:flex-row justify-between items-start gap-2">
               <div className="flex flex-col gap-1">
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-700">
-                  {project.type === "analysis" ? "Analysis Report Details" :
-                    project.type === "bundle" ? `Bundle Project (${project.billingType === "fixed" ? "Setup Phase" : "Maintenance Phase"})` :
-                      project.type === "custom" ? "Custom Project Details" : "Package Details"}
+                  {project.title && project.title !== "Package Purchase"
+                    ? project.title
+                    : project.package?.name
+                    ? `${project.package.name}${project.tierTitle ? ` - ${project.tierTitle}` : ""}`
+                    : project.type === "analysis"
+                    ? "Analysis Report Details"
+                    : project.type === "bundle"
+                    ? `Bundle Project (${project.billingType === "fixed" ? "Setup Phase" : "Maintenance Phase"})`
+                    : project.type === "custom"
+                    ? "Custom Project Details"
+                    : "Package Details"}
                 </h2>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {project.type === "bundle" && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded uppercase border border-purple-200">Bundle</span>}
-                  {project.type === "custom" && !project.calculatorSpecs && <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded uppercase border border-blue-200">Custom Quote</span>}
-                  {project.type === "package" && <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase border border-green-200">Standard Package</span>}
-                </div>
+                {(project.type === "bundle" || project.type === "package") && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {project.type === "bundle" && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded uppercase border border-purple-200">Bundle</span>}
+                    {project.type === "package" && (
+                      <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase border border-green-200">
+                        {project.tierTitle ? `${project.tierTitle} Plan` : project.billingType === "monthly" ? "Monthly Subscription Plan" : "Standard Package"}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               <span className="text-[10px] sm:text-xs text-gray-400 font-medium whitespace-nowrap">
                 Project #{project.projectNumber || ((project._id || project.id || project.projectId || project.project_id || project.orderId || project.uuid || project.uid || project.project?._id || project.project?.id || "XXXXXXXX").slice(-8).toUpperCase())}
@@ -676,43 +765,47 @@ export default function ProjectDetailsPage() {
                 </div>
               </div>
             ) : (
-              <div className="mb-8 text-sm text-gray-700 leading-relaxed font-medium">
-                <p className="text-gray-600 font-normal">{project.description}</p>
+              <div className="mb-10">
+                <div className="text-sm text-gray-700 leading-relaxed font-medium">
+                  <p style={{ color: '#334155', fontSize: '13.5px', lineHeight: '1.6', margin: '0 0 12px 0', fontWeight: 400, whiteSpace: 'pre-line' }}>
+                    {project.description}
+                  </p>
+                </div>
               </div>
             )}
 
             {/* Deliverables Table — hidden for calculator projects (specs card covers it) */}
             {!project.calculatorSpecs && (
-              <div className="border border-gray-300 rounded-lg overflow-x-auto mb-6">
+              <div className="border border-gray-400 rounded-lg overflow-x-auto mb-4">
                 <table className="w-full min-w-[500px] sm:min-w-0">
                   <thead>
-                    <tr className="border-b border-gray-300 bg-white">
-                      <th className="px-4 sm:px-6 py-3.5 text-left text-xs sm:text-sm font-bold text-gray-700 w-1/2">Item</th>
-                      <th className="px-4 sm:px-6 py-3.5 text-center text-xs sm:text-sm font-bold text-gray-700">Duration</th>
-                      <th className="px-4 sm:px-6 py-3.5 text-right text-xs sm:text-sm font-bold text-gray-700">Amount</th>
+                    <tr className="border-b border-gray-400">
+                      <th className="px-3 sm:px-6 py-4 text-left text-xs sm:text-sm font-bold text-gray-600 bg-white w-1/2">Item</th>
+                      <th className="px-3 sm:px-6 py-4 text-center text-xs sm:text-sm font-bold text-gray-600 bg-white">Duration</th>
+                      <th className="px-3 sm:px-6 py-4 text-right text-xs sm:text-sm font-bold text-gray-600 bg-white">Amount</th>
                     </tr>
                   </thead>
                   <tbody>
                     {project.deliverableItems && project.deliverableItems.length > 0 ? (
                       project.deliverableItems.map((item: any, idx: number) => (
-                        <tr key={item.description + idx} className={idx < project.deliverableItems.length - 1 ? "border-b border-gray-200" : ""}>
-                          <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 align-top">
-                            <div className="font-semibold text-gray-800 mb-0.5">{item.description || item.title || item.name}</div>
+                        <tr key={item.description + idx} className={idx < project.deliverableItems.length - 1 ? "border-b border-gray-400" : ""}>
+                          <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
+                            <div className="font-medium text-gray-700 mb-1">{item.description || item.title || item.name}</div>
                             {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
                           </td>
-                          <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
+                          <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
                             {item.duration}
                           </td>
-                          <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
+                          <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top">
                             {formatCurrency(item.amount ?? 0)}
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 font-semibold">{project.title}</td>
-                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 text-center">-</td>
-                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold">
+                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-semibold">{project.title}</td>
+                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-center">-</td>
+                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-800 text-right font-bold">
                           {formatCurrency(project.price ?? 0)}
                         </td>
                       </tr>
@@ -725,15 +818,15 @@ export default function ProjectDetailsPage() {
                         </tr>
                         {project.addons.map((addon: any, aIdx: number) => (
                           addon.deliverableItems.map((item: any, iIdx: number) => (
-                            <tr key={`addon-${aIdx}-${iIdx}`} className={(aIdx === project.addons.length - 1 && iIdx === addon.deliverableItems.length - 1) ? "" : "border-b border-gray-200"}>
-                              <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 align-top">
-                                <div className="font-semibold text-gray-800 mb-0.5">{item.description}</div>
+                            <tr key={`addon-${aIdx}-${iIdx}`} className={(aIdx === project.addons.length - 1 && iIdx === addon.deliverableItems.length - 1) ? "" : "border-b border-gray-400"}>
+                              <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
+                                <div className="font-medium text-gray-700 mb-1">{item.description}</div>
                                 {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
                               </td>
-                              <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
+                              <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
                                 {item.duration} {item.unit || "Days"}
                               </td>
-                              <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
+                              <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
                                 {formatCurrency(item.amount ?? 0)}
                               </td>
                             </tr>
@@ -772,7 +865,7 @@ export default function ProjectDetailsPage() {
                         {project.calculatorSpecs?.estimatedTimeline || project.timeline || "-"}
                       </td>
                       <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top">
-                        {formatCurrency(totalCost)}
+                        {formatCurrency(calculatorPaidTotal)}
                       </td>
                     </tr>
                   </tbody>
@@ -784,17 +877,17 @@ export default function ProjectDetailsPage() {
             <div className={`flex flex-row justify-end gap-6 sm:gap-12 text-xs sm:text-sm ${project.calculatorSpecs ? "mb-4" : "mb-8"}`}>
               <div className="text-center">
                 <div className="text-gray-500 font-bold mb-1 sm:mb-2">Base Amount</div>
-                <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(baseAmount)}</div>
+                <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(calculatorBaseAmount)}</div>
               </div>
               <div className="text-center">
                 <div className="text-gray-500 font-bold mb-1 sm:mb-2">VAT ({vatRate}%)</div>
-                <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(vatAmount)}</div>
+                <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(calculatorVatAmount)}</div>
               </div>
               <div className="text-center">
                 <div className={`font-bold mb-1 sm:mb-2 ${project.calculatorSpecs ? "text-gray-500" : "text-gray-800"}`}>
                   {project.calculatorSpecs ? "Total Paid" : "Total Cost"}
                 </div>
-                <div className={project.calculatorSpecs ? "font-bold text-gray-800" : "font-bold text-gray-900"}>{formatCurrency(totalCost)}</div>
+                <div className={project.calculatorSpecs ? "font-bold text-gray-800" : "font-bold text-gray-900"}>{formatCurrency(calculatorPaidTotal)}</div>
               </div>
             </div>
 
@@ -915,19 +1008,14 @@ export default function ProjectDetailsPage() {
                   <h4 className="text-lg font-bold text-gray-800 mb-1">{name}</h4>
                   <p className="text-sm text-gray-500 font-medium uppercase tracking-wider text-[10px]">PROJECT MANAGER</p>
 
-                  {name !== "Unassigned" && (
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                      <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1">Status</div>
-                      <div className="text-xs font-semibold text-gray-600">Online & Active</div>
-                    </div>
-                  )}
+
                 </div>
               );
             })()}
           </div>
 
-          {/* Subscription & Auto-Renewal Card */}
-          {project.billingType === "monthly" && !project.calculatorSpecs && (
+          {/* Subscription & Auto-Renewal Card — only for genuine monthly/recurring projects */}
+          {project.billingType === "monthly" && project.type !== "custom" && !project.quoteId && project.type !== "analysis" && !project.calculatorSpecs && (
             <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 sm:p-7 mt-8">
               <h3 className="text-xs font-bold text-[#1E293B] uppercase tracking-wider mb-2 font-sans">
                 SUBSCRIPTION &amp; AUTO-RENEWAL
@@ -1100,7 +1188,7 @@ export default function ProjectDetailsPage() {
                           <p className="text-xs sm:text-sm text-[#3B82F6] font-medium mb-1.5">{description}</p>
                         ) : null}
                         <div className="flex items-baseline gap-1">
-                          <span className="text-xl sm:text-2xl font-black text-[#1E3A8A]">${amount.toFixed(0)}</span>
+                          <span className="text-xl sm:text-2xl font-black text-[#1E3A8A]">{currency === "EUR" ? "€" : "$"}{amount.toFixed(0)}</span>
                           <span className="text-[11px] font-bold text-[#3B82F6] uppercase">{currency}</span>
                         </div>
                       </div>
@@ -1160,7 +1248,7 @@ export default function ProjectDetailsPage() {
                     </h3>
                     {rawText ? (
                       <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
-                        {rawText}
+                        {capitalizeCurrencyInText(rawText)}
                       </p>
                     ) : null}
                   </div>
@@ -1721,7 +1809,8 @@ export default function ProjectDetailsPage() {
                         <p className="text-[11px] font-medium text-gray-700 truncate w-full" title={att.name}>
                           {att.name}
                         </p>
-                        <p className="text-[10px] text-gray-400 font-medium capitalize">
+                        <p className="text-[10px] text-gray-400 font-medium truncate">
+                          {(att.size || att.file?.size) ? `${formatFileSize(att.size || att.file?.size)} · ` : ""}
                           {att.status === "uploading" ? "Uploading..." : att.status === "done" ? "Ready" : att.status}
                         </p>
                       </div>
@@ -1752,7 +1841,7 @@ export default function ProjectDetailsPage() {
                 </span>
               )}
             </button>
-            <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileUpload} />
+            <input type="file" ref={fileInputRef} className="hidden" multiple accept="*/*" onChange={handleFileUpload} />
 
             <div className="flex gap-3 w-full sm:w-auto justify-end">
               <button
@@ -1767,6 +1856,7 @@ export default function ProjectDetailsPage() {
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={(e) => {
                   if (!requireAuth()) {
                     e.preventDefault();
@@ -1774,10 +1864,22 @@ export default function ProjectDetailsPage() {
                   }
                   handleSendMessage();
                 }}
-                disabled={isLoggedIn && (isSending || isUploading || (!messageText.trim() && attachments.filter(a => a.status === "done").length === 0))}
-                className="flex-1 sm:flex-none px-7 py-2.5 bg-[#7B8BF5] hover:bg-[#5356ff] text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                disabled={
+                  isLoggedIn &&
+                  (isSending ||
+                    isUploading ||
+                    (!messageText.trim() && attachments.filter((a) => a.status === "done").length === 0))
+                }
+                className={`flex-1 sm:flex-none px-7 py-2.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                  isLoggedIn &&
+                  (isSending ||
+                    isUploading ||
+                    (!messageText.trim() && attachments.filter((a) => a.status === "done").length === 0))
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
+                    : "bg-[#4343F0] hover:bg-[#3232b7] text-white cursor-pointer active:scale-95"
+                }`}
               >
-                {isSending ? "Sending..." : isUploading ? "Uploading..." : "Send Message"}
+                {isSending ? <LoadingDots text="Sending" /> : isUploading ? "Uploading..." : "Send Message"}
               </button>
             </div>
           </div>
@@ -1792,6 +1894,9 @@ export default function ProjectDetailsPage() {
         description="Please log in or register to message our team and upload files for this project."
         redirectUrl={project?._id ? `/dashboard/my-projects/${project._id}/details` : undefined}
       />
+
+      {/* Help & Support / Newsletter Section */}
+      <SupportNewsletter noPadding />
     </div>
   );
 }

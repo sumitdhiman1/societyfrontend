@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import { profileService } from "@/lib/profileService";
+import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 // Toggle component matching production dist (a9b6da1b87bc5f7b.js)
 const ToggleRow = ({
@@ -148,6 +149,10 @@ export default function SettingsPage() {
               </p>
             </div>
           </div>
+        </div>
+
+        <div className="mt-16">
+          <SupportNewsletter noPadding />
         </div>
       </main>
     </div>

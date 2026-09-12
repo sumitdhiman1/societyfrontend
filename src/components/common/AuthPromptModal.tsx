@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import CloseIcon from "@/components/icons/close";
 
@@ -21,6 +22,11 @@ export default function AuthPromptModal({
 }: AuthPromptModalProps) {
   const router = useRouter();
   const [shouldRender, setRender] = useState(isOpen);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -32,15 +38,16 @@ export default function AuthPromptModal({
   }, [isOpen]);
 
   if (!shouldRender && !isOpen) return null;
+  if (!mounted || typeof document === "undefined") return null;
 
   const currentRedirect = redirectUrl || (typeof window !== "undefined" ? window.location.pathname + window.location.search : "");
   const loginUrl = `/login${currentRedirect ? `?redirect=${encodeURIComponent(currentRedirect)}` : ""}`;
   const registerUrl = `/register${currentRedirect ? `?redirect=${encodeURIComponent(currentRedirect)}` : ""}`;
 
-  return (
+  const content = (
     <div
-      className={`fixed inset-0 z-[100] flex items-center justify-center transition-opacity duration-300 px-4 ${
-        isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+      className={`fixed inset-0 z-[99999] flex items-center justify-center transition-opacity duration-300 px-4 ${
+        isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
       }`}
     >
       {/* Backdrop */}
@@ -116,4 +123,6 @@ export default function AuthPromptModal({
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }

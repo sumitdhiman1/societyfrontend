@@ -107,14 +107,87 @@ export class AuthService {
     }
   }
 
+  private encodeUserData(obj: any): string {
+    try {
+      const jsonStr = JSON.stringify(obj);
+      return btoa(
+        encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g, (_, p1) =>
+          String.fromCharCode(parseInt(p1, 16))
+        )
+      );
+    } catch {
+      return btoa(JSON.stringify(obj));
+    }
+  }
+
+  private decodeUserData(base64Str: string): any {
+    try {
+      const decoded = decodeURIComponent(
+        atob(base64Str)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      return JSON.parse(decoded);
+    } catch {
+      return JSON.parse(atob(base64Str));
+    }
+  }
+
+  decodeToken(token?: string | null): any {
+    const t = token || this.getAccessToken();
+    if (!t || typeof t !== "string") return null;
+    try {
+      const parts = t.split(".");
+      if (parts.length !== 3) return null;
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      return JSON.parse(jsonPayload);
+    } catch {
+      try {
+        return JSON.parse(atob(t.split(".")[1]));
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  getUserId(): string | null {
+    const user = this.getUser();
+    const uId = user?.id || user?._id;
+    if (uId && String(uId) !== "undefined" && String(uId) !== "null") {
+      return String(uId);
+    }
+
+    const token = this.getAccessToken();
+    if (token) {
+      const decoded = this.decodeToken(token);
+      const sub = decoded?.sub || decoded?.id || decoded?._id;
+      if (sub && String(sub) !== "undefined" && String(sub) !== "null") {
+        return String(sub);
+      }
+    }
+    return null;
+  }
+
   public setSession(data: any) {
     console.log("[AuthService] Setting session:", data);
     if (data.access_token) {
       this.setTokens(data.access_token, data.refresh_token);
     }
     if (data.user) {
-      const userData = btoa(JSON.stringify(data.user));
-      document.cookie = `user_data=${userData}; path=/; max-age=604800;`;
+      try {
+        const userData = this.encodeUserData(data.user);
+        document.cookie = `user_data=${userData}; path=/; max-age=604800; SameSite=Lax;`;
+      } catch (e) {
+        console.error("Failed to save user_data cookie:", e);
+      }
     }
   }
 
@@ -144,12 +217,33 @@ export class AuthService {
       const match = document.cookie.match(/(^| )user_data=([^;]+)/);
       if (match) {
         try {
-          return JSON.parse(atob(match[2]));
-        } catch (error) {
-          return null;
+          const raw = decodeURIComponent(match[2]);
+          const parsed = this.decodeUserData(raw);
+          if (parsed && (parsed.id || parsed._id || parsed.email)) {
+            return parsed;
+          }
+        } catch {
+          try {
+            const parsed = this.decodeUserData(match[2]);
+            if (parsed && (parsed.id || parsed._id || parsed.email)) {
+              return parsed;
+            }
+          } catch {}
         }
       }
     }
+
+    // Fallback: decode user basics from JWT token if cookie is missing or corrupt
+    const decoded = this.decodeToken();
+    if (decoded && (decoded.sub || decoded.email)) {
+      return {
+        id: decoded.sub,
+        _id: decoded.sub,
+        email: decoded.email,
+        role: decoded.role,
+      };
+    }
+
     return null;
   }
 
@@ -161,14 +255,18 @@ export class AuthService {
     if (!this.isAuthenticated()) return null;
     try {
       const client = new HttpClient(this.session);
-      const res = await client.get("/auth/me");
-      const user = res?.data?.user || res?.user || res?.data;
-      if (user) {
-        this.updateInternalUser(user);
-        return user;
+      let res = await client.get("/auth/me");
+      let user = res?.data?.user || res?.user || res?.data;
+      if (!user || (!user.id && !user._id && !user.email)) {
+        res = await client.get("/profile/getmyprofile");
+        user = res?.data?.user || res?.user || res?.data;
       }
-    } catch {
-      // ignore
+      if (user && (user.id || user._id || user.email)) {
+        this.updateInternalUser(user);
+        return this.getUser() || user;
+      }
+    } catch (e) {
+      console.warn("[AuthService] getProfile error:", e);
     }
     return this.getUser();
   }
@@ -176,8 +274,12 @@ export class AuthService {
   updateInternalUser(data: any) {
     const user = this.getUser();
     const updated = { ...(user || {}), ...data };
-    const updatedUser = btoa(JSON.stringify(updated));
-    document.cookie = `user_data=${updatedUser}; path=/; max-age=604800;`;
+    try {
+      const updatedUser = this.encodeUserData(updated);
+      document.cookie = `user_data=${updatedUser}; path=/; max-age=604800; SameSite=Lax;`;
+    } catch (e) {
+      console.error("Failed to update user_data cookie:", e);
+    }
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("auth:user_update"));
     }
@@ -204,8 +306,12 @@ export class AuthService {
       this.setTokens(accessToken, refreshToken || "");
     }
     if (user) {
-      const userData = btoa(JSON.stringify(user));
-      document.cookie = `user_data=${userData}; path=/; max-age=604800;`;
+      try {
+        const userData = this.encodeUserData(user);
+        document.cookie = `user_data=${userData}; path=/; max-age=604800; SameSite=Lax;`;
+      } catch (e) {
+        console.error("Failed to encode user data in social callback:", e);
+      }
     }
     window.dispatchEvent(new Event("auth:login"));
     claimPendingAnalyses();

@@ -3,12 +3,18 @@ import {
   calculateGraphicsRawTimelineDays,
   calculateSeoRawTimelineDays,
   formatGraphicsTimelineLabel,
+  getMainCalculatorCategory,
   getProjectEstimatedDeadline,
   getSeoServiceMode,
+  isMonthlyBillingCategory,
   parseDurationToDays,
   resolveGraphicsTimelineAnswer,
   snapGraphicsBaselineDays,
 } from "./calculatorUtils";
+
+function stripCalculatorHtml(text: string): string {
+  return text.replace(/<br\s*\/?>/gi, " ").replace(/\s+/g, " ").trim();
+}
 
 function formatPdfDate(dateInput: any): string {
   if (!dateInput) return "";
@@ -31,6 +37,8 @@ export interface CalculatorPDFData {
   validUntilDate: string;
   categoryName: string;
   subtitle?: string;
+  scopeOverviewLead?: string;
+  hideClientEmail?: boolean;
   description?: string;
   selectedOptions: Array<{ question: string; answers: string[] }>;
   duration: string;
@@ -196,7 +204,7 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     }
   }
 
-  const seoServiceMode =
+  let seoServiceMode: string | undefined =
     categoryKey === "seo" && Array.isArray(rawSelections)
       ? getSeoServiceMode(
           Object.fromEntries(
@@ -205,7 +213,13 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
               .map((s: any) => [s.questionKey, { questionKey: s.questionKey, answerKeys: s.answerKeys || [] }])
           )
         )
-      : undefined;
+      : data.seoServiceMode;
+
+  if (categoryKey === "seo" && data.billingType === "monthly") {
+    seoServiceMode = "monthly";
+  } else if (categoryKey === "seo" && data.billingType === "onetime") {
+    seoServiceMode = "onetime";
+  }
 
   // Map known key codes to human readable labels
   const formatRawAnswer = (raw: string, metadata?: { fee?: number; reduction?: number }): string => {
@@ -326,9 +340,11 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
   );
 
   const selectedOptions: Array<{ question: string; answers: string[] }> = [];
+  const isCalculatorEstimatePdf =
+    Array.isArray(data.breakdownItems) && data.breakdownItems.length > 0;
 
   // Case 1: If invoked directly with calculator page breakdownItems
-  if (Array.isArray(data.breakdownItems) && data.breakdownItems.length > 0) {
+  if (isCalculatorEstimatePdf) {
     data.breakdownItems.forEach((item: any) => {
       const qText = item.question || "";
       if (/timeline/i.test(qText)) return;
@@ -443,8 +459,27 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     }
   }
 
+  const calculatorBreakdownIncludesTimeline =
+    isCalculatorEstimatePdf &&
+    data.breakdownItems.some((b: any) => /timeline/i.test(b.question || ""));
+
+  const isMonthlySeoCalculatorPdf =
+    isCalculatorEstimatePdf &&
+    categoryKey === "seo" &&
+    (data.billingType === "monthly" || seoServiceMode === "monthly");
+
+  if (isMonthlySeoCalculatorPdf) {
+    const withoutTimeline = selectedOptions.filter((opt) => !/timeline/i.test(opt.question));
+    selectedOptions.length = 0;
+    selectedOptions.push(...withoutTimeline);
+  }
+
   // Ensure timeline question is consistently displayed at the end of Selected Options
-  if (finalTimelineAnswer || duration) {
+  if (
+    !isMonthlySeoCalculatorPdf &&
+    (finalTimelineAnswer || duration) &&
+    (!isCalculatorEstimatePdf || calculatorBreakdownIncludesTimeline)
+  ) {
     const qLabel = foundTimelineQuestion ? foundTimelineQuestion.replace(/:$/, "").trim() : "What is your desired project timeline?";
     let answerText = finalTimelineAnswer || duration;
     if (
@@ -468,12 +503,33 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
 
   const totalPrice = rawTotalPrice > 0 ? rawTotalPrice : Number(data.amountPaid || 0);
 
-  const formattedPrice = new Intl.NumberFormat("en-US", {
+  let formattedPrice = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(totalPrice);
+
+  const isMonthlyPricing =
+    data.billingType === "monthly" ||
+    isMonthlyBillingCategory(categoryKey, seoServiceMode || data.seoServiceMode);
+
+  if (isMonthlyPricing) {
+    formattedPrice = `${formattedPrice} /month`;
+  }
+
+  const scopeOverviewLead = isCalculatorEstimatePdf
+    ? stripCalculatorHtml(getMainCalculatorCategory(categoryKey, categoryName))
+    : "";
+
+  let resolvedClientName = clientName;
+  let resolvedClientEmail = clientEmail;
+  let hideClientEmail = false;
+  if (isCalculatorEstimatePdf) {
+    resolvedClientName = "Guest User";
+    resolvedClientEmail = "";
+    hideClientEmail = true;
+  }
 
   // Sanitize description and subtitle to prevent dumping raw serialized choices
   const isRawDump = (str?: string): boolean => {
@@ -493,13 +549,15 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     rawProjectNumber,
     projectNumber,
     title,
-    clientEmail,
-    clientName,
+    clientEmail: resolvedClientEmail,
+    clientName: resolvedClientName,
+    hideClientEmail,
     status,
     issuedDate,
     validUntilDate,
     categoryName,
     subtitle: cleanSubtitle,
+    scopeOverviewLead,
     description: cleanDescription,
     selectedOptions,
     duration,
@@ -591,102 +649,62 @@ function renderSummaryBoxAndFooter(d: CalculatorPDFData, currentPage: number, to
   `;
 }
 
+function renderScopeOverviewIntro(d: CalculatorPDFData): string {
+  if (d.scopeOverviewLead) {
+    return `<div style="font-size: 13.5px; font-weight: 700; color: #0F172A; line-height: 1.5; margin-bottom: 18px;">${d.scopeOverviewLead}</div>`;
+  }
+  if (d.subtitle) {
+    return `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.subtitle}</div>`;
+  }
+  if (d.description) {
+    return `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.description}</div>`;
+  }
+  return "";
+}
+
+function renderPreparedForClientBlock(d: CalculatorPDFData): string {
+  const emailLine =
+    d.clientEmail && !d.hideClientEmail
+      ? `<div style="font-size: 12px; color: #64748B;">${d.clientEmail}</div>`
+      : "";
+  return `
+    <div style="flex: 1;">
+      <div style="font-size: 9.5px; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">PREPARED FOR</div>
+      <div style="font-size: 17px; font-weight: 800; color: #0F172A; margin-bottom: 4px;">${d.clientName}</div>
+      ${emailLine}
+    </div>
+  `;
+}
+
+function appendCanvasToPdf(
+  pdf: any,
+  canvas: HTMLCanvasElement,
+  pageWidth: number,
+  pageHeight: number
+): void {
+  const imgData = canvas.toDataURL("image/png");
+  const imgWidth = pageWidth;
+  const imgHeight = (canvas.height * pageWidth) / canvas.width;
+  let heightLeft = imgHeight;
+  let position = 0;
+
+  pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+  heightLeft -= pageHeight;
+
+  while (heightLeft > 0) {
+    position -= pageHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+  }
+}
+
 export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
   const options = d.selectedOptions || [];
 
-  // Calculate approximate height of items to decide single-page vs multi-page
-  let totalItemsHeight = 0;
-  for (const opt of options) {
-    totalItemsHeight += 44 + Math.max(1, opt.answers.length) * 22;
-  }
-
-  // If items fit comfortably with top card & bottom investment box on 1 page (up to ~500px):
-  if (totalItemsHeight <= 500) {
-    return `
-      <div class="pdf-page" style="width: 794px; min-height: 1123px; height: 1123px; box-sizing: border-box; background-color: #ffffff; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0F172A; padding: 40px 48px; display: flex; flex-direction: column; justify-content: space-between; page-break-after: always; break-after: page;">
-        <div>
-          <!-- Header -->
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-            <div style="display: flex; align-items: center;">
-              ${LOGO_SVG}
-            </div>
-            <div style="text-align: right;">
-              <div style="font-size: 22px; font-weight: 900; color: #2B2D8C; letter-spacing: -0.5px; margin-bottom: 5px;">PROJECT PROPOSAL</div>
-              <div style="font-size: 11px; font-weight: 700; color: #1E293B; margin-bottom: 2px;">Society Web Solutions</div>
-              <div style="font-size: 11px; color: #64748B; margin-bottom: 2px;">1645 Palm Beach Lakes Blvd</div>
-              <div style="font-size: 11px; color: #64748B; margin-bottom: 2px;">West Palm Beach, FL, US</div>
-              <div style="font-size: 11px; font-weight: 600; color: #2563EB;">contact@societywebsolutions.com</div>
-            </div>
-          </div>
-
-          <div style="border-bottom: 1px solid #E2E8F0; margin-bottom: 24px;"></div>
-
-          <!-- Prepared For & Quote Details Card -->
-          <div style="background-color: #F8F9FA; border: 1px solid #E2E8F0; border-radius: 10px; padding: 18px 24px; display: flex; justify-content: space-between; margin-bottom: 28px;">
-            <div style="flex: 1;">
-              <div style="font-size: 9.5px; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">PREPARED FOR</div>
-              <div style="font-size: 17px; font-weight: 800; color: #0F172A; margin-bottom: 4px;">${d.clientName}</div>
-              <div style="font-size: 12px; color: #64748B;">${d.clientEmail}</div>
-            </div>
-            <div style="width: 250px;">
-              <div style="font-size: 9.5px; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">QUOTE DETAILS</div>
-              <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 5px;">
-                <span style="color: #64748B;">Ref Number:</span>
-                <span style="font-weight: 700; color: #0F172A;">${d.projectNumber}</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 5px;">
-                <span style="color: #64748B;">Issued On:</span>
-                <span style="font-weight: 700; color: #0F172A;">${d.issuedDate}</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; font-size: 11.5px;">
-                <span style="color: #64748B;">Valid Until:</span>
-                <span style="font-weight: 700; color: #D32F2F;">${d.validUntilDate}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Project Scope Overview -->
-          <div style="margin-bottom: 12px;">
-            <div style="font-size: 19px; font-weight: 800; color: #2B2D8C; margin-bottom: 10px;">Project Scope Overview</div>
-            <div style="border-bottom: 1px solid #E2E8F0; margin-bottom: 18px;"></div>
-          </div>
-
-          ${d.subtitle
-        ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.subtitle}</div>`
-        : d.description
-          ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.description}</div>`
-          : ""
-      }
-
-          ${renderSelectedOptionsList(options)}
-        </div>
-
-        ${renderSummaryBoxAndFooter(d, 1, 1)}
-      </div>
-    `;
-  }
-
-  // Multi-page split (Page 1 + Page 2)
-  // Page 1 gets the first batch of items (up to ~520px)
-  const page1Items: Array<{ question: string; answers: string[] }> = [];
-  const page2Items: Array<{ question: string; answers: string[] }> = [];
-  let page1Height = 0;
-
-  for (const opt of options) {
-    const itemH = 44 + Math.max(1, opt.answers.length) * 22;
-    if (page1Height + itemH <= 520 || page1Items.length === 0) {
-      page1Items.push(opt);
-      page1Height += itemH;
-    } else {
-      page2Items.push(opt);
-    }
-  }
-
   return `
-    <!-- PAGE 1 OF 2 -->
-    <div class="pdf-page" style="width: 794px; min-height: 1123px; height: 1123px; box-sizing: border-box; background-color: #ffffff; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0F172A; padding: 40px 48px; display: flex; flex-direction: column; justify-content: space-between; page-break-after: always; break-after: page;">
+    <div class="pdf-page" style="width: 794px; min-height: 1123px; height: auto; box-sizing: border-box; background-color: #ffffff; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0F172A; padding: 40px 48px; display: flex; flex-direction: column; justify-content: space-between;">
       <div>
-        <!-- Header -->
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
           <div style="display: flex; align-items: center;">
             ${LOGO_SVG}
@@ -702,13 +720,8 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
 
         <div style="border-bottom: 1px solid #E2E8F0; margin-bottom: 24px;"></div>
 
-        <!-- Prepared For & Quote Details Card -->
         <div style="background-color: #F8F9FA; border: 1px solid #E2E8F0; border-radius: 10px; padding: 18px 24px; display: flex; justify-content: space-between; margin-bottom: 28px;">
-          <div style="flex: 1;">
-            <div style="font-size: 9.5px; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">PREPARED FOR</div>
-            <div style="font-size: 17px; font-weight: 800; color: #0F172A; margin-bottom: 4px;">${d.clientName}</div>
-            <div style="font-size: 12px; color: #64748B;">${d.clientEmail}</div>
-          </div>
+          ${renderPreparedForClientBlock(d)}
           <div style="width: 250px;">
             <div style="font-size: 9.5px; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">QUOTE DETAILS</div>
             <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 5px;">
@@ -726,55 +739,17 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
           </div>
         </div>
 
-        <!-- Project Scope Overview -->
         <div style="margin-bottom: 12px;">
           <div style="font-size: 19px; font-weight: 800; color: #2B2D8C; margin-bottom: 10px;">Project Scope Overview</div>
           <div style="border-bottom: 1px solid #E2E8F0; margin-bottom: 18px;"></div>
         </div>
 
-        ${d.subtitle
-      ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.subtitle}</div>`
-      : d.description
-        ? `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.description}</div>`
-        : ""
-    }
+        ${renderScopeOverviewIntro(d)}
 
-        ${renderSelectedOptionsList(page1Items)}
+        ${renderSelectedOptionsList(options)}
       </div>
 
-      <!-- Page 1 Bottom Status Bar -->
-      <div style="margin-top: auto; padding-top: 16px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; font-size: 9.5px; color: #94A3B8;">
-        <span style="font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;">S O C I E T Y &nbsp; W E B &nbsp; S O L U T I O N S</span>
-        <span style="font-weight: 600; color: #64748B;">Page 1 of 2 &nbsp;•&nbsp; Continued on next page →</span>
-      </div>
-    </div>
-
-    <!-- PAGE 2 OF 2 -->
-    <div class="pdf-page" style="width: 794px; min-height: 1123px; height: 1123px; box-sizing: border-box; background-color: #ffffff; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0F172A; padding: 40px 48px; display: flex; flex-direction: column; justify-content: space-between; page-break-after: always; break-after: page;">
-      <div>
-        <!-- Continuation Header -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-          <div style="display: flex; align-items: center;">
-            ${LOGO_SVG}
-          </div>
-          <div style="text-align: right;">
-            <div style="font-size: 18px; font-weight: 900; color: #2B2D8C; letter-spacing: -0.4px; margin-bottom: 3px;">PROJECT PROPOSAL</div>
-            <div style="font-size: 11px; color: #64748B;"><span style="font-weight: 700; color: #0F172A;">${d.projectNumber}</span> &nbsp;|&nbsp; Prepared for <span style="font-weight: 700; color: #0F172A;">${d.clientName}</span></div>
-          </div>
-        </div>
-
-        <div style="border-bottom: 1px solid #E2E8F0; margin-bottom: 22px;"></div>
-
-        <!-- Project Scope Overview Continued -->
-        <div style="margin-bottom: 12px;">
-          <div style="font-size: 18px; font-weight: 800; color: #2B2D8C; margin-bottom: 10px;">Project Scope Overview (Continued)</div>
-          <div style="border-bottom: 1px solid #E2E8F0; margin-bottom: 18px;"></div>
-        </div>
-
-        ${renderSelectedOptionsList(page2Items)}
-      </div>
-
-      ${renderSummaryBoxAndFooter(d, 2, 2)}
+      ${renderSummaryBoxAndFooter(d, 1, 1)}
     </div>
   `;
 }
@@ -859,12 +834,16 @@ export async function downloadCalculatorProjectPDF(data: any): Promise<void> {
 
       for (let i = 0; i < pageElements.length; i++) {
         const pageEl = pageElements[i] as HTMLElement;
+        const captureHeight = pageEl.scrollHeight;
         const canvas = await html2canvasLib(pageEl, {
           scale: 2,
           useCORS: true,
           logging: false,
           backgroundColor: "#ffffff",
           windowWidth: 794,
+          width: 794,
+          height: captureHeight,
+          windowHeight: captureHeight,
           scrollY: 0,
           scrollX: 0,
         });
@@ -877,8 +856,7 @@ export async function downloadCalculatorProjectPDF(data: any): Promise<void> {
           pdf.addPage();
         }
 
-        const pageImgData = canvas.toDataURL("image/png");
-        pdf.addImage(pageImgData, "PNG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
+        appendCanvasToPdf(pdf, canvas, pageWidth, pageHeight);
       }
 
       const cleanNum = d.rawProjectNumber.replace(/[^a-zA-Z0-9-_]/g, "") || "1";
@@ -927,12 +905,16 @@ export async function generateCalculatorProjectPDFBase64(data: any): Promise<str
 
     for (let i = 0; i < pageElements.length; i++) {
       const pageEl = pageElements[i] as HTMLElement;
+      const captureHeight = pageEl.scrollHeight;
       const canvas = await html2canvasLib(pageEl, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
         windowWidth: 794,
+        width: 794,
+        height: captureHeight,
+        windowHeight: captureHeight,
         scrollY: 0,
         scrollX: 0,
       });
@@ -945,8 +927,7 @@ export async function generateCalculatorProjectPDFBase64(data: any): Promise<str
         pdf.addPage();
       }
 
-      const pageImgData = canvas.toDataURL("image/png");
-      pdf.addImage(pageImgData, "PNG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
+      appendCanvasToPdf(pdf, canvas, pageWidth, pageHeight);
     }
 
     return pdf.output("datauristring");

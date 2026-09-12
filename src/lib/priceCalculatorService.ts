@@ -1,4 +1,5 @@
 import HttpClient from "./HttpClient";
+import { normalizeCalculatorQuestionsForUi } from "./calculatorUtils";
 
 export interface CalculatorAnswer {
   key: string;
@@ -19,12 +20,18 @@ export interface CalculatorQuestion {
   multiplierAmount?: number;
   affectsPrice?: boolean;
   roleId?: number;
+  role?: string;
   conditionalOn?: {
     questionKey: string;
     answerKey?: string;
     answerKeys?: string[];
   };
-  config?: { placeholder?: string; minValue?: number };
+  config?: {
+    placeholder?: string;
+    minValue?: number;
+    maxValue?: number;
+    targetCategory?: string;
+  };
   answers: CalculatorAnswer[];
 }
 
@@ -76,6 +83,14 @@ class PriceCalculatorService extends HttpClient {
         } else {
           config = { categories: [] };
         }
+
+        config = {
+          ...config,
+          categories: (config.categories || []).map((category) => ({
+            ...category,
+            questions: normalizeCalculatorQuestionsForUi(category.questions || []),
+          })),
+        };
 
         this.cachedConfig = config;
         return config;

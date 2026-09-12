@@ -9,7 +9,10 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
 
-    const apiUrl = process.env.API_URL || "https://societywebapi.azurewebsites.net";
+    const apiUrl =
+      process.env.API_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      "http://localhost:5001";
     return [
       {
         source: "/api-gateway/:path*",

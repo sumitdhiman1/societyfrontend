@@ -2,8 +2,8 @@ export default function AmexIcon({ className }: { className?: string }) {
     return (
         <svg
             className={className}
-            width="39"
-            height="26"
+            width="38.537"
+            height="25.691"
             viewBox="0 0 39 26"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"

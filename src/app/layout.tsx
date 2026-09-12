@@ -43,7 +43,7 @@ export default function RootLayout({
       className={`${inter.variable} ${manrope.variable} ${poppins.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
-        <Toaster position="top-right" richColors closeButton />
+        <Toaster position="top-right" richColors closeButton duration={8000} />
         <CurrencyProvider>
           <ChatWidgetProvider>
             {children}

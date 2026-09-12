@@ -8,9 +8,11 @@ import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";
 import { packagesService } from "@/lib/packagesService";
 import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
+import LoadingDots from "@/components/common/LoadingDots";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
 import { io, Socket } from "socket.io-client";
+import { toast } from "sonner";
 
 const formatStatusTitle = (rawTitle: string): string => {
   if (!rawTitle) return "System notification";
@@ -419,7 +421,7 @@ export default function AnalysisDetailsPage() {
       if (isCancelled) return;
 
       const user = authService.getUser();
-      const uId = user?.id || user?._id;
+      const uId = user?.id || user?._id || authService.getUserId();
 
       const socketUrl =
         process.env.NEXT_PUBLIC_SOCKET_URL ||
@@ -510,9 +512,50 @@ export default function AnalysisDetailsPage() {
     });
   };
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+  const formatFileSize = (bytes?: number): string => {
+    if (!bytes || bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files).map((file) => ({
+      const files = Array.from(e.target.files);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+
+      const user = authService.getUser();
+      if (user && user.isEmailVerified === false) {
+        toast.error(
+          "To protect your data, file uploads are restricted for unverified accounts. Please verify your email."
+        );
+        return;
+      }
+
+      const validFiles: File[] = [];
+      const oversizedFiles: string[] = [];
+
+      files.forEach((file) => {
+        if (file.size > MAX_FILE_SIZE) {
+          oversizedFiles.push(`${file.name} (${formatFileSize(file.size)})`);
+        } else {
+          validFiles.push(file);
+        }
+      });
+
+      if (oversizedFiles.length > 0) {
+        toast.error("File size limit exceeded (Max 10 MB)", {
+          description: `The following file(s) exceed 10 MB: ${oversizedFiles.join(", ")}`,
+          duration: 10000,
+        });
+      }
+
+      if (validFiles.length === 0) return;
+
+      const newFiles = validFiles.map((file) => ({
         id: Math.random().toString(36).slice(2, 11),
         file,
         status: "uploading",
@@ -521,7 +564,6 @@ export default function AnalysisDetailsPage() {
       }));
 
       setAttachments((prev) => [...prev, ...newFiles]);
-      if (fileInputRef.current) fileInputRef.current.value = "";
 
       for (const att of newFiles) {
         try {
@@ -532,9 +574,11 @@ export default function AnalysisDetailsPage() {
           });
 
           const url = res.data?.secure_url || res.data?.url || res.secure_url || "";
+          if (!url) throw new Error("Failed to get URL");
           updateAttachment(att.id, { status: "done", url });
         } catch (error) {
           console.error("Upload failed for file:", att.name, error);
+          toast.error(`Upload failed for ${att.name}`);
           updateAttachment(att.id, { status: "error" });
         }
       }
@@ -553,7 +597,24 @@ export default function AnalysisDetailsPage() {
     if (e) e.preventDefault();
     const actingUser = requireAuth();
     if (!actingUser) return;
-    if (attachments.some((a) => a.status === "uploading")) return;
+    if (attachments.some((a) => a.status === "uploading")) {
+      toast.info("Please wait for file upload to complete before sending.");
+      return;
+    }
+
+    const user = authService.getUser();
+    if (attachments.length > 0 && user && user.isEmailVerified === false) {
+      toast.error(
+        "To protect your data, file uploads are restricted for unverified accounts. Please verify your email."
+      );
+      return;
+    }
+
+    const failedAttachments = attachments.filter((a) => a.status === "error");
+    if (failedAttachments.length > 0) {
+      toast.error("Some file uploads failed. Please remove them before sending.");
+      return;
+    }
 
     const uploadedUrls = attachments.filter((a) => a.status === "done" && a.url).map((a) => a.url);
 
@@ -573,9 +634,11 @@ export default function AnalysisDetailsPage() {
           refreshAnalysis();
         } else {
           console.error("Failed to send message, response:", res);
+          toast.error("Failed to send message");
         }
       } catch (error) {
         console.error("Failed to send message:", error);
+        toast.error("Failed to send message");
       } finally {
         setIsSending(false);
       }
@@ -1423,7 +1486,8 @@ export default function AnalysisDetailsPage() {
                             <p className="text-[11px] font-medium text-gray-700 truncate w-full" title={att.name}>
                               {att.name}
                             </p>
-                            <p className="text-[10px] text-gray-400 font-medium capitalize">
+                            <p className="text-[10px] text-gray-400 font-medium truncate">
+                              {(att.size || att.file?.size) ? `${formatFileSize(att.size || att.file?.size)} · ` : ""}
                               {att.status === "uploading" ? "Uploading..." : att.status === "done" ? "Ready" : att.status}
                             </p>
                           </div>
@@ -1460,7 +1524,7 @@ export default function AnalysisDetailsPage() {
                     )}
                   </button>
                 </div>
-                <input ref={fileInputRef} hidden multiple type="file" onChange={handleFileUpload} />
+                <input ref={fileInputRef} hidden multiple type="file" accept="*/*" onChange={handleFileUpload} />
 
                 <div className="flex gap-3 w-full sm:w-auto">
                   <button
@@ -1488,9 +1552,16 @@ export default function AnalysisDetailsPage() {
                         (!messageText.trim() &&
                           attachments.filter((a) => a.status === "done").length === 0))
                     }
-                    className="flex-1 sm:flex-none px-7 py-2.5 bg-[#7B8BF5] hover:bg-[#5356ff] text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-sm"
+                    className={`flex-1 sm:flex-none px-7 py-2.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                      isLoggedIn &&
+                      (isSending ||
+                        isUploading ||
+                        (!messageText.trim() && attachments.filter((a) => a.status === "done").length === 0))
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
+                        : "bg-[#4343F0] hover:bg-[#3232b7] text-white cursor-pointer active:scale-95"
+                    }`}
                   >
-                    {isSending ? "Sending..." : "Send Message"}
+                    {isSending ? <LoadingDots text="Sending" /> : isUploading ? "Uploading..." : "Send Message"}
                   </button>
                 </div>
               </div>

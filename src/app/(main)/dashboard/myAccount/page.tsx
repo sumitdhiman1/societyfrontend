@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { authService } from "@/lib/authService";
 import { profileService } from "@/lib/profileService";
 import { mediaService } from "@/lib/mediaService";
+import { countryService, Country } from "@/lib/countryService";
 import { useCurrency } from "@/context/CurrencyContext";
 import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import LoadingDots from "@/components/common/LoadingDots";
+import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 // Timezone list from production dist
 const TIMEZONES = [
@@ -147,26 +149,37 @@ const TIMEZONES = [
   { value: "Line Islands Standard Time", label: "(UTC+14:00) Kiritimati Island" }
 ];
 
-const InputField = ({ label, value, onChange, type = "text", className = "", readOnly = false, actionText = "", onActionClick }: any) => (
-  <div className={`flex flex-col gap-2 ${className}`}>
-    <label className="text-sm font-bold text-gray-700">{label}</label>
+const InputField = ({
+  label,
+  value,
+  onChange,
+  type = "text",
+  className = "",
+  readOnly = false,
+  actionText = "",
+  onActionClick,
+  placeholder = "",
+}: any) => (
+  <div className={`flex flex-col gap-1.5 ${className}`}>
+    <label className="text-xs font-bold text-gray-700">{label}</label>
     <div className="relative">
       <input
         type={type}
-        value={value}
+        value={value ?? ""}
         onChange={onChange}
         readOnly={readOnly}
-        className={`w-full rounded-[4px] px-4 py-3 text-sm transition-all ${
-          readOnly 
-            ? "bg-gray-100 border border-gray-200 text-gray-500 cursor-not-allowed" 
-            : "bg-white border border-gray-300 text-gray-700 focus:outline-none focus:border-primary-300 focus:ring-1 focus:ring-primary-300"
+        placeholder={placeholder}
+        className={`w-full rounded-[4px] px-3.5 py-2.5 text-sm transition-all ${
+          readOnly
+            ? "bg-[#F9FAFB] border border-gray-200 text-gray-600 cursor-default"
+            : "bg-white border border-gray-200 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#4545F0] focus:ring-1 focus:ring-[#4545F0]"
         }`}
       />
       {actionText && (
         <button
           type="button"
           onClick={onActionClick}
-          className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-primary-300 hover:text-primary-200"
+          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[#4545F0] hover:text-[#3333D0]"
         >
           {actionText}
         </button>
@@ -176,38 +189,40 @@ const InputField = ({ label, value, onChange, type = "text", className = "", rea
 );
 
 const SectionHeader = ({ title }: { title: string }) => (
-  <div className="mb-8">
-    <h2 className="text-[22px] font-medium text-primary-100 mb-3">{title}</h2>
-    <div className="h-[3px] bg-primary-300 w-24 rounded-full" />
+  <div className="mb-4">
+    <h2 className="text-[19px] md:text-[20px] font-semibold text-gray-900 mb-2">{title}</h2>
+    <div className="h-[3px] bg-[#4545F0] w-14 rounded-full" />
   </div>
 );
 
 const InfoBox = ({ title, text }: { title?: string; text: string }) => (
-  <div className="pl-0 lg:pl-8 border-l-0 lg:border-l border-gray-200 h-full">
-    {title && <h4 className="font-bold text-sm text-gray-800 mb-4">{title}</h4>}
-    <p className="text-xs text-gray-500 leading-relaxed max-w-[250px]">{text}</p>
+  <div className="pl-0 lg:pl-8 border-l-0 lg:border-l border-gray-200 h-full flex flex-col justify-start">
+    {title && <h4 className="font-bold text-sm text-gray-800 mb-3">{title}</h4>}
+    <p className="text-xs text-gray-400 leading-relaxed">{text}</p>
   </div>
 );
 
 export default function MyAccountPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [countriesList, setCountriesList] = useState<Country[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Password change modal state
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  
-  // Password change state
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  
-  // Password visibility
   const [showOldPass, setShowOldPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
-  
+
+  // Email notice modal
+  const [showEmailModal, setShowEmailModal] = useState(false);
+
   const { currency, setCurrency } = useCurrency();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -217,13 +232,16 @@ export default function MyAccountPage() {
         const res = await profileService.getMyProfile();
         if (res?.data) {
           setUser(res.data);
-          
+
           // Sync local user data
           const localUser = authService.getUser();
-          if (localUser && (localUser.avatar !== res.data.avatar || localUser.fullName !== res.data.fullName)) {
+          if (
+            localUser &&
+            (localUser.avatar !== res.data.avatar || localUser.fullName !== res.data.fullName)
+          ) {
             authService.updateInternalUser({
               avatar: res.data.avatar,
-              fullName: res.data.fullName
+              fullName: res.data.fullName,
             });
             router.refresh();
           }
@@ -234,7 +252,20 @@ export default function MyAccountPage() {
         setIsLoading(false);
       }
     };
+
+    const fetchCountries = async () => {
+      try {
+        const list = await countryService.getAllCountries();
+        if (list && list.length > 0) {
+          setCountriesList(list);
+        }
+      } catch (err) {
+        console.error("Failed to load countries in MyAccountPage:", err);
+      }
+    };
+
     fetchProfile();
+    fetchCountries();
   }, [router]);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -254,7 +285,7 @@ export default function MyAccountPage() {
       setIsUploading(true);
       const res = await mediaService.uploadImage({
         file,
-        folder: `profile/avatar/${userId}`
+        folder: `profile/avatar/${userId}`,
       });
 
       if (res.isSuccessful && res.data?.url) {
@@ -262,7 +293,7 @@ export default function MyAccountPage() {
         setUser(updatedUser);
         authService.updateInternalUser({
           avatar: res.data.url,
-          fullName: user.fullName
+          fullName: user.fullName,
         });
         router.refresh();
       } else {
@@ -286,7 +317,7 @@ export default function MyAccountPage() {
     const parts = (user.fullName || "").split(" ");
     const firstName = parts[0] || "";
     const lastName = parts.slice(1).join(" ") || "";
-    
+
     let newFullName = "";
     if (type === "first") {
       newFullName = `${value} ${lastName}`.trim();
@@ -302,35 +333,39 @@ export default function MyAccountPage() {
     try {
       const payload = {
         fullName: user.fullName,
-        phoneNumber: user.phoneNumber,
-        companyName: user.companyName,
-        registrationNumber: user.registrationNumber,
-        country: user.country,
-        state: user.state,
-        city: user.city,
-        zipCode: user.zipCode,
-        streetAddress: user.streetAddress,
+        phoneNumber: user.ownerPhoneNumber || user.phoneNumber || "",
+        ownerPhoneNumber: user.ownerPhoneNumber || user.phoneNumber || "",
+        businessPhoneNumber: user.businessPhoneNumber || user.phoneNumber || "",
+        companyName: user.companyName || "",
+        registrationNumber: user.registrationNumber || "",
+        taxId: user.taxId || "",
+        country: user.country || "",
+        state: user.state || "",
+        city: user.city || "",
+        zipCode: user.zipCode || "",
+        streetAddress: user.streetAddress || "",
         language: user.language || "en",
-        timeZone: user.timeZone,
-        isTwoFactorEnabled: user.isTwoFactorEnabled,
-        avatar: user.avatar,
+        timeZone: user.timeZone || "",
+        isTwoFactorEnabled: user.isTwoFactorEnabled || false,
+        avatar: user.avatar || "",
         currency: currency,
         useSeparateBillingAddress: user.useSeparateBillingAddress || false,
         billingCompanyName: user.billingCompanyName || "",
         billingRegistrationNumber: user.billingRegistrationNumber || "",
         billingPhoneNumber: user.billingPhoneNumber || "",
+        billingTaxId: user.billingTaxId || "",
         billingCountry: user.billingCountry || "",
         billingState: user.billingState || "",
         billingCity: user.billingCity || "",
         billingZipCode: user.billingZipCode || "",
         billingStreetAddress: user.billingStreetAddress || "",
       };
-      
+
       const res = await profileService.updateProfile(payload);
       if (res.isSuccessful) {
         authService.updateInternalUser({
           avatar: user.avatar,
-          fullName: user.fullName
+          fullName: user.fullName,
         });
         alert("Profile updated successfully!");
         window.location.reload();
@@ -342,7 +377,6 @@ export default function MyAccountPage() {
       setIsUpdating(false);
     }
   };
-
 
   const handleChangePassword = async () => {
     setPasswordError("");
@@ -365,7 +399,7 @@ export default function MyAccountPage() {
         setPasswordError("Session expired. Please login again.");
         return;
       }
-      
+
       const res = await authService.changePassword(token, oldPassword, newPassword);
       if (res.isSuccessful || res.statusCode === 200) {
         alert("Password changed successfully!");
@@ -393,89 +427,113 @@ export default function MyAccountPage() {
   return (
     <div className="bg-white min-h-screen flex flex-col font-sans">
       <DashboardSubNav />
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
-        <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100 mb-8 md:mb-12">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-10 pb-16">
+        {/* Page Title */}
+        <h1 className="text-[26px] md:text-[30px] font-bold text-gray-900 mb-8">
           Account Details
         </h1>
 
-        {/* Login & Profile Settings */}
-        <section className="mb-8">
+        {/* 1. Login & Profile Settings */}
+        <section className="mb-10">
           <SectionHeader title="Login & Profile Settings" />
-          <div className="border border-gray-300 rounded-[4px] p-8 md:p-10">
-            <div className="flex flex-col md:flex-row gap-8 items-start">
-              <div className="flex-1 w-full flex flex-col gap-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <InputField 
-                    label="Email address" 
-                    value={user?.email || ""} 
-                    readOnly={true} 
-                  />
-                  <InputField 
-                    label="Password" 
-                    value="••••••••" 
-                    type="password" 
-                    actionText="Change" 
-                    onActionClick={() => {
-                      setOldPassword("");
-                      setNewPassword("");
-                      setConfirmPassword("");
-                      setPasswordError("");
-                      setShowPasswordModal(true);
-                    }}
-                    readOnly={true} 
-                  />
+          <div className="bg-white border border-gray-200 rounded-lg p-6 md:p-8">
+            <div className="flex flex-col md:flex-row gap-8 items-stretch">
+              {/* Form Grid (Left) */}
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                {/* Email Address */}
+                <InputField
+                  label="Email Address"
+                  value={user?.email || ""}
+                  readOnly={true}
+                  actionText="Change"
+                  onActionClick={() => setShowEmailModal(true)}
+                />
+
+                {/* Password */}
+                <InputField
+                  label="Password"
+                  value="••••••••"
+                  type="password"
+                  readOnly={true}
+                  actionText="Change"
+                  onActionClick={() => {
+                    setOldPassword("");
+                    setNewPassword("");
+                    setConfirmPassword("");
+                    setPasswordError("");
+                    setShowPasswordModal(true);
+                  }}
+                />
+
+                {/* Preferred Currency */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-gray-700">Preferred Currency</label>
+                  <div className="flex bg-[#F3F4F6] rounded-xl p-1 w-fit border border-gray-200/80">
+                    <button
+                      type="button"
+                      onClick={() => setCurrency("usd")}
+                      className={`px-6 py-2 text-xs font-bold rounded-lg transition-all ${
+                        currency === "usd"
+                          ? "bg-[#4545F0] text-white shadow-sm"
+                          : "text-gray-600 hover:text-gray-900"
+                      }`}
+                    >
+                      USD ($)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCurrency("eur")}
+                      className={`px-6 py-2 text-xs font-bold rounded-lg transition-all ${
+                        currency === "eur"
+                          ? "bg-[#4545F0] text-white shadow-sm"
+                          : "text-gray-600 hover:text-gray-900"
+                      }`}
+                    >
+                      EUR (€)
+                    </button>
+                  </div>
                 </div>
 
-                <div className="pt-8 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <label className="text-sm font-bold text-gray-700 mb-2 block">Preferred Currency</label>
-                    <p className="text-[11px] text-gray-400 mb-4 font-medium opacity-80">
-                      Choose how you would like to see prices and make payments across the platform.
-                    </p>
-                    <div className="flex bg-gray-100 rounded-lg p-1 w-fit border border-gray-200">
-                      <button 
-                        onClick={() => setCurrency("usd")}
-                        className={`px-8 py-2.5 text-xs font-bold rounded-md uppercase transition-all duration-200 ${currency === "usd" ? "bg-[#0D1939] text-white shadow-md" : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"}`}
-                      >
-                        USD ($)
-                      </button>
-                      <button 
-                        onClick={() => setCurrency("eur")}
-                        className={`px-8 py-2.5 text-xs font-bold rounded-md uppercase transition-all duration-200 ${currency === "eur" ? "bg-[#0D1939] text-white shadow-md" : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"}`}
-                      >
-                        EUR (€)
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-bold text-gray-700">Time Zone</label>
-                    <p className="text-[11px] text-gray-400 mb-2 font-medium opacity-80">
-                      Select your local time zone for accurate project timelines and communication.
-                    </p>
-                    <div className="relative">
-                      <select 
-                        className="w-full bg-white border border-gray-300 rounded-[4px] px-4 py-3 text-sm text-gray-700 focus:outline-none focus:border-primary-300 focus:ring-1 focus:ring-primary-300 appearance-none cursor-pointer"
-                        value={user?.timeZone || ""}
-                        onChange={(e) => updateField("timeZone", e.target.value)}
-                      >
-                        <option value="" disabled>Select Timezone</option>
-                        {TIMEZONES.map(tz => (
-                          <option key={tz.value} value={tz.value}>{tz.label}</option>
-                        ))}
-                      </select>
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
-                          <path d="M1 1L5 5L9 1" stroke="#666" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </div>
+                {/* Time Zone */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-gray-700">Time Zone</label>
+                  <div className="relative">
+                    <select
+                      className="w-full bg-white border border-gray-200 rounded-[4px] px-3.5 py-2.5 text-sm text-gray-700 focus:outline-none focus:border-[#4545F0] focus:ring-1 focus:ring-[#4545F0] appearance-none cursor-pointer pr-10"
+                      value={user?.timeZone || ""}
+                      onChange={(e) => updateField("timeZone", e.target.value)}
+                    >
+                      <option value="" disabled>
+                        Select Timezone
+                      </option>
+                      {TIMEZONES.map((tz) => (
+                        <option key={tz.value} value={tz.value}>
+                          {tz.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
+                        <path
+                          d="M1 1L5 5L9 1"
+                          stroke="#666"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
                     </div>
                   </div>
                 </div>
               </div>
-              
-              <div className="md:w-[200px] flex justify-center md:justify-end border-l-0 md:border-l border-gray-200 pl-0 md:pl-8 pt-4 md:pt-0">
-                <div className="relative">
+
+              {/* Avatar Column (Right) */}
+              <div className="border-l-0 md:border-l border-gray-200 pl-0 md:pl-10 md:w-[220px] flex items-center justify-center flex-shrink-0 pt-4 md:pt-0">
+                <div
+                  className="relative group cursor-pointer"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Upload profile picture"
+                >
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -483,23 +541,51 @@ export default function MyAccountPage() {
                     className="hidden"
                     accept="image/*"
                   />
-                  <div className="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center bg-gray-100 relative">
-                    <img 
-                      src={user?.avatar && user.avatar !== "" ? user.avatar : "/images/Avatar.png"} 
-                      alt="User Avatar" 
-                      className={`w-full h-full object-cover ${isUploading ? "opacity-50" : ""}`}
-                    />
+                  <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center bg-transparent relative border border-transparent">
+                    {user?.avatar ? (
+                      <img
+                        src={user.avatar}
+                        alt="User Avatar"
+                        className={`w-full h-full object-cover rounded-full ${
+                          isUploading ? "opacity-40" : ""
+                        }`}
+                      />
+                    ) : (
+                      <svg
+                        width="54"
+                        height="54"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#0D1939"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                      </svg>
+                    )}
                     {isUploading && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-100"></div>
+                      <div className="absolute inset-0 bg-white/70 flex items-center justify-center rounded-full">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#4545F0]"></div>
                       </div>
                     )}
                   </div>
-                  <button 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 text-gray-500 shadow-sm"
+                  {/* Plus badge */}
+                  <button
+                    type="button"
+                    className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full border border-gray-300 flex items-center justify-center text-gray-400 hover:text-gray-700 shadow-sm"
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <line x1="12" y1="5" x2="12" y2="19" />
                       <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
@@ -510,177 +596,435 @@ export default function MyAccountPage() {
           </div>
         </section>
 
-        {/* Account Owner Details */}
-        <section className="mb-8">
+        {/* 2. Account Owner Details */}
+        <section className="mb-10">
           <SectionHeader title="Account Owner Details" />
-          <div className="border border-gray-300 rounded-[4px] p-8 md:p-10">
-            <div className="flex flex-col lg:flex-row gap-12">
-              <div className="flex-1">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                  <InputField 
-                    label="First Name" 
-                    value={(user?.fullName || "").split(" ")[0] || ""} 
-                    onChange={(e: any) => updateName("first", e.target.value)} 
-                  />
-                  <InputField 
-                    label="Last Name" 
-                    value={(user?.fullName || "").split(" ").slice(1).join(" ") || ""} 
-                    onChange={(e: any) => updateName("last", e.target.value)} 
-                  />
-                  <InputField 
-                    label="Phone Number" 
-                    value={user?.phoneNumber || ""} 
-                    onChange={(e: any) => updateField("phoneNumber", e.target.value)} 
-                  />
-                </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-6 md:p-8">
+            <div className="flex flex-col lg:flex-row gap-10 items-stretch">
+              {/* Form Grid (Left) */}
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                {/* First Name */}
+                <InputField
+                  label="First Name"
+                  value={(user?.fullName || "").split(" ")[0] || ""}
+                  onChange={(e: any) => updateName("first", e.target.value)}
+                />
+
+                {/* Last Name */}
+                <InputField
+                  label="Last Name"
+                  value={(user?.fullName || "").split(" ").slice(1).join(" ") || ""}
+                  onChange={(e: any) => updateName("last", e.target.value)}
+                />
+
+                {/* Email Address */}
+                <InputField
+                  label="Email Address"
+                  value={user?.email || ""}
+                  readOnly={true}
+                />
+
+                {/* Phone Number */}
+                <InputField
+                  label="Phone Number"
+                  value={user?.ownerPhoneNumber || user?.phoneNumber || ""}
+                  onChange={(e: any) => {
+                    updateField("ownerPhoneNumber", e.target.value);
+                    updateField("phoneNumber", e.target.value);
+                  }}
+                />
+
+                {/* Password (with Change action) */}
+                <InputField
+                  label="Password"
+                  value="••••••••"
+                  type="password"
+                  readOnly={true}
+                  actionText="Change"
+                  onActionClick={() => {
+                    setOldPassword("");
+                    setNewPassword("");
+                    setConfirmPassword("");
+                    setPasswordError("");
+                    setShowPasswordModal(true);
+                  }}
+                />
+
+                {/* Empty second column for row 3 */}
+                <div className="hidden md:block" />
               </div>
 
-              <div className="w-full lg:w-[320px]">
-                <InfoBox title="Info" text="The information saved here identifies the legal owner of the SWSCRM account and all client services." />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Business Details */}
-        <section className="mb-8">
-          <SectionHeader title="Business Details" />
-          <div className="border border-gray-300 rounded-[4px] p-8 md:p-10">
-            <div className="flex flex-col lg:flex-row gap-12">
-              <div className="flex-1">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mb-8">
-                  <InputField label="Company Name" value={user?.companyName || ""} onChange={(e: any) => updateField("companyName", e.target.value)} />
-                  <InputField label="Registration Number" value={user?.registrationNumber || ""} onChange={(e: any) => updateField("registrationNumber", e.target.value)} />
-                  <InputField label="Phone Number" value={user?.phoneNumber || ""} onChange={(e: any) => updateField("phoneNumber", e.target.value)} />
-                  <InputField label="Country" value={user?.country || ""} onChange={(e: any) => updateField("country", e.target.value)} />
-                  <InputField label="State" value={user?.state || ""} onChange={(e: any) => updateField("state", e.target.value)} />
-                  <InputField label="City" value={user?.city || ""} onChange={(e: any) => updateField("city", e.target.value)} />
-                  <InputField label="ZIP / Postal Code" value={user?.zipCode || ""} onChange={(e: any) => updateField("zipCode", e.target.value)} />
-                  <InputField label="Street Address" value={user?.streetAddress || ""} onChange={(e: any) => updateField("streetAddress", e.target.value)} />
-                </div>
-              </div>
-
-              <div className="w-full lg:w-[320px]">
-                <InfoBox title="Info" text="The information saved here identifies the details of the business associated with this SWSCRM account and all client services" />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Billing Details */}
-        <section className="mb-12">
-          <SectionHeader title="Billing Details" />
-          <div className="border border-gray-300 rounded-[4px] p-8 md:p-10">
-            <div className="flex flex-col lg:flex-row gap-12">
-              <div className="flex-1">
-                <div className="flex items-center gap-4 mb-10">
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer"
-                      checked={user?.useSeparateBillingAddress || false}
-                      onChange={(e) => updateField("useSeparateBillingAddress", e.target.checked)}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-300"></div>
-                  </label>
-                  <span className="text-sm font-bold text-gray-700">Use separate billing address</span>
-                </div>
-
-                {user?.useSeparateBillingAddress && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mb-8 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <InputField label="Billing Company Name" value={user?.billingCompanyName || ""} onChange={(e: any) => updateField("billingCompanyName", e.target.value)} />
-                    <InputField label="Billing Registration Number" value={user?.billingRegistrationNumber || ""} onChange={(e: any) => updateField("billingRegistrationNumber", e.target.value)} />
-                    <InputField label="Billing Phone Number" value={user?.billingPhoneNumber || ""} onChange={(e: any) => updateField("billingPhoneNumber", e.target.value)} />
-                    <InputField label="Billing Country" value={user?.billingCountry || ""} onChange={(e: any) => updateField("billingCountry", e.target.value)} />
-                    <InputField label="Billing State" value={user?.billingState || ""} onChange={(e: any) => updateField("billingState", e.target.value)} />
-                    <InputField label="Billing City" value={user?.billingCity || ""} onChange={(e: any) => updateField("billingCity", e.target.value)} />
-                    <InputField label="Billing ZIP / Postal Code" value={user?.billingZipCode || ""} onChange={(e: any) => updateField("billingZipCode", e.target.value)} />
-                    <InputField label="Billing Street Address" value={user?.billingStreetAddress || ""} onChange={(e: any) => updateField("billingStreetAddress", e.target.value)} />
-                  </div>
-                )}
-                
-                <button 
-                  onClick={handleSaveProfile}
-                  disabled={isUpdating || isUploading}
-                  className={`bg-[#0D1939] hover:bg-[#1a2850] text-white text-xs font-bold px-10 py-3.5 rounded-[4px] transition-colors ${isUpdating || isUploading ? "opacity-50 cursor-not-allowed" : ""}`}
-                >
-                  {isUpdating ? <LoadingDots text="Updating" /> : "Save Profile Changes"}
-                </button>
-              </div>
-
-              <div className="w-full lg:w-[320px]">
-                <InfoBox 
-                  title="Billing Information" 
-                  text="This address will be used for all invoices and payment receipts generated by the system. If disabled, your business details will be used instead." 
+              {/* Info Sidebar (Right) */}
+              <div className="border-l-0 lg:border-l border-gray-200 pl-0 lg:pl-8 lg:w-[280px] xl:w-[320px] flex-shrink-0">
+                <InfoBox
+                  title="Info"
+                  text="The information saved here identifies the legal owner of the SWSCRM account and all client services."
                 />
               </div>
             </div>
           </div>
         </section>
+
+        {/* 3. Business Details */}
+        <section className="mb-10">
+          <SectionHeader title="Business Details" />
+          <div className="bg-white border border-gray-200 rounded-lg p-6 md:p-8">
+            <div className="flex flex-col lg:flex-row gap-10 items-stretch">
+              {/* Form Grid (Left) */}
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                {/* Row 1: Company Name | Registration Number */}
+                <InputField
+                  label="Company Name"
+                  value={user?.companyName || ""}
+                  onChange={(e: any) => updateField("companyName", e.target.value)}
+                />
+                <InputField
+                  label="Registration Number"
+                  value={user?.registrationNumber || ""}
+                  onChange={(e: any) => updateField("registrationNumber", e.target.value)}
+                />
+
+                {/* Row 2: Company VAT Number / Tax ID | Phone Number */}
+                <InputField
+                  label="Company VAT Number / Tax ID"
+                  value={user?.taxId || ""}
+                  onChange={(e: any) => updateField("taxId", e.target.value)}
+                />
+                <InputField
+                  label="Phone Number"
+                  value={user?.businessPhoneNumber || user?.phoneNumber || ""}
+                  onChange={(e: any) => updateField("businessPhoneNumber", e.target.value)}
+                />
+
+                {/* Row 3: Country | State / Province */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-gray-700">Country</label>
+                  <div className="relative">
+                    <select
+                      className="w-full bg-white border border-gray-200 rounded-[4px] px-3.5 py-2.5 text-sm text-gray-700 focus:outline-none focus:border-[#4545F0] focus:ring-1 focus:ring-[#4545F0] appearance-none cursor-pointer pr-10"
+                      value={user?.country || ""}
+                      onChange={(e) => updateField("country", e.target.value)}
+                    >
+                      <option value="">Select or type country...</option>
+                      {countriesList && countriesList.length > 0 ? (
+                        countriesList.map((c) => (
+                          <option key={c.iso2 || c._id} value={c.name}>
+                            {c.flagEmoji ? `${c.flagEmoji} ` : ""}
+                            {c.name}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="United States">United States</option>
+                          <option value="United Kingdom">United Kingdom</option>
+                          <option value="Canada">Canada</option>
+                          <option value="Germany">Germany</option>
+                          <option value="France">France</option>
+                          <option value="India">India</option>
+                          <option value="Australia">Australia</option>
+                        </>
+                      )}
+                    </select>
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
+                        <path
+                          d="M1 1L5 5L9 1"
+                          stroke="#666"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <InputField
+                  label="State / Province"
+                  value={user?.state || ""}
+                  onChange={(e: any) => updateField("state", e.target.value)}
+                />
+
+                {/* Row 4: City | ZIP / Postal Code */}
+                <InputField
+                  label="City"
+                  value={user?.city || ""}
+                  onChange={(e: any) => updateField("city", e.target.value)}
+                />
+                <InputField
+                  label="ZIP / Postal Code"
+                  value={user?.zipCode || ""}
+                  onChange={(e: any) => updateField("zipCode", e.target.value)}
+                />
+
+                {/* Row 5: Street Address | (empty) */}
+                <InputField
+                  label="Street Address"
+                  value={user?.streetAddress || ""}
+                  onChange={(e: any) => updateField("streetAddress", e.target.value)}
+                />
+                <div className="hidden md:block" />
+              </div>
+
+              {/* Info Sidebar (Right) */}
+              <div className="border-l-0 lg:border-l border-gray-200 pl-0 lg:pl-8 lg:w-[280px] xl:w-[320px] flex-shrink-0">
+                <InfoBox
+                  title="Info"
+                  text="The information saved here identifies the details of the business associated with this SWSCRM account and all client services"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 4. Billing Details */}
+        <section className="mb-6">
+          <SectionHeader title="Billing Details" />
+          <div className="bg-white border border-gray-200 rounded-lg p-6 md:p-8">
+            <div className="flex flex-col lg:flex-row gap-10 items-stretch">
+              {/* Left Content Area */}
+              <div className="flex-1 flex flex-col gap-6">
+                {/* Switch Toggle Container Box */}
+                <div className="bg-[#F9FAFB] border border-gray-200/80 rounded-xl p-5 md:p-6 flex items-center gap-4">
+                  <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={user?.useSeparateBillingAddress || false}
+                      onChange={(e) => updateField("useSeparateBillingAddress", e.target.checked)}
+                    />
+                    <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#4545F0]"></div>
+                  </label>
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-800">
+                      Use separate billing address
+                    </h4>
+                    <p className="text-xs text-gray-400 font-normal mt-0.5">
+                      Enable this if your billing information differs from your business details.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Expanded Billing Form Fields */}
+                {user?.useSeparateBillingAddress && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <InputField
+                      label="Billing Company Name"
+                      value={user?.billingCompanyName || ""}
+                      onChange={(e: any) => updateField("billingCompanyName", e.target.value)}
+                    />
+                    <InputField
+                      label="Billing Registration Number"
+                      value={user?.billingRegistrationNumber || ""}
+                      onChange={(e: any) => updateField("billingRegistrationNumber", e.target.value)}
+                    />
+
+                    <InputField
+                      label="Billing Company VAT Number / Tax ID"
+                      value={user?.billingTaxId || ""}
+                      onChange={(e: any) => updateField("billingTaxId", e.target.value)}
+                    />
+                    <InputField
+                      label="Billing Phone Number"
+                      value={user?.billingPhoneNumber || ""}
+                      onChange={(e: any) => updateField("billingPhoneNumber", e.target.value)}
+                    />
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-gray-700">Billing Country</label>
+                      <div className="relative">
+                        <select
+                          className="w-full bg-white border border-gray-200 rounded-[4px] px-3.5 py-2.5 text-sm text-gray-700 focus:outline-none focus:border-[#4545F0] focus:ring-1 focus:ring-[#4545F0] appearance-none cursor-pointer pr-10"
+                          value={user?.billingCountry || ""}
+                          onChange={(e) => updateField("billingCountry", e.target.value)}
+                        >
+                          <option value="">Select or type country...</option>
+                          {countriesList && countriesList.length > 0 ? (
+                            countriesList.map((c) => (
+                              <option key={c.iso2 || c._id} value={c.name}>
+                                {c.flagEmoji ? `${c.flagEmoji} ` : ""}
+                                {c.name}
+                              </option>
+                            ))
+                          ) : (
+                            <>
+                              <option value="United States">United States</option>
+                              <option value="United Kingdom">United Kingdom</option>
+                              <option value="Canada">Canada</option>
+                              <option value="Germany">Germany</option>
+                              <option value="France">France</option>
+                              <option value="India">India</option>
+                              <option value="Australia">Australia</option>
+                            </>
+                          )}
+                        </select>
+                        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                          <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
+                            <path
+                              d="M1 1L5 5L9 1"
+                              stroke="#666"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                    <InputField
+                      label="Billing State / Province"
+                      value={user?.billingState || ""}
+                      onChange={(e: any) => updateField("billingState", e.target.value)}
+                    />
+
+                    <InputField
+                      label="Billing City"
+                      value={user?.billingCity || ""}
+                      onChange={(e: any) => updateField("billingCity", e.target.value)}
+                    />
+                    <InputField
+                      label="Billing ZIP / Postal Code"
+                      value={user?.billingZipCode || ""}
+                      onChange={(e: any) => updateField("billingZipCode", e.target.value)}
+                    />
+
+                    <InputField
+                      label="Billing Street Address"
+                      value={user?.billingStreetAddress || ""}
+                      onChange={(e: any) => updateField("billingStreetAddress", e.target.value)}
+                    />
+                    <div className="hidden md:block" />
+                  </div>
+                )}
+              </div>
+
+              {/* Info Sidebar (Right) */}
+              <div className="border-l-0 lg:border-l border-gray-200 pl-0 lg:pl-8 lg:w-[280px] xl:w-[320px] flex-shrink-0">
+                <InfoBox
+                  title="Billing Information"
+                  text="This address will be used for all invoices and payment receipts generated by the system. If disabled, your business details will be used instead."
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Save Profile Changes Button (Outside & below card) */}
+        <div>
+          <button
+            type="button"
+            onClick={handleSaveProfile}
+            disabled={isUpdating || isUploading}
+            className={`bg-[#4545F0] hover:bg-[#3737D8] text-white text-xs font-bold px-8 py-3 rounded-lg shadow-sm transition-all ${
+              isUpdating || isUploading ? "opacity-60 cursor-not-allowed" : ""
+            }`}
+          >
+            {isUpdating ? <LoadingDots text="Saving" /> : "Save Profile Changes"}
+          </button>
+        </div>
+
+        <div className="mt-16">
+          <SupportNewsletter noPadding />
+        </div>
       </main>
 
       {/* Password Change Modal */}
       {showPasswordModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8 animate-in fade-in zoom-in-95 duration-200">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Change Password</h2>
-            
-            <div className="space-y-5">
+            <h2 className="text-xl font-bold text-gray-800 mb-6">Change Password</h2>
+
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Old Password</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  Old Password
+                </label>
                 <div className="relative">
                   <input
                     type={showOldPass ? "text" : "password"}
                     value={oldPassword}
                     onChange={(e) => setOldPassword(e.target.value)}
-                    className="w-full bg-white border border-gray-300 rounded-[4px] px-4 py-3 pr-12 text-sm text-gray-700 focus:outline-none focus:border-primary-300 focus:ring-1 focus:ring-primary-300"
+                    className="w-full bg-white border border-gray-300 rounded-[4px] px-3.5 py-2.5 pr-12 text-sm text-gray-700 focus:outline-none focus:border-[#4545F0] focus:ring-1 focus:ring-[#4545F0]"
                     placeholder="Enter old password"
                   />
-                  <button type="button" onClick={() => setShowOldPass(!showOldPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                  <button
+                    type="button"
+                    onClick={() => setShowOldPass(!showOldPass)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
                     {showOldPass ? (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                        <line x1="1" y1="1" x2="23" y2="23" />
+                      </svg>
                     ) : (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
                     )}
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">New Password</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  New Password
+                </label>
                 <div className="relative">
                   <input
                     type={showNewPass ? "text" : "password"}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full bg-white border border-gray-300 rounded-[4px] px-4 py-3 pr-12 text-sm text-gray-700 focus:outline-none focus:border-primary-300 focus:ring-1 focus:ring-primary-300"
-                    placeholder="Enter new password"
+                    className="w-full bg-white border border-gray-300 rounded-[4px] px-3.5 py-2.5 pr-12 text-sm text-gray-700 focus:outline-none focus:border-[#4545F0] focus:ring-1 focus:ring-[#4545F0]"
+                    placeholder="Enter new password (min 8 characters)"
                   />
-                  <button type="button" onClick={() => setShowNewPass(!showNewPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPass(!showNewPass)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
                     {showNewPass ? (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                        <line x1="1" y1="1" x2="23" y2="23" />
+                      </svg>
                     ) : (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
                     )}
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Confirm New Password</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  Confirm New Password
+                </label>
                 <div className="relative">
                   <input
                     type={showConfirmPass ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full bg-white border border-gray-300 rounded-[4px] px-4 py-3 pr-12 text-sm text-gray-700 focus:outline-none focus:border-primary-300 focus:ring-1 focus:ring-primary-300"
+                    className="w-full bg-white border border-gray-300 rounded-[4px] px-3.5 py-2.5 pr-12 text-sm text-gray-700 focus:outline-none focus:border-[#4545F0] focus:ring-1 focus:ring-[#4545F0]"
                     placeholder="Confirm new password"
                   />
-                  <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPass(!showConfirmPass)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
                     {showConfirmPass ? (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                        <line x1="1" y1="1" x2="23" y2="23" />
+                      </svg>
                     ) : (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
                     )}
                   </button>
                 </div>
@@ -688,13 +1032,14 @@ export default function MyAccountPage() {
 
               {passwordError && (
                 <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                  <p className="text-sm text-red-600 font-medium">{passwordError}</p>
+                  <p className="text-xs text-red-600 font-medium">{passwordError}</p>
                 </div>
               )}
             </div>
 
             <div className="flex gap-3 mt-6">
-              <button 
+              <button
+                type="button"
                 onClick={() => {
                   setShowPasswordModal(false);
                   setOldPassword("");
@@ -702,15 +1047,43 @@ export default function MyAccountPage() {
                   setConfirmPassword("");
                   setPasswordError("");
                 }}
-                className="flex-1 px-4 py-2 bg-[#800020] text-white rounded-[4px] hover:bg-[#600018] font-bold text-sm transition-colors"
+                className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md font-bold text-xs transition-colors"
               >
                 Cancel
               </button>
-              <button 
+              <button
+                type="button"
                 onClick={handleChangePassword}
-                className="flex-1 px-4 py-2 bg-[#0D1939] text-white rounded-[4px] hover:bg-[#1a2850] font-bold text-sm transition-colors"
+                className="flex-1 px-4 py-2.5 bg-[#4545F0] hover:bg-[#3737D8] text-white rounded-md font-bold text-xs transition-colors"
               >
                 Change Password
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Email Change Notice Modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8 animate-in fade-in zoom-in-95 duration-200">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Email Address</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Your primary account email is currently set to:
+            </p>
+            <div className="bg-gray-50 border border-gray-200 rounded p-3 mb-4 text-sm font-semibold text-gray-800">
+              {user?.email || ""}
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed mb-6">
+              To update your primary login and billing email address, please contact support or your project manager for security verification.
+            </p>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowEmailModal(false)}
+                className="px-6 py-2.5 bg-[#4545F0] hover:bg-[#3737D8] text-white rounded-md font-bold text-xs transition-colors"
+              >
+                Close
               </button>
             </div>
           </div>

@@ -17,6 +17,43 @@ export function findQuestionByRoleId(
   return questions.find((q) => q.roleId === roleId);
 }
 
+const NUMERIC_CALCULATOR_ROLE_IDS = new Set([3, 4, 10, 11, 12, 15]);
+const NUMERIC_CALCULATOR_ROLE_NAMES = new Set([
+  "DEPENDENT_NUMERIC",
+  "NUMERIC_ADDON",
+  "NUMERIC_STEP_MULTIPLIER",
+  "NUMERIC_INCREMENTAL",
+  "PERCENTAGE_ADDON",
+  "DURATION_MULTIPLIER",
+]);
+
+/** Prod DB/CMS may store numeric pricing questions as type single. */
+export function resolveCalculatorQuestionType(question: {
+  type?: string;
+  roleId?: number;
+  role?: string;
+}): string {
+  const explicit = String(question?.type || "").toLowerCase();
+  if (explicit === "number" || explicit === "text" || explicit === "multi") {
+    return explicit;
+  }
+  const roleId = Number(question?.roleId ?? 0);
+  const role = String(question?.role || "").toUpperCase();
+  if (NUMERIC_CALCULATOR_ROLE_IDS.has(roleId) || NUMERIC_CALCULATOR_ROLE_NAMES.has(role)) {
+    return "number";
+  }
+  return explicit || "single";
+}
+
+export function normalizeCalculatorQuestionsForUi<T extends { type?: string; roleId?: number; role?: string }>(
+  questions: T[]
+): T[] {
+  return questions.map((q) => ({
+    ...q,
+    type: resolveCalculatorQuestionType(q),
+  }));
+}
+
 export function findTimelineQuestionKey(questions: CalculatorQuestion[]): string | undefined {
   const known = questions.find((q) =>
     ["WEB_TIMELINE", "GFX_TIMELINE", "SEO_TIMELINE"].includes(q.key || "")
@@ -55,25 +92,52 @@ export function hasTimelineSelected(
   return false;
 }
 
+export const SEO_MONTHS_MAX = 20000;
+
+export function isSeoMonthsQuestion(question: { key?: string; roleId?: number }): boolean {
+  return question.key === "SEO_MONTHS" || question.roleId === 15;
+}
+
+export function getNumberQuestionMax(question: {
+  key?: string;
+  roleId?: number;
+  config?: { maxValue?: number };
+}): number | undefined {
+  if (question.config?.maxValue != null) return question.config.maxValue;
+  if (isSeoMonthsQuestion(question)) return SEO_MONTHS_MAX;
+  return undefined;
+}
+
+export function getNumberQuestionMin(question: {
+  config?: { minValue?: number };
+}): number {
+  return question.config?.minValue ?? 0;
+}
+
 export function getMissingRequiredQuestions(
   questions: any[],
-  selections: Record<string, CalculatorSelection>
+  selections: Record<string, CalculatorSelection>,
+  categoryKey?: string | null
 ): any[] {
   return questions.filter((q) => {
-    if (!isQuestionVisible(q, selections, questions)) return false;
+    if (!isQuestionVisible(q, selections, questions, categoryKey)) return false;
     const isRequired = q.isRequired || isTimelineQuestion(q) || q.roleId === 1 || q.roleId === 2;
     if (!isRequired) return false;
 
-    if (q.type === "number") {
+    const qType = resolveCalculatorQuestionType(q);
+    if (qType === "number") {
       const minVal = q.config?.minValue ?? 0;
+      const maxVal = getNumberQuestionMax(q);
       const sel = selections[q.key];
       const val = sel?.numericValue ?? 0;
-      return val < minVal;
+      if (val < minVal) return true;
+      if (maxVal != null && val > maxVal) return true;
+      return false;
     }
 
     const sel = selections[q.key];
     if (!sel) return true;
-    if (q.type === "text") return !sel.textValue || sel.textValue.trim() === "";
+    if (qType === "text") return !sel.textValue || sel.textValue.trim() === "";
     return !sel.answerKeys || sel.answerKeys.length === 0;
   });
 }
@@ -115,8 +179,11 @@ export function getTierQuestionKey(categoryKey: string): string {
   return "WEB_TIER";
 }
 
-export function isGraphicsItemsQuestion(question: any): boolean {
+export function isGraphicsItemsQuestion(question: any, categoryKey?: string | null): boolean {
   if (!question) return false;
+  if (categoryKey && categoryKey !== "graphics") return false;
+  const roleId = Number(question.roleId ?? 0);
+  if ([1, 2, 3, 4, 5, 13, 14, 15].includes(roleId)) return false;
   const key = String(question.key || "").toUpperCase();
   if (
     key.startsWith("SEO_") ||
@@ -130,7 +197,7 @@ export function isGraphicsItemsQuestion(question: any): boolean {
   }
   if (key.startsWith("GFX_") || key.startsWith("GD_")) {
     return (
-      question.roleId === 7 ||
+      roleId === 7 ||
       /specific items/i.test(question.text || "") ||
       /include in this project/i.test(question.text || "")
     );
@@ -696,17 +763,18 @@ export function seoModeNeedsMonths(mode: string): boolean {
 }
 
 export function formatDaysToTimelineLabel(days: number): string {
-  if (days <= 2) return "24 - 48 hours";
-  if (days <= 3.5) return "3 - 4 days";
-  if (days <= 5) return "3 - 5 business days";
+  if (days <= 0) return "";
+  if (days === 1) return "1 day";
+  if (days <= 4) return `${days} days`;
   if (days <= 7) return "1 week";
-  if (days <= 10) return "7 - 10 business days";
+  if (days <= 10) return "10 days";
   if (days <= 14) return "2 weeks";
   if (days <= 21) return "3 weeks";
   if (days <= 28) return "4 weeks";
   if (days <= 35) return "5 weeks";
   if (days <= 42) return "6 weeks";
   if (days <= 60) return "8 weeks";
+  if (days <= 90) return "12 weeks";
   return `${Math.ceil(days / 7)} weeks`;
 }
 
@@ -760,79 +828,325 @@ export type ConditionalOn = {
   answerKeys?: string[];
 };
 
-const MARKETING_ALWAYS_VISIBLE_KEYS = new Set([
-  "MKT_PAID_PLATFORMS",
-  "MKT_AD_SPEND",
+const MARKETING_ORGANIC_FOCUS_KEYS = new Set([
+  "MKT_ORGANIC_CONTENT",
+  "MKT_COMMUNITY",
+  "MKT_SHORT_VIDEO",
+  "MKT_INFLUENCER",
+  "MKT_CRISIS",
+  "MC_AREA_ORG_CONT",
+  "MC_AREA_COMM_MGMT",
+  "MC_AREA_SHORT_VID",
+  "MC_AREA_INF_MGMT",
+  "MC_AREA_CRISIS",
+  "0",
+  "1",
+  "2",
+  "3",
+  "4",
 ]);
 
-export function isQuestionVisible(
-  question: { key?: string; roleId?: number; text?: string; order?: number; conditionalOn?: ConditionalOn },
+function findMarketingFocusQuestion(questions?: any[]) {
+  return questions?.find(
+    (q) =>
+      q.key === "MKT_FOCUS" ||
+      q.key === "MC_AREAS" ||
+      (q.key === "1" && /focus|area|marketing|social/i.test(q.text || "")) ||
+      q.roleId === 8 ||
+      /which areas do you want to focus/i.test(q.text || "")
+  );
+}
+
+function isMarketingCategory(categoryKey?: string | null): boolean {
+  if (!categoryKey) return false;
+  const c = categoryKey.toLowerCase();
+  return c === "marketing" || c.includes("market") || c.includes("social");
+}
+
+function getMarketingTargetCategory(
+  question: any,
+  categoryKey?: string | null,
+  questions?: any[]
+): "organic" | "paid" | null {
+  if (categoryKey && !isMarketingCategory(categoryKey)) return null;
+
+  // Website and graphics questions are never marketing
+  const roleId = Number(question?.roleId ?? 0);
+  if ([1, 2, 3, 4, 5, 7, 13, 14, 15].includes(roleId)) return null;
+
+  const key = String(question?.key || "");
+  if (key.startsWith("WEB_") || key.startsWith("SEO_") || key.startsWith("GFX_") || key.startsWith("GD_")) {
+    return null;
+  }
+
+  const targetCategory = question?.config?.targetCategory;
+  if (targetCategory === "organic" || targetCategory === "paid") return targetCategory;
+
+  const isExplicitMarketing =
+    isMarketingCategory(categoryKey) ||
+    key.startsWith("MKT_") ||
+    key.startsWith("MC_") ||
+    (questions && questions.some((q) => q.key?.startsWith("MKT_") || q.key?.startsWith("MC_") || /marketing|social media/i.test(q.text || "")));
+
+  if (
+    key === "MKT_ORGANIC_PLATFORMS" ||
+    key === "MKT_POSTS_WEEK" ||
+    key === "MC_PLAT_ORG" ||
+    key === "MC_POSTS" ||
+    (isExplicitMarketing && (key === "2" || key === "3")) ||
+    roleId === 9 ||
+    roleId === 10
+  ) {
+    return "organic";
+  }
+  if (
+    key === "MKT_PAID_PLATFORMS" ||
+    key === "MKT_AD_SPEND" ||
+    key === "MC_PLAT_PAID" ||
+    key === "MC_ADSPEND" ||
+    (isExplicitMarketing && (key === "4" || key === "5")) ||
+    roleId === 11 ||
+    roleId === 12
+  ) {
+    return "paid";
+  }
+  return null;
+}
+
+function hasMarketingFocusSelection(
   selections: Record<string, CalculatorSelection>,
   questions?: any[]
 ): boolean {
-  if (isGraphicsItemsQuestion(question)) {
+  const focusQ = findMarketingFocusQuestion(questions);
+  if (!focusQ?.key) return false;
+  return (selections[focusQ.key]?.answerKeys?.length ?? 0) > 0;
+}
+
+function hasMarketingOrganicSelected(
+  selections: Record<string, CalculatorSelection>,
+  questions?: any[]
+): boolean {
+  const focusQ = findMarketingFocusQuestion(questions);
+  if (!focusQ) return false;
+  const selectedKeys = selections[focusQ.key]?.answerKeys || [];
+  return selectedKeys.some((answerKey) => {
+    if (MARKETING_ORGANIC_FOCUS_KEYS.has(answerKey)) return true;
+    const answer = focusQ.answers?.find((a: any) => a.key === answerKey);
+    const category = answer?.metadata?.category || answer?.metadata?.segment;
+    return category === "organic";
+  });
+}
+
+function hasMarketingPaidSelected(
+  selections: Record<string, CalculatorSelection>,
+  questions?: any[]
+): boolean {
+  const focusQ = findMarketingFocusQuestion(questions);
+  if (!focusQ) return false;
+  const selectedKeys = selections[focusQ.key]?.answerKeys || [];
+  return selectedKeys.some((answerKey) => {
+    if (answerKey === "MKT_PAID" || answerKey === "MC_AREA_PAID_ADS" || answerKey === "5") {
+      return true;
+    }
+    const answer = focusQ.answers?.find((a: any) => a.key === answerKey);
+    const category = answer?.metadata?.category || answer?.metadata?.segment;
+    return category === "paid";
+  });
+}
+
+function isMarketingSegmentQuestionVisible(
+  question: any,
+  selections: Record<string, CalculatorSelection>,
+  questions?: any[],
+  categoryKey?: string | null
+): boolean | null {
+  if (categoryKey && !isMarketingCategory(categoryKey)) return null;
+  const segment = getMarketingTargetCategory(question, categoryKey, questions);
+  if (!segment) return null;
+  if (segment === "organic") {
+    return hasMarketingOrganicSelected(selections, questions);
+  }
+  // Paid platforms default when focus not picked yet (local parity).
+  if (!hasMarketingFocusSelection(selections, questions)) return true;
+  return hasMarketingPaidSelected(selections, questions);
+}
+
+type QuestionVisibilityInput = Partial<CalculatorQuestion> & {
+  key?: string;
+  text?: string;
+  config?: CalculatorQuestion["config"];
+};
+
+export function isQuestionVisible(
+  question: QuestionVisibilityInput,
+  selections: Record<string, CalculatorSelection>,
+  questions?: QuestionVisibilityInput[],
+  categoryKey?: string | null
+): boolean {
+  if (!question) return false;
+
+  const roleId = Number(question?.roleId ?? 0);
+  const key = String(question?.key || "").toUpperCase();
+
+  // 1. Website category or website-specific questions: never filtered by graphics/seo/marketing
+  if (
+    categoryKey === "website" ||
+    key.startsWith("WEB_") ||
+    roleId === 1 ||
+    roleId === 2 ||
+    roleId === 3 ||
+    roleId === 4
+  ) {
+    const cond = question.conditionalOn as { questionKey?: string; answerKey?: string; answerKeys?: string[] } | undefined;
+    if (cond && typeof cond.questionKey === "string" && cond.questionKey.trim() !== "") {
+      const parentSel = selections[cond.questionKey];
+      const keys = parentSel?.answerKeys || [];
+      if (cond.answerKey) return keys.includes(cond.answerKey);
+      if (cond.answerKeys?.length) return cond.answerKeys.some((k) => keys.includes(k));
+      return (
+        keys.length > 0 ||
+        (parentSel?.numericValue !== undefined && parentSel.numericValue > 0) ||
+        (parentSel?.textValue !== undefined && parentSel.textValue.trim() !== "")
+      );
+    }
+    return true;
+  }
+
+  // 2. Graphics items visibility
+  if (categoryKey === "graphics" || isGraphicsItemsQuestion(question, categoryKey)) {
     const catKeys = getGraphicsCategoryKeys(selections, questions);
     return catKeys.length > 0;
   }
 
-  // SEO specific question visibility
-  if (question.key === "SEO_ITEMS") {
-    const hasSeoTypeSelected = !!(
-      selections.SEO_TYPE?.answerKeys?.length ||
-      selections.SEO_SERVICE_TYPE?.answerKeys?.length ||
-      selections["0"]?.answerKeys?.length
-    );
-    return hasSeoTypeSelected;
-  }
-  if (question.key === "SEO_WORDS") {
-    const items = selections.SEO_ITEMS?.answerKeys || selections["2"]?.answerKeys || [];
-    return items.includes("SEO_ITEM_CONTENT_TEXT") || items.includes("SEO_ITEM_CONTENT") || items.includes("5");
-  }
-  if (question.key === "SEO_BACKLINKS") {
-    const items = selections.SEO_ITEMS?.answerKeys || selections["2"]?.answerKeys || [];
-    return items.includes("SEO_ITEM_LINK_BACK") || items.includes("SEO_ITEM_BACKLINKS") || items.includes("8");
-  }
-  if (question.key === "SEO_MONTHS") {
-    const hasSeoTypeSelected = !!(
-      selections.SEO_TYPE?.answerKeys?.length ||
-      selections.SEO_SERVICE_TYPE?.answerKeys?.length ||
-      selections["0"]?.answerKeys?.length
-    );
-    return hasSeoTypeSelected && seoModeNeedsMonths(getSeoServiceMode(selections));
-  }
-  if (question.key === "SEO_TIMELINE") {
-    const hasSeoTypeSelected = !!(
-      selections.SEO_TYPE?.answerKeys?.length ||
-      selections.SEO_SERVICE_TYPE?.answerKeys?.length ||
-      selections["0"]?.answerKeys?.length
-    );
-    return hasSeoTypeSelected && seoModeNeedsTimeline(getSeoServiceMode(selections));
+  // 3. SEO specific question visibility
+  if (categoryKey === "seo" || key.startsWith("SEO_") || roleId === 15) {
+    if (question.key === "SEO_ITEMS") {
+      return hasSeoTypeSelected(selections, questions);
+    }
+    if (question.key === "SEO_WORDS") {
+      const items = selections.SEO_ITEMS?.answerKeys || selections["2"]?.answerKeys || [];
+      return items.includes("SEO_ITEM_CONTENT_TEXT") || items.includes("SEO_ITEM_CONTENT") || items.includes("5");
+    }
+    if (question.key === "SEO_BACKLINKS") {
+      const items = selections.SEO_ITEMS?.answerKeys || selections["2"]?.answerKeys || [];
+      return items.includes("SEO_ITEM_LINK_BACK") || items.includes("SEO_ITEM_BACKLINKS") || items.includes("8");
+    }
+    if (question.key === "SEO_MONTHS" || question.roleId === 15) {
+      if (!findSeoServiceTypeQuestion(questions)) return true;
+      return (
+        hasSeoTypeSelected(selections, questions) &&
+        seoModeNeedsMonths(getSeoServiceMode(selections, questions))
+      );
+    }
+    if (
+      question.key === "SEO_TIMELINE" ||
+      (isTimelineQuestion(question) && findSeoServiceTypeQuestion(questions))
+    ) {
+      return (
+        hasSeoTypeSelected(selections, questions) &&
+        seoModeNeedsTimeline(getSeoServiceMode(selections, questions))
+      );
+    }
   }
 
-  if (question.key && MARKETING_ALWAYS_VISIBLE_KEYS.has(question.key)) return true;
-  const cond = question.conditionalOn;
-  if (!cond) return true;
-  const dep = selections[cond.questionKey];
-  const keys = dep?.answerKeys || [];
-  if (cond.answerKey) return keys.includes(cond.answerKey);
-  if (cond.answerKeys?.length) return cond.answerKeys.some((k) => keys.includes(k));
+  // 4. Marketing segment question visibility
+  const marketingVisible = isMarketingSegmentQuestionVisible(question, selections, questions, categoryKey);
+  if (marketingVisible !== null) return marketingVisible;
+
+  // 5. Generic conditionalOn
+  const cond = question.conditionalOn as { questionKey?: string; answerKey?: string; answerKeys?: string[] } | undefined;
+  if (cond && typeof cond.questionKey === "string" && cond.questionKey.trim() !== "") {
+    const parentSel = selections[cond.questionKey];
+    const keys = parentSel?.answerKeys || [];
+    if (cond.answerKey) return keys.includes(cond.answerKey);
+    if (cond.answerKeys?.length) return cond.answerKeys.some((k) => keys.includes(k));
+    return (
+      keys.length > 0 ||
+      (parentSel?.numericValue !== undefined && parentSel.numericValue > 0) ||
+      (parentSel?.textValue !== undefined && parentSel.textValue.trim() !== "")
+    );
+  }
+
   return true;
 }
 
+function findSeoServiceTypeQuestion(questions?: any[]) {
+  return questions?.find(
+    (q) =>
+      ["SEO_TYPE", "SEO_SERVICE_TYPE", "0"].includes(q.key || "") ||
+      /what type of seo/i.test(q.text || "") ||
+      (q.answers || []).some((a: any) => a?.metadata?.serviceMode)
+  );
+}
+
+function findSeoServiceTypeSelection(
+  selections: Record<string, CalculatorSelection>,
+  questions?: any[]
+): CalculatorSelection | undefined {
+  const typeQ = findSeoServiceTypeQuestion(questions);
+  if (typeQ?.key && selections[typeQ.key]) {
+    return selections[typeQ.key];
+  }
+  if (questions?.length) {
+    for (const [selKey, sel] of Object.entries(selections)) {
+      if (!sel?.answerKeys?.length) continue;
+      const q = questions.find((qq) => qq.key === selKey);
+      if (!q) continue;
+      for (const ak of sel.answerKeys) {
+        const ans = q.answers?.find((a: any) => a.key === ak);
+        if (ans?.metadata?.serviceMode) return sel;
+      }
+    }
+  }
+  return selections.SEO_SERVICE_TYPE || selections.SEO_TYPE || selections["0"];
+}
+
+function hasSeoTypeSelected(
+  selections: Record<string, CalculatorSelection>,
+  questions?: any[]
+): boolean {
+  return !!findSeoServiceTypeSelection(selections, questions)?.answerKeys?.length;
+}
+
 export function getSeoServiceMode(
-  selections: Record<string, CalculatorSelection>
+  selections: Record<string, CalculatorSelection>,
+  questions?: any[]
 ): "onetime" | "monthly" | "combination" {
-  const key =
-    selections.SEO_TYPE?.answerKeys?.[0] ||
-    selections.SEO_SERVICE_TYPE?.answerKeys?.[0] ||
-    selections["0"]?.answerKeys?.[0];
+  const sel = findSeoServiceTypeSelection(selections, questions);
+  const key = sel?.answerKeys?.[0];
 
   if (!key) return "onetime";
-  if (key === "SEO_TYPE_MONTHLY" || key === "1" || key.toLowerCase().includes("monthly")) {
+
+  if (questions?.length) {
+    const typeQ = findSeoServiceTypeQuestion(questions);
+    const ans = typeQ?.answers?.find((a: any) => a.key === key);
+    const serviceMode = ans?.metadata?.serviceMode;
+    if (
+      serviceMode === "monthly" ||
+      serviceMode === "onetime" ||
+      serviceMode === "combination"
+    ) {
+      return serviceMode;
+    }
+  }
+
+  const answerText = (sel as any)?.answerTexts?.[0] || "";
+  if (
+    key === "SEO_TYPE_MONTHLY" ||
+    key.toLowerCase().includes("monthly") ||
+    /monthly/i.test(answerText)
+  ) {
     return "monthly";
   }
-  if (key === "SEO_TYPE_COMBO" || key.toLowerCase().includes("combo")) {
+  if (
+    key === "SEO_TYPE_COMBO" ||
+    key.toLowerCase().includes("combo") ||
+    /combo/i.test(answerText)
+  ) {
     return "combination";
+  }
+  if (key === "SEO_TYPE_ONETIME" || /one-?time/i.test(answerText)) {
+    return "onetime";
   }
   return "onetime";
 }
@@ -1016,19 +1330,18 @@ export function formatCalculatorAnswerLabel(
   return text;
 }
 
-/** Append (Optional) for optional text/number on marketing, SEO, and graphics. */
 export function formatCalculatorQuestionText(
   text?: string,
   isRequired?: boolean,
   questionType?: string,
-  categoryKey?: string
+  _categoryKey?: string
 ): string {
   if (!text) return "";
-  const trimmed = text.replace(/\s*\(Optional\)/gi, "").trim();
-  const supportsOptionalLabel = questionType === "text" || questionType === "number";
-  const showOptional =
-    categoryKey === "marketing" || categoryKey === "seo" || categoryKey === "graphics";
-  if (showOptional && supportsOptionalLabel && isRequired !== true) {
+  let trimmed = text.replace(/\s*\(Optional\)/gi, "").trim();
+  if (/Tell us more about your goals and target audience$/i.test(trimmed)) {
+    trimmed = `${trimmed}:`;
+  }
+  if (questionType === "text" && isRequired !== true) {
     return `${trimmed} (Optional)`;
   }
   return trimmed;
@@ -1103,11 +1416,13 @@ export function formatCalculatorDisplayAmount(
 
 export function pruneHiddenSelections(
   selections: Record<string, CalculatorSelection>,
-  questions: { key: string; roleId?: number; text?: string; order?: number; conditionalOn?: ConditionalOn; answers?: any[] }[]
+  questions: QuestionVisibilityInput[],
+  categoryKey?: string | null
 ): Record<string, CalculatorSelection> {
   const next = { ...selections };
   for (const q of questions) {
-    if (!isQuestionVisible(q, next, questions)) delete next[q.key];
+    if (!q.key) continue;
+    if (!isQuestionVisible(q, next, questions, categoryKey)) delete next[q.key];
   }
 
   // Prune any graphics items that are no longer visible under selected graphics categories
@@ -1132,7 +1447,7 @@ export function pruneHiddenSelections(
   }
 
   // Prune any SEO items that are no longer visible under selected SEO service mode
-  const seoMode = getSeoServiceMode(next);
+  const seoMode = getSeoServiceMode(next, questions);
   const seoItemsQ = questions.find((q) => q.key === "SEO_ITEMS");
   if (seoItemsQ?.key && next[seoItemsQ.key]?.answerKeys) {
     if (seoItemsQ.answers) {
