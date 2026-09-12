@@ -133,12 +133,11 @@ export const Profile = ({
             Help & Support
           </button>
 
-          <div className="border-t border-gray-100 my-1.5" />
+          <div className="border-t border-gray-200 my-2" />
 
-          {/* Group 5: Logout */}
           <button
             onMouseDown={(e) => {
-              e.preventDefault();
+              e.preventDefault(); // Prevent focus loss and other events
               authService.logout();
               setIsAuthenticated(false);
               window.location.replace("/");
