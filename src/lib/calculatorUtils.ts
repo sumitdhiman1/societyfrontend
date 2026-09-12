@@ -77,12 +77,13 @@ export function isTimelineQuestion(question: any): boolean {
 
 export function hasTimelineSelected(
   questions: any[],
-  selections: Record<string, CalculatorSelection>
+  selections: Record<string, CalculatorSelection>,
+  categoryKey?: string | null
 ): boolean {
   const timelineKey = findTimelineQuestionKey(questions);
   if (!timelineKey) return true;
   const timelineQ = questions.find((q) => q.key === timelineKey || isTimelineQuestion(q));
-  if (!timelineQ || !isQuestionVisible(timelineQ, selections, questions)) return true;
+  if (!timelineQ || !isQuestionVisible(timelineQ, selections, questions, categoryKey)) return true;
 
   const sel = selections[timelineKey] || selections[timelineQ.key];
   if (!sel) return false;
@@ -116,10 +117,11 @@ export function getNumberQuestionMin(question: {
 
 export function getMissingRequiredQuestions(
   questions: any[],
-  selections: Record<string, CalculatorSelection>
+  selections: Record<string, CalculatorSelection>,
+  categoryKey?: string | null
 ): any[] {
   return questions.filter((q) => {
-    if (!isQuestionVisible(q, selections, questions)) return false;
+    if (!isQuestionVisible(q, selections, questions, categoryKey)) return false;
     const isRequired = q.isRequired || isTimelineQuestion(q) || q.roleId === 1 || q.roleId === 2;
     if (!isRequired) return false;
 
@@ -852,7 +854,51 @@ function findMarketingFocusQuestion(questions?: any[]) {
   );
 }
 
-function getMarketingTargetCategory(question: any): "organic" | "paid" | null {
+export function isWebsiteCategoryOrQuestion(
+  question: any,
+  categoryKey?: string | null,
+  questions?: any[]
+): boolean {
+  if (categoryKey === "website") return true;
+  if (categoryKey && categoryKey !== "website") return false;
+  const key = String(question?.key || "").toUpperCase();
+  if (key.startsWith("WEB_")) return true;
+  if (
+    key.startsWith("SEO_") ||
+    key.startsWith("GFX_") ||
+    key.startsWith("GD_") ||
+    key.startsWith("MKT_") ||
+    key.startsWith("MC_")
+  ) {
+    return false;
+  }
+  if (
+    question?.config?.tierSource === "WEB_TIER" ||
+    question?.config?.limitSource === "WEB_TIER" ||
+    /type of website/i.test(question?.text || "")
+  ) {
+    return true;
+  }
+  if (
+    questions?.some(
+      (q) =>
+        q.config?.tierSource === "WEB_TIER" ||
+        q.config?.limitSource === "WEB_TIER" ||
+        /type of website/i.test(q.text || "")
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function getMarketingTargetCategory(
+  question: any,
+  categoryKey?: string | null,
+  questions?: any[]
+): "organic" | "paid" | null {
+  if (isWebsiteCategoryOrQuestion(question, categoryKey, questions)) return null;
+
   const targetCategory = question?.config?.targetCategory;
   if (targetCategory === "organic" || targetCategory === "paid") return targetCategory;
 
@@ -928,9 +974,11 @@ function hasMarketingPaidSelected(
 function isMarketingSegmentQuestionVisible(
   question: any,
   selections: Record<string, CalculatorSelection>,
-  questions?: any[]
+  questions?: any[],
+  categoryKey?: string | null
 ): boolean | null {
-  const segment = getMarketingTargetCategory(question);
+  if (isWebsiteCategoryOrQuestion(question, categoryKey, questions)) return null;
+  const segment = getMarketingTargetCategory(question, categoryKey, questions);
   if (!segment) return null;
   if (segment === "organic") {
     return hasMarketingOrganicSelected(selections, questions);
@@ -949,47 +997,72 @@ type QuestionVisibilityInput = Partial<CalculatorQuestion> & {
 export function isQuestionVisible(
   question: QuestionVisibilityInput,
   selections: Record<string, CalculatorSelection>,
-  questions?: QuestionVisibilityInput[]
+  questions?: QuestionVisibilityInput[],
+  categoryKey?: string | null
 ): boolean {
+  if (!question) return false;
+
+  // 1. A New Website category: all questions are visible unless there is an explicit conditionalOn
+  if (isWebsiteCategoryOrQuestion(question, categoryKey, questions)) {
+    const cond = question.conditionalOn;
+    if (cond && typeof cond.questionKey === "string" && cond.questionKey.trim() !== "") {
+      const parentSel = selections[cond.questionKey];
+      const keys = parentSel?.answerKeys || [];
+      if (cond.answerKey) return keys.includes(cond.answerKey);
+      if (cond.answerKeys?.length) return cond.answerKeys.some((k) => keys.includes(k));
+      return (
+        keys.length > 0 ||
+        (parentSel?.numericValue !== undefined && parentSel.numericValue > 0) ||
+        (parentSel?.textValue !== undefined && parentSel.textValue.trim() !== "")
+      );
+    }
+    return true;
+  }
+
+  // 2. Graphics items visibility
   if (isGraphicsItemsQuestion(question)) {
     const catKeys = getGraphicsCategoryKeys(selections, questions);
     return catKeys.length > 0;
   }
 
-  // SEO specific question visibility
-  if (question.key === "SEO_ITEMS") {
-    return hasSeoTypeSelected(selections, questions);
-  }
-  if (question.key === "SEO_WORDS") {
-    const items = selections.SEO_ITEMS?.answerKeys || selections["2"]?.answerKeys || [];
-    return items.includes("SEO_ITEM_CONTENT_TEXT") || items.includes("SEO_ITEM_CONTENT") || items.includes("5");
-  }
-  if (question.key === "SEO_BACKLINKS") {
-    const items = selections.SEO_ITEMS?.answerKeys || selections["2"]?.answerKeys || [];
-    return items.includes("SEO_ITEM_LINK_BACK") || items.includes("SEO_ITEM_BACKLINKS") || items.includes("8");
-  }
-  if (question.key === "SEO_MONTHS" || question.roleId === 15) {
-    if (!findSeoServiceTypeQuestion(questions)) return true;
-    return (
-      hasSeoTypeSelected(selections, questions) &&
-      seoModeNeedsMonths(getSeoServiceMode(selections, questions))
-    );
-  }
-  if (
-    question.key === "SEO_TIMELINE" ||
-    (isTimelineQuestion(question) && findSeoServiceTypeQuestion(questions))
-  ) {
-    return (
-      hasSeoTypeSelected(selections, questions) &&
-      seoModeNeedsTimeline(getSeoServiceMode(selections, questions))
-    );
+  // 3. SEO specific question visibility
+  if (categoryKey === "seo" || String(question.key || "").startsWith("SEO_") || question.roleId === 15) {
+    if (question.key === "SEO_ITEMS") {
+      return hasSeoTypeSelected(selections, questions);
+    }
+    if (question.key === "SEO_WORDS") {
+      const items = selections.SEO_ITEMS?.answerKeys || selections["2"]?.answerKeys || [];
+      return items.includes("SEO_ITEM_CONTENT_TEXT") || items.includes("SEO_ITEM_CONTENT") || items.includes("5");
+    }
+    if (question.key === "SEO_BACKLINKS") {
+      const items = selections.SEO_ITEMS?.answerKeys || selections["2"]?.answerKeys || [];
+      return items.includes("SEO_ITEM_LINK_BACK") || items.includes("SEO_ITEM_BACKLINKS") || items.includes("8");
+    }
+    if (question.key === "SEO_MONTHS" || question.roleId === 15) {
+      if (!findSeoServiceTypeQuestion(questions)) return true;
+      return (
+        hasSeoTypeSelected(selections, questions) &&
+        seoModeNeedsMonths(getSeoServiceMode(selections, questions))
+      );
+    }
+    if (
+      question.key === "SEO_TIMELINE" ||
+      (isTimelineQuestion(question) && findSeoServiceTypeQuestion(questions))
+    ) {
+      return (
+        hasSeoTypeSelected(selections, questions) &&
+        seoModeNeedsTimeline(getSeoServiceMode(selections, questions))
+      );
+    }
   }
 
-  const marketingVisible = isMarketingSegmentQuestionVisible(question, selections, questions);
+  // 4. Marketing segment question visibility
+  const marketingVisible = isMarketingSegmentQuestionVisible(question, selections, questions, categoryKey);
   if (marketingVisible !== null) return marketingVisible;
 
+  // 5. Generic conditionalOn
   const cond = question.conditionalOn;
-  if (cond) {
+  if (cond && typeof cond.questionKey === "string" && cond.questionKey.trim() !== "") {
     const keys = selections[cond.questionKey]?.answerKeys || [];
     if (cond.answerKey) return keys.includes(cond.answerKey);
     if (cond.answerKeys?.length) return cond.answerKeys.some((k) => keys.includes(k));
@@ -1002,9 +1075,10 @@ export function isQuestionVisible(
 function findSeoServiceTypeQuestion(questions?: any[]) {
   return questions?.find(
     (q) =>
-      ["SEO_TYPE", "SEO_SERVICE_TYPE", "0"].includes(q.key || "") ||
-      /what type of seo/i.test(q.text || "") ||
-      (q.answers || []).some((a: any) => a?.metadata?.serviceMode)
+      !isWebsiteCategoryOrQuestion(q, undefined, questions) &&
+      (["SEO_TYPE", "SEO_SERVICE_TYPE", "0"].includes(q.key || "") ||
+        /what type of seo/i.test(q.text || "") ||
+        (q.answers || []).some((a: any) => a?.metadata?.serviceMode))
   );
 }
 
@@ -1345,12 +1419,13 @@ export function formatCalculatorDisplayAmount(
 
 export function pruneHiddenSelections(
   selections: Record<string, CalculatorSelection>,
-  questions: QuestionVisibilityInput[]
+  questions: QuestionVisibilityInput[],
+  categoryKey?: string | null
 ): Record<string, CalculatorSelection> {
   const next = { ...selections };
   for (const q of questions) {
     if (!q.key) continue;
-    if (!isQuestionVisible(q, next, questions)) delete next[q.key];
+    if (!isQuestionVisible(q, next, questions, categoryKey)) delete next[q.key];
   }
 
   // Prune any graphics items that are no longer visible under selected graphics categories

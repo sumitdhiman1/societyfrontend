@@ -518,7 +518,7 @@ const ProposalPreview = ({
   const breakdown: { question: string; answers: string[] }[] = [];
 
   sortedQuestions.forEach((q: any) => {
-    if (!isQuestionVisible(q, selections, sortedQuestions)) return;
+    if (!isQuestionVisible(q, selections, sortedQuestions, category.categoryKey)) return;
 
     const sel = selections[q.key];
     if (!sel) return;
@@ -566,7 +566,7 @@ const ProposalPreview = ({
   });
 
   const displayName = getCategoryProposalName(category.categoryKey, category.categoryName);
-  const hasTimeline = hasTimelineSelected(category.questions || [], selections);
+  const hasTimeline = hasTimelineSelected(category.questions || [], selections, category.categoryKey);
   const displayTimeline = hasTimeline
     ? (timeline || getDefaultCategoryTimeline(category.categoryKey, category.timeline))
     : "Please select a timeline option above";
@@ -1531,8 +1531,11 @@ export default function CalculatorPage() {
     [selections, selectedCategoryKey, sortedQuestions]
   );
   const visibleQuestions = useMemo(
-    () => sortedQuestions.filter((q) => isQuestionVisible(q, selections, sortedQuestions)),
-    [sortedQuestions, selections]
+    () =>
+      sortedQuestions.filter((q) =>
+        isQuestionVisible(q, selections, sortedQuestions, selectedCategoryKey)
+      ),
+    [sortedQuestions, selections, selectedCategoryKey]
   );
   const isMonthlyBilling = isMonthlyBillingCategory(selectedCategoryKey, seoServiceMode);
   const hasUserSelections = useMemo(
@@ -1569,7 +1572,7 @@ export default function CalculatorPage() {
 
   const validateRequiredSelections = () => {
     if (!selectedCategory) return false;
-    const missingQuestions = getMissingRequiredQuestions(selectedCategory.questions || [], selections);
+    const missingQuestions = getMissingRequiredQuestions(selectedCategory.questions || [], selections, selectedCategoryKey);
     if (missingQuestions.length > 0) {
       const newErrors: Record<string, string> = {};
       missingQuestions.forEach((q) => {
@@ -1652,32 +1655,35 @@ export default function CalculatorPage() {
         const timelineKey = findTimelineQuestionKey(sortedQuestions);
         if (timelineKey) delete next[timelineKey];
       }
-      const seoTypeQuestion = sortedQuestions.find(
-        (q) =>
-          ["SEO_TYPE", "SEO_SERVICE_TYPE", "0"].includes(q.key || "") ||
-          /what type of seo/i.test(q.text || "")
-      );
-      if (seoTypeQuestion && questionKey === seoTypeQuestion.key) {
-        const newMode = getSeoServiceMode(next, sortedQuestions);
-        const timelineKey = findTimelineQuestionKey(sortedQuestions);
-        if (newMode === "monthly") {
-          if (timelineKey) delete next[timelineKey];
-          delete next.SEO_TIMELINE;
-        } else {
-          delete next.SEO_MONTHS;
-          const monthsQ = sortedQuestions.find(
-            (q) => q.key === "SEO_MONTHS" || q.roleId === 15
-          );
-          if (monthsQ?.key) delete next[monthsQ.key];
+      if (selectedCategoryKey === "seo") {
+        const seoTypeQuestion = sortedQuestions.find(
+          (q) =>
+            ["SEO_TYPE", "SEO_SERVICE_TYPE"].includes(q.key || "") ||
+            /what type of seo/i.test(q.text || "") ||
+            (q.answers || []).some((a: any) => a?.metadata?.serviceMode)
+        );
+        if (seoTypeQuestion && questionKey === seoTypeQuestion.key) {
+          const newMode = getSeoServiceMode(next, sortedQuestions);
+          const timelineKey = findTimelineQuestionKey(sortedQuestions);
+          if (newMode === "monthly") {
+            if (timelineKey) delete next[timelineKey];
+            delete next.SEO_TIMELINE;
+          } else {
+            delete next.SEO_MONTHS;
+            const monthsQ = sortedQuestions.find(
+              (q) => q.key === "SEO_MONTHS" || q.roleId === 15
+            );
+            if (monthsQ?.key) delete next[monthsQ.key];
+          }
+        }
+        if (questionKey === "SEO_ITEMS" || questionKey === "2") {
+          const keys = next.SEO_ITEMS?.answerKeys || next["2"]?.answerKeys || [];
+          if (!keys.includes("SEO_ITEM_CONTENT") && !keys.includes("SEO_ITEM_CONTENT_TEXT")) delete next.SEO_WORDS;
+          if (!keys.includes("SEO_ITEM_BACKLINKS") && !keys.includes("SEO_ITEM_LINK_BACK")) delete next.SEO_BACKLINKS;
         }
       }
-      if (questionKey === "SEO_ITEMS") {
-        const keys = next.SEO_ITEMS?.answerKeys || [];
-        if (!keys.includes("SEO_ITEM_CONTENT") && !keys.includes("SEO_ITEM_CONTENT_TEXT")) delete next.SEO_WORDS;
-        if (!keys.includes("SEO_ITEM_BACKLINKS") && !keys.includes("SEO_ITEM_LINK_BACK")) delete next.SEO_BACKLINKS;
-      }
 
-      return pruneHiddenSelections(next, sortedQuestions);
+      return pruneHiddenSelections(next, sortedQuestions, selectedCategoryKey);
     });
   };
 
