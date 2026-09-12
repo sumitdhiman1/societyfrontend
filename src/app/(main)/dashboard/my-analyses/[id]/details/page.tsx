@@ -264,10 +264,10 @@ const PackageCard = ({
     typeof price === "number"
       ? `$${price.toLocaleString("en-US")}`
       : price
-      ? String(price).startsWith("$") || String(price).startsWith("€")
-        ? String(price)
-        : `$ ${price}`
-      : "";
+        ? String(price).startsWith("$") || String(price).startsWith("€")
+          ? String(price)
+          : `$ ${price}`
+        : "";
 
   const resolvedCat = formatCategoryName(category, title);
 
@@ -283,9 +283,8 @@ const PackageCard = ({
           <img
             src={safeImg}
             alt={title}
-            className={`w-full h-full transition-transform duration-300 group-hover:scale-105 ${
-              isSvg ? "object-contain p-2.5" : "object-cover"
-            }`}
+            className={`w-full h-full transition-transform duration-300 group-hover:scale-105 ${isSvg ? "object-contain p-2.5" : "object-cover"
+              }`}
             onError={(e) => {
               const target = e.currentTarget;
               if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
@@ -487,7 +486,7 @@ export default function AnalysisDetailsPage() {
         try {
           activeSocket.emit("leaveProject", aId);
           activeSocket.disconnect();
-        } catch {}
+        } catch { }
       }
     };
   }, [analysis?._id, analysis?.id]);
@@ -781,14 +780,7 @@ export default function AnalysisDetailsPage() {
             </div>
           </div>
 
-          {/* Section Divider Banner */}
-          <div className="relative py-6 flex items-center justify-center w-full my-2">
-            <div className="flex-grow border-t border-gray-300"></div>
-            <span className="px-4 text-xs sm:text-sm font-medium text-gray-500 text-center whitespace-normal sm:whitespace-nowrap">
-              Analysis Initiated {deliveryDueStr ? `| Delivery due on ${deliveryDueStr}` : ""}
-            </span>
-            <div className="flex-grow border-t border-gray-300"></div>
-          </div>
+
 
           {/* Messages & Delivery History if any */}
           {analysis.messages && analysis.messages.length > 0 && (
@@ -845,13 +837,12 @@ export default function AnalysisDetailsPage() {
                               <h4 className="font-bold text-gray-800 text-base sm:text-lg">{senderName}</h4>
                               {content.status && content.status !== "pending" && (
                                 <span
-                                  className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border mt-1 ${
-                                    content.status === "accepted"
-                                      ? "border-green-300 bg-green-50 text-green-700"
-                                      : content.status === "declined"
+                                  className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border mt-1 ${content.status === "accepted"
+                                    ? "border-green-300 bg-green-50 text-green-700"
+                                    : content.status === "declined"
                                       ? "border-red-300 bg-red-50 text-red-700"
                                       : "border-blue-300 bg-blue-50 text-blue-700"
-                                  }`}
+                                    }`}
                                 >
                                   {content.status}
                                 </span>
@@ -1115,9 +1106,9 @@ export default function AnalysisDetailsPage() {
                                   item?.isMonthly === true ||
                                   item?.paymentType?.toLowerCase() === 'monthly' ||
                                   item?.billingType?.toLowerCase() === 'monthly' ||
-                                  (Array.isArray(match?.columns) && match.columns.some((c: any) => 
-                                    c.billingType?.toLowerCase() === 'monthly' || 
-                                    c.paymentType?.toLowerCase() === 'monthly' || 
+                                  (Array.isArray(match?.columns) && match.columns.some((c: any) =>
+                                    c.billingType?.toLowerCase() === 'monthly' ||
+                                    c.paymentType?.toLowerCase() === 'monthly' ||
                                     String(c.period || '').toLowerCase().includes('month') ||
                                     String(c.billingLabel || '').toLowerCase().includes('month')
                                   )) ||
@@ -1239,9 +1230,9 @@ export default function AnalysisDetailsPage() {
                             </div>
                           </div>
                         )}
-                        </div>
                       </div>
-                    );
+                    </div>
+                  );
                 }
 
                 const isClient = msg.sender === "client" || msg.role === "client" || (currentUser?._id && msg.userId === currentUser._id) || (currentUser?.id && msg.userId === currentUser.id);
@@ -1391,182 +1382,6 @@ export default function AnalysisDetailsPage() {
             </div>
           )}
 
-          <div ref={messagesEndRef} className="h-4 w-full shrink-0" />
-
-          {/* New Message Box Form */}
-          <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden w-full">
-            <form onSubmit={handleSendMessage}>
-              <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100 bg-gray-50/50">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-blue-900 flex items-center justify-center text-white font-bold text-base shadow-sm ring-2 ring-white">
-                    {currentUser?.avatar ? (
-                      <img src={currentUser.avatar} alt="User" className="w-full h-full rounded-full object-cover" />
-                    ) : (
-                      (currentUser?.fullName || currentUser?.username || "U")[0]?.toUpperCase()
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-gray-800 text-base">
-                      {currentUser?.fullName || currentUser?.username || "User"}
-                    </h3>
-                    <p className="text-xs text-gray-500">New Message</p>
-                  </div>
-                </div>
-                <span className="text-xs text-gray-400 font-medium"></span>
-              </div>
-
-              <div className="p-6 pb-2">
-                <textarea
-                  className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent cursor-pointer"
-                  placeholder={
-                    isLoggedIn
-                      ? "Type your message or submit requested details..."
-                      : "Please log in or register to message our team..."
-                  }
-                  value={messageText}
-                  onChange={(e) => {
-                    if (!requireAuth()) return;
-                    setMessageText(e.target.value);
-                  }}
-                  onClick={() => {
-                    requireAuth();
-                  }}
-                  onFocus={() => {
-                    requireAuth();
-                  }}
-                  readOnly={!isLoggedIn}
-                />
-              </div>
-
-              {attachments.length > 0 && (
-                <div className="px-6 pb-3">
-                  <div className="flex flex-wrap gap-3">
-                    {attachments.map((att) => {
-                      const isImg = isImageUrl(att.url) || att.type?.startsWith("image/") || (att.file && att.file.type?.startsWith("image/")) || /\.(svg|png|jpg|jpeg|webp|gif|bmp|ico|avif)$/i.test(att.name);
-                      const displayUrl = getSafeUrl(att.url || (att.file ? URL.createObjectURL(att.file) : ""));
-                      return (
-                        <div
-                          key={att.id}
-                          className={`relative group border border-gray-200 rounded-xl p-2 w-24 h-24 sm:w-28 sm:h-28 bg-white shadow-sm flex flex-col items-center justify-between hover:border-gray-300 transition-all ${
-                            att.status === "uploading" ? "opacity-70" : ""
-                          } ${att.status === "error" ? "border-red-400 bg-red-50" : ""}`}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => removeAttachment(att.id)}
-                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow cursor-pointer hover:bg-red-600"
-                            title="Remove file"
-                          >
-                            ×
-                          </button>
-                          <div className="w-full flex-1 flex items-center justify-center overflow-hidden">
-                            {att.status === "uploading" ? (
-                              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                            ) : isImg && displayUrl ? (
-                              <img
-                                src={displayUrl}
-                                alt={att.name}
-                                className="w-full h-full object-contain"
-                                onError={(e) => {
-                                  const target = e.currentTarget;
-                                  if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
-                                    target.src = target.src.replace("http:", "https:");
-                                  }
-                                }}
-                              />
-                            ) : (
-                              <div className="flex flex-col items-center justify-center text-gray-400">
-                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                              </div>
-                            )}
-                          </div>
-                          <div className="w-full text-center mt-1">
-                            <p className="text-[11px] font-medium text-gray-700 truncate w-full" title={att.name}>
-                              {att.name}
-                            </p>
-                            <p className="text-[10px] text-gray-400 font-medium truncate">
-                              {(att.size || att.file?.size) ? `${formatFileSize(att.size || att.file?.size)} · ` : ""}
-                              {att.status === "uploading" ? "Uploading..." : att.status === "done" ? "Ready" : att.status}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!requireAuth()) return;
-                      fileInputRef.current?.click();
-                    }}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2 rounded-lg border-2 border-blue-600 hover:bg-blue-50 shadow-sm cursor-pointer"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                      />
-                    </svg>
-                    Attach Files
-                    {attachments.length > 0 && (
-                      <span className="inline-flex items-center justify-center w-5 h-5 bg-[#4343F0] text-white text-[11px] font-bold rounded-full ml-1">
-                        {attachments.length}
-                      </span>
-                    )}
-                  </button>
-                </div>
-                <input ref={fileInputRef} hidden multiple type="file" accept="*/*" onChange={handleFileUpload} />
-
-                <div className="flex gap-3 w-full sm:w-auto">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!requireAuth()) return;
-                      setMessageText("");
-                      setAttachments([]);
-                    }}
-                    className="flex-1 sm:flex-none px-6 py-2.5 bg-[#7A1C1C] hover:bg-[#631616] text-white font-bold text-xs rounded-lg transition-colors shadow-sm cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type={isLoggedIn ? "submit" : "button"}
-                    onClick={(e) => {
-                      if (!requireAuth()) {
-                        e.preventDefault();
-                      }
-                    }}
-                    disabled={
-                      isLoggedIn &&
-                      (isSending ||
-                        isUploading ||
-                        (!messageText.trim() &&
-                          attachments.filter((a) => a.status === "done").length === 0))
-                    }
-                    className={`flex-1 sm:flex-none px-7 py-2.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
-                      isLoggedIn &&
-                      (isSending ||
-                        isUploading ||
-                        (!messageText.trim() && attachments.filter((a) => a.status === "done").length === 0))
-                        ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
-                        : "bg-[#4343F0] hover:bg-[#3232b7] text-white cursor-pointer active:scale-95"
-                    }`}
-                  >
-                    {isSending ? <LoadingDots text="Sending" /> : isUploading ? "Uploading..." : "Send Message"}
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
         </div>
 
         {/* Right Column / Sidebar (col-span-1) */}
@@ -1625,6 +1440,189 @@ export default function AnalysisDetailsPage() {
           </div>
         </div>
       </div>
+      {/* Section Divider Banner */}
+      <div className="relative py-6 flex items-center justify-center w-full my-2">
+        <div className="flex-grow border-t border-gray-300"></div>
+        <span className="px-4 text-xs sm:text-sm font-medium text-gray-500 text-center whitespace-normal sm:whitespace-nowrap">
+          Analysis Initiated {deliveryDueStr ? `| Delivery due on ${deliveryDueStr}` : ""}
+        </span>
+        <div className="flex-grow border-t border-gray-300"></div>
+      </div>
+
+      <div ref={messagesEndRef} className="h-4 w-full shrink-0 snjhjdjjhghj" />
+
+      {/* New Message Box Form */}
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden w-full">
+        <form onSubmit={handleSendMessage}>
+          <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100 bg-gray-50/50">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-blue-900 flex items-center justify-center text-white font-bold text-base shadow-sm ring-2 ring-white">
+                {currentUser?.avatar ? (
+                  <img src={currentUser.avatar} alt="User" className="w-full h-full rounded-full object-cover" />
+                ) : (
+                  (currentUser?.fullName || currentUser?.username || "U")[0]?.toUpperCase()
+                )}
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-800 text-base">
+                  {currentUser?.fullName || currentUser?.username || "User"}
+                </h3>
+                <p className="text-xs text-gray-500">New Message</p>
+              </div>
+            </div>
+            <span className="text-xs text-gray-400 font-medium"></span>
+          </div>
+
+          <div className="p-6 pb-2">
+            <textarea
+              className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent cursor-pointer"
+              placeholder={
+                isLoggedIn
+                  ? "Type your message or submit requested details..."
+                  : "Please log in or register to message our team..."
+              }
+              value={messageText}
+              onChange={(e) => {
+                if (!requireAuth()) return;
+                setMessageText(e.target.value);
+              }}
+              onClick={() => {
+                requireAuth();
+              }}
+              onFocus={() => {
+                requireAuth();
+              }}
+              readOnly={!isLoggedIn}
+            />
+          </div>
+
+          {attachments.length > 0 && (
+            <div className="px-6 pb-3">
+              <div className="flex flex-wrap gap-3">
+                {attachments.map((att) => {
+                  const isImg = isImageUrl(att.url) || att.type?.startsWith("image/") || (att.file && att.file.type?.startsWith("image/")) || /\.(svg|png|jpg|jpeg|webp|gif|bmp|ico|avif)$/i.test(att.name);
+                  const displayUrl = getSafeUrl(att.url || (att.file ? URL.createObjectURL(att.file) : ""));
+                  return (
+                    <div
+                      key={att.id}
+                      className={`relative group border border-gray-200 rounded-xl p-2 w-24 h-24 sm:w-28 sm:h-28 bg-white shadow-sm flex flex-col items-center justify-between hover:border-gray-300 transition-all ${att.status === "uploading" ? "opacity-70" : ""
+                        } ${att.status === "error" ? "border-red-400 bg-red-50" : ""}`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => removeAttachment(att.id)}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow cursor-pointer hover:bg-red-600"
+                        title="Remove file"
+                      >
+                        ×
+                      </button>
+                      <div className="w-full flex-1 flex items-center justify-center overflow-hidden">
+                        {att.status === "uploading" ? (
+                          <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                        ) : isImg && displayUrl ? (
+                          <img
+                            src={displayUrl}
+                            alt={att.name}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
+                                target.src = target.src.replace("http:", "https:");
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center text-gray-400">
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                      <div className="w-full text-center mt-1">
+                        <p className="text-[11px] font-medium text-gray-700 truncate w-full" title={att.name}>
+                          {att.name}
+                        </p>
+                        <p className="text-[10px] text-gray-400 font-medium truncate">
+                          {(att.size || att.file?.size) ? `${formatFileSize(att.size || att.file?.size)} · ` : ""}
+                          {att.status === "uploading" ? "Uploading..." : att.status === "done" ? "Ready" : att.status}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!requireAuth()) return;
+                  fileInputRef.current?.click();
+                }}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2 rounded-lg border-2 border-blue-600 hover:bg-blue-50 shadow-sm cursor-pointer"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                  />
+                </svg>
+                Attach Files
+                {attachments.length > 0 && (
+                  <span className="inline-flex items-center justify-center w-5 h-5 bg-[#4343F0] text-white text-[11px] font-bold rounded-full ml-1">
+                    {attachments.length}
+                  </span>
+                )}
+              </button>
+            </div>
+            <input ref={fileInputRef} hidden multiple type="file" accept="*/*" onChange={handleFileUpload} />
+
+            <div className="flex gap-3 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!requireAuth()) return;
+                  setMessageText("");
+                  setAttachments([]);
+                }}
+                className="flex-1 sm:flex-none px-6 py-2.5 bg-[#7A1C1C] hover:bg-[#631616] text-white font-bold text-xs rounded-lg transition-colors shadow-sm cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type={isLoggedIn ? "submit" : "button"}
+                onClick={(e) => {
+                  if (!requireAuth()) {
+                    e.preventDefault();
+                  }
+                }}
+                disabled={
+                  isLoggedIn &&
+                  (isSending ||
+                    isUploading ||
+                    (!messageText.trim() &&
+                      attachments.filter((a) => a.status === "done").length === 0))
+                }
+                className={`flex-1 sm:flex-none px-7 py-2.5 rounded-lg text-xs font-bold transition-all shadow-sm ${isLoggedIn &&
+                  (isSending ||
+                    isUploading ||
+                    (!messageText.trim() && attachments.filter((a) => a.status === "done").length === 0))
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
+                  : "bg-[#4343F0] hover:bg-[#3232b7] text-white cursor-pointer active:scale-95"
+                  }`}
+              >
+                {isSending ? <LoadingDots text="Sending" /> : isUploading ? "Uploading..." : "Send Message"}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
 
       {/* Auth Prompt Modal */}
       <AuthPromptModal
@@ -1636,8 +1634,8 @@ export default function AnalysisDetailsPage() {
       />
 
       {/* Support & Newsletter Section */}
-      <div className="w-full mt-10">
-        <SupportNewsletter />
+      <div className="w-full">
+        <SupportNewsletter noPadding />
       </div>
 
     </div>
