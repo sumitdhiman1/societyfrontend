@@ -605,7 +605,7 @@ function renderSummaryBoxAndFooter(d: CalculatorPDFData, currentPage: number, to
   return `
     <div style="margin-top: auto; padding-top: 16px;">
       <!-- Summary Card: Timeline + Investment –– right-aligned, matches designer spec -->
-      <div style="display: flex; justify-content: flex-end; margin-bottom: 30px;">
+      <div style="display: flex; justify-content: flex-end; margin-bottom: 24px;">
         <div style="width: 377px; border-radius: 9px; overflow: hidden;">
           <!-- Timeline Row -->
           <div style="background-color: #0F172A; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; height: 56px;">
@@ -621,16 +621,36 @@ function renderSummaryBoxAndFooter(d: CalculatorPDFData, currentPage: number, to
       </div>
 
       <!-- Divider -->
-      <div style="border-top: 1px solid #D9D9D9; margin-bottom: 20px;"></div>
+      <div style="border-top: 1px solid #D9D9D9; margin-bottom: 16px;"></div>
 
       <!-- Footer -->
       <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px;">
         <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 10px; line-height: 1.5; letter-spacing: -0.01em; color: #879095; margin: 0;">Acceptance of this quote binds the client to the agreed delivery timeline and total investment.</p>
         <p style="font-family: Inter, sans-serif; font-weight: 700; font-size: 10px; line-height: 1.5; letter-spacing: -0.005em; color: #879095; margin: 0;">Note: Time spent waiting for client replies does not count towards project deadlines.</p>
         <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 10px; line-height: 1.5; letter-spacing: -0.01em; color: #879095; margin: 0;">For inquiries, please reach out to <a href="mailto:contact@societywebsolutions.com" style="color: #879095; text-decoration: none;">contact@societywebsolutions.com</a></p>
-        <div style="margin-top: 14px; display: flex; justify-content: ${totalPages > 1 ? "space-between" : "center"}; align-items: center; width: 100%;">
+        <div style="margin-top: 12px; display: flex; justify-content: ${totalPages > 1 ? "space-between" : "center"}; align-items: center; width: 100%;">
           <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.13em; color: #D0D7E1; text-transform: uppercase;">SOCIETY WEB SOLUTIONS</span>
           ${totalPages > 1 ? `<span style="font-family: Inter, sans-serif; font-size: 9px; color: #879095;">Page ${currentPage} of ${totalPages}</span>` : ""}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderPageFooterOnly(currentPage: number, totalPages: number): string {
+  return `
+    <div style="margin-top: auto; padding-top: 16px;">
+      <!-- Divider -->
+      <div style="border-top: 1px solid #D9D9D9; margin-bottom: 16px;"></div>
+
+      <!-- Footer -->
+      <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px;">
+        <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 10px; line-height: 1.5; letter-spacing: -0.01em; color: #879095; margin: 0;">Acceptance of this quote binds the client to the agreed delivery timeline and total investment.</p>
+        <p style="font-family: Inter, sans-serif; font-weight: 700; font-size: 10px; line-height: 1.5; letter-spacing: -0.005em; color: #879095; margin: 0;">Note: Time spent waiting for client replies does not count towards project deadlines.</p>
+        <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 10px; line-height: 1.5; letter-spacing: -0.01em; color: #879095; margin: 0;">For inquiries, please reach out to <a href="mailto:contact@societywebsolutions.com" style="color: #879095; text-decoration: none;">contact@societywebsolutions.com</a></p>
+        <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.13em; color: #D0D7E1; text-transform: uppercase;">SOCIETY WEB SOLUTIONS</span>
+          <span style="font-family: Inter, sans-serif; font-size: 9px; color: #879095;">Page ${currentPage} of ${totalPages}</span>
         </div>
       </div>
     </div>
@@ -664,27 +684,103 @@ function renderPreparedForClientBlock(d: CalculatorPDFData): string {
   `;
 }
 
+function estimateOptionHeight(opt: { question: string; answers: string[] }): number {
+  const cleanQ = (opt.question || "").trim().replace(/:$/, "");
+  const qLines = Math.max(1, Math.ceil(cleanQ.length / 65));
+  const answers = opt.answers || [];
+  const hasMultiple = answers.length > 1;
+  const ansLines = answers.reduce((acc, a) => acc + Math.max(1, Math.ceil(a.length / 75)), 0);
+  const titleHeight = qLines * 22;
+  const contentHeight = hasMultiple ? ansLines * 22 : ansLines * 20;
+  return titleHeight + 8 + contentHeight + 20;
+}
+
+function paginateCalculatorOptions(
+  options: Array<{ question: string; answers: string[] }>
+): Array<Array<{ question: string; answers: string[] }>> {
+  if (!options || options.length === 0) return [[]];
+
+  const totalHeight = options.reduce((sum, opt) => sum + estimateOptionHeight(opt), 0);
+
+  // Single page document check (Page 1 top = ~350px, Summary card + footer = ~290px, remaining space = ~390px)
+  if (totalHeight <= 390) {
+    return [options];
+  }
+
+  // Multi-page distribution
+  const pages: Array<Array<{ question: string; answers: string[] }>> = [];
+  let currentPageOptions: Array<{ question: string; answers: string[] }> = [];
+  let currentHeight = 0;
+  let pageIdx = 0;
+
+  for (let i = 0; i < options.length; i++) {
+    const opt = options[i];
+    const optH = estimateOptionHeight(opt);
+    const maxCapacity = pageIdx === 0 ? 560 : 760;
+
+    if (currentPageOptions.length > 0 && currentHeight + optH > maxCapacity) {
+      pages.push(currentPageOptions);
+      currentPageOptions = [opt];
+      currentHeight = optH;
+      pageIdx++;
+    } else {
+      currentPageOptions.push(opt);
+      currentHeight += optH;
+    }
+  }
+
+  if (currentPageOptions.length > 0) {
+    pages.push(currentPageOptions);
+  }
+
+  // Ensure last page has enough space for summary card (~280px)
+  if (pages.length > 1) {
+    const lastPage = pages[pages.length - 1];
+    const lastPageH = lastPage.reduce((sum, opt) => sum + estimateOptionHeight(opt), 0);
+    if (lastPageH + 280 > 820 && lastPage.length > 1) {
+      const popped = lastPage.pop()!;
+      pages.push([popped]);
+    }
+  }
+
+  return pages;
+}
+
 export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
   const options = d.selectedOptions || [];
+  const pages = paginateCalculatorOptions(options);
+  const totalPages = pages.length;
 
-  return `
+  return pages
+    .map((pageOptions, index) => {
+      const pageNum = index + 1;
+      const isFirstPage = pageNum === 1;
+      const isLastPage = pageNum === totalPages;
+
+      return `
     <div class="pdf-page" style="
       width: 794px;
+      height: 1123px;
       min-height: 1123px;
-      height: auto;
+      max-height: 1123px;
       box-sizing: border-box;
       background-color: #FFFFFF;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       color: #202124;
-      padding: 37px 25px 50px;
+      padding: 37px 25px 36px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      overflow: hidden;
+      page-break-after: ${isLastPage ? "auto" : "always"};
+      break-after: ${isLastPage ? "auto" : "page"};
     ">
       <div>
-
-        <!-- ── Header ── -->
-        <header style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 25px;">
+        ${
+          isFirstPage
+            ? `
+        <!-- ── Main Header ── -->
+        <header style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 22px;">
           <div style="display: flex; align-items: flex-start;">
             ${LOGO_SVG}
           </div>
@@ -707,8 +803,8 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
           background: #F9FAFC;
           border: 1.5px solid #D9D9D9;
           border-radius: 14px;
-          padding: 22px 28px;
-          margin: 16px 0 28px 0;
+          padding: 20px 26px;
+          margin: 14px 0 24px 0;
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
@@ -735,19 +831,44 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
         </section>
 
         <!-- ── Project Scope Overview ── -->
-        <section style="margin-bottom: 22px;">
+        <section style="margin-bottom: 20px;">
           <h2 style="font-family: Inter, sans-serif; font-weight: 700; font-size: 20px; letter-spacing: 0.005em; color: #2A2AA0; margin: 0 0 12px 0;">Project Scope Overview</h2>
           ${renderScopeOverviewIntro(d)}
         </section>
+        `
+            : `
+        <!-- ── Secondary Header for Subsequent Pages ── -->
+        <header style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1.5px solid #EEF0F5; margin-bottom: 22px;">
+          <div style="display: flex; align-items: center;">
+            ${LOGO_SVG.replace('width="158" height="50"', 'width="126" height="40"')}
+          </div>
+          <div style="text-align: right;">
+            <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 16px; color: #2A2AA0; letter-spacing: -0.02em;">PROJECT PROPOSAL</div>
+            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 11px; color: #879095;">Ref: ${d.projectNumber} • ${d.categoryName}</div>
+          </div>
+        </header>
 
-        <!-- ── Scope Questions ── -->
-        ${renderSelectedOptionsList(options)}
+        <section style="margin-bottom: 18px;">
+          <h2 style="font-family: Inter, sans-serif; font-weight: 700; font-size: 18px; letter-spacing: 0.005em; color: #2A2AA0; margin: 0 0 10px 0;">Project Scope Overview (Continued)</h2>
+        </section>
+        `
+        }
+
+        <!-- ── Scope Questions for this page ── -->
+        ${renderSelectedOptionsList(pageOptions)}
 
       </div>
 
-      ${renderSummaryBoxAndFooter(d, 1, 1)}
+      <!-- ── Footer / Summary Box ── -->
+      ${
+        isLastPage
+          ? renderSummaryBoxAndFooter(d, pageNum, totalPages)
+          : renderPageFooterOnly(pageNum, totalPages)
+      }
     </div>
-  `;
+    `;
+    })
+    .join("\n");
 }
 
 function appendCanvasToPdf(
@@ -757,18 +878,25 @@ function appendCanvasToPdf(
   pageHeight: number
 ): void {
   const imgData = canvas.toDataURL("image/jpeg", 0.92);
-  const imgWidth = pageWidth;
   const imgHeight = (canvas.height * pageWidth) / canvas.width;
+
+  // Single page element (standard case for all paginated pages)
+  if (imgHeight <= pageHeight + 8) {
+    pdf.addImage(imgData, "JPEG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
+    return;
+  }
+
+  // Multi-page fallback if an element is unexpectedly taller than 1 page
   let heightLeft = imgHeight;
   let position = 0;
 
-  pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight, undefined, "FAST");
+  pdf.addImage(imgData, "JPEG", 0, position, pageWidth, imgHeight, undefined, "FAST");
   heightLeft -= pageHeight;
 
-  while (heightLeft > 0) {
+  while (heightLeft > 8) {
     position -= pageHeight;
     pdf.addPage();
-    pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight, undefined, "FAST");
+    pdf.addImage(imgData, "JPEG", 0, position, pageWidth, imgHeight, undefined, "FAST");
     heightLeft -= pageHeight;
   }
 }
