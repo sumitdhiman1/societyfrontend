@@ -1185,17 +1185,7 @@ function PaymentForm({
             <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg mb-8 animate-in fade-in duration-300">
               <p className="text-sm text-gray-600">You are paying with your saved card.</p>
             </div>
-          ) : (
-            <div className="p-6 bg-green-50 border border-green-200 rounded-lg text-center mb-6 animate-in fade-in slide-in-from-bottom-2">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <p className="text-green-800 font-bold">Fully Covered by Credits!</p>
-              <p className="text-xs text-green-600 mt-1">No credit card required for this transaction.</p>
-            </div>
-          )}
+          ) : null}
 
           {!stripePromise && (
             <div className="p-3 mb-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">

@@ -171,7 +171,15 @@ export function clearPendingAnalysisId() {
 }
 
 export class RequestAnalysisService {
-  async submitRequest(data: { email: string; websiteUrl: string }) {
+  async submitRequest(data: {
+    email: string;
+    websiteUrl: string;
+    clientName?: string;
+    fullName?: string;
+    clientId?: string;
+    phoneNumber?: string;
+    companyName?: string;
+  }) {
     const client = new HttpClient();
     return await client.post("/request-analysis", data);
   }
