@@ -31,7 +31,7 @@ const SearchIcon = ({ className = "h-5 w-5", ...props }: any) => (
 );
 
 const ChatIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
 );
 
 const MenuIcon = () => (
@@ -91,6 +91,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
   const notificationRef = useRef<HTMLDivElement>(null);
   const notificationContainerRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const mobileProfileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
 
@@ -333,8 +334,10 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
         (notificationContainerRef.current && notificationContainerRef.current.contains(target)) ||
         (notificationRef.current && notificationRef.current.contains(target));
       if (!insideNotification) setNotificationsOpen(false);
-      if (profileRef.current && !profileRef.current.contains(target))
-        setProfileDropdownOpen(false);
+      const insideProfile =
+        (profileRef.current && profileRef.current.contains(target)) ||
+        (mobileProfileRef.current && mobileProfileRef.current.contains(target));
+      if (!insideProfile) setProfileDropdownOpen(false);
       if (searchRef.current && !searchRef.current.contains(target))
         setShowSuggestions(false);
     };
@@ -462,8 +465,13 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
                     <li key={i}>
                       <button
                         onClick={() => {
-                          setSearchQuery(item.text);
-                          handleSearch(item.text);
+                          if (item.link) {
+                            setShowSuggestions(false);
+                            router.push(item.link);
+                          } else {
+                            setSearchQuery(item.text);
+                            handleSearch(item.text);
+                          }
                         }}
                         className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center justify-between group"
                       >
@@ -471,7 +479,13 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
                           <span className="text-sm font-semibold text-gray-800 group-hover:text-[#4343F0]">
                             {item.text}
                           </span>
-                          <span className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">
+                          <span
+                            className={`text-[10px] uppercase tracking-wider font-bold ${
+                              item.category === "Free Package"
+                                ? "text-emerald-600"
+                                : "text-gray-400"
+                            }`}
+                          >
                             {item.category}
                           </span>
                         </div>
@@ -604,7 +618,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
                 setUnreadCount={setUnreadCount}
               />
               <Profile
-                profileRef={profileRef}
+                profileRef={mobileProfileRef}
                 avatar={user.avatar ?? ""}
                 profileDropdownOpen={profileDropdownOpen}
                 setIsAuthenticated={setIsAuthenticated}

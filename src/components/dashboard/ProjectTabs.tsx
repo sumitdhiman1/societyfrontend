@@ -372,10 +372,14 @@ export default function ProjectTabs() {
                     </div>
                     <div className="flex gap-4 lg:gap-[16px] items-center justify-start lg:justify-end w-full">
                       <button
-                        onClick={() =>
-                          router.push(`${p.infoUrl}/details#messages`)
-                        }
-                        className="bg-[#E3E6F5] text-[#4343F0] flex-1 lg:flex-none lg:w-[105px] lg:h-[38px] py-3 lg:py-0 rounded-[8px] lg:rounded-[6px] text-[14px] lg:text-[13px] font-bold relative hover:bg-[#d4d8f0] lg:hover:bg-[#cdd1ec] transition-colors"
+                        onClick={() => {
+                          const base = (p.infoUrl || `/dashboard/my-projects/${p.id}`).replace(/\/details\/?$/, "").replace(/\/$/, "");
+                          router.push(`${base}/details#messages`);
+                          if (typeof window !== "undefined") {
+                            window.dispatchEvent(new CustomEvent("navigate-to-messages"));
+                          }
+                        }}
+                        className="bg-[#E3E6F5] text-[#4343F0] flex-1 lg:flex-none lg:w-[105px] lg:h-[38px] py-3 lg:py-0 rounded-[8px] lg:rounded-[6px] text-[14px] lg:text-[13px] font-bold relative hover:bg-[#d4d8f0] lg:hover:bg-[#cdd1ec] transition-colors cursor-pointer"
                       >
                         {p.messages > 0 && (
                           <span className="absolute -top-[10px] -left-[10px] bg-[#363636] text-white rounded-full w-[24px] h-[24px] flex items-center justify-center text-[12px] font-bold">
@@ -446,10 +450,14 @@ export default function ProjectTabs() {
                     </div>
                     <div className="col-span-2 flex justify-end gap-3">
                       <button
-                        onClick={() =>
-                          router.push(`${p.infoUrl}/details#messages`)
-                        }
-                        className="bg-[#EBE9FA] text-[#4343F0] w-[105px] h-[38px] rounded-[6px] text-[13px] font-bold relative hover:bg-[#dcd9f5] shrink-0"
+                        onClick={() => {
+                          const base = (p.infoUrl || `/dashboard/my-projects/${p.id}`).replace(/\/details\/?$/, "").replace(/\/$/, "");
+                          router.push(`${base}/details#messages`);
+                          if (typeof window !== "undefined") {
+                            window.dispatchEvent(new CustomEvent("navigate-to-messages"));
+                          }
+                        }}
+                        className="bg-[#EBE9FA] text-[#4343F0] w-[105px] h-[38px] rounded-[6px] text-[13px] font-bold relative hover:bg-[#dcd9f5] shrink-0 cursor-pointer"
                       >
                         {p.messages > 0 && (
                           <span className="absolute -top-[9px] -left-[9px] bg-[#363636] text-white rounded-full w-[24px] h-[24px] flex items-center justify-center text-[12px] font-bold">

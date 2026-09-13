@@ -219,8 +219,80 @@ export default function MyAccountPage() {
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
 
-  // Email notice modal
+  // Email change state
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [isSendingEmailLink, setIsSendingEmailLink] = useState(false);
+  const [isCancellingEmail, setIsCancellingEmail] = useState(false);
+
+  const handleOpenEmailModal = () => {
+    setNewEmail("");
+    setEmailError("");
+    setShowEmailModal(true);
+  };
+
+  const handleSendEmailLink = async () => {
+    if (!newEmail || !newEmail.trim()) {
+      setEmailError("Please enter a new email address.");
+      return;
+    }
+
+    const trimmed = newEmail.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmed)) {
+      setEmailError("Please enter a valid email address.");
+      return;
+    }
+
+    if (trimmed === (user?.email || "").toLowerCase()) {
+      setEmailError("New email cannot be the same as your current email.");
+      return;
+    }
+
+    setIsSendingEmailLink(true);
+    setEmailError("");
+    try {
+      const res = await profileService.requestEmailChange(trimmed);
+      if (res.isSuccessful || res.success) {
+        setUser((prev: any) => ({ ...prev, pendingEmail: trimmed }));
+        setShowEmailModal(false);
+        setNewEmail("");
+        const fresh = await profileService.getMyProfile(true);
+        if (fresh?.data) {
+          setUser(fresh.data);
+        }
+      } else {
+        setEmailError(res.message || "Failed to send email change confirmation link.");
+      }
+    } catch (err: any) {
+      setEmailError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to send email change confirmation link."
+      );
+    } finally {
+      setIsSendingEmailLink(false);
+    }
+  };
+
+  const handleCancelEmailChange = async () => {
+    setIsCancellingEmail(true);
+    try {
+      const res = await profileService.cancelEmailChange();
+      if (res.isSuccessful || res.success) {
+        setUser((prev: any) => ({ ...prev, pendingEmail: null }));
+        const fresh = await profileService.getMyProfile(true);
+        if (fresh?.data) {
+          setUser(fresh.data);
+        }
+      }
+    } catch (err: any) {
+      console.error("Failed to cancel email change:", err);
+    } finally {
+      setIsCancellingEmail(false);
+    }
+  };
 
   const { currency, setCurrency } = useCurrency();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -444,25 +516,70 @@ export default function MyAccountPage() {
                   label="Email Address"
                   value={user?.email || ""}
                   readOnly={true}
-                  actionText="Change"
-                  onActionClick={() => setShowEmailModal(true)}
+                  actionText={user?.pendingEmail ? "" : "Change"}
+                  onActionClick={handleOpenEmailModal}
                 />
 
-                {/* Password */}
-                <InputField
-                  label="Password"
-                  value="••••••••"
-                  type="password"
-                  readOnly={true}
-                  actionText="Change"
-                  onActionClick={() => {
-                    setOldPassword("");
-                    setNewPassword("");
-                    setConfirmPassword("");
-                    setPasswordError("");
-                    setShowPasswordModal(true);
-                  }}
-                />
+                {/* If pending email, spacer column on md, else Password */}
+                {user?.pendingEmail ? (
+                  <div className="hidden md:block" />
+                ) : (
+                  <InputField
+                    label="Password"
+                    value="••••••••"
+                    type="password"
+                    readOnly={true}
+                    actionText="Change"
+                    onActionClick={() => {
+                      setOldPassword("");
+                      setNewPassword("");
+                      setConfirmPassword("");
+                      setPasswordError("");
+                      setShowPasswordModal(true);
+                    }}
+                  />
+                )}
+
+                {/* Pending Email Alert Banner (matching Screenshot 2) */}
+                {user?.pendingEmail && (
+                  <div className="col-span-1 md:col-span-2 bg-[#FFFBEB] border border-[#FDE68A] rounded-[6px] px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                    <div className="flex items-center gap-2.5 text-[#78350F]">
+                      <svg className="w-4 h-4 text-[#92400E] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <circle cx="12" cy="12" r="9" strokeWidth="2" stroke="currentColor" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01" />
+                      </svg>
+                      <span className="text-xs sm:text-[13px] text-[#78350F]">
+                        Pending Email Change to <strong className="font-bold text-[#78350F]">{user.pendingEmail}</strong>. Please check your new email inbox to confirm.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCancelEmailChange}
+                      disabled={isCancellingEmail}
+                      className="text-xs sm:text-[13px] font-bold text-[#78350F] hover:text-[#92400E] hover:underline cursor-pointer shrink-0 transition-colors self-end sm:self-center"
+                    >
+                      {isCancellingEmail ? "Cancelling..." : "Cancel Request"}
+                    </button>
+                  </div>
+                )}
+
+                {/* If pending email, Password is placed on next row */}
+                {user?.pendingEmail && (
+                  <InputField
+                    label="Password"
+                    value="••••••••"
+                    type="password"
+                    readOnly={true}
+                    actionText="Change"
+                    onActionClick={() => {
+                      setOldPassword("");
+                      setNewPassword("");
+                      setConfirmPassword("");
+                      setPasswordError("");
+                      setShowPasswordModal(true);
+                    }}
+                  />
+                )}
 
                 {/* Preferred Currency */}
                 <div>
@@ -556,7 +673,7 @@ export default function MyAccountPage() {
                     type="button"
                     className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 text-gray-500"
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                   </button>
                 </div>
               </div>
@@ -694,7 +811,7 @@ export default function MyAccountPage() {
                       )}
                     </select>
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-600">
-                      <svg className="w-4 h-4 transition-transform duration-200 " fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                      <svg className="w-4 h-4 transition-transform duration-200 " fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
                   </div>
                 </div>
@@ -818,7 +935,7 @@ export default function MyAccountPage() {
                           )}
                         </select>
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                          <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="#666" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                          <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="#666" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path></svg>
                         </div>
                       </div>
                     </div>
@@ -1014,27 +1131,93 @@ export default function MyAccountPage() {
         </div>
       )}
 
-      {/* Email Change Notice Modal */}
+      {/* Change Email Address Modal (matching Screenshot 3) */}
       {showEmailModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8 animate-in fade-in zoom-in-95 duration-200">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Email Address</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Your primary account email is currently set to:
-            </p>
-            <div className="bg-gray-50 border border-gray-200 rounded p-3 mb-4 text-sm font-semibold text-gray-800">
-              {user?.email || ""}
-            </div>
-            <p className="text-xs text-gray-500 leading-relaxed mb-6">
-              To update your primary login and billing email address, please contact support or your project manager for security verification.
-            </p>
-            <div className="flex justify-end">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-[480px] w-full p-7 relative animate-in fade-in zoom-in-95 duration-200 font-sans">
+            {/* Header with Title and Close X */}
+            <div className="flex items-start justify-between mb-3">
+              <h2 className="text-[22px] font-bold text-[#0D1527] font-manrope">Change Email Address</h2>
               <button
                 type="button"
                 onClick={() => setShowEmailModal(false)}
-                className="px-6 py-2.5 bg-[#4545F0] hover:bg-[#3737D8] text-white rounded-md font-bold text-xs transition-colors"
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1 -mr-1 -mt-1 cursor-pointer"
+                aria-label="Close"
               >
-                Close
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <p className="text-[13px] text-gray-500 leading-relaxed mb-5">
+              A confirmation link will be sent to your new email address. Your account email will not be changed until you click the link.
+            </p>
+
+            {/* Current Email */}
+            <div className="mb-4">
+              <label className="block text-sm font-bold text-gray-800 mb-2">Current Email</label>
+              <input
+                type="text"
+                value={user?.email || ""}
+                readOnly
+                disabled
+                className="w-full bg-[#F9FAFB] border border-gray-200 rounded-md px-3.5 py-2.5 text-sm text-gray-600 font-medium cursor-not-allowed outline-none"
+              />
+            </div>
+
+            {/* New Email Address */}
+            <div className="mb-6">
+              <label className="block text-sm font-bold text-gray-800 mb-2">New Email Address</label>
+              <input
+                type="email"
+                placeholder="Enter new email address"
+                value={newEmail}
+                onChange={(e) => {
+                  setNewEmail(e.target.value);
+                  if (emailError) setEmailError("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSendEmailLink();
+                  }
+                }}
+                className={`w-full bg-white border ${
+                  emailError ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-[#4545F0]"
+                } rounded-md px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 ${
+                  emailError ? "focus:ring-red-500" : "focus:ring-[#4545F0]"
+                } transition-all`}
+                autoFocus
+              />
+              {emailError && (
+                <p className="text-xs text-red-500 font-medium mt-1.5">{emailError}</p>
+              )}
+            </div>
+
+            {/* Action Buttons (Maroon Cancel + Blue Send Link) */}
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setShowEmailModal(false)}
+                className="w-full py-2.5 bg-[#800020] hover:bg-[#6b001b] text-white rounded-lg font-bold text-sm transition-colors cursor-pointer text-center"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSendEmailLink}
+                disabled={isSendingEmailLink}
+                className="w-full py-2.5 bg-[#4545F0] hover:bg-[#3737D8] text-white rounded-lg font-bold text-sm transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-xs"
+              >
+                {isSendingEmailLink ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  "Send Link"
+                )}
               </button>
             </div>
           </div>

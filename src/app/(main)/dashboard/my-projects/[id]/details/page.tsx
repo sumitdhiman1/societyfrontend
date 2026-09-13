@@ -259,6 +259,8 @@ export default function ProjectDetailsPage() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const lastMessageRef = useRef<HTMLDivElement>(null);
+  const messageInputRef = useRef<HTMLDivElement>(null);
 
   const [isRestarting, setIsRestarting] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
@@ -308,13 +310,80 @@ export default function ProjectDetailsPage() {
     }
   }, [project?._id, project?.id, project?.projectId, project?.status]);
 
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.location.hash === "#messages") {
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 300);
+  const scrollToBottomMessages = React.useCallback((behavior: ScrollBehavior = "smooth") => {
+    // 1. If there is a last message in the feed
+    if (lastMessageRef.current) {
+      const rect = lastMessageRef.current.getBoundingClientRect();
+      // If the message is very tall (>60% of viewport), align its top so the user can read from start
+      if (rect.height > window.innerHeight * 0.6) {
+        lastMessageRef.current.scrollIntoView({ behavior, block: "start" });
+        return;
+      }
+      // If message composer is present, aligning composer to the bottom of the viewport shows the last message right above it
+      if (messageInputRef.current) {
+        messageInputRef.current.scrollIntoView({ behavior, block: "end" });
+        return;
+      }
+      lastMessageRef.current.scrollIntoView({ behavior, block: "center" });
+      return;
     }
-  }, [project?.messages]);
+
+    // 2. If no messages exist yet (empty feed, matching Screenshot 2):
+    // Aligning the composer centers it with "Project Started" above it
+    if (messageInputRef.current) {
+      messageInputRef.current.scrollIntoView({ behavior, block: "center" });
+      return;
+    }
+
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior, block: "end" });
+      return;
+    }
+
+    const el = document.getElementById("messages");
+    if (el) {
+      el.scrollIntoView({ behavior, block: "start" });
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleScrollIfHash = (smooth = true) => {
+      if (typeof window === "undefined") return;
+      if (window.location.hash === "#messages") {
+        const behavior: ScrollBehavior = smooth ? "smooth" : "auto";
+        requestAnimationFrame(() => {
+          scrollToBottomMessages(behavior);
+        });
+        const t1 = setTimeout(() => scrollToBottomMessages(behavior), 100);
+        const t2 = setTimeout(() => scrollToBottomMessages(behavior), 300);
+        const t3 = setTimeout(() => scrollToBottomMessages(behavior), 600);
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+          clearTimeout(t3);
+        };
+      }
+    };
+
+    const cleanup = handleScrollIfHash(true);
+
+    const onHashChange = () => {
+      handleScrollIfHash(true);
+    };
+
+    const onCustomNavigate = () => {
+      handleScrollIfHash(true);
+    };
+
+    window.addEventListener("hashchange", onHashChange);
+    window.addEventListener("navigate-to-messages", onCustomNavigate);
+
+    return () => {
+      if (cleanup) cleanup();
+      window.removeEventListener("hashchange", onHashChange);
+      window.removeEventListener("navigate-to-messages", onCustomNavigate);
+    };
+  }, [project?._id, project?.messages?.length, scrollToBottomMessages]);
 
   if (!project) return null;
 
@@ -475,6 +544,9 @@ export default function ProjectDetailsPage() {
           setMessageText("");
           setAttachments([]);
           refreshProject();
+          setTimeout(() => {
+            scrollToBottomMessages("smooth");
+          }, 200);
         }
       } catch (error) {
         console.error("Failed to send message:", error);
@@ -1066,7 +1138,7 @@ export default function ProjectDetailsPage() {
       </div>
 
       {/* Horizontal Divider Banner */}
-      <div className="relative py-8 flex items-center justify-center w-full my-2">
+      <div id="messages" ref={messagesContainerRef} className="relative py-8 flex items-center justify-center w-full my-2 scroll-mt-6">
         <div className="flex-grow border-t border-gray-200"></div>
         <span className="px-4 text-xs sm:text-sm font-medium text-gray-500 text-center whitespace-normal sm:whitespace-nowrap">
           Project Started {deliveryDueStr ? `| Delivery due on ${deliveryDueStr}` : ""}
@@ -1081,6 +1153,7 @@ export default function ProjectDetailsPage() {
           <div className="flex flex-col gap-6 w-full">
             {displayMessages.map((msg: any, idx: number) => {
               const msgId = msg.id || `msg-${idx}`;
+              const isLast = idx === displayMessages.length - 1;
 
               // Check for quote proposal in this message
               const isQuoteProposal = msg.type === "quote_proposal" || msg.content?.type === "quote_proposal";
@@ -1172,6 +1245,7 @@ export default function ProjectDetailsPage() {
                 return (
                   <div
                     key={msgId}
+                    ref={isLast ? lastMessageRef : null}
                     className="w-full bg-[#F4F8FF] border border-[#DCE8FE] rounded-2xl p-5 sm:p-6 my-3 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                   >
                     <div className="flex items-start sm:items-center gap-4">
@@ -1242,7 +1316,7 @@ export default function ProjectDetailsPage() {
                 const rawText = isDuplicate ? "" : rawTextCandidate;
 
                 return (
-                  <div key={msgId} className="text-center py-6 px-4 my-2">
+                  <div key={msgId} ref={isLast ? lastMessageRef : null} className="text-center py-6 px-4 my-2">
                     <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
                       {cleanTitle}
                     </h3>
@@ -1321,7 +1395,7 @@ export default function ProjectDetailsPage() {
                   : "N/A";
 
                 return (
-                  <div key={msgId} className="w-full">
+                  <div key={msgId} ref={isLast ? lastMessageRef : null} className="w-full">
                     <div className="bg-white border border-gray-200 rounded-2xl shadow-xs p-6 sm:p-8 md:p-10">
                       {/* Top Meta: Submitted date & Add-On Offer badge */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
@@ -1610,11 +1684,10 @@ export default function ProjectDetailsPage() {
               const initial = (senderName || "U").charAt(0).toUpperCase();
               const attachmentList = (msg.attachments && msg.attachments.length > 0) ? msg.attachments : (msg.content?.attachedFiles || msg.attachedFiles || (msg.content as any)?.attachedFilesUrl || msg.attachedFilesUrl || []);
               const hasAttachments = Array.isArray(attachmentList) && attachmentList.length > 0;
-              const isLast = idx === displayMessages.length - 1;
               const messageBody = msg.message || msg.content?.text || msg.content?.projectDescription || msg.content?.description || "";
 
               return (
-                <div key={msgId} ref={isLast ? messagesEndRef : null} className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden w-full">
+                <div key={msgId} ref={isLast ? lastMessageRef : null} className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden w-full">
                   <div className="p-4 sm:p-6 md:p-8">
                     <div className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-4">
                       <div className="flex items-center gap-4">
@@ -1725,8 +1798,10 @@ export default function ProjectDetailsPage() {
           </div>
         )}
 
+        <div ref={messagesEndRef} className="h-0 w-full" />
+
         {/* Full-Width New Message Box (matching Screenshot 2 UI) */}
-        <div className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden w-full">
+        <div ref={messageInputRef} id="new-message" className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden w-full scroll-mt-6">
           <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100 bg-white">
             <div className="flex items-center gap-3">
               {currentUser?.avatar ? (

@@ -58,7 +58,10 @@ export class ProfileService extends HttpClient {
     super(session);
   }
 
-  async getMyProfile() {
+  async getMyProfile(forceRefresh: boolean = false) {
+    if (forceRefresh) {
+      CacheManager.getInstance().clear();
+    }
     return CacheManager.getInstance().getOrFetch(
       "my_profile",
       () => this.get("/profile/getmyprofile"),
@@ -74,6 +77,34 @@ export class ProfileService extends HttpClient {
       CacheManager.getInstance().clear();
     }
     return res;
+  }
+
+  async requestEmailChange(newEmail: string) {
+    const res = await this.post("/profile/request-email-change", { newEmail });
+    if (res.isSuccessful) {
+      CacheManager.getInstance().clear();
+    }
+    return res;
+  }
+
+  async cancelEmailChange() {
+    const res = await this.post("/profile/cancel-email-change", {});
+    if (res.isSuccessful) {
+      CacheManager.getInstance().clear();
+    }
+    return res;
+  }
+
+  async verifyEmailChange(token: string) {
+    const res = await this.post("/auth/confirm-email-change", { token });
+    if (res.isSuccessful) {
+      CacheManager.getInstance().clear();
+    }
+    return res;
+  }
+
+  async confirmEmailChange(token: string) {
+    return this.verifyEmailChange(token);
   }
 
   async getEmailPreferences() {

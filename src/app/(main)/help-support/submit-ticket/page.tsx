@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useRef } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import StatusPopup from "@/components/common/StatusPopup";
 import { supportService } from "@/lib/supportService";
 import { mediaService } from "@/lib/mediaService";
@@ -17,6 +17,7 @@ export default function SubmitTicketPage() {
   });
   const [attachments, setAttachments] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{ subject?: string; description?: string }>({});
   const [popup, setPopup] = useState({
     isOpen: false,
     type: "success" as "success" | "error",
@@ -46,25 +47,16 @@ export default function SubmitTicketPage() {
       return;
     }
 
+    const newErrors: { subject?: string; description?: string } = {};
     if (formData.subject.trim().length < 5) {
-      setPopup({
-        isOpen: true,
-        type: "error",
-        title: "Invalid Subject",
-        message: "Subject must be at least 5 characters long.",
-        actionButton: undefined,
-      });
-      return;
+      newErrors.subject = "Subject must be at least 5 characters long.";
+    }
+    if (formData.description.trim().length < 10) {
+      newErrors.description = "Description must be at least 10 characters long.";
     }
 
-    if (formData.description.trim().length < 10) {
-      setPopup({
-        isOpen: true,
-        type: "error",
-        title: "Invalid Description",
-        message: "Description message must be at least 10 characters long.",
-        actionButton: undefined,
-      });
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -99,19 +91,15 @@ export default function SubmitTicketPage() {
       const res: any = await supportService.createTicket(payload);
 
       if (res?.isSuccessful || res?.statusCode === 201 || res?.data) {
-        const ticketNum = res.data?.ticketNumber || res.data?._id?.slice(-8).toUpperCase();
-        setPopup({
-          isOpen: true,
-          type: "success",
-          title: "Ticket Submitted!",
-          message: `Your support ticket ${ticketNum ? `#${ticketNum} ` : ""}has been created successfully. Our team will review it soon.`,
-          actionButton: {
-            text: "View Support History",
-            onClick: () => router.push("/help-support/history"),
-          },
-        });
         setFormData({ subject: "", type: "general", description: "" });
         setAttachments([]);
+        setErrors({});
+        const ticketId = res.data?._id || res.data?.ticket?._id || res.data?.id || res._id;
+        if (ticketId) {
+          router.push(`/help-support/history/${ticketId}`);
+        } else {
+          router.push("/help-support/history");
+        }
       } else {
         throw new Error(res?.message || "Failed to submit ticket");
       }
@@ -156,134 +144,208 @@ export default function SubmitTicketPage() {
         </div>
       </div>
 
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:px-[54px] py-12 text-[#646464]">
-        <div className="border border-gray-400 rounded-sm p-8 md:p-12 mb-12 bg-white">
-          <div className="mb-12">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Tell us about your issue</h2>
-            <p className="text-sm text-gray-500 leading-relaxed max-w-4xl">
+      <main className="flex-grow container mx-auto px-4 md:px-8 lg:px-[54px] py-12 max-w-[1536px]">
+        <div className="border border-gray-400 rounded-sm p-8 pb-12 mb-12 bg-white">
+          <div className="mb-8">
+            <h2 className="text-[22px] font-bold text-gray-800 mb-3">Tell us about your issue</h2>
+            <p className="text-xs text-gray-600 leading-relaxed max-w-4xl">
               We&apos;re here to help. Please detail the issue you&apos;re facing so our support team can assist you effectively. Providing clear screenshots or documents can significantly speed up the resolution process.
             </p>
           </div>
-
-          {/* Steps Indicator */}
-          <div className="flex flex-col md:flex-row justify-between items-stretch mb-16 border-b border-gray-200 pb-12">
-            {[
-              { num: 1, title: "Describe the issue", desc: "Provide a clear subject and detailed description of the problem." },
-              { num: 2, title: "Team Review", desc: "Our support team will review your ticket and investigate the issue." },
-              { num: 3, title: "Get Resolution", desc: "Receive a response or resolution within 24-48 hours." },
-            ].map((step, idx) => (
-              <div key={idx} className="flex-1 flex flex-col items-center text-center px-4 border-r-0 md:border-r border-gray-300 last:border-r-0">
+          <div className="flex flex-col md:flex-row justify-between items-stretch">
+            <div className="w-full md:w-1/3 border-r-0 md:border-r border-gray-300 last:border-r-0 py-4">
+              <div className="flex flex-col items-center text-center px-4 h-full justify-between">
                 <div className="flex items-center gap-4 mb-4">
-                  <span className="text-3xl font-light text-gray-500">{step.num}</span>
-                  <div className="w-14 h-14 bg-primary-300 rounded-full flex items-center justify-center text-white">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                  <h3 className="font-normal text-3xl text-gray-500">1</h3>
+                  <div className="w-14 h-14 bg-[#4343f0] rounded-full flex items-center justify-center text-white shadow-md">
+                    <Image
+                      alt="Describe the issue"
+                      width={24}
+                      height={24}
+                      className="w-6 h-6 object-contain"
+                      src="/assets/message-chat-circle.svg"
+                    />
+                  </div>
+                </div>
+                <h4 className="font-semibold text-lg text-gray-600 mb-2 truncate px-2">Describe the issue</h4>
+                <p className="text-xs text-gray-500 max-w-[250px] leading-relaxed mx-auto">
+                  Provide a clear subject and detailed description of the problem you are encountering.
+                </p>
+              </div>
+            </div>
+
+            <div className="w-full md:w-1/3 border-r-0 md:border-r border-gray-300 last:border-r-0 py-4">
+              <div className="flex flex-col items-center text-center px-4 h-full justify-between">
+                <div className="flex items-center gap-4 mb-4">
+                  <h3 className="font-normal text-3xl text-gray-500">2</h3>
+                  <div className="w-14 h-14 bg-[#4343f0] rounded-full flex items-center justify-center text-white shadow-md">
+                    <Image
+                      alt="Team Review"
+                      width={24}
+                      height={24}
+                      className="w-6 h-6 object-contain"
+                      src="/assets/users-02.svg"
+                    />
+                  </div>
+                </div>
+                <h4 className="font-semibold text-lg text-gray-600 mb-2 truncate px-2">Team Review</h4>
+                <p className="text-xs text-gray-500 max-w-[250px] leading-relaxed mx-auto">
+                  Our dedicated support team will review your ticket and investigate the reported issue.
+                </p>
+              </div>
+            </div>
+
+            <div className="w-full md:w-1/3 py-4">
+              <div className="flex flex-col items-center text-center px-4 h-full justify-between">
+                <div className="flex items-center gap-4 mb-4">
+                  <h3 className="font-normal text-3xl text-gray-500">3</h3>
+                  <div className="w-14 h-14 bg-[#4343f0] rounded-full flex items-center justify-center text-white shadow-md">
+                    <Image
+                      alt="Get Resolution"
+                      width={24}
+                      height={24}
+                      className="w-6 h-6 object-contain"
+                      src="/assets/bx-support.svg"
+                    />
+                  </div>
+                </div>
+                <h4 className="font-semibold text-lg text-gray-600 mb-2 truncate px-2">Get Resolution</h4>
+                <p className="text-xs text-gray-500 max-w-[250px] leading-relaxed mx-auto">
+                  You will receive a response or resolution within 24-48 hours. You can track progress in your history.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} noValidate className="mb-12 max-w-5xl">
+          <div className="flex flex-col md:flex-row gap-6 md:gap-12 mb-8 items-start">
+            <div className="flex-1 w-full md:max-w-[400px]">
+              <label className="text-sm font-bold text-gray-600 mb-2 block">
+                Subject <span className="text-red-500">*</span>
+              </label>
+              <input
+                className={`w-full border ${errors.subject ? "border-red-500" : "border-gray-400"} rounded-[4px] px-3 py-2 text-sm focus:outline-none focus:ring-1 ${errors.subject ? "focus:ring-red-400" : "focus:ring-gray-400"} h-[42px]`}
+                placeholder="Brief summary of the issue"
+                type="text"
+                value={formData.subject}
+                onChange={(e) => {
+                  setFormData({ ...formData, subject: e.target.value });
+                  if (errors.subject) setErrors((prev) => ({ ...prev, subject: undefined }));
+                }}
+              />
+              {errors.subject && (
+                <p className="text-xs text-red-500 mt-1">{errors.subject}</p>
+              )}
+              <div className="mt-6">
+                <label className="text-sm font-bold text-gray-600 mb-2 block">Ticket Type</label>
+                <div className="relative">
+                  <select
+                    value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    className="w-full border border-gray-400 rounded-[4px] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 h-[42px] appearance-none bg-white cursor-pointer"
+                  >
+                    <option value="general">General Inquiry</option>
+                    <option value="technical">Technical Issue</option>
+                    <option value="billing">Billing &amp; Account</option>
+                    <option value="feature_request">Feature Request</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                   </div>
                 </div>
-                <h4 className="font-bold text-gray-700 mb-2">{step.title}</h4>
-                <p className="text-xs text-gray-400 leading-relaxed">{step.desc}</p>
               </div>
-            ))}
-          </div>
+            </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-              <div className="space-y-6">
-                <div>
-                  <label className="text-sm font-bold text-gray-600 mb-2 block">
-                    Subject <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.subject}
-                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                    className="w-full border border-gray-400 rounded-[4px] px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 transition-all h-[50px]"
-                    placeholder="Brief summary of the issue (min. 5 chars)"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-bold text-gray-600 mb-2 block">Ticket Type</label>
-                  <div className="relative">
-                    <select
-                      value={formData.type}
-                      onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                      className="w-full border border-gray-400 rounded-[4px] px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 transition-all h-[50px] appearance-none bg-white cursor-pointer"
-                    >
-                      <option value="general">General Inquiry</option>
-                      <option value="technical">Technical Issue</option>
-                      <option value="billing">Billing & Account</option>
-                      <option value="feature_request">Feature Request</option>
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-400">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-baseline gap-4 mb-3">
-                  <label className="text-sm font-bold text-gray-600">Attach files</label>
-                  <span className="text-gray-400 text-[11px]">Helpful images or documents</span>
-                </div>
+            <div className="flex-1 w-full">
+              <label className="text-sm font-bold text-gray-600 mb-2 block">Attach files</label>
+              <div
+                className="flex flex-col sm:flex-row items-start sm:items-center gap-3"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (e.dataTransfer.files) {
+                    setAttachments((prev) => [...prev, ...Array.from(e.dataTransfer.files)]);
+                  }
+                }}
+              >
                 <input
-                  type="file"
                   ref={fileInputRef}
-                  onChange={handleFileChange}
                   className="hidden"
                   accept="image/*,.pdf,.doc,.docx"
                   multiple
+                  type="file"
+                  onChange={handleFileChange}
                 />
-                <div
+                <button
+                  type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-all gap-3"
+                  className="flex items-center justify-center gap-2 bg-[#4343f0] hover:bg-[#3232b7] text-white text-sm font-medium px-8 h-[42px] rounded-[4px] transition-colors shrink-0 cursor-pointer"
                 >
-                  <svg className="w-8 h-8 text-primary-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
                   </svg>
-                  <span className="text-xs font-bold text-primary-300 uppercase tracking-widest">
-                    {attachments.length > 0 ? `${attachments.length} files selected` : "Click to Attach"}
-                  </span>
-                </div>
+                  Attach
+                </button>
+                <p className="text-xs text-gray-400 leading-tight max-w-xs">
+                  Drag &amp; drop any images or documents that might be helpful in explaining your issue.
+                </p>
               </div>
+              {attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {attachments.map((file, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-[#F1F3F5] text-xs text-[#404040] font-medium"
+                    >
+                      <span className="max-w-[200px] truncate">{file.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))}
+                        className="text-red-500 hover:text-red-700 font-bold transition-colors cursor-pointer flex items-center justify-center p-0.5"
+                        aria-label={`Remove ${file.name}`}
+                      >
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
+          </div>
 
-            <div>
-              <label className="text-sm font-bold text-gray-600 mb-2 block">
-                Description <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                required
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full border border-gray-400 rounded-[4px] px-4 py-4 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 transition-all h-48 resize-none"
-                placeholder="Please explain your issue in detail (min. 10 chars)..."
-              ></textarea>
-            </div>
+          <div className="mb-8 w-full">
+            <label className="text-sm font-bold text-gray-600 mb-2 block">
+              Description <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => {
+                setFormData({ ...formData, description: e.target.value });
+                if (errors.description) setErrors((prev) => ({ ...prev, description: undefined }));
+              }}
+              className={`w-full border ${errors.description ? "border-red-500" : "border-gray-400"} rounded-[4px] px-3 py-2 text-sm focus:outline-none focus:ring-1 ${errors.description ? "focus:ring-red-400" : "focus:ring-gray-400"} h-32 resize-none`}
+              placeholder="Please explain your issue in detail..."
+            ></textarea>
+            {errors.description && (
+              <p className="text-xs text-red-500 mt-1">{errors.description}</p>
+            )}
+          </div>
 
-            <div className="flex justify-center pt-8">
-              <button
-                type="submit"
-                disabled={loading}
-                className="bg-primary-300 hover:bg-primary-350 text-white font-bold py-4 px-12 rounded-lg text-sm w-full md:w-[350px] transition-all shadow-lg hover:shadow-xl active:scale-[0.98] disabled:opacity-70 uppercase tracking-widest"
-              >
-                {loading ? "Submitting..." : "Submit Ticket"}
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* Newsletter Section */}
-        <div className="mt-16 border-t border-gray-100 pt-16">
-          <SupportNewsletter />
-        </div>
+          <div className="flex justify-center mt-12">
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-[#4343f0] hover:bg-[#3232b7] text-white font-bold py-3.5 px-12 rounded-lg text-sm w-full md:w-[350px] flex justify-center items-center transition-all shadow-md hover:shadow-lg active:scale-95 disabled:opacity-75 cursor-pointer"
+            >
+              {loading ? "Submitting..." : "Submit Ticket"}
+            </button>
+          </div>
+        </form>
       </main>
     </div>
   );
