@@ -753,7 +753,7 @@ export default function AnalysisDetailsPage() {
         {/* Left Column (col-span-2) */}
         <div className="lg:col-span-2 flex flex-col gap-6">
           {/* Analysis Details Card */}
-          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-4 sm:p-6 md:p-8">
+          <div className="bg-white border border-gray-300 rounded-[12px] shadow-sm p-4 sm:p-6 md:p-8">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
               <span className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-wider">
                 Submitted - {submittedDateStr || "Sep 4, 9:03 PM"}
@@ -774,7 +774,7 @@ export default function AnalysisDetailsPage() {
               </span>
             </div>
 
-            <div className="border border-gray-400 rounded-lg overflow-x-auto mb-6">
+            <div className="border border-gray-400 rounded-[12px] overflow-hidden overflow-x-auto mb-6">
               <table className="w-full min-w-[500px] sm:min-w-0">
                 <thead>
                   <tr className="border-b border-gray-400">
@@ -1433,7 +1433,7 @@ export default function AnalysisDetailsPage() {
 
         {/* Right Column / Sidebar (col-span-1) */}
         <div className="lg:col-span-1">
-          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 sm:p-8">
+          <div className="bg-white border border-gray-300 rounded-[12px] shadow-sm p-6 sm:p-8">
             {managers.length <= 1 ? (
               <div className="text-center">
                 <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gray-100 border border-gray-200">

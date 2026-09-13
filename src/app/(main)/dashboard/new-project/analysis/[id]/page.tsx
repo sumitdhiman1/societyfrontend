@@ -4,8 +4,12 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { requestAnalysisService } from "@/lib/requestAnalysisService";
 import { authService } from "@/lib/authService";
+import { paymentService } from "@/lib/paymentService";
 import { useChatWidget } from "@/context/ChatWidgetContext";
+import { useCurrency } from "@/context/CurrencyContext";
 import StatusPopup from "@/components/common/StatusPopup";
+import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
+import { formatPriceWithCurrency } from "@/lib/currencyUtils";
 
 const SpinnerIcon = ({ size = 18 }: { size?: number }) => (
   <svg className="animate-spin" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -14,29 +18,20 @@ const SpinnerIcon = ({ size = 18 }: { size?: number }) => (
   </svg>
 );
 
-const CheckIcon = ({ className = "w-4 h-4 text-gray-700" }: { className?: string }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-  </svg>
-);
-
-const HelpIcon = () => (
-  <span className="w-3.5 h-3.5 rounded-full bg-gray-300 text-gray-700 text-[10px] font-bold flex items-center justify-center cursor-help">
-    ?
-  </span>
-);
-
 export default function AnalysisOrderPage() {
   const params = useParams();
   const router = useRouter();
   const { openChat } = useChatWidget();
+  const { currency, setCurrency, conversionRate } = useCurrency();
   const productId = params?.id as string;
 
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [projectNo, setProjectNo] = useState("");
+  const [analysisNo, setAnalysisNo] = useState("");
+  const [mountedDate, setMountedDate] = useState<Date | null>(null);
 
   const [formData, setFormData] = useState({
     targetWebsiteUrl: "",
@@ -57,7 +52,8 @@ export default function AnalysisOrderPage() {
   } | null>(null);
 
   useEffect(() => {
-    setProjectNo("#" + Math.random().toString(36).substring(2, 9).toUpperCase());
+    setMountedDate(new Date());
+    setAnalysisNo("#" + Math.random().toString(36).substring(2, 9).toUpperCase());
 
     const currentUser = authService.getUser();
     if (currentUser) {
@@ -110,15 +106,30 @@ export default function AnalysisOrderPage() {
 
   const timelineDays = product?.timelineInDays || 5;
 
-  const startDateFormatted = useMemo(() => {
-    const d = new Date();
+  const currentDate = useMemo(() => mountedDate || new Date(), [mountedDate]);
+
+  const deadlineDate = useMemo(() => {
+    return new Date(currentDate.getTime() + timelineDays * 24 * 60 * 60 * 1000);
+  }, [currentDate, timelineDays]);
+
+  const formatDateWithTime = (d: Date) => {
     return `${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
-  }, []);
+  };
+
+  const startDateFormatted = useMemo(() => {
+    return formatDateWithTime(currentDate);
+  }, [currentDate]);
 
   const deadlineFormatted = useMemo(() => {
-    const d = new Date(Date.now() + timelineDays * 24 * 60 * 60 * 1000);
-    return `${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
-  }, [timelineDays]);
+    return formatDateWithTime(deadlineDate);
+  }, [deadlineDate]);
+
+  const isFree = product?.isFree === true || (product?.isFree !== false && (product?.amount === 0 || product?.amount === undefined));
+  const price = product?.amount || 0;
+
+  const formatPrice = (amt: number) => {
+    return formatPriceWithCurrency(amt, currency, "USD", conversionRate);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,6 +208,77 @@ export default function AnalysisOrderPage() {
     }
   };
 
+  const handleSaveOrder = async () => {
+    if (!authService.isAuthenticated()) {
+      try {
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem(`pending_analysis_${productId}`, JSON.stringify(formData));
+        }
+      } catch (err) {}
+      router.push(`/login?redirect=/dashboard/new-project/analysis/${productId}`);
+      return;
+    }
+
+    if (!formData.targetWebsiteUrl && visibleFields.urlToCheck !== false) {
+      setStatusPopup({
+        isOpen: true,
+        type: "error",
+        title: "URL Required",
+        message: "Please enter the URL(s) to check before saving your order.",
+      });
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      const res = await paymentService.createOrder({
+        amount: price,
+        currency: currency,
+        creditsToApply: 0,
+        metadata: {
+          type: "ANALYSIS",
+          analysisId: productId,
+          productId: productId,
+          title: title,
+          description: shortDescription,
+          fullAmount: price,
+          duration: `${timelineDays} Days`,
+          targetWebsiteUrl: formData.targetWebsiteUrl || "https://clientwebsite.com",
+          whoCompletedWork: formData.whoCompletedWork || "",
+          agreementDetails: formData.agreementDetails || "",
+          scopeOfWork: formData.scopeOfWork || "",
+          loginsDetails: formData.loginsDetails || "",
+          additionalComments: formData.additionalComments || "",
+          clientEmail: formData.email || user?.email || "",
+          clientName: formData.fullName || user?.fullName || user?.username || "Client",
+          origin: typeof window !== "undefined" ? window.location.origin : undefined,
+        },
+      });
+
+      if (res.isSuccessful && res.data?.projectId) {
+        setStatusPopup({
+          isOpen: true,
+          type: "success",
+          title: "Order Created",
+          message: "Invoice generated successfully. Redirecting to your analysis...",
+        });
+        setTimeout(() => router.push(`/dashboard/my-analyses/${res.data.projectId}/details`), 1800);
+      } else {
+        throw new Error(res.message || "Failed to create order.");
+      }
+    } catch (err: any) {
+      console.error("Order Error:", err);
+      setStatusPopup({
+        isOpen: true,
+        type: "error",
+        title: "Order Failed",
+        message: err.message || "Could not generate invoice. Please try again.",
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="bg-[#F8F9FD] min-h-screen flex items-center justify-center p-8 font-sans">
@@ -211,11 +293,11 @@ export default function AnalysisOrderPage() {
   const title = product?.title || "Free Website Analysis";
   const shortDescription =
     product?.shortDescription ||
-    "Our standard free analysis offer covering brand, UI/UX, functionalities, AI potentiality, tech stack, speed, and SEO.";
+    "Our standard analysis offer covering brand, UI/UX, functionalities, AI potentiality, tech stack, speed, and SEO.";
   const longDescription =
     product?.longDescription ||
     product?.description ||
-    "Our classic free analysis offer covering branding, UI/UX, functionalities, AI potentiality, tech stack, speed, and SEO. A manual review using a custom process created by Society Web Solutions, checking every important part of your website. Delivered as a custom PDF report within 5 days.";
+    "Our classic analysis offer covering branding, UI/UX, functionalities, AI potentiality, tech stack, speed, and SEO. A manual review using a custom process created by Society Web Solutions, checking every important part of your website. Delivered as a custom PDF report within 5 days.";
   
   const imageSrc =
     product?.detailImage ||
@@ -262,9 +344,6 @@ export default function AnalysisOrderPage() {
     shareAccess: isFieldVisible('shareAccess', 'showLoginsDetails', true),
     additionalInfo: isFieldVisible('additionalInfo', 'showAdditionalComments', true),
   };
-
-  const isFree = product?.isFree !== false && (product?.amount === 0 || product?.amount === undefined);
-  const priceDisplay = isFree ? "FREE" : `$${product?.amount || 0}`;
 
   return (
     <div className="bg-[#F8F9FD] min-h-screen flex flex-col font-sans">
@@ -385,117 +464,286 @@ export default function AnalysisOrderPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white border border-gray-300 rounded-[4px] shadow-sm p-6 md:p-8">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-                  <div className="bg-gray-200 px-4 py-2 rounded-full w-fit">
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-gray-600 font-medium">Start Date: {startDateFormatted}</span>
+            {/* Free Analysis Flow */}
+            {isFree ? (
+              <div className="lg:col-span-2 space-y-6">
+                <div className="bg-white border border-gray-300 rounded-[4px] shadow-sm p-6 md:p-8">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                    <div className="bg-gray-200 px-4 py-2 rounded-full w-fit">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-gray-600 font-medium">Start Date: {startDateFormatted}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="bg-gray-200 px-4 py-2 rounded-full w-fit">
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-gray-600 font-medium">Estimated Deadline: {deadlineFormatted}</span>
-                      <span className="relative inline-block ml-1 group">
-                        <button
-                          type="button"
-                          className="w-4 h-4 rounded-full bg-gray-400 text-white text-[9px] font-bold flex items-center justify-center cursor-help leading-none transition-colors hover:bg-gray-500"
-                          aria-label="About estimated deadline"
-                          tabIndex={0}
-                        >
-                          ?
-                        </button>
-                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 w-full h-2 pointer-events-auto"></span>
-                        <span
-                          role="tooltip"
-                          className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-gray-900 text-white text-[11px] rounded-lg p-2.5 shadow-xl z-[9999] leading-relaxed font-normal normal-case break-words whitespace-normal opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150 origin-bottom"
-                        >
-                          Time spent waiting for client replies does not count towards project deadlines.
-                          <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></span>
+                    <div className="bg-gray-200 px-4 py-2 rounded-full w-fit">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-gray-600 font-medium">Estimated Deadline: {deadlineFormatted}</span>
+                        <span className="relative inline-block ml-1 group">
+                          <button
+                            type="button"
+                            className="w-4 h-4 rounded-full bg-gray-400 text-white text-[9px] font-bold flex items-center justify-center cursor-help leading-none transition-colors hover:bg-gray-500"
+                            aria-label="About estimated deadline"
+                            tabIndex={0}
+                          >
+                            ?
+                          </button>
+                          <span className="absolute bottom-full left-1/2 -translate-x-1/2 w-full h-2 pointer-events-auto"></span>
+                          <span
+                            role="tooltip"
+                            className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-gray-900 text-white text-[11px] rounded-lg p-2.5 shadow-xl z-[9999] leading-relaxed font-normal normal-case break-words whitespace-normal opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150 origin-bottom"
+                          >
+                            Time spent waiting for client replies does not count towards project deadlines.
+                            <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></span>
+                          </span>
                         </span>
-                      </span>
+                      </div>
                     </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
+                    <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-600 leading-tight pr-4">
+                      {title}
+                    </h3>
+                    <div className="flex items-center gap-4">
+                      <div className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-600">
+                        FREE
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mb-6 text-sm text-gray-500 flex items-center gap-3 flex-wrap">
+                    <span><strong>Analysis No:</strong> {analysisNo}</span>
+                    <span className="text-gray-400">|</span>
+                    <span><strong>Timeline:</strong> {timelineDays} Days</span>
+                  </div>
+
+                  <div className="mb-8 text-sm text-gray-500 leading-relaxed">
+                    {shortDescription}
+                  </div>
+
+                  <div className="border-t border-gray-300 mb-6"></div>
+
+                  <div>
+                    <h4 className="text-base font-bold text-gray-700 mb-4">Included :</h4>
+                    <ul className="space-y-3">
+                      <li className="flex items-start gap-3 text-sm text-gray-600">
+                        <svg className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Comprehensive Website Review</span>
+                      </li>
+                      <li className="flex items-start gap-3 text-sm text-gray-600">
+                        <svg className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Detailed PDF Report</span>
+                      </li>
+                      <li className="flex items-start gap-3 text-sm text-gray-600">
+                        <svg className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Key Performance Issues Identified</span>
+                      </li>
+                      <li className="flex items-start gap-3 text-sm text-gray-600">
+                        <svg className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Actionable Recommendations</span>
+                      </li>
+                    </ul>
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
-                  <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-600 leading-tight pr-4">
-                    {title}
-                  </h3>
-                  <div className="flex items-center gap-4">
-                    <div className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-600">
-                      {priceDisplay}
+                <div className="bg-white border border-gray-300 rounded-[4px] shadow-sm p-6 md:p-8 flex flex-col items-center justify-center text-center">
+                  <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Free Analysis</h3>
+                  <p className="text-sm text-gray-500 mb-6">
+                    This analysis is completely free. We will review your website and notify you within {timelineDays} days.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={(e) => handleSubmit(e as any)}
+                    disabled={submitting}
+                    className="w-full px-6 py-3.5 bg-[#3535b8] hover:bg-[#2a2a9a] text-white font-semibold rounded transition-colors duration-200 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {submitting && <SpinnerIcon size={16} />}
+                    <span>{submitting ? "Submitting..." : "Submit Request"}</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="lg:col-span-2 space-y-6">
+                <div className="bg-white border border-gray-300 rounded-[4px] shadow-sm p-6 md:p-8">
+                  {/* Top Badges */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                    <div className="bg-gray-200 px-4 py-2 rounded-full w-fit">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-gray-600 font-medium">Start Date: {startDateFormatted}</span>
+                      </div>
+                    </div>
+                    <div className="bg-gray-200 px-4 py-2 rounded-full w-fit">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-gray-600 font-medium">Estimated Deadline: {deadlineFormatted}</span>
+                        <span className="relative inline-block ml-1 group">
+                          <button
+                            type="button"
+                            className="w-4 h-4 rounded-full bg-gray-400 text-white text-[9px] font-bold flex items-center justify-center cursor-help leading-none transition-colors hover:bg-gray-500"
+                            aria-label="About estimated deadline"
+                            tabIndex={0}
+                          >
+                            ?
+                          </button>
+                          <span className="absolute bottom-full left-1/2 -translate-x-1/2 w-full h-2 pointer-events-auto"></span>
+                          <span
+                            role="tooltip"
+                            className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-gray-900 text-white text-[11px] rounded-lg p-2.5 shadow-xl z-[9999] leading-relaxed font-normal normal-case break-words whitespace-normal opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150 origin-bottom"
+                          >
+                            Time spent waiting for client replies does not count towards project deadlines.
+                            <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></span>
+                          </span>
+                        </span>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Title & Price Header */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
+                    <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-600 leading-tight pr-4">
+                      {title}
+                    </h3>
+                    <div className="flex items-center gap-6">
+                      <div className="flex flex-col items-end">
+                        <div className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-600">
+                          {formatPrice(price)}
+                        </div>
+                        <div className="flex flex-col items-end mt-1">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">One-Time Fee</span>
+                        </div>
+                      </div>
+                      <select
+                        value={currency.toUpperCase()}
+                        onChange={(e) => setCurrency(e.target.value.toLowerCase())}
+                        className="bg-gray-50 border border-gray-300 text-gray-700 font-medium rounded-md px-3 py-1.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-shadow"
+                      >
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Meta Details */}
+                  <div className="mb-6 text-sm text-gray-500 flex items-center gap-3 flex-wrap">
+                    <span><strong>Analysis No:</strong> {analysisNo}</span>
+                    <span className="text-gray-400">|</span>
+                    <span><strong>Timeline:</strong> {timelineDays} Days</span>
+                  </div>
+
+                  {/* Short Description */}
+                  <div className="mb-8 text-sm text-gray-500 leading-relaxed">
+                    {shortDescription}
+                  </div>
+
+                  <div className="border-t border-gray-300 mb-6"></div>
+
+                  {/* Included Deliverables */}
+                  <div>
+                    <h4 className="text-base font-bold text-gray-700 mb-4">Included :</h4>
+                    <ul className="space-y-3">
+                      <li className="flex items-start gap-3 text-sm text-gray-600">
+                        <svg className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Comprehensive Website Review</span>
+                      </li>
+                      <li className="flex items-start gap-3 text-sm text-gray-600">
+                        <svg className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Detailed PDF Report</span>
+                      </li>
+                      <li className="flex items-start gap-3 text-sm text-gray-600">
+                        <svg className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Key Performance Issues Identified</span>
+                      </li>
+                      <li className="flex items-start gap-3 text-sm text-gray-600">
+                        <svg className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Actionable Recommendations</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="border-t border-gray-300 my-8"></div>
+
+                  {/* Payment form rendered cleanly within card */}
+                  <UnifiedPaymentForm
+                    containerClassName=""
+                    hideCurrencyToggle={true}
+                    type="ANALYSIS"
+                    entityId={productId}
+                    entityNumber={analysisNo.replace("#", "")}
+                    title={title}
+                    description={shortDescription}
+                    date={currentDate.toISOString()}
+                    totalCost={price}
+                    depositAmount={price > 0 ? price / 2 : undefined}
+                    deliverableItems={[
+                      {
+                        description: "Initial Analysis Setup & Implementation",
+                        details: "Comprehensive Website Review, Detailed PDF Report, Key Performance Issues Identified, Actionable Recommendations",
+                        amount: price,
+                        duration: `${timelineDays} Days`,
+                        unit: "",
+                        isAddOn: false,
+                      },
+                    ]}
+                    clientEmail={formData.email || user?.email || ""}
+                    successRedirectUrl="/dashboard/my-analyses"
+                    amountPaid={0}
+                    startDate={currentDate.toISOString()}
+                    deadline={deadlineDate.toISOString()}
+                    nativeCurrency="USD"
+                    metadata={{
+                      type: "ANALYSIS",
+                      analysisId: productId,
+                      productId: productId,
+                      title: title,
+                      description: shortDescription,
+                      fullAmount: price,
+                      duration: `${timelineDays} Days`,
+                      targetWebsiteUrl: formData.targetWebsiteUrl,
+                      whoCompletedWork: formData.whoCompletedWork,
+                      agreementDetails: formData.agreementDetails,
+                      scopeOfWork: formData.scopeOfWork,
+                      loginsDetails: formData.loginsDetails,
+                      additionalComments: formData.additionalComments,
+                      clientEmail: formData.email || user?.email || "",
+                      clientName: formData.fullName || user?.fullName || user?.username || "Client",
+                    }}
+                  />
                 </div>
 
-                <div className="mb-6 text-sm text-gray-500 flex items-center gap-3 flex-wrap">
-                  <span><strong>Project No:</strong> {projectNo}</span>
-                  <span className="text-gray-400">|</span>
-                  <span><strong>Timeline:</strong> {timelineDays} Days</span>
-                </div>
-
-                <div className="mb-8 text-sm text-gray-500 leading-relaxed">
-                  {shortDescription}
-                </div>
-
-                <div className="border-t border-gray-300 mb-6"></div>
-
-                <div>
-                  <h4 className="text-base font-bold text-gray-700 mb-4">Included :</h4>
-                  <ul className="space-y-3">
-                    <li className="flex items-start gap-3 text-sm text-gray-600">
-                      <svg className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span>Comprehensive Website Review</span>
-                    </li>
-                    <li className="flex items-start gap-3 text-sm text-gray-600">
-                      <svg className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span>Detailed PDF Report</span>
-                    </li>
-                    <li className="flex items-start gap-3 text-sm text-gray-600">
-                      <svg className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span>Key Performance Issues Identified</span>
-                    </li>
-                    <li className="flex items-start gap-3 text-sm text-gray-600">
-                      <svg className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span>Actionable Recommendations</span>
-                    </li>
-                  </ul>
+                {/* Save Order & Pay Later Button */}
+                <div className="mt-6">
+                  <button
+                    onClick={handleSaveOrder}
+                    disabled={processing}
+                    className="w-full px-6 py-3 bg-white border border-gray-300 text-gray-600 font-bold text-xs uppercase tracking-widest hover:bg-gray-50 rounded transition-all duration-200 shadow-sm active:scale-95 cursor-pointer"
+                  >
+                    {processing ? "Processing..." : "Save Order & Pay Later (Generate Invoice)"}
+                  </button>
                 </div>
               </div>
-
-              <div className="bg-white border border-gray-300 rounded-[4px] shadow-sm p-6 md:p-8 flex flex-col items-center justify-center text-center">
-                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Free Analysis</h3>
-                <p className="text-sm text-gray-500 mb-6">
-                  This analysis is completely free. We will review your website and notify you within {timelineDays} days.
-                </p>
-                <button
-                  type="button"
-                  onClick={(e) => handleSubmit(e as any)}
-                  disabled={submitting}
-                  className="w-full px-6 py-3.5 bg-[#3535b8] hover:bg-[#2a2a9a] text-white font-semibold rounded transition-colors duration-200 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-                >
-                  {submitting && <SpinnerIcon size={16} />}
-                  <span>{submitting ? "Submitting..." : "Submit Request"}</span>
-                </button>
-              </div>
-            </div>
+            )}
 
             <div className="lg:col-span-1">
-              <div className="bg-white border border-gray-300 rounded-[4px] shadow-sm p-6">
+              <div className="bg-white border border-gray-300 rounded-[4px] shadow-sm p-6 sticky top-28">
                 <h3 className="text-xl font-bold text-gray-600 text-center mb-3">Questions Before You Pay?</h3>
                 <p className="text-sm text-gray-500 text-center mb-6">
                   Our support team is here to help with pricing, payments, or package details—no pressure.

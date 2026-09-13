@@ -745,7 +745,7 @@ export default function ProjectDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Project Details Card */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-4 sm:p-6 md:p-8">
+          <div className="bg-white border border-gray-300 rounded-[12px] shadow-sm p-4 sm:p-6 md:p-8">
             {/* Header: Submitted Date and Status Badge */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
               <span className="text-[10px] sm:text-xs text-gray-500 font-bold">
@@ -848,7 +848,7 @@ export default function ProjectDetailsPage() {
 
             {/* Deliverables Table — hidden for calculator projects (specs card covers it) */}
             {!project.calculatorSpecs && (
-              <div className="border border-gray-400 rounded-lg overflow-x-auto mb-4">
+              <div className="border border-gray-400 rounded-[12px] overflow-hidden overflow-x-auto mb-4">
                 <table className="w-full min-w-[500px] sm:min-w-0">
                   <thead>
                     <tr className="border-b border-gray-400">
@@ -1024,7 +1024,7 @@ export default function ProjectDetailsPage() {
 
         {/* Right Column: Project Manager Card */}
         <div className="lg:col-span-1">
-          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 sm:p-8 sticky top-24">
+          <div className="bg-white border border-gray-300 rounded-[12px] shadow-sm p-6 sm:p-8 sticky top-24">
             {(() => {
               const managers = (Array.isArray(project.assignedManagers) && project.assignedManagers.length > 0)
                 ? project.assignedManagers

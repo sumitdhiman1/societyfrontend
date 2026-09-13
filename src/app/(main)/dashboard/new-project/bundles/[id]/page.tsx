@@ -38,16 +38,21 @@ const DIGITAL_STARTER_BUNDLE = {
   imageUrl:
     "http://res.cloudinary.com/dgg6e3flf/image/upload/v1785224007/packages/a_professional_high_fidelity_3d_still_life_scene_for_a_digital_starter_bundle.webp",
   columns: [
-    { id: "col_starter", title: "Starter", price: 2200, recurringAmount: 1725, timeline: 2 },
-    { id: "col_standard", title: "Standard", price: 5000, recurringAmount: 3575, timeline: 6 },
-    { id: "col_premium", title: "Premium", price: 10000, recurringAmount: 7150, timeline: 12 },
-    { id: "col_custom", title: "Custom", price: "Get A Quote", recurringAmount: 0, timeline: null },
+    { id: "starter", title: "Starter", price: 2200, recurringAmount: 1725, recurringPrice: 1725, timeline: 2 },
+    { id: "professional", title: "Standard", price: 5000, recurringAmount: 3575, recurringPrice: 3575, timeline: 6 },
+    { id: "premium", title: "Premium", price: 10000, recurringAmount: 7150, recurringPrice: 7150, timeline: 12 },
+    { id: "tier_1787673409959", title: "Custom", price: "Get A Quote", recurringAmount: 0, recurringPrice: 0, timeline: null },
   ],
   features: [
     {
+      key: "small-business-website",
       name: "Small Business Website",
       section: "one-time",
       values: {
+        starter: "__LINK__:Starter Tier (WordPress + Elementor)|https://societywebsolutions.com/dashboard/new-project/packages/6a67af8ff4538bf364e50b48",
+        professional: "__LINK__:Standard Tier (Custom WordPress)|https://societywebsolutions.com/dashboard/new-project/packages/6a67af8ff4538bf364e50b48",
+        premium: "__LINK__:Premium Tier (Fully custom code)|https://societywebsolutions.com/dashboard/new-project/packages/6a67af8ff4538bf364e50b48",
+        tier_1787673409959: false,
         col_starter: "__LINK__:Starter Tier (WordPress + Elementor)|https://societywebsolutions.com/dashboard/new-project/packages/6a67af8ff4538bf364e50b48",
         col_standard: "__LINK__:Standard Tier (Custom WordPress)|https://societywebsolutions.com/dashboard/new-project/packages/6a67af8ff4538bf364e50b48",
         col_premium: "__LINK__:Premium Tier (Fully custom code)|https://societywebsolutions.com/dashboard/new-project/packages/6a67af8ff4538bf364e50b48",
@@ -55,9 +60,14 @@ const DIGITAL_STARTER_BUNDLE = {
       },
     },
     {
+      key: "logo-brand-identity",
       name: "Logo / Brand Identity",
       section: "one-time",
       values: {
+        starter: "__LINK__:Starter Tier Logo Design Only|https://societywebsolutions.com/dashboard/new-project/packages/69d8bcab467d0ff3e5f1479f",
+        professional: "__LINK__:Standard Tier Brand Identity|https://societywebsolutions.com/dashboard/new-project/packages/69d8c2cf467d0ff3e5f1481a",
+        premium: "__LINK__:Premium Tier Brand Identity|https://societywebsolutions.com/dashboard/new-project/packages/69d8c2cf467d0ff3e5f1481a",
+        tier_1787673409959: false,
         col_starter: "__LINK__:Starter Tier Logo Design Only|https://societywebsolutions.com/dashboard/new-project/packages/69d8bcab467d0ff3e5f1479f",
         col_standard: "__LINK__:Standard Tier Brand Identity|https://societywebsolutions.com/dashboard/new-project/packages/69d8c2cf467d0ff3e5f1481a",
         col_premium: "__LINK__:Premium Tier Brand Identity|https://societywebsolutions.com/dashboard/new-project/packages/69d8c2cf467d0ff3e5f1481a",
@@ -65,9 +75,14 @@ const DIGITAL_STARTER_BUNDLE = {
       },
     },
     {
+      key: "website-maintenance",
       name: "Website Maintenance",
       section: "monthly",
       values: {
+        starter: "__LINK__:Starter Tier Essential Maintenance|https://societywebsolutions.com/dashboard/new-project/packages/6a67cf41f4538bf364e5458f",
+        professional: "__LINK__:Standard Tier Essential Maintenance|https://societywebsolutions.com/dashboard/new-project/packages/6a67cf41f4538bf364e5458f",
+        premium: "__LINK__:Premium Tier Essential Maintenance|https://societywebsolutions.com/dashboard/new-project/packages/6a67cf41f4538bf364e5458f",
+        tier_1787673409959: false,
         col_starter: "__LINK__:Starter Tier Essential Maintenance|https://societywebsolutions.com/dashboard/new-project/packages/6a67cf41f4538bf364e5458f",
         col_standard: "__LINK__:Standard Tier Essential Maintenance|https://societywebsolutions.com/dashboard/new-project/packages/6a67cf41f4538bf364e5458f",
         col_premium: "__LINK__:Premium Tier Essential Maintenance|https://societywebsolutions.com/dashboard/new-project/packages/6a67cf41f4538bf364e5458f",
@@ -75,9 +90,14 @@ const DIGITAL_STARTER_BUNDLE = {
       },
     },
     {
+      key: "seo",
       name: "SEO",
       section: "monthly",
       values: {
+        starter: "__LINK__:Starter Tier Local SEO|https://societywebsolutions.com/dashboard/new-project/packages/6a67d3f8f4538bf364e548d6",
+        professional: "__LINK__:Standard Tier Local SEO|https://societywebsolutions.com/dashboard/new-project/packages/6a67d3f8f4538bf364e548d6",
+        premium: "__LINK__:Premium Tier Local SEO|https://societywebsolutions.com/dashboard/new-project/packages/6a67d3f8f4538bf364e548d6",
+        tier_1787673409959: false,
         col_starter: "__LINK__:Starter Tier Local SEO|https://societywebsolutions.com/dashboard/new-project/packages/6a67d3f8f4538bf364e548d6",
         col_standard: "__LINK__:Standard Tier Local SEO|https://societywebsolutions.com/dashboard/new-project/packages/6a67d3f8f4538bf364e548d6",
         col_premium: "__LINK__:Premium Tier Local SEO|https://societywebsolutions.com/dashboard/new-project/packages/6a67d3f8f4538bf364e548d6",
@@ -85,9 +105,14 @@ const DIGITAL_STARTER_BUNDLE = {
       },
     },
     {
+      key: "social-media",
       name: "Social Media",
       section: "monthly",
       values: {
+        starter: "__LINK__:Starter Tier Complete Management|https://societywebsolutions.com/dashboard/new-project/packages/6a67d70bf4538bf364e54b55",
+        professional: "__LINK__:Standard Tier Complete Management|https://societywebsolutions.com/dashboard/new-project/packages/6a67d70bf4538bf364e54b55",
+        premium: "__LINK__:Premium Tier Complete Management|https://societywebsolutions.com/dashboard/new-project/packages/6a67d70bf4538bf364e54b55",
+        tier_1787673409959: false,
         col_starter: "__LINK__:Starter Tier Complete Management|https://societywebsolutions.com/dashboard/new-project/packages/6a67d70bf4538bf364e54b55",
         col_standard: "__LINK__:Standard Tier Complete Management|https://societywebsolutions.com/dashboard/new-project/packages/6a67d70bf4538bf364e54b55",
         col_premium: "__LINK__:Premium Tier Complete Management|https://societywebsolutions.com/dashboard/new-project/packages/6a67d70bf4538bf364e54b55",
@@ -157,46 +182,55 @@ function BundleDetailsContent() {
     fetchCountries();
   }, []);
 
+  const parsePrice = (p: any) => {
+    if (typeof p === "number") return p;
+    if (!p || typeof p !== "string") return 0;
+    return parseFloat(p.replace(/[^0-9.]/g, "")) || 0;
+  };
+
   useEffect(() => {
     const loadPkg = async () => {
       try {
         const res = await packagesService.getBundleById(bundleId);
         if (res?.data) {
-          // If bundleId matches DIGITAL_STARTER_BUNDLE, merge to ensure rich links and custom quote tier
-          if (bundleId === DIGITAL_STARTER_BUNDLE._id) {
-            const rawColumns = res.data.columns && res.data.columns.length > 0 ? res.data.columns : DIGITAL_STARTER_BUNDLE.columns;
-            const mergedColumns = rawColumns.map((c: any, idx: number) => {
-              const presetCol = DIGITAL_STARTER_BUNDLE.columns.find(
-                (dc: any) => dc.id === c.id || dc.title?.toLowerCase() === c.title?.toLowerCase()
-              ) || DIGITAL_STARTER_BUNDLE.columns[idx];
-              return {
-                ...presetCol,
-                ...c,
-                timeline: c.timeline ?? presetCol?.timeline,
-                recurringAmount: c.recurringAmount ?? presetCol?.recurringAmount,
-              };
-            });
-            const merged = {
-              ...DIGITAL_STARTER_BUNDLE,
-              ...res.data,
-              columns: mergedColumns,
-              features: res.data.features && res.data.features.length > 0 ? res.data.features : DIGITAL_STARTER_BUNDLE.features,
+          const rawColumns = res.data.columns && res.data.columns.length > 0 ? res.data.columns : DIGITAL_STARTER_BUNDLE.columns;
+          const mergedColumns = rawColumns.map((c: any, idx: number) => {
+            const presetCol = DIGITAL_STARTER_BUNDLE.columns.find(
+              (dc: any) => dc.id === c.id || dc.title?.toLowerCase() === c.title?.toLowerCase()
+            ) || DIGITAL_STARTER_BUNDLE.columns[idx];
+            return {
+              ...presetCol,
+              ...c,
+              id: c.id || presetCol?.id,
+              title: c.title || presetCol?.title,
+              price: c.price ?? presetCol?.price,
+              timeline: c.timeline ?? presetCol?.timeline,
+              recurringAmount: c.recurringAmount ?? c.recurringPrice ?? presetCol?.recurringAmount ?? 0,
+              recurringPrice: c.recurringPrice ?? c.recurringAmount ?? presetCol?.recurringPrice ?? 0,
             };
-            setPkg(merged);
-            if (!selectedTier) {
-              const firstBuy = merged.columns.find(
-                (c: any) => (c.price && c.price !== "Get A Quote") || (c.recurringAmount && Number(c.recurringAmount) > 0)
-              ) || merged.columns[0];
-              setSelectedTier(firstBuy);
+          });
+
+          const merged = {
+            ...(bundleId === DIGITAL_STARTER_BUNDLE._id ? DIGITAL_STARTER_BUNDLE : {}),
+            ...res.data,
+            columns: mergedColumns,
+            features: res.data.features && res.data.features.length > 0 ? res.data.features : DIGITAL_STARTER_BUNDLE.features,
+          };
+          setPkg(merged);
+
+          // Find best matching selected tier
+          setSelectedTier((prev: any) => {
+            if (prev) {
+              const matched = mergedColumns.find(
+                (c: any) => c.id === prev.id || c.title?.toLowerCase() === prev.title?.toLowerCase()
+              );
+              if (matched) return matched;
             }
-          } else {
-            setPkg(res.data);
-            const firstPaid = (res.data.config?.oneTimeDeliverables?.tiers || res.data.columns)?.find(
-              (c: any) =>
-                (c.price && c.price !== "Get A Quote") || (c.recurringAmount && Number(c.recurringAmount) > 0)
-            );
-            if (firstPaid && !selectedTier) setSelectedTier(firstPaid);
-          }
+            const firstBuy = mergedColumns.find(
+              (c: any) => parsePrice(c.price) > 0 || parsePrice(c.recurringAmount ?? c.recurringPrice) > 0
+            ) || mergedColumns[0];
+            return firstBuy;
+          });
         }
       } catch (err) {
         console.error("Failed to load bundle details", err);
@@ -233,6 +267,8 @@ function BundleDetailsContent() {
         return {
           ...col,
           timeline: col.timeline ?? presetCol?.timeline,
+          recurringAmount: col.recurringAmount ?? col.recurringPrice ?? presetCol?.recurringAmount ?? 0,
+          recurringPrice: col.recurringPrice ?? col.recurringAmount ?? presetCol?.recurringPrice ?? 0,
         };
       });
     }
@@ -244,10 +280,12 @@ function BundleDetailsContent() {
         const presetCol = DIGITAL_STARTER_BUNDLE.columns.find(
           (dc: any) => dc.id === col.id || dc.title?.toLowerCase() === col.title?.toLowerCase()
         ) || DIGITAL_STARTER_BUNDLE.columns[idx];
+        const recPrice = recurringCol?.price || recurringCol?.recurringPrice || 0;
         return {
           ...col,
           timeline: col.timeline ?? presetCol?.timeline,
-          recurringAmount: recurringCol?.price || recurringCol?.recurringPrice || 0,
+          recurringAmount: recPrice,
+          recurringPrice: recPrice,
           recurringBillingType: recurringCol?.billingType || recurringCol?.recurringBillingType,
           recurringPeriod: recurringCol?.period || recurringCol?.recurringPeriod,
         };
@@ -256,6 +294,62 @@ function BundleDetailsContent() {
     return [];
   }, [pkg]);
 
+  const getFeatureValue = (feature: any, tier: any, colIdx?: number) => {
+    if (!feature || !feature.values || !tier) return undefined;
+    const values = feature.values;
+
+    // 1. Direct tier.id lookup
+    if (tier.id && values[tier.id] !== undefined) {
+      return values[tier.id];
+    }
+
+    // 2. Direct tier.key lookup
+    if (tier.key && values[tier.key] !== undefined) {
+      return values[tier.key];
+    }
+
+    // 3. Lookup by title / label
+    const title = (tier.title || tier.name || tier.label || "").toLowerCase().trim();
+    if (title && values[title] !== undefined) {
+      return values[title];
+    }
+
+    // 4. Aliases
+    const aliasMap: Record<string, string[]> = {
+      starter: ["starter", "col_starter", "tier_starter", "col1", "tier_1"],
+      col_starter: ["starter", "col_starter", "tier_starter", "col1", "tier_1"],
+      standard: ["standard", "professional", "col_standard", "tier_standard", "col2", "tier_2"],
+      professional: ["standard", "professional", "col_standard", "tier_standard", "col2", "tier_2"],
+      col_standard: ["standard", "professional", "col_standard", "tier_standard", "col2", "tier_2"],
+      premium: ["premium", "col_premium", "tier_premium", "col3", "tier_3"],
+      col_premium: ["premium", "col_premium", "tier_premium", "col3", "tier_3"],
+      custom: ["custom", "col_custom", "tier_custom", "col4", "tier_4", "tier_1787673409959"],
+      col_custom: ["custom", "col_custom", "tier_custom", "col4", "tier_4", "tier_1787673409959"],
+    };
+
+    const idKey = (tier.id || "").toLowerCase().trim();
+    const searchKeys = [
+      ...(idKey ? (aliasMap[idKey] || [idKey]) : []),
+      ...(title ? (aliasMap[title] || [title]) : []),
+    ];
+
+    for (const k of searchKeys) {
+      if (values[k] !== undefined) {
+        return values[k];
+      }
+    }
+
+    // 5. Index-based match
+    if (colIdx !== undefined && colIdx >= 0) {
+      const keys = Object.keys(values);
+      if (keys[colIdx] !== undefined && values[keys[colIdx]] !== undefined) {
+        return values[keys[colIdx]];
+      }
+    }
+
+    return undefined;
+  };
+
   const oneTimeFeatures = features
     .filter((f: any) => !f.section || f.section === "one-time")
     .filter((f: any) => f.key !== "timeline" && f.name?.toLowerCase() !== "timeline");
@@ -263,17 +357,38 @@ function BundleDetailsContent() {
     .filter((f: any) => f.section === "monthly")
     .filter((f: any) => f.key !== "timeline" && f.name?.toLowerCase() !== "timeline");
 
-  const hasRecurring = recurringFeatures.length > 0 || columns.some((c: any) => Number(c.recurringAmount) > 0);
+  const hasRecurring = recurringFeatures.length > 0 || columns.some((c: any) => parsePrice(c.recurringAmount ?? c.recurringPrice) > 0);
+
+  const getIncludedFeatures = (section: "one-time" | "monthly" = "one-time", tier?: any) => {
+    const activeTier = tier || selectedTier;
+    if (!activeTier) return [];
+    const targetFeatures = section === "one-time" ? oneTimeFeatures : recurringFeatures;
+    return targetFeatures
+      .map((feature: any) => {
+        const colIdx = columns.findIndex((c: any) => c.id === activeTier.id || c.title?.toLowerCase() === activeTier.title?.toLowerCase());
+        const val = getFeatureValue(feature, activeTier, colIdx >= 0 ? colIdx : undefined);
+        return { feature, val };
+      })
+      .filter((item: { feature: any; val: any }) => item.val && item.val !== false && item.val !== "false" && item.val !== "-")
+      .map((item: { feature: any; val: any }) => {
+        let label = "";
+        if (typeof item.val === "string") {
+          if (item.val.startsWith("__LINK__:")) {
+            label = item.val.replace("__LINK__:", "").split("|")[0];
+          } else {
+            label = item.val;
+          }
+        }
+        return {
+          ...item.feature,
+          displayLabel: label,
+        };
+      });
+  };
 
   const formatPrice = (val: any) => {
     const amount = typeof val === "number" ? val : parseFloat(String(val).replace(/[^0-9.]/g, "")) || 0;
     return formatPriceWithCurrency(amount, currency || "USD", "USD", conversionRate);
-  };
-
-  const parsePrice = (p: any) => {
-    if (typeof p === "number") return p;
-    if (!p || typeof p !== "string") return 0;
-    return parseFloat(p.replace(/[^0-9.]/g, "")) || 0;
   };
 
   const getTimelineDisplay = (col: any, featureList: any[] = [], idx: number = 0) => {
@@ -303,25 +418,27 @@ function BundleDetailsContent() {
     const timelineFeature = (featureList || []).find(
       (f: any) => f.key === "timeline" || f.name?.toLowerCase() === "timeline" || /timeline|duration/i.test(f.name)
     );
-    if (timelineFeature && timelineFeature.values?.[col.id] != null) {
-      const fVal = timelineFeature.values[col.id];
-      if (typeof fVal === "number" && fVal > 0) {
-        return `${fVal} week${fVal > 1 ? "s" : ""}`;
-      }
-      if (typeof fVal === "string" && fVal.trim() !== "" && fVal !== "-") {
-        if (/^\d+$/.test(fVal.trim())) {
-          const num = parseInt(fVal.trim(), 10);
-          return `${num} week${num > 1 ? "s" : ""}`;
+    if (timelineFeature) {
+      const fVal = getFeatureValue(timelineFeature, col, idx);
+      if (fVal) {
+        if (typeof fVal === "number" && fVal > 0) {
+          return `${fVal} week${fVal > 1 ? "s" : ""}`;
         }
-        return fVal;
+        if (typeof fVal === "string" && fVal.trim() !== "" && fVal !== "-") {
+          if (/^\d+$/.test(fVal.trim())) {
+            const num = parseInt(fVal.trim(), 10);
+            return `${num} week${num > 1 ? "s" : ""}`;
+          }
+          return fVal;
+        }
       }
     }
 
     // 3. Fallback for Digital Starter Bundle tiers
     const title = (col.title || col.label || "").toLowerCase();
-    if (title.includes("starter") || col.id === "col_starter" || idx === 0) return "2 weeks";
-    if (title.includes("standard") || col.id === "col_standard" || idx === 1) return "6 weeks";
-    if (title.includes("premium") || col.id === "col_premium" || idx === 2) return "12 weeks";
+    if (title.includes("starter") || col.id === "col_starter" || col.id === "starter" || idx === 0) return "2 weeks";
+    if (title.includes("standard") || col.id === "col_standard" || col.id === "professional" || idx === 1) return "6 weeks";
+    if (title.includes("premium") || col.id === "col_premium" || col.id === "premium" || idx === 2) return "12 weeks";
 
     return "-";
   };
@@ -335,7 +452,9 @@ function BundleDetailsContent() {
   };
 
   const handleTierSelect = (tier: any) => {
-    setSelectedTier(tier);
+    const colIdx = columns.findIndex((c: any) => c.id === tier.id || c.title?.toLowerCase() === tier.title?.toLowerCase());
+    const enrichedTier = colIdx >= 0 ? columns[colIdx] : tier;
+    setSelectedTier(enrichedTier);
     setTimeout(() => {
       const el = document.getElementById("payment-section");
       el?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -343,7 +462,9 @@ function BundleDetailsContent() {
   };
 
   const handleSaveOrder = async (tier: any) => {
-    if (!((tier.price && tier.price !== "Get A Quote") || (tier.recurringAmount && Number(tier.recurringAmount) > 0))) {
+    const recPrice = parsePrice(tier.recurringAmount ?? tier.recurringPrice);
+    const setupPrice = parsePrice(tier.price);
+    if (!(setupPrice > 0 || recPrice > 0)) {
       router.push("/dashboard/new-project/custom-quote");
       return;
     }
@@ -351,26 +472,16 @@ function BundleDetailsContent() {
     setSelectedTier(tier);
     setProcessing(true);
     try {
-      const setupPrice = parsePrice(tier.price);
-      const recurringPrice = parsePrice(tier.recurringAmount);
-      const oneTimeItems = oneTimeFeatures
-        .filter((f: any) => {
-          const val = f.values?.[tier.id];
-          return val && val !== false;
-        })
+      const oneTimeItems = getIncludedFeatures("one-time", tier)
         .map((f: any) => f.name)
         .join(", ");
 
-      const recurringItems = recurringFeatures
-        .filter((f: any) => {
-          const val = f.values?.[tier.id];
-          return val && val !== false;
-        })
+      const recurringItems = getIncludedFeatures("monthly", tier)
         .map((f: any) => f.name)
         .join(", ");
 
       const recurringDuration = tier.recurringTimeline
-        ? `${tier.recurringTimeline.value} ${tier.recurringTimeline.type}`
+        ? (typeof tier.recurringTimeline === "object" ? `${tier.recurringTimeline.value} ${tier.recurringTimeline.type}` : "Monthly")
         : "Monthly";
 
       const res = await paymentService.createOrder({
@@ -387,7 +498,7 @@ function BundleDetailsContent() {
           description: pkg.description,
           lineItems: oneTimeItems,
           recurringLineItems: recurringItems,
-          recurringAmount: recurringPrice,
+          recurringAmount: recPrice,
           fullAmount: setupPrice,
           duration: getDurationLabel(tier),
           recurringDuration: recurringDuration,
@@ -420,7 +531,7 @@ function BundleDetailsContent() {
   };
 
   const renderCellValue = (val: any) => {
-    if (val === false || val === null || val === undefined) {
+    if (val === false || val === null || val === undefined || val === "false") {
       return (
         <div className="w-6 h-6 rounded-full bg-gray-500 flex items-center justify-center mx-auto">
           <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -429,7 +540,7 @@ function BundleDetailsContent() {
         </div>
       );
     }
-    if (val === true) {
+    if (val === true || val === "true") {
       return <CheckIcon />;
     }
     if (typeof val === "string" && val.startsWith("__LINK__:")) {
@@ -481,6 +592,7 @@ function BundleDetailsContent() {
 
   const currentDate = mountedDate || new Date();
   const deadlineDate = getDeadlineDate(selectedTier);
+  const recurringAmount = parsePrice(selectedTier?.recurringAmount ?? selectedTier?.recurringPrice);
 
   return (
     <div className="bg-white min-h-screen flex flex-col font-sans text-[#404040]">
@@ -536,8 +648,8 @@ function BundleDetailsContent() {
                   </h3>
                 </div>
                 {columns.map((col: any, idx: number) => {
-                  const isCustom = col.id === "col_custom" || idx === columns.length - 1;
-                  const isPaid = (col.price && col.price !== "Get A Quote") || (col.recurringAmount && Number(col.recurringAmount) > 0);
+                  const isCustom = col.id === "col_custom" || col.id === "tier_1787673409959" || idx === columns.length - 1;
+                  const isPaid = (col.price && col.price !== "Get A Quote" && parsePrice(col.price) > 0) || (parsePrice(col.recurringAmount ?? col.recurringPrice) > 0);
                   return (
                     <div
                       key={idx}
@@ -552,10 +664,10 @@ function BundleDetailsContent() {
                         {isPaid ? (
                           <div className="flex flex-col items-center justify-center">
                             <span className="text-lg xs:text-xl sm:text-2xl lg:text-[28px] font-bold leading-tight tracking-tight text-center whitespace-nowrap max-w-full text-gray-800">
-                              {formatPrice(col.price && col.price !== "Get A Quote" ? col.price : col.recurringAmount)}
+                              {formatPrice(col.price && col.price !== "Get A Quote" ? col.price : (col.recurringAmount ?? col.recurringPrice))}
                             </span>
                             <span className="text-[10px] md:text-[12px] font-medium text-gray-500 uppercase tracking-tighter mt-1 text-center whitespace-nowrap">
-                              {Number(col.price) > 0 ? "Setup Cost" : "Price"}
+                              {parsePrice(col.price) > 0 ? "Setup Cost" : "Price"}
                             </span>
                           </div>
                         ) : (
@@ -584,7 +696,7 @@ function BundleDetailsContent() {
                     </div>
                     {columns.map((col: any, cIdx: number) => (
                       <div key={cIdx} className="p-4 md:p-5 flex items-center justify-center text-center">
-                        {renderCellValue(feature.values?.[col.id])}
+                        {renderCellValue(getFeatureValue(feature, col, cIdx))}
                       </div>
                     ))}
                   </div>
@@ -620,9 +732,9 @@ function BundleDetailsContent() {
                 <div className="p-4 md:p-8" />
                 {columns.map((col: any, idx: number) => {
                   const isPaid =
-                    (col.price && col.price !== "Get A Quote") ||
-                    (col.recurringAmount && Number(col.recurringAmount) > 0);
-                  const isSelected = selectedTier?.id === col.id;
+                    (col.price && col.price !== "Get A Quote" && parsePrice(col.price) > 0) ||
+                    (parsePrice(col.recurringAmount ?? col.recurringPrice) > 0);
+                  const isSelected = selectedTier?.id === col.id || selectedTier?.title?.toLowerCase() === col.title?.toLowerCase();
                   return (
                     <div key={idx} className="p-4 md:p-8 flex items-center justify-center">
                       <button
@@ -657,8 +769,8 @@ function BundleDetailsContent() {
                       </h3>
                     </div>
                     {columns.map((col: any, idx: number) => {
-                      const isCustom = col.id === "col_custom" || idx === columns.length - 1;
-                      const hasRec = Number(col.recurringAmount || 0) > 0;
+                      const isCustom = col.id === "col_custom" || col.id === "tier_1787673409959" || idx === columns.length - 1;
+                      const hasRec = parsePrice(col.recurringAmount ?? col.recurringPrice) > 0;
                       return (
                         <div
                           key={idx}
@@ -673,7 +785,7 @@ function BundleDetailsContent() {
                             {hasRec ? (
                               <>
                                 <span className="text-lg xs:text-xl sm:text-2xl lg:text-[28px] font-bold text-gray-800 leading-tight tracking-tight text-center whitespace-nowrap max-w-full">
-                                  {formatPrice(Number(col.recurringAmount || 0))}
+                                  {formatPrice(parsePrice(col.recurringAmount ?? col.recurringPrice))}
                                 </span>
                                 <span className="text-[10px] md:text-[12px] font-medium text-gray-500 uppercase tracking-tighter mt-1 text-center whitespace-nowrap">
                                   Recurring Phase Cost
@@ -704,7 +816,7 @@ function BundleDetailsContent() {
                         </div>
                         {columns.map((col: any, cIdx: number) => (
                           <div key={cIdx} className="p-4 md:p-5 flex items-center justify-center text-center">
-                            {renderCellValue(feature.values?.[col.id])}
+                            {renderCellValue(getFeatureValue(feature, col, cIdx))}
                           </div>
                         ))}
                       </div>
@@ -771,14 +883,14 @@ function BundleDetailsContent() {
                     </h3>
                     <div className="flex items-center gap-6">
                       <div className="flex flex-col items-end">
-                        <div className="text-3xl md:text-4xl font-bold text-gray-700">
+                        <div className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-600">
                           {formatPrice(parsePrice(selectedTier.price))}
                         </div>
                         <div className="flex flex-col items-end mt-1">
                           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">One-Time Setup Fee</span>
-                          {parsePrice(selectedTier.recurringAmount) > 0 && (
+                          {recurringAmount > 0 && (
                             <span className="text-xs font-semibold text-blue-600 mt-0.5">
-                              + {formatPrice(parsePrice(selectedTier.recurringAmount))}/mo maintenance later
+                              + {formatPrice(recurringAmount)}/mo maintenance later
                             </span>
                           )}
                         </div>
@@ -816,39 +928,23 @@ function BundleDetailsContent() {
                   <div>
                     <h4 className="text-base font-bold text-gray-700 mb-4">Included:</h4>
                     <ul className="space-y-3">
-                      {oneTimeFeatures
-                        .filter((f: any) => {
-                          const val = f.values?.[selectedTier.id];
-                          return val && val !== false;
-                        })
-                        .map((feature: any, idx: number) => {
-                          const rawVal = feature.values?.[selectedTier.id];
-                          let label = "";
-                          if (typeof rawVal === "string") {
-                            if (rawVal.startsWith("__LINK__:")) {
-                              label = rawVal.replace("__LINK__:", "").split("|")[0];
-                            } else {
-                              label = rawVal;
-                            }
-                          }
-                          return (
-                            <li key={idx} className="flex items-start gap-3 text-sm text-gray-600">
-                              <svg
-                                className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2.5}
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
-                              <span>
-                                <strong className="font-bold text-gray-700">{feature.name}</strong>
-                                {label ? `: ${label}` : ""}
-                              </span>
-                            </li>
-                          );
-                        })}
+                      {getIncludedFeatures("one-time").map((feature: any, idx: number) => (
+                        <li key={idx} className="flex items-start gap-3 text-sm text-gray-600">
+                          <svg
+                            className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2.5}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>
+                            <strong className="font-bold text-gray-700">{feature.name}</strong>
+                            {feature.displayLabel ? `: ${feature.displayLabel}` : ""}
+                          </span>
+                        </li>
+                      ))}
                     </ul>
                   </div>
 
@@ -865,14 +961,10 @@ function BundleDetailsContent() {
                     description={pkg.description}
                     date={new Date().toISOString()}
                     totalCost={parsePrice(selectedTier.price)}
+                    depositAmount={parsePrice(selectedTier.price) > 0 ? parsePrice(selectedTier.price) / 2 : undefined}
                     deliverableItems={(() => {
-                      const oneTimeDetails = oneTimeFeatures
-                        .filter((f: any) => {
-                          const val = f.values?.[selectedTier.id];
-                          return val && val !== false;
-                        })
-                        .map((f: any) => f.name)
-                        .join(", ");
+                      const oneTimeList = getIncludedFeatures("one-time");
+                      const oneTimeDetails = oneTimeList.map((f: any) => f.name).join(", ");
 
                       const items: any[] = [
                         {
@@ -884,21 +976,16 @@ function BundleDetailsContent() {
                           isAddOn: false,
                         },
                       ];
-                      if (parsePrice(selectedTier.recurringAmount) > 0) {
-                        const recurringDetails = recurringFeatures
-                          .filter((f: any) => {
-                            const val = f.values?.[selectedTier.id];
-                            return val && val !== false;
-                          })
-                          .map((f: any) => f.name)
-                          .join(", ");
+                      if (recurringAmount > 0) {
+                        const recurringList = getIncludedFeatures("monthly");
+                        const recurringDetails = recurringList.map((f: any) => f.name).join(", ");
 
                         items.push({
                           description: "Ongoing Maintenance Phase",
                           details: recurringDetails || "Website Maintenance, SEO, Social Media",
-                          amount: parsePrice(selectedTier.recurringAmount),
-                          duration: selectedTier.recurringTimeline ? `${selectedTier.recurringTimeline.value}` : "1",
-                          unit: selectedTier.recurringTimeline ? selectedTier.recurringTimeline.type : "Month",
+                          amount: recurringAmount,
+                          duration: selectedTier.recurringTimeline ? `${selectedTier.recurringTimeline.value || selectedTier.recurringTimeline}` : "1",
+                          unit: selectedTier.recurringTimeline?.type || "Month",
                           isAddOn: true,
                         });
                       }
@@ -915,25 +1002,17 @@ function BundleDetailsContent() {
                       packageName: pkg.name,
                       tierId: selectedTier.id,
                       tierTitle: selectedTier.title,
-                      lineItems: oneTimeFeatures
-                        .filter((f: any) => {
-                          const val = f.values?.[selectedTier.id];
-                          return val && val !== false;
-                        })
+                      lineItems: getIncludedFeatures("one-time")
                         .map((f: any) => f.name)
                         .join(", "),
-                      recurringLineItems: recurringFeatures
-                        .filter((f: any) => {
-                          const val = f.values?.[selectedTier.id];
-                          return val && val !== false;
-                        })
+                      recurringLineItems: getIncludedFeatures("monthly")
                         .map((f: any) => f.name)
                         .join(", "),
-                      recurringAmount: parsePrice(selectedTier.recurringAmount),
+                      recurringAmount: recurringAmount,
                       fullAmount: parsePrice(selectedTier.price),
                       duration: getDurationLabel(selectedTier),
                       recurringDuration: selectedTier.recurringTimeline
-                        ? `${selectedTier.recurringTimeline.value} ${selectedTier.recurringTimeline.type}`
+                        ? `${selectedTier.recurringTimeline.value || selectedTier.recurringTimeline} ${selectedTier.recurringTimeline.type || "Month"}`
                         : "Monthly",
                       billingType: "mixed",
                     }}
