@@ -1,4 +1,5 @@
 import { authService } from "./authService";
+import type { CalculatorSelection } from "./priceCalculatorService";
 import {
   calculateGraphicsRawTimelineDays,
   calculateSeoRawTimelineDays,
@@ -207,6 +208,22 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
   // Baseline from item selections when API timeline not yet stored
   let graphicsRawTimelineDays = 0;
   let seoRawTimelineDays = 0;
+  const selectionsMap: Record<string, CalculatorSelection> = Array.isArray(rawSelections)
+    ? Object.fromEntries(
+        rawSelections
+          .filter((s: any) => s && s.questionKey)
+          .map((s: any) => [
+            s.questionKey,
+            {
+              questionKey: s.questionKey,
+              answerKeys: Array.isArray(s.answerKeys) ? s.answerKeys : [],
+              textValue: s.textValue,
+              numericValue: s.numericValue,
+            },
+          ])
+      )
+    : {};
+
   if (categoryKey === "graphics" && Array.isArray(rawSelections)) {
     const itemsSel = rawSelections.find(
       (s: any) =>
@@ -218,7 +235,18 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
       (s: any) => s.questionKey === "GD_TIER" || s.questionKey === "1"
     );
     const tier = tierSel?.answerKeys?.[0] || "standard";
-    graphicsRawTimelineDays = calculateGraphicsRawTimelineDays(itemsSel, rawSelections, tier);
+    const pseudoQuestion = itemsSel
+      ? {
+          key: itemsSel.questionKey,
+          answers: Array.isArray(itemsSel.answers)
+            ? itemsSel.answers
+            : (itemsSel.answerKeys || []).map((k: string) => ({
+                key: k,
+                metadata: itemsSel.answerMetadata?.[k],
+              })),
+        }
+      : undefined;
+    graphicsRawTimelineDays = calculateGraphicsRawTimelineDays(pseudoQuestion, selectionsMap, tier);
   } else if (categoryKey === "seo" && Array.isArray(rawSelections)) {
     const itemsSel = rawSelections.find(
       (s: any) => s.questionKey === "SEO_ITEMS" || s.questionKey === "2"
@@ -227,18 +255,23 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
       (s: any) => s.questionKey === "SEO_TIER" || s.questionKey === "1"
     );
     const tier = tierSel?.answerKeys?.[0] || "starter";
-    seoRawTimelineDays = calculateSeoRawTimelineDays(itemsSel, rawSelections, tier);
+    const pseudoQuestion = itemsSel
+      ? {
+          key: itemsSel.questionKey,
+          answers: Array.isArray(itemsSel.answers)
+            ? itemsSel.answers
+            : (itemsSel.answerKeys || []).map((k: string) => ({
+                key: k,
+                metadata: itemsSel.answerMetadata?.[k],
+              })),
+        }
+      : undefined;
+    seoRawTimelineDays = calculateSeoRawTimelineDays(pseudoQuestion, selectionsMap, tier);
   }
 
   let seoServiceMode: string | undefined =
     categoryKey === "seo" && Array.isArray(rawSelections)
-      ? getSeoServiceMode(
-          Object.fromEntries(
-            rawSelections
-              .filter((s: any) => /SEO_TYPE|SEO_SERVICE_TYPE|^0$/.test(s.questionKey || ""))
-              .map((s: any) => [s.questionKey, { questionKey: s.questionKey, answerKeys: s.answerKeys || [] }])
-          )
-        )
+      ? getSeoServiceMode(selectionsMap)
       : data.seoServiceMode;
 
   if (categoryKey === "seo" && !seoServiceMode) {
