@@ -1449,7 +1449,7 @@ export default function AnalysisDetailsPage() {
         <div className="flex-grow border-t border-gray-300"></div>
       </div>
 
-      <div ref={messagesEndRef} className="h-4 w-full shrink-0 snjhjdjjhghj" />
+      <div ref={messagesEndRef} className="h-4 w-full shrink-0" />
 
       {/* New Message Box Form */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden w-full">
