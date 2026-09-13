@@ -17,6 +17,7 @@ export default function SubmitTicketPage() {
   });
   const [attachments, setAttachments] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{ subject?: string; description?: string }>({});
   const [popup, setPopup] = useState({
     isOpen: false,
     type: "success" as "success" | "error",
@@ -46,25 +47,16 @@ export default function SubmitTicketPage() {
       return;
     }
 
+    const newErrors: { subject?: string; description?: string } = {};
     if (formData.subject.trim().length < 5) {
-      setPopup({
-        isOpen: true,
-        type: "error",
-        title: "Invalid Subject",
-        message: "Subject must be at least 5 characters long.",
-        actionButton: undefined,
-      });
-      return;
+      newErrors.subject = "Subject must be at least 5 characters long.";
+    }
+    if (formData.description.trim().length < 10) {
+      newErrors.description = "Description must be at least 10 characters long.";
     }
 
-    if (formData.description.trim().length < 10) {
-      setPopup({
-        isOpen: true,
-        type: "error",
-        title: "Invalid Description",
-        message: "Description message must be at least 10 characters long.",
-        actionButton: undefined,
-      });
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -99,19 +91,15 @@ export default function SubmitTicketPage() {
       const res: any = await supportService.createTicket(payload);
 
       if (res?.isSuccessful || res?.statusCode === 201 || res?.data) {
-        const ticketNum = res.data?.ticketNumber || res.data?._id?.slice(-8).toUpperCase();
-        setPopup({
-          isOpen: true,
-          type: "success",
-          title: "Ticket Submitted!",
-          message: `Your support ticket ${ticketNum ? `#${ticketNum} ` : ""}has been created successfully. Our team will review it soon.`,
-          actionButton: {
-            text: "View Support History",
-            onClick: () => router.push("/help-support/history"),
-          },
-        });
         setFormData({ subject: "", type: "general", description: "" });
         setAttachments([]);
+        setErrors({});
+        const ticketId = res.data?._id || res.data?.ticket?._id || res.data?.id || res._id;
+        if (ticketId) {
+          router.push(`/help-support/history/${ticketId}`);
+        } else {
+          router.push("/help-support/history");
+        }
       } else {
         throw new Error(res?.message || "Failed to submit ticket");
       }
@@ -230,20 +218,25 @@ export default function SubmitTicketPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="mb-12 max-w-5xl">
+        <form onSubmit={handleSubmit} noValidate className="mb-12 max-w-5xl">
           <div className="flex flex-col md:flex-row gap-6 md:gap-12 mb-8 items-start">
             <div className="flex-1 w-full md:max-w-[400px]">
               <label className="text-sm font-bold text-gray-600 mb-2 block">
                 Subject <span className="text-red-500">*</span>
               </label>
               <input
-                className="w-full border border-gray-400 rounded-[4px] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 h-[42px]"
+                className={`w-full border ${errors.subject ? "border-red-500" : "border-gray-400"} rounded-[4px] px-3 py-2 text-sm focus:outline-none focus:ring-1 ${errors.subject ? "focus:ring-red-400" : "focus:ring-gray-400"} h-[42px]`}
                 placeholder="Brief summary of the issue"
                 type="text"
-                required
                 value={formData.subject}
-                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, subject: e.target.value });
+                  if (errors.subject) setErrors((prev) => ({ ...prev, subject: undefined }));
+                }}
               />
+              {errors.subject && (
+                <p className="text-xs text-red-500 mt-1">{errors.subject}</p>
+              )}
               <div className="mt-6">
                 <label className="text-sm font-bold text-gray-600 mb-2 block">Ticket Type</label>
                 <div className="relative">
@@ -305,15 +298,18 @@ export default function SubmitTicketPage() {
                   {attachments.map((file, i) => (
                     <span
                       key={i}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-gray-100 border border-gray-300 text-xs text-gray-700 font-medium"
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-[#F1F3F5] text-xs text-[#404040] font-medium"
                     >
-                      {file.name}
+                      <span className="max-w-[200px] truncate">{file.name}</span>
                       <button
                         type="button"
                         onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))}
-                        className="text-gray-400 hover:text-gray-700 font-bold ml-1 cursor-pointer"
+                        className="text-red-500 hover:text-red-700 font-bold transition-colors cursor-pointer flex items-center justify-center p-0.5"
+                        aria-label={`Remove ${file.name}`}
                       >
-                        ×
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
                       </button>
                     </span>
                   ))}
@@ -327,12 +323,17 @@ export default function SubmitTicketPage() {
               Description <span className="text-red-500">*</span>
             </label>
             <textarea
-              required
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full border border-gray-400 rounded-[4px] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 h-32 resize-none"
+              onChange={(e) => {
+                setFormData({ ...formData, description: e.target.value });
+                if (errors.description) setErrors((prev) => ({ ...prev, description: undefined }));
+              }}
+              className={`w-full border ${errors.description ? "border-red-500" : "border-gray-400"} rounded-[4px] px-3 py-2 text-sm focus:outline-none focus:ring-1 ${errors.description ? "focus:ring-red-400" : "focus:ring-gray-400"} h-32 resize-none`}
               placeholder="Please explain your issue in detail..."
             ></textarea>
+            {errors.description && (
+              <p className="text-xs text-red-500 mt-1">{errors.description}</p>
+            )}
           </div>
 
           <div className="flex justify-center mt-12">
