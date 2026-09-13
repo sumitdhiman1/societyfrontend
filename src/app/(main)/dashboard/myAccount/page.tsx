@@ -409,7 +409,8 @@ export default function MyAccountPage() {
         businessPhoneNumber: user.businessPhoneNumber || user.phoneNumber || "",
         companyName: user.companyName || "",
         registrationNumber: user.registrationNumber || "",
-        taxId: user.taxId || "",
+        vatNumber: user.vatNumber || user.taxId || "",
+        taxId: user.taxId || user.vatNumber || "",
         country: user.country || "",
         state: user.state || "",
         city: user.city || "",
@@ -424,7 +425,8 @@ export default function MyAccountPage() {
         billingCompanyName: user.billingCompanyName || "",
         billingRegistrationNumber: user.billingRegistrationNumber || "",
         billingPhoneNumber: user.billingPhoneNumber || "",
-        billingTaxId: user.billingTaxId || "",
+        billingVatNumber: user.billingVatNumber || user.billingTaxId || "",
+        billingTaxId: user.billingTaxId || user.billingVatNumber || "",
         billingCountry: user.billingCountry || "",
         billingState: user.billingState || "",
         billingCity: user.billingCity || "",
@@ -769,11 +771,14 @@ export default function MyAccountPage() {
                   onChange={(e: any) => updateField("registrationNumber", e.target.value)}
                 />
 
-                {/* Row 2: Company VAT Number / Tax ID | Phone Number */}
+                {/* Row 2: VAT Number / Tax ID | Phone Number */}
                 <InputField
-                  label="Company VAT Number / Tax ID"
-                  value={user?.taxId || ""}
-                  onChange={(e: any) => updateField("taxId", e.target.value)}
+                  label="VAT Number / Tax ID"
+                  value={user?.vatNumber || user?.taxId || ""}
+                  onChange={(e: any) => {
+                    updateField("vatNumber", e.target.value);
+                    updateField("taxId", e.target.value);
+                  }}
                 />
                 <InputField
                   label="Phone Number"
@@ -896,9 +901,12 @@ export default function MyAccountPage() {
                     />
 
                     <InputField
-                      label="Billing Company VAT Number / Tax ID"
-                      value={user?.billingTaxId || ""}
-                      onChange={(e: any) => updateField("billingTaxId", e.target.value)}
+                      label="Billing VAT Number / Tax ID"
+                      value={user?.billingVatNumber || user?.billingTaxId || ""}
+                      onChange={(e: any) => {
+                        updateField("billingVatNumber", e.target.value);
+                        updateField("billingTaxId", e.target.value);
+                      }}
                     />
                     <InputField
                       label="Billing Phone Number"
