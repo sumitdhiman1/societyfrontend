@@ -20,10 +20,11 @@ function formatPdfDate(dateInput: any): string {
   if (!dateInput) return "";
   const d = new Date(dateInput);
   if (isNaN(d.getTime())) return String(dateInput);
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const m = months[d.getMonth()];
+  const dd = d.getDate();
   const yyyy = d.getFullYear();
-  return `${mm}/${dd}/${yyyy}`;
+  return `${m} ${dd}, ${yyyy}`;
 }
 
 export interface CalculatorPDFData {
@@ -525,10 +526,27 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
   let resolvedClientName = clientName;
   let resolvedClientEmail = clientEmail;
   let hideClientEmail = false;
-  if (isCalculatorEstimatePdf) {
-    resolvedClientName = "Guest User";
-    resolvedClientEmail = "";
-    hideClientEmail = true;
+
+  if (!resolvedClientName || resolvedClientName === "Client") {
+    if (currentUser?.fullName) {
+      resolvedClientName = currentUser.fullName;
+    } else if (currentUser?.firstName) {
+      resolvedClientName = `${currentUser.firstName} ${currentUser.lastName || ""}`.trim();
+    } else {
+      resolvedClientName = isCalculatorEstimatePdf ? "Sonu Dhiman" : "Guest User";
+    }
+  }
+
+  if (!resolvedClientEmail && currentUser?.email) {
+    resolvedClientEmail = currentUser.email;
+  }
+  if (!resolvedClientEmail || resolvedClientEmail === "contact@societywebsolutions.com") {
+    if (isCalculatorEstimatePdf && !resolvedClientEmail) {
+      resolvedClientEmail = "dhimans273@gmail.com";
+      hideClientEmail = false;
+    } else {
+      hideClientEmail = true;
+    }
   }
 
   // Sanitize description and subtitle to prevent dumping raw serialized choices
@@ -574,106 +592,277 @@ const LOGO_SVG = `
   </svg>
 `;
 
-function renderSelectedOptionsList(options: Array<{ question: string; answers: string[] }>): string {
+function renderSelectedOptionsList(options: Array<{ question: string; answers: string[] }>, isFirstPage: boolean = true): string {
+  if (!options.length) return "";
+  const marginTop = isFirstPage ? "20px" : "0px";
   return `
-    <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px;">
+    <div style="display: flex; flex-direction: column; gap: 15px; margin-top: ${marginTop}; margin-bottom: 20px;">
       ${options
-      .map((opt) => {
-        const cleanQuestion = opt.question.trim().replace(/:$/, "");
-        const hasMultiple = opt.answers.length > 1;
-        return `
-            <div>
-              <div style="font-size: 13.5px; font-weight: 700; color: #0F172A; margin-bottom: 5px;">${cleanQuestion}</div>
-              ${hasMultiple
-            ? `<div style="display: flex; flex-direction: column; gap: 4px; padding-left: 2px;">
-                      ${opt.answers
-              .map((ans) => `<div style="font-size: 12px; color: #475569; line-height: 1.5;">• ${ans.replace(/^[•\-\*]\s*/, "")}</div>`)
-              .join("")}
-                    </div>`
-            : `<div style="font-size: 12px; color: #475569; line-height: 1.5; padding-left: 2px;">${opt.answers[0] || "-"}</div>`
+        .map((opt) => {
+          let cleanQuestion = opt.question.trim();
+          if (!cleanQuestion.endsWith("?") && !cleanQuestion.endsWith(":")) {
+            cleanQuestion = cleanQuestion + "?:";
+          } else if (cleanQuestion.endsWith("?")) {
+            cleanQuestion = cleanQuestion + ":";
           }
+          const hasMultiple = opt.answers.length > 1;
+          return `
+            <div style="display: flex; flex-direction: column; align-items: flex-start;">
+              <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 13px; line-height: 1.4; color: #0F172A; margin: 0 0 4px 0;">${cleanQuestion}</div>
+              ${hasMultiple
+                ? `<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 3px;">
+                    ${opt.answers
+                      .map((ans) => `<li style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12.5px; line-height: 1.5; color: #475569; position: relative; padding-left: 14px;"><span style="position: absolute; left: 0; color: #64748B;">•</span>${ans.replace(/^[•\-\*]\s*/, "")}</li>`)
+                      .join("")}
+                  </ul>`
+                : `<div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12.5px; line-height: 1.5; color: #475569; margin: 0;">${opt.answers[0] || "Included"}</div>`
+              }
             </div>
           `;
-      })
-      .join("")}
+        })
+        .join("")}
     </div>
   `;
 }
 
-function renderSummaryBoxAndFooter(d: CalculatorPDFData, currentPage: number, totalPages: number): string {
+function renderSummaryBoxAndFooter(d: CalculatorPDFData): string {
   return `
-    <div style="margin-top: auto; padding-top: 10px;">
-      <!-- Estimated Timeline & Investment Total Box -->
-      <div style="display: flex; justify-content: flex-end; margin-bottom: 22px;">
-        <div style="width: 310px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
-          <!-- Top Row (Estimated Timeline) -->
-          <table style="width: 100%; border-collapse: collapse; background-color: #0D1939; margin: 0; padding: 0;">
-            <tbody>
-              <tr>
-                <td style="padding: 12px 18px; vertical-align: middle; text-align: left;">
-                  <span style="font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #94A3B8; display: inline-block; vertical-align: middle; line-height: 1;">ESTIMATED TIMELINE</span>
-                </td>
-                <td style="padding: 12px 18px; vertical-align: middle; text-align: right;">
-                  <span style="font-size: 13.5px; font-weight: 800; color: #FFFFFF; display: inline-block; vertical-align: middle; line-height: 1;">${d.duration}</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <!-- Bottom Row (Investment Total) -->
-          <table style="width: 100%; border-collapse: collapse; background-color: #282BB3; margin: 0; padding: 0;">
-            <tbody>
-              <tr>
-                <td style="padding: 16px 18px; vertical-align: middle; text-align: left;">
-                  <span style="font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #FFFFFF; display: inline-block; vertical-align: middle; line-height: 1;">INVESTMENT TOTAL</span>
-                </td>
-                <td style="padding: 10px 18px 15px 0px; vertical-align: middle; text-align: right;">
-                  <span style="font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: #FFFFFF; display: inline-block; vertical-align: middle; line-height: 1;">${d.formattedPrice}</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+    <div style="margin-top: 28px; width: 100%;">
+      <!-- Summary Card: Timeline + Investment -->
+      <div style="display: flex; justify-content: flex-end;">
+        <div style="width: 320px; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+          <!-- Timeline Row -->
+          <div style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; height: 44px;">
+            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">ESTIMATED TIMELINE</span>
+            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF;">${d.duration}</span>
+          </div>
+          <!-- Investment Row -->
+          <div style="background-color: #2A2AA0; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; height: 64px;">
+            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12.5px; letter-spacing: 0.05em; color: #FFFFFF; text-transform: uppercase;">INVESTMENT TOTAL</span>
+            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 23px; color: #FFFFFF;">${d.formattedPrice}</span>
+          </div>
         </div>
       </div>
 
-      <!-- Footer -->
-      <div style="border-top: 1px solid #E2E8F0; padding-top: 14px; text-align: center;">
-        <div style="font-size: 9.5px; color: #64748B; margin-bottom: 3px;">Acceptance of this quote binds the client to the agreed delivery timeline and total investment.</div>
-        <div style="font-size: 9.5px; color: #64748B; margin-bottom: 3px;"><span style="font-weight: 700; color: #475569;">Note:</span> Time spent waiting for client replies does not count towards project deadlines.</div>
-        <div style="font-size: 9.5px; color: #64748B; margin-bottom: 10px;">For inquiries, please reach out to <span style="font-weight: 600; color: #2563EB;">contact@societywebsolutions.com</span></div>
-        <div style="display: flex; justify-content: ${totalPages > 1 ? "space-between" : "center"}; align-items: center; font-size: 8.5px; color: #94A3B8; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;">
-          <span>S O C I E T Y &nbsp; W E B &nbsp; S O L U T I O N S</span>
-          ${totalPages > 1 ? `<span style="letter-spacing: 0.5px; color: #64748B; font-weight: 600;">Page ${currentPage} of ${totalPages}</span>` : ""}
+      <!-- Divider Line -->
+      <div style="border-top: 1px solid #E5E7EB; margin-top: 26px; margin-bottom: 20px; width: 100%;"></div>
+
+      <!-- Footer (Centered) -->
+      <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-bottom: 4px;">
+        <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 9.5px; line-height: 1.5; color: #94A3B8; margin: 0;">Acceptance of this quote binds the client to the agreed delivery timeline and total investment.</p>
+        <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 9.5px; line-height: 1.5; color: #94A3B8; margin: 0;">Note: Time spent waiting for client replies does not count towards project deadlines.</p>
+        <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 9.5px; line-height: 1.5; color: #94A3B8; margin: 0;">For inquiries, please reach out to <span style="font-weight: 600; color: #64748B;">contact@societywebsolutions.com</span></p>
+        <div style="margin-top: 14px; text-align: center;">
+          <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.14em; color: #CBD5E1; text-transform: uppercase;">SOCIETY WEB SOLUTIONS</span>
         </div>
       </div>
     </div>
   `;
-}
-
-function renderScopeOverviewIntro(d: CalculatorPDFData): string {
-  if (d.scopeOverviewLead) {
-    return `<div style="font-size: 13.5px; font-weight: 700; color: #0F172A; line-height: 1.5; margin-bottom: 18px;">${d.scopeOverviewLead}</div>`;
-  }
-  if (d.subtitle) {
-    return `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.subtitle}</div>`;
-  }
-  if (d.description) {
-    return `<div style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 18px;">${d.description}</div>`;
-  }
-  return "";
 }
 
 function renderPreparedForClientBlock(d: CalculatorPDFData): string {
   const emailLine =
     d.clientEmail && !d.hideClientEmail
-      ? `<div style="font-size: 12px; color: #64748B;">${d.clientEmail}</div>`
+      ? `<div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.4; color: #64748B;">${d.clientEmail}</div>`
       : "";
   return `
-    <div style="flex: 1;">
-      <div style="font-size: 9.5px; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">PREPARED FOR</div>
-      <div style="font-size: 17px; font-weight: 800; color: #0F172A; margin-bottom: 4px;">${d.clientName}</div>
+    <div style="display: flex; flex-direction: column;">
+      <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 10.5px; letter-spacing: 0.08em; color: #94A3B8; text-transform: uppercase; margin: 0 0 8px 0;">PREPARED FOR</div>
+      <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 15.5px; line-height: 1.3; color: #0F172A; margin: 0 0 3px 0;">${d.clientName}</div>
       ${emailLine}
     </div>
   `;
+}
+
+function estimateOptionHeight(opt: { question: string; answers: string[] }): number {
+  const cleanQ = (opt.question || "").trim();
+  const qLines = Math.max(1, Math.ceil(cleanQ.length / 60));
+  const qHeight = qLines * 18 + 4;
+
+  const answers = opt.answers || [];
+  let aHeight = 0;
+  if (answers.length <= 1) {
+    const text = answers[0] || "Included";
+    const aLines = Math.max(1, Math.ceil(text.length / 70));
+    aHeight = aLines * 19;
+  } else {
+    aHeight = answers.reduce((sum, a) => {
+      const lines = Math.max(1, Math.ceil(a.length / 65));
+      return sum + lines * 19 + 3;
+    }, 0);
+  }
+
+  return qHeight + aHeight + 15;
+}
+
+function paginateCalculatorOptions(
+  options: Array<{ question: string; answers: string[] }>
+): Array<Array<{ question: string; answers: string[] }>> {
+  if (!options || options.length === 0) return [[]];
+
+  const heights = options.map(estimateOptionHeight);
+  const totalHeight = heights.reduce((sum, h) => sum + h, 0);
+
+  // Single page capacity:
+  // If totalHeight <= 440px, everything fits on 1 single page!
+  if (totalHeight <= 440) {
+    return [options];
+  }
+
+  // Multi-page:
+  // Page 1 takes options up to 680px (fills Page 1 comfortably)
+  // Subsequent pages take up to 880px
+  const pages: Array<Array<{ question: string; answers: string[] }>> = [];
+  let currentPage: Array<{ question: string; answers: string[] }> = [];
+  let currentH = 0;
+  let pageIdx = 0;
+
+  for (let i = 0; i < options.length; i++) {
+    const opt = options[i];
+    const h = heights[i];
+    const capacity = pageIdx === 0 ? 680 : 880;
+
+    if (currentPage.length > 0 && currentH + h > capacity) {
+      pages.push(currentPage);
+      currentPage = [opt];
+      currentH = h;
+      pageIdx++;
+    } else {
+      currentPage.push(opt);
+      currentH += h;
+    }
+  }
+
+  if (currentPage.length > 0) {
+    pages.push(currentPage);
+  }
+
+  // If all options fit on Page 1 (totalHeight <= 680px) but totalHeight > 440:
+  // Page 1 has all questions, and Page 2 gets the Summary Box + Divider + Footer!
+  if (pages.length === 1 && totalHeight > 440) {
+    pages.push([]);
+  } else if (pages.length > 1) {
+    // If the last page options exceed 680px, split to keep summary box on final page
+    const lastP = pages[pages.length - 1];
+    const lastPH = lastP.reduce((sum, o) => sum + estimateOptionHeight(o), 0);
+    if (lastPH > 680) {
+      const splitIdx = Math.floor(lastP.length / 2);
+      if (splitIdx > 0) {
+        const moved = lastP.splice(splitIdx);
+        pages.push(moved);
+      }
+    }
+  }
+
+  return pages;
+}
+
+export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
+  const options = d.selectedOptions || [];
+  const pages = paginateCalculatorOptions(options);
+  const totalPages = pages.length;
+
+  return pages
+    .map((pageOptions, index) => {
+      const pageNum = index + 1;
+      const isFirstPage = pageNum === 1;
+      const isLastPage = pageNum === totalPages;
+
+      return `
+    <div class="pdf-page" style="
+      width: 794px;
+      height: 1123px;
+      min-height: 1123px;
+      max-height: 1123px;
+      box-sizing: border-box;
+      background-color: #FFFFFF;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #202124;
+      padding: 72px 78px 56px;
+      display: flex;
+      flex-direction: column;
+      justify-content: ${totalPages === 1 ? "space-between" : "flex-start"};
+      overflow: hidden;
+      page-break-after: ${isLastPage ? "auto" : "always"};
+      break-after: ${isLastPage ? "auto" : "page"};
+    ">
+      <div style="width: 100%;">
+        ${
+          isFirstPage
+            ? `
+        <!-- ── Main Header ── -->
+        <header style="width: 100%; display: flex; flex-direction: row; justify-content: space-between; align-items: flex-start; margin: 0; padding: 0; box-sizing: border-box;">
+          <div style="display: flex; align-items: flex-start; margin: 0; padding-top: 2px;">
+            ${LOGO_SVG}
+          </div>
+          <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; margin: 0; padding: 0; white-space: nowrap;">
+            <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.01em; color: #2A2AA0; margin: 0 0 5px 0; line-height: 1; padding: 0;">PROJECT PROPOSAL</div>
+            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 13.5px; line-height: 1.3; color: #1E293B; margin-bottom: 3px;">Society Web Solutions</div>
+            <div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.45; color: #64748B;">1645 Palm Beach Lakes Blvd</div>
+            <div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.45; color: #64748B; margin-bottom: 2px;">West Palm Beach, FL, US</div>
+            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; line-height: 1.45; color: #2A2AA0;">
+              contact@societywebsolutions.com
+            </div>
+          </div>
+        </header>
+
+        <!-- ── Quote Card ── -->
+        <section style="
+          box-sizing: border-box;
+          width: 100%;
+          background: #F8FAFC;
+          border: 1px solid #E2E8F0;
+          border-radius: 8px;
+          padding: 18px 22px;
+          margin: 28px 0 0 0;
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+        ">
+          <!-- Prepared For -->
+          ${renderPreparedForClientBlock(d)}
+
+          <!-- Quote Details -->
+          <div style="width: 220px; display: flex; flex-direction: column;">
+            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 10.5px; letter-spacing: 0.08em; color: #94A3B8; text-transform: uppercase; margin: 0 0 8px 0;">QUOTE DETAILS</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Ref Number:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${d.projectNumber}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Issued On:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: #0F172A;">${d.issuedDate}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Valid Until:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: #0F172A;">${d.validUntilDate}</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Category & Subtitle Header ── -->
+        <div style="margin-top: 24px; margin-bottom: 20px;">
+          <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14px; color: #0F172A; margin-bottom: 3px;">Category: ${d.categoryName}</div>
+          ${(d.scopeOverviewLead || d.subtitle) ? `<div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 13px; color: #2A2AA0;">${d.scopeOverviewLead || d.subtitle}</div>` : ""}
+        </div>
+        `
+            : ""
+        }
+
+        <!-- ── Scope Questions for this page ── -->
+        ${renderSelectedOptionsList(pageOptions, isFirstPage)}
+      </div>
+
+      <!-- ── Footer / Summary Box (Only on final page) ── -->
+      ${
+        isLastPage
+          ? renderSummaryBoxAndFooter(d)
+          : ""
+      }
+    </div>
+    `;
+    })
+    .join("\n");
 }
 
 function appendCanvasToPdf(
@@ -682,76 +871,28 @@ function appendCanvasToPdf(
   pageWidth: number,
   pageHeight: number
 ): void {
-  const imgData = canvas.toDataURL("image/png");
-  const imgWidth = pageWidth;
+  const imgData = canvas.toDataURL("image/jpeg", 0.92);
   const imgHeight = (canvas.height * pageWidth) / canvas.width;
+
+  // Single page element (standard case for all paginated pages)
+  if (imgHeight <= pageHeight + 8) {
+    pdf.addImage(imgData, "JPEG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
+    return;
+  }
+
+  // Multi-page fallback if an element is unexpectedly taller than 1 page
   let heightLeft = imgHeight;
   let position = 0;
 
-  pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+  pdf.addImage(imgData, "JPEG", 0, position, pageWidth, imgHeight, undefined, "FAST");
   heightLeft -= pageHeight;
 
-  while (heightLeft > 0) {
+  while (heightLeft > 8) {
     position -= pageHeight;
     pdf.addPage();
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    pdf.addImage(imgData, "JPEG", 0, position, pageWidth, imgHeight, undefined, "FAST");
     heightLeft -= pageHeight;
   }
-}
-
-export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
-  const options = d.selectedOptions || [];
-
-  return `
-    <div class="pdf-page" style="width: 794px; min-height: 1123px; height: auto; box-sizing: border-box; background-color: #ffffff; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0F172A; padding: 40px 48px; display: flex; flex-direction: column; justify-content: space-between;">
-      <div>
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-          <div style="display: flex; align-items: center;">
-            ${LOGO_SVG}
-          </div>
-          <div style="text-align: right;">
-            <div style="font-size: 22px; font-weight: 900; color: #2B2D8C; letter-spacing: -0.5px; margin-bottom: 5px;">PROJECT PROPOSAL</div>
-            <div style="font-size: 11px; font-weight: 700; color: #1E293B; margin-bottom: 2px;">Society Web Solutions</div>
-            <div style="font-size: 11px; color: #64748B; margin-bottom: 2px;">1645 Palm Beach Lakes Blvd</div>
-            <div style="font-size: 11px; color: #64748B; margin-bottom: 2px;">West Palm Beach, FL, US</div>
-            <div style="font-size: 11px; font-weight: 600; color: #2563EB;">contact@societywebsolutions.com</div>
-          </div>
-        </div>
-
-        <div style="border-bottom: 1px solid #E2E8F0; margin-bottom: 24px;"></div>
-
-        <div style="background-color: #F8F9FA; border: 1px solid #E2E8F0; border-radius: 10px; padding: 18px 24px; display: flex; justify-content: space-between; margin-bottom: 28px;">
-          ${renderPreparedForClientBlock(d)}
-          <div style="width: 250px;">
-            <div style="font-size: 9.5px; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">QUOTE DETAILS</div>
-            <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 5px;">
-              <span style="color: #64748B;">Ref Number:</span>
-              <span style="font-weight: 700; color: #0F172A;">${d.projectNumber}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 5px;">
-              <span style="color: #64748B;">Issued On:</span>
-              <span style="font-weight: 700; color: #0F172A;">${d.issuedDate}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 11.5px;">
-              <span style="color: #64748B;">Valid Until:</span>
-              <span style="font-weight: 700; color: #D32F2F;">${d.validUntilDate}</span>
-            </div>
-          </div>
-        </div>
-
-        <div style="margin-bottom: 12px;">
-          <div style="font-size: 19px; font-weight: 800; color: #2B2D8C; margin-bottom: 10px;">Project Scope Overview</div>
-          <div style="border-bottom: 1px solid #E2E8F0; margin-bottom: 18px;"></div>
-        </div>
-
-        ${renderScopeOverviewIntro(d)}
-
-        ${renderSelectedOptionsList(options)}
-      </div>
-
-      ${renderSummaryBoxAndFooter(d, 1, 1)}
-    </div>
-  `;
 }
 
 function loadScript(src: string): Promise<void> {

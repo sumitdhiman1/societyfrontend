@@ -61,10 +61,10 @@ export default function MyQuotesPage() {
       const quoteList = Array.isArray(payload)
         ? payload
         : Array.isArray(payload?.quotes)
-          ? payload.quotes
-          : Array.isArray(payload?.data)
-            ? payload.data
-            : [];
+        ? payload.quotes
+        : Array.isArray(payload?.data)
+        ? payload.data
+        : [];
       setQuotes(quoteList);
 
       const pag = res?.pagination || payload?.pagination || {};
@@ -162,39 +162,14 @@ export default function MyQuotesPage() {
   };
 
   return (
-    <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-6 md:pb-8 flex flex-col justify-between">
+    <div className="bg-[#F4F5FA] min-h-screen flex flex-col font-sans">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-6 md:pb-8 flex flex-col justify-between">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-6 md:gap-0">
         <div className="w-full md:w-auto min-w-0 overflow-hidden">
           <div className="flex items-center gap-6 mb-8 md:mb-12">
             <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100">
               My Quotes
             </h1>
-
-            <div
-              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-              className="flex space-x-6 md:space-x-8 border-b border-gray-200 w-full overflow-x-auto hide-scrollbar"
-            >
-              <style jsx>{`
-                div::-webkit-scrollbar {
-                  display: none;
-                }
-              `}</style>
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    setCurrentPage(1);
-                  }}
-                  className={`pb-3 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 ${activeTab === tab.id
-                    ? "text-primary-300 border-b-2 border-primary-300"
-                    : "text-gray-500 hover:text-gray-700"
-                    }`}
-                >
-                  {tab.label} ({tab.count})
-                </button>
-              ))}
-            </div>
           </div>
 
           <div
@@ -208,10 +183,11 @@ export default function MyQuotesPage() {
                   setActiveTab(tab.id);
                   setCurrentPage(1);
                 }}
-                className={`pb-3 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 rounded-none cursor-pointer ${activeTab === tab.id
-                  ? "text-primary-300 border-b-2 border-primary-300"
-                  : "text-gray-500 hover:text-gray-700"
-                  }`}
+                className={`pb-3 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 rounded-none cursor-pointer ${
+                  activeTab === tab.id
+                    ? "text-primary-300 border-b-2 border-primary-300"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
               >
                 {tab.label} ({tab.count})
               </button>
@@ -236,8 +212,9 @@ export default function MyQuotesPage() {
       </div>
 
       <div
-        className={`space-y-6 mt-8 flex-grow flex flex-col transition-all duration-300 ${fetchingData ? "opacity-50 pointer-events-none" : "opacity-100"
-          }`}
+        className={`space-y-6 mt-8 flex-grow flex flex-col transition-all duration-300 ${
+          fetchingData ? "opacity-50 pointer-events-none" : "opacity-100"
+        }`}
       >
         {initialLoading && quotes.length === 0 ? (
           [1, 2, 3].map((i) => (
@@ -300,109 +277,98 @@ export default function MyQuotesPage() {
                   )}
                 </div>
 
-                {!initialLoading && pagination.totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 mt-12 py-4">
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${currentPage === 1
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95"
-                        }`}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+                  <div className="flex items-center justify-between w-full sm:w-auto gap-4">
+                    <span className="text-sm text-gray-500 font-medium whitespace-nowrap">
+                      {formatSubmittedDate(quote.createdAt)}
+                    </span>
+                    <span
+                      className={`px-4 py-1 rounded-[4px] text-xs font-bold uppercase border whitespace-nowrap ${getStatusBadgeStyles(
+                        quote.status
+                      )}`}
                     >
-                      Previous
-                    </button>
-                    <div className="flex items-center gap-1 mx-4">
-                      {[...Array(pagination.totalPages)].map((_, i) => (
-                        <button
-                          key={i + 1}
-                          onClick={() => setCurrentPage(i + 1)}
-                          className={`w-10 h-10 flex items-center justify-center rounded-[4px] text-sm font-bold transition-all ${currentPage === i + 1
-                            ? "bg-primary-300 text-white shadow-lg shadow-blue-500/20"
-                            : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
-                            }`}
-                        >
-                          {i + 1}
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
-                      disabled={currentPage === pagination.totalPages}
-                      className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${currentPage === pagination.totalPages
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95"
-                        }`}
-                    >
-                      Next
-                    </button>
-                  </div>
-                )}
-
-                {/* New Quote Banner */}
-                {/* New Quote Banner */}
-                <div className="border border-dashed border-[#717171] rounded-[8px] p-8 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 mt-8">
-                  <h3
-                    className="text-[22px] font-bold text-gray-900 font-sans"
-                    style={{ fontFamily: "var(--font-inter), sans-serif" }}
-                  >
-                    New Quote
-                  </h3>
-                  <button
-                    onClick={() => router.push("/dashboard/new-project/custom-quote")}
-                    className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-[15px] font-bold py-3.5 px-8 rounded-[7px] transition-all shadow-sm whitespace-nowrap font-sans border-2 border-[#4343F0] cursor-pointer"
-                  >
-                    Create a New Quote
-                  </button>
-                </div>
-              </div>
-
-              {!initialLoading && pagination.totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 mt-12 py-4">
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${currentPage === 1
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
-                      }`}
-                  >
-                    Previous
-                  </button>
-                  <div className="flex items-center gap-1 mx-4">
-                    {[...Array(pagination.totalPages)].map((_, i) => (
-                      <button
-                        key={i + 1}
-                        onClick={() => setCurrentPage(i + 1)}
-                        className={`w-10 h-10 flex items-center justify-center rounded-[4px] text-sm font-bold transition-all cursor-pointer ${currentPage === i + 1
-                          ? "bg-primary-300 text-white shadow-lg shadow-blue-500/20"
-                          : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
-                          }`}
-                      >
-                        {i + 1}
-                      </button>
-                    ))}
+                      {quote.status}
+                    </span>
                   </div>
                   <button
-                    onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
-                    disabled={currentPage === pagination.totalPages}
-                    className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${currentPage === pagination.totalPages
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
-                      }`}
+                    onClick={() => {
+                      const id = quote.quoteId || quote._id;
+                      router.push(`/dashboard/my-quotes/${id}`);
+                    }}
+                    className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-sm font-bold py-2.5 px-6 rounded-[4px] transition-colors whitespace-nowrap cursor-pointer"
                   >
-                    Next
+                    View details
                   </button>
                 </div>
-              )}
-
-              <div className="mt-10 md:mt-14 mb-2">
-                <SupportNewsletter noPadding />
               </div>
             </div>
           ))
         )}
+
+        {/* New Quote Banner */}
+        <div className="border border-dashed border-[#717171] rounded-[8px] p-8 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 mt-8">
+          <h3
+            className="text-[22px] font-bold text-gray-900 font-sans"
+            style={{ fontFamily: "var(--font-inter), sans-serif" }}
+          >
+            New Quote
+          </h3>
+          <button
+            onClick={() => router.push("/dashboard/new-project/custom-quote")}
+            className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-[15px] font-bold py-3.5 px-8 rounded-[7px] transition-all shadow-sm whitespace-nowrap font-sans border-2 border-[#4343F0] cursor-pointer"
+          >
+            Create a New Quote
+          </button>
+        </div>
+      </div>
+
+      {!initialLoading && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-12 py-4">
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${
+              currentPage === 1
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
+            }`}
+          >
+            Previous
+          </button>
+          <div className="flex items-center gap-1 mx-4">
+            {[...Array(pagination.totalPages)].map((_, i) => (
+              <button
+                key={i + 1}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`w-10 h-10 flex items-center justify-center rounded-[4px] text-sm font-bold transition-all cursor-pointer ${
+                  currentPage === i + 1
+                    ? "bg-primary-300 text-white shadow-lg shadow-blue-500/20"
+                    : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
+            disabled={currentPage === pagination.totalPages}
+            className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${
+              currentPage === pagination.totalPages
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
+            }`}
+          >
+            Next
+          </button>
+        </div>
+      )}
+
+      <div className="mt-10 md:mt-14 mb-2">
+        <SupportNewsletter noPadding />
       </div>
     </main>
-  );
+  </div>
+);
 }
+

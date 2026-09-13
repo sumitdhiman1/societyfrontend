@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { paymentService } from "@/lib/paymentService";
-import { invoiceService } from "@/lib/invoiceService";
 import { authService } from "@/lib/authService";
 import { loadStripe } from "@stripe/stripe-js";
 import {
@@ -171,7 +170,6 @@ function AddCardForm({ clientSecret, onSuccess, onCancel }: {
 // Main Billing Details Page
 export default function BillingPage() {
   const [cards, setCards] = useState<any[]>([]);
-  const [invoices, setInvoices] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -190,16 +188,9 @@ export default function BillingPage() {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const [cardsRes, invoicesRes] = await Promise.all([
-        paymentService.getSavedPaymentMethods(),
-        invoiceService.getInvoices({ limit: 5 })
-      ]);
-
+      const cardsRes = await paymentService.getSavedPaymentMethods();
       if (cardsRes?.isSuccessful && cardsRes.data) {
         setCards(cardsRes.data);
-      }
-      if (invoicesRes?.isSuccessful && invoicesRes.data) {
-        setInvoices(invoicesRes.data);
       }
     } catch (error: any) {
       console.error("Failed to load billing data:", error);
@@ -317,67 +308,6 @@ export default function BillingPage() {
           </div>
         </section>
 
-        {/* Invoices Section */}
-        <section>
-          <h2 className="text-xl font-bold text-primary-200 mb-8 pb-2 border-b border-gray-200 w-[100px]">
-            Invoices
-          </h2>
-
-          <div className="bg-white border border-gray-300 rounded-[4px] overflow-hidden">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-[#F9FAFB] border-b border-gray-200">
-                  <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Invoice</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {!isVerified || invoices.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500 text-sm italic font-medium">
-                      No invoices found.
-                    </td>
-                  </tr>
-                ) : (
-                  invoices.map((inv) => (
-                    <tr key={inv._id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-bold text-gray-800">
-                        #{inv.invoiceNumber || inv._id.slice(-6).toUpperCase()}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 font-medium">
-                        {new Date(inv.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 text-sm font-black text-gray-800">
-                        {new Intl.NumberFormat("en-US", { style: "currency", currency: (inv.currency || "USD").toUpperCase() }).format(inv.amount)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${(inv.status || "").toUpperCase() === "PAID"
-                            ? "bg-green-50 text-green-700 border-green-200"
-                            : (inv.status || "").toUpperCase() === "OVERDUE"
-                              ? "bg-rose-50 text-rose-700 border-rose-200 font-bold"
-                              : "bg-amber-50 text-amber-700 border-amber-200"
-                          }`}>
-                          {inv.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => invoiceService.downloadInvoicePDF(inv._id)}
-                          className="text-primary-300 hover:text-primary-400 text-xs font-bold underline underline-offset-2"
-                        >
-                          Download
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
 
         <div className="mt-16">
           <SupportNewsletter noPadding />

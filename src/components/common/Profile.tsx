@@ -36,7 +36,7 @@ export const Profile = ({
         />
       </button>
       {profileDropdownOpen && (
-        <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl py-2 z-50 border border-gray-100 font-sans">
+        <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-2xl py-2 z-50 border border-gray-100 font-sans">
           {/* Group 1: Account, Payment History, Renewals */}
           <button
             onMouseDown={(e) => {

@@ -19,8 +19,6 @@ import { authService } from "@/lib/authService";
 import { paymentService } from "@/lib/paymentService";
 import { priceCalculatorService, CalculatorCategory, CalculatorConfig, CalculatorSelection } from "@/lib/priceCalculatorService";
 import {
-  resolveCalculatorQuestionType,
-  normalizeCalculatorQuestionsForUi,
   getSelectedTier,
   getTierQuestionKey,
   findTimelineQuestionKey,
@@ -347,7 +345,6 @@ const QuestionCard = ({
   seoServiceMode?: string;
   error?: string;
 }) => {
-  const qType = resolveCalculatorQuestionType(question);
   const [textVal, setTextVal] = useState(selection?.textValue || "");
   const numVal = selection?.numericValue ?? 0;
 
@@ -358,7 +355,7 @@ const QuestionCard = ({
   const activeKeys = selection?.answerKeys || [];
   const filteredQuestion = filterQuestionAnswers(question, tier);
   let visibleAnswers = filteredQuestion.answers || [];
-  if (isGraphicsItemsQuestion(question, categoryKey)) {
+  if (isGraphicsItemsQuestion(question)) {
     if (!categorySelections || categorySelections.length === 0) {
       return null;
     }
@@ -390,7 +387,7 @@ const QuestionCard = ({
           className={`text-[20px] md:text-[22px] font-medium tracking-normal leading-snug transition-colors ${error ? "text-red-900 font-semibold" : "text-[#475569]"
             }`}
         >
-          {formatCalculatorQuestionText(question.text, question.isRequired, qType, categoryKey ?? undefined)}
+          {formatCalculatorQuestionText(question.text, question.isRequired, question.type, categoryKey ?? undefined)}
         </h2>
 
         {error && (
@@ -405,7 +402,7 @@ const QuestionCard = ({
         )}
       </div>
 
-      {qType === "text" && (
+      {question.type === "text" && (
         <textarea
           value={textVal}
           onChange={(e) => setTextVal(e.target.value)}
@@ -415,7 +412,7 @@ const QuestionCard = ({
         />
       )}
 
-      {qType === "number" && (
+      {question.type === "number" && (
         <NumberStepper
           value={numVal}
           validateMin={getNumberQuestionMin(question)}
@@ -424,7 +421,7 @@ const QuestionCard = ({
         />
       )}
 
-      {(qType === "single" || qType === "multi") &&
+      {(question.type === "single" || question.type === "multi") &&
         answerGroups.map((group, gIdx) => (
           <div key={gIdx} className={gIdx > 0 ? "mt-8" : ""}>
             {group.heading && (
@@ -510,9 +507,9 @@ const ProposalPreview = ({
 
   const isMonthly = billingType === "monthly";
 
-  const sortedQuestions = normalizeCalculatorQuestionsForUi([
-    ...(category.questions || []),
-  ]).sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+  const sortedQuestions = [...(category.questions || [])].sort(
+    (a: any, b: any) => (a.order || 0) - (b.order || 0)
+  );
   const tier = getSelectedTier(
     selections,
     getTierQuestionKey(category.categoryKey || ""),
@@ -526,11 +523,10 @@ const ProposalPreview = ({
     const sel = selections[q.key];
     if (!sel) return;
 
-    const qType = resolveCalculatorQuestionType(q);
     const ansTexts: string[] = [];
-    if (qType === "number" && sel.numericValue !== undefined) {
+    if (q.type === "number" && sel.numericValue !== undefined) {
       ansTexts.push(String(sel.numericValue));
-    } else if (qType === "text" && sel.textValue?.trim()) {
+    } else if (q.type === "text" && sel.textValue?.trim()) {
       ansTexts.push(sel.textValue.trim());
     } else if (sel.answerKeys?.length) {
       sel.answerKeys.forEach((k: string) => {
@@ -544,7 +540,7 @@ const ProposalPreview = ({
               baselineDays:
                 category.categoryKey === "graphics"
                   ? calculateGraphicsRawTimelineDays(
-                      sortedQuestions.find((sq: any) => isGraphicsItemsQuestion(sq, category.categoryKey)),
+                      sortedQuestions.find((sq: any) => isGraphicsItemsQuestion(sq)),
                       selections,
                       tier
                     )
@@ -563,14 +559,14 @@ const ProposalPreview = ({
 
     if (ansTexts.length > 0) {
       breakdown.push({
-        question: formatCalculatorQuestionText(q.text, q.isRequired, qType, category.categoryKey),
+        question: formatCalculatorQuestionText(q.text, q.isRequired, q.type, category.categoryKey),
         answers: ansTexts,
       });
     }
   });
 
   const displayName = getCategoryProposalName(category.categoryKey, category.categoryName);
-  const hasTimeline = hasTimelineSelected(category.questions || [], selections);
+  const hasTimeline = hasTimelineSelected(category.questions || [], selections, category.categoryKey);
   const displayTimeline = hasTimeline
     ? (timeline || getDefaultCategoryTimeline(category.categoryKey, category.timeline))
     : "Please select a timeline option above";
@@ -666,8 +662,13 @@ const ProposalPreview = ({
           email: cleanEmail,
           subject,
           messageBody: body,
-          pdfBase64
-        })
+          categoryName: category.categoryName,
+          subtitle: category.subtitle || "",
+          totalPrice: formatPriceLocal(totalPrice),
+          timeline: displayTimeline || category.timeline || "",
+          breakdownItems: breakdown,
+          pdfBase64,
+        }),
       });
 
       if (res.ok) {
@@ -1494,9 +1495,7 @@ export default function CalculatorPage() {
   const sortedQuestions = useMemo(
     () =>
       selectedCategory
-        ? normalizeCalculatorQuestionsForUi([...selectedCategory.questions]).sort(
-            (a, b) => (a.order || 0) - (b.order || 0)
-          )
+        ? [...selectedCategory.questions].sort((a, b) => (a.order || 0) - (b.order || 0))
         : [],
     [selectedCategory]
   );
@@ -1514,8 +1513,8 @@ export default function CalculatorPage() {
     [selections, sortedQuestions]
   );
   const graphicsItemsQuestion = useMemo(
-    () => sortedQuestions.find((q) => isGraphicsItemsQuestion(q, selectedCategoryKey)),
-    [sortedQuestions, selectedCategoryKey]
+    () => sortedQuestions.find((q) => isGraphicsItemsQuestion(q)),
+    [sortedQuestions]
   );
   const graphicsRawTimelineDays = useMemo(
     () => calculateGraphicsRawTimelineDays(graphicsItemsQuestion, selections, tier),
@@ -1578,12 +1577,11 @@ export default function CalculatorPage() {
 
   const validateRequiredSelections = () => {
     if (!selectedCategory) return false;
-    const missingQuestions = getMissingRequiredQuestions(sortedQuestions, selections, selectedCategoryKey);
+    const missingQuestions = getMissingRequiredQuestions(selectedCategory.questions || [], selections, selectedCategoryKey);
     if (missingQuestions.length > 0) {
       const newErrors: Record<string, string> = {};
       missingQuestions.forEach((q) => {
-        const qType = resolveCalculatorQuestionType(q);
-        if (qType === "number") {
+        if (q.type === "number") {
           const val = selections[q.key]?.numericValue ?? 0;
           const maxVal = getNumberQuestionMax(q);
           if (maxVal != null && val > maxVal) {
@@ -1662,29 +1660,32 @@ export default function CalculatorPage() {
         const timelineKey = findTimelineQuestionKey(sortedQuestions);
         if (timelineKey) delete next[timelineKey];
       }
-      const seoTypeQuestion = sortedQuestions.find(
-        (q) =>
-          ["SEO_TYPE", "SEO_SERVICE_TYPE", "0"].includes(q.key || "") ||
-          /what type of seo/i.test(q.text || "")
-      );
-      if (seoTypeQuestion && questionKey === seoTypeQuestion.key) {
-        const newMode = getSeoServiceMode(next, sortedQuestions);
-        const timelineKey = findTimelineQuestionKey(sortedQuestions);
-        if (newMode === "monthly") {
-          if (timelineKey) delete next[timelineKey];
-          delete next.SEO_TIMELINE;
-        } else {
-          delete next.SEO_MONTHS;
-          const monthsQ = sortedQuestions.find(
-            (q) => q.key === "SEO_MONTHS" || q.roleId === 15
-          );
-          if (monthsQ?.key) delete next[monthsQ.key];
+      if (selectedCategoryKey === "seo") {
+        const seoTypeQuestion = sortedQuestions.find(
+          (q) =>
+            ["SEO_TYPE", "SEO_SERVICE_TYPE"].includes(q.key || "") ||
+            /what type of seo/i.test(q.text || "") ||
+            (q.answers || []).some((a: any) => a?.metadata?.serviceMode)
+        );
+        if (seoTypeQuestion && questionKey === seoTypeQuestion.key) {
+          const newMode = getSeoServiceMode(next, sortedQuestions);
+          const timelineKey = findTimelineQuestionKey(sortedQuestions);
+          if (newMode === "monthly") {
+            if (timelineKey) delete next[timelineKey];
+            delete next.SEO_TIMELINE;
+          } else {
+            delete next.SEO_MONTHS;
+            const monthsQ = sortedQuestions.find(
+              (q) => q.key === "SEO_MONTHS" || q.roleId === 15
+            );
+            if (monthsQ?.key) delete next[monthsQ.key];
+          }
         }
-      }
-      if (questionKey === "SEO_ITEMS") {
-        const keys = next.SEO_ITEMS?.answerKeys || [];
-        if (!keys.includes("SEO_ITEM_CONTENT") && !keys.includes("SEO_ITEM_CONTENT_TEXT")) delete next.SEO_WORDS;
-        if (!keys.includes("SEO_ITEM_BACKLINKS") && !keys.includes("SEO_ITEM_LINK_BACK")) delete next.SEO_BACKLINKS;
+        if (questionKey === "SEO_ITEMS" || questionKey === "2") {
+          const keys = next.SEO_ITEMS?.answerKeys || next["2"]?.answerKeys || [];
+          if (!keys.includes("SEO_ITEM_CONTENT") && !keys.includes("SEO_ITEM_CONTENT_TEXT")) delete next.SEO_WORDS;
+          if (!keys.includes("SEO_ITEM_BACKLINKS") && !keys.includes("SEO_ITEM_LINK_BACK")) delete next.SEO_BACKLINKS;
+        }
       }
 
       return pruneHiddenSelections(next, sortedQuestions, selectedCategoryKey);
