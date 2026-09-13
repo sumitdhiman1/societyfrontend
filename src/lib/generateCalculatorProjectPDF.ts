@@ -308,25 +308,12 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     else duration = "2 weeks";
   }
 
-  // Calculate delivery deadline / valid until date using identical project calculation
-  const estimatedDeadlineObj =
-    getProjectEstimatedDeadline(data) ||
-    (data.deadline ? new Date(data.deadline) : null) ||
-    (data.validUntil ? new Date(data.validUntil) : null);
-
-  let validUntilDate = "";
-  if (estimatedDeadlineObj && !isNaN(estimatedDeadlineObj.getTime())) {
-    validUntilDate = formatPdfDate(estimatedDeadlineObj);
-  } else {
-    const days =
-      parseDurationToDays(duration) ||
-      parseDurationToDays(finalTimelineAnswer) ||
-      parseDurationToDays(directTimeline) ||
-      14;
-    const validUntilObj = new Date(issuedDateObj);
-    validUntilObj.setDate(validUntilObj.getDate() + days);
-    validUntilDate = formatPdfDate(validUntilObj);
-  }
+  // Quote is valid for 3 months from issued date
+ 
+  const validUntilObj = new Date(issuedDateObj);
+  validUntilObj.setMonth(validUntilObj.getMonth() + 3);
+  let validUntilDate = formatPdfDate(validUntilObj);
+  
 
   const currency = (data.currency || "USD").toUpperCase();
 
@@ -348,7 +335,7 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
   if (isCalculatorEstimatePdf) {
     data.breakdownItems.forEach((item: any) => {
       const qText = item.question || "";
-      if (/timeline/i.test(qText)) return;
+      if (/timeline/i.test(qText) || /^category:?$/i.test(qText.trim())) return;
       selectedOptions.push({
         question: qText,
         answers: Array.isArray(item.answers) ? item.answers : [String(item.answers || "")],
@@ -359,7 +346,12 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     if (Array.isArray(rawSelections) && rawSelections.length > 0) {
       rawSelections.forEach((sel: any) => {
         const qText = sel.questionText || sel.questionKey || "";
-        if (/timeline/i.test(sel.questionKey || "") || /timeline/i.test(qText)) {
+        if (
+          /timeline/i.test(sel.questionKey || "") ||
+          /timeline/i.test(qText) ||
+          /^category:?$/i.test(qText.trim()) ||
+          sel.questionKey === "CATEGORY"
+        ) {
           return;
         }
         let ansList: string[] = [];
@@ -792,7 +784,7 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
             ? `
         <!-- ── Main Header ── -->
         <header style="width: 100%; display: flex; flex-direction: row; justify-content: space-between; align-items: flex-start; margin: 0; padding: 0; box-sizing: border-box;">
-          <div style="display: flex; align-items: flex-start; margin: 0; padding-top: 2px;">
+          <div class="header-logo" style="display: flex; flex-direction: column; align-items: flex-start; margin: 0; padding-top: 10px;">
             ${LOGO_SVG}
           </div>
           <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; margin: 0; padding: 0; white-space: nowrap;">
@@ -840,11 +832,15 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
           </div>
         </section>
 
-        <!-- ── Category & Subtitle Header ── -->
-        <div style="margin-top: 24px; margin-bottom: 20px;">
-          <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14px; color: #0F172A; margin-bottom: 3px;">Category: ${d.categoryName}</div>
-          ${(d.scopeOverviewLead || d.subtitle) ? `<div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 13px; color: #2A2AA0;">${d.scopeOverviewLead || d.subtitle}</div>` : ""}
-        </div>
+        ${
+          (d.scopeOverviewLead || d.subtitle)
+            ? `
+        <!-- ── Subtitle / Scope Overview ── -->
+        <div style="margin-top: 22px; margin-bottom: 16px;">
+          <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 13px; color: #2A2AA0;">${d.scopeOverviewLead || d.subtitle}</div>
+        </div>`
+            : `<div style="margin-top: 24px;"></div>`
+        }
         `
             : ""
         }
@@ -943,6 +939,65 @@ async function ensurePdfLibraries(): Promise<{ html2canvasLib: any; jsPdfLib: an
   return { html2canvasLib, jsPdfLib };
 }
 
+/**
+ * Saves the final HTML that will be rendered by html2canvas as a downloadable
+ * .html file. Only active in development mode — gives you a browser-openable
+ * snapshot to debug fonts, spacing, and layout without going through html2canvas.
+ */
+function saveHtmlSnapshot(html: string, projectNumber: string): void {
+  if (typeof window === "undefined") return;
+  if (process.env.NODE_ENV !== "development") return;
+
+  const cleanNum = (projectNumber || "preview").replace(/[^a-zA-Z0-9-_#]/g, "") || "preview";
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const filename = `pdf_snapshot_${cleanNum}_${timestamp}.html`;
+
+  const fullDoc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=794px, initial-scale=1" />
+  <title>PDF Snapshot ${cleanNum}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { margin: 0; padding: 0; background: #e5e7eb; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0F172A; -webkit-font-smoothing: antialiased; }
+    .pdf-page { margin: 24px auto; box-shadow: 0 4px 24px rgba(0,0,0,0.12); }
+    .header-logo {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <!-- PDF Snapshot: ${new Date().toLocaleString()} | Project ${cleanNum} -->
+  <!-- Open in browser to inspect layout at 794px width (A4 pdf render width) -->
+  <div style="width:794px;background:#fff;">
+    ${html}
+  </div>
+</body>
+</html>`;
+
+  const blob = new Blob([fullDoc], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    if (document.body.contains(a)) document.body.removeChild(a);
+  }, 1000);
+
+  console.info(`[PDF Debug] HTML snapshot saved: ${filename}`);
+}
+
 export async function downloadCalculatorProjectPDF(data: any): Promise<void> {
   if (typeof window === "undefined") return;
 
@@ -960,7 +1015,9 @@ export async function downloadCalculatorProjectPDF(data: any): Promise<void> {
     container.style.backgroundColor = "#ffffff";
     container.style.opacity = "1";
     container.style.pointerEvents = "none";
-    container.innerHTML = getCalculatorProjectHTML(d);
+    const pdfHtml = getCalculatorProjectHTML(d);
+    saveHtmlSnapshot(pdfHtml, d.rawProjectNumber);
+    container.innerHTML = pdfHtml;
 
     document.body.appendChild(container);
 
@@ -1031,7 +1088,9 @@ export async function generateCalculatorProjectPDFBase64(data: any): Promise<str
   container.style.backgroundColor = "#ffffff";
   container.style.opacity = "1";
   container.style.pointerEvents = "none";
-  container.innerHTML = getCalculatorProjectHTML(d);
+  const pdfHtmlB64 = getCalculatorProjectHTML(d);
+  saveHtmlSnapshot(pdfHtmlB64, d.rawProjectNumber);
+  container.innerHTML = pdfHtmlB64;
 
   document.body.appendChild(container);
 
@@ -1107,6 +1166,12 @@ export function printCalculatorProjectPDF(data: any): void {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             color: #0F172A;
             -webkit-font-smoothing: antialiased;
+          }
+          .header-logo {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding-top: 10px;
           }
         </style>
       </head>
