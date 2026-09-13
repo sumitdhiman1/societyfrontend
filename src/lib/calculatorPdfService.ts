@@ -14,6 +14,7 @@ export interface PdfProposalData {
   currency?: string;
   conversionRate?: number;
   categoryKey?: string;
+  refNumber?: string;
   [key: string]: any;
 }
 

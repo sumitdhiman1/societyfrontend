@@ -3,6 +3,7 @@ import { claimPendingAnalyses } from "./requestAnalysisService";
 
 export class AuthService {
   private session: any;
+  private inMemoryUser: any = null;
 
   constructor(session?: any) {
     this.session = session;
@@ -213,6 +214,7 @@ export class AuthService {
   }
 
   getUser(): any | null {
+    let cookieUser: any = null;
     if (typeof document !== "undefined") {
       const match = document.cookie.match(/(^| )user_data=([^;]+)/);
       if (match) {
@@ -220,18 +222,23 @@ export class AuthService {
           const raw = decodeURIComponent(match[2]);
           const parsed = this.decodeUserData(raw);
           if (parsed && (parsed.id || parsed._id || parsed.email)) {
-            return parsed;
+            cookieUser = parsed;
           }
         } catch {
           try {
             const parsed = this.decodeUserData(match[2]);
             if (parsed && (parsed.id || parsed._id || parsed.email)) {
-              return parsed;
+              cookieUser = parsed;
             }
           } catch {}
         }
       }
     }
+
+    if (this.inMemoryUser) {
+      return cookieUser ? { ...cookieUser, ...this.inMemoryUser } : this.inMemoryUser;
+    }
+    if (cookieUser) return cookieUser;
 
     // Fallback: decode user basics from JWT token if cookie is missing or corrupt
     const decoded = this.decodeToken();
@@ -263,7 +270,9 @@ export class AuthService {
       }
       if (user && (user.id || user._id || user.email)) {
         this.updateInternalUser(user);
-        return this.getUser() || user;
+        const merged = { ...(this.getUser() || {}), ...user };
+        this.inMemoryUser = merged;
+        return merged;
       }
     } catch (e) {
       console.warn("[AuthService] getProfile error:", e);
@@ -274,6 +283,7 @@ export class AuthService {
   updateInternalUser(data: any) {
     const user = this.getUser();
     const updated = { ...(user || {}), ...data };
+    this.inMemoryUser = updated;
     try {
       const updatedUser = this.encodeUserData(updated);
       document.cookie = `user_data=${updatedUser}; path=/; max-age=604800; SameSite=Lax;`;

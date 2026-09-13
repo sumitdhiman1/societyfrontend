@@ -49,6 +49,27 @@ export interface CalculatorPDFData {
   [key: string]: any;
 }
 
+export function generateUniqueRefNumber(prefix: string = "SOC", dateInput?: any): string {
+  const d = dateInput ? new Date(dateInput) : new Date();
+  const year = isNaN(d.getTime()) ? new Date().getFullYear() : d.getFullYear();
+  const randomPart = Math.floor(10000 + Math.random() * 90000);
+  return `${prefix}-${year}-${randomPart}`;
+}
+
+function isPlaceholderRefNumber(val: any): boolean {
+  if (!val) return true;
+  const str = String(val).trim();
+  return (
+    str === "" ||
+    str === "1" ||
+    str === "#1" ||
+    str === "0" ||
+    str === "#0" ||
+    str.toLowerCase() === "preview" ||
+    str.toLowerCase() === "quote"
+  );
+}
+
 export function extractCalculatorPDFData(data: any): CalculatorPDFData {
   const currentUser = authService.getUser();
   const clientEmail =
@@ -74,13 +95,36 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     (data.title && data.title.includes(" - ") ? data.title.split(" - ").pop()?.trim() : "") ||
     "Client";
 
+  const year = new Date(data.startDate || data.createdAt || Date.now()).getFullYear();
+
   let rawProjectNumber =
     data.refNumber ||
     data.quoteNumber ||
     data.projectNumber ||
-    (data._id ? `1` : "1");
-  rawProjectNumber = String(rawProjectNumber).replace(/^INV-/i, "");
-  const projectNumber = rawProjectNumber.startsWith("#") ? rawProjectNumber : `#${rawProjectNumber}`;
+    data.proposalNumber ||
+    data.referenceNumber;
+
+  if (isPlaceholderRefNumber(rawProjectNumber)) {
+    if (data._id && typeof data._id === "string" && data._id.length >= 4) {
+      rawProjectNumber = `SOC-${year}-${data._id.slice(-5).toUpperCase()}`;
+    } else {
+      rawProjectNumber = generateUniqueRefNumber("SOC", data.startDate || data.createdAt);
+    }
+  }
+
+  rawProjectNumber = String(rawProjectNumber)
+    .replace(/^INV-/i, "")
+    .trim();
+
+  // If already prefixed with letters (e.g. SOC-2026-12345) or starts with #, keep as is. Otherwise prefix #.
+  const projectNumber =
+    rawProjectNumber.startsWith("#") || /^[A-Za-z]/.test(rawProjectNumber)
+      ? rawProjectNumber
+      : `#${rawProjectNumber}`;
+
+  if (!data.refNumber) {
+    data.refNumber = rawProjectNumber;
+  }
 
   let categoryName =
     data.categoryName ||
@@ -146,7 +190,19 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     (data.timelineInDays ? `${data.timelineInDays} Days` : "") ||
     "";
 
-  const categoryKey = data.categoryKey || calculatorSpecs.categoryKey || "";
+  let categoryKey = data.categoryKey || calculatorSpecs.categoryKey || "";
+  if (!categoryKey && categoryName) {
+    const cLower = categoryName.toLowerCase();
+    if (cLower.includes("web") || cLower.includes("site") || cLower.includes("store") || cLower.includes("shop")) {
+      categoryKey = "web";
+    } else if (cLower.includes("graphic") || cLower.includes("design") || cLower.includes("logo") || cLower.includes("brand")) {
+      categoryKey = "graphics";
+    } else if (cLower.includes("seo") || cLower.includes("search engine")) {
+      categoryKey = "seo";
+    } else if (cLower.includes("market") || cLower.includes("social")) {
+      categoryKey = "marketing";
+    }
+  }
 
   // Baseline from item selections when API timeline not yet stored
   let graphicsRawTimelineDays = 0;
@@ -159,50 +215,19 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
         /include in this project/i.test(s.questionText || "")
     );
     const tierSel = rawSelections.find(
-      (s: any) => s.questionKey === "GD_TIER" || s.questionKey === "GFX_TIER"
+      (s: any) => s.questionKey === "GD_TIER" || s.questionKey === "1"
     );
-    const tierKey = tierSel?.answerKeys?.[0] || "starter";
-    const tier =
-      /premium/i.test(tierKey) ? "premium" : /standard/i.test(tierKey) ? "standard" : "starter";
-    if (itemsSel?.answerKeys?.length) {
-      const pseudoQuestion = {
-        key: itemsSel.questionKey,
-        answers: itemsSel.answerKeys.map((k: string) => {
-          const meta = itemsSel.answerMetadata?.[k];
-          return { key: k, metadata: meta };
-        }),
-      };
-      graphicsRawTimelineDays = calculateGraphicsRawTimelineDays(
-        pseudoQuestion,
-        { [itemsSel.questionKey]: { questionKey: itemsSel.questionKey, answerKeys: itemsSel.answerKeys } },
-        tier
-      );
-    }
-  }
-  if (categoryKey === "seo" && Array.isArray(rawSelections)) {
+    const tier = tierSel?.answerKeys?.[0] || "standard";
+    graphicsRawTimelineDays = calculateGraphicsRawTimelineDays(itemsSel, rawSelections, tier);
+  } else if (categoryKey === "seo" && Array.isArray(rawSelections)) {
     const itemsSel = rawSelections.find(
       (s: any) => s.questionKey === "SEO_ITEMS" || s.questionKey === "2"
     );
     const tierSel = rawSelections.find(
       (s: any) => s.questionKey === "SEO_TIER" || s.questionKey === "1"
     );
-    const tierKey = tierSel?.answerKeys?.[0] || "starter";
-    const tier =
-      /premium/i.test(tierKey) ? "premium" : /standard/i.test(tierKey) ? "standard" : "starter";
-    if (itemsSel?.answerKeys?.length) {
-      const pseudoQuestion = {
-        key: itemsSel.questionKey,
-        answers: itemsSel.answerKeys.map((k: string) => {
-          const meta = itemsSel.answerMetadata?.[k];
-          return { key: k, metadata: meta };
-        }),
-      };
-      seoRawTimelineDays = calculateSeoRawTimelineDays(
-        pseudoQuestion,
-        { [itemsSel.questionKey]: { questionKey: itemsSel.questionKey, answerKeys: itemsSel.answerKeys } },
-        tier
-      );
-    }
+    const tier = tierSel?.answerKeys?.[0] || "starter";
+    seoRawTimelineDays = calculateSeoRawTimelineDays(itemsSel, rawSelections, tier);
   }
 
   let seoServiceMode: string | undefined =
@@ -216,10 +241,12 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
         )
       : data.seoServiceMode;
 
-  if (categoryKey === "seo" && data.billingType === "monthly") {
-    seoServiceMode = "monthly";
-  } else if (categoryKey === "seo" && data.billingType === "onetime") {
-    seoServiceMode = "onetime";
+  if (categoryKey === "seo" && !seoServiceMode) {
+    if (data.calculatorSpecs?.billingType === "monthly" || (!data.calculatorSpecs && data.billingType === "monthly")) {
+      seoServiceMode = "monthly";
+    } else if (data.calculatorSpecs?.billingType === "onetime" || (!data.calculatorSpecs && data.billingType === "onetime")) {
+      seoServiceMode = "onetime";
+    }
   }
 
   // Map known key codes to human readable labels
@@ -459,7 +486,7 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
   const isMonthlySeoCalculatorPdf =
     isCalculatorEstimatePdf &&
     categoryKey === "seo" &&
-    (data.billingType === "monthly" || seoServiceMode === "monthly");
+    seoServiceMode === "monthly";
 
   if (isMonthlySeoCalculatorPdf) {
     const withoutTimeline = selectedOptions.filter((opt) => !/timeline/i.test(opt.question));
@@ -503,9 +530,20 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     maximumFractionDigits: 2,
   }).format(totalPrice);
 
+  const isOneTimeCategory =
+    categoryKey === "web" ||
+    categoryKey === "website" ||
+    categoryKey === "ecommerce" ||
+    categoryKey === "graphics" ||
+    categoryKey === "mobile" ||
+    categoryKey === "app" ||
+    categoryKey === "custom" ||
+    (categoryKey === "seo" && seoServiceMode === "onetime");
+
   const isMonthlyPricing =
-    data.billingType === "monthly" ||
-    isMonthlyBillingCategory(categoryKey, seoServiceMode || data.seoServiceMode);
+    !isOneTimeCategory &&
+    (isMonthlyBillingCategory(categoryKey, seoServiceMode || data.seoServiceMode) ||
+      (data.billingType === "monthly" && (categoryKey === "marketing" || (categoryKey === "seo" && seoServiceMode === "monthly"))));
 
   if (isMonthlyPricing) {
     formattedPrice = `${formattedPrice} /month`;
@@ -592,10 +630,17 @@ function renderSelectedOptionsList(options: Array<{ question: string; answers: s
       ${options
         .map((opt) => {
           let cleanQuestion = opt.question.trim();
-          if (!cleanQuestion.endsWith("?") && !cleanQuestion.endsWith(":")) {
-            cleanQuestion = cleanQuestion + "?:";
-          } else if (cleanQuestion.endsWith("?")) {
-            cleanQuestion = cleanQuestion + ":";
+          // Remove any colon after question mark (e.g. "?:" -> "?")
+          cleanQuestion = cleanQuestion.replace(/\?\s*:\s*$/, "?").trim();
+
+          // Do NOT add ":" after questions ending in "?"
+          // Only ensure ":" for statements like "Describe your..." if missing
+          if (/^(Describe your|Tell us|Share with us|Please provide)/i.test(cleanQuestion)) {
+            if (/\(Optional\)$/i.test(cleanQuestion) && !/:\s*\(Optional\)$/i.test(cleanQuestion)) {
+              cleanQuestion = cleanQuestion.replace(/\s*\(Optional\)$/i, ": (Optional)");
+            } else if (!cleanQuestion.endsWith(":") && !/\(Optional\)$/i.test(cleanQuestion)) {
+              cleanQuestion = cleanQuestion + ":";
+            }
           }
           const hasMultiple = opt.answers.length > 1;
           return `

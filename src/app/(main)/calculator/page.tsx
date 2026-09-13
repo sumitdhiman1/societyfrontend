@@ -579,13 +579,31 @@ const ProposalPreview = ({
     : "Please select a timeline option above";
 
   const [isDownloading, setIsDownloading] = useState(false);
+  const [proposalRefNumber, setProposalRefNumber] = useState<string>("");
+
+  useEffect(() => {
+    const year = new Date().getFullYear();
+    const randomPart = Math.floor(10000 + Math.random() * 90000);
+    setProposalRefNumber(`SOC-${year}-${randomPart}`);
+  }, [category?.categoryKey, category?._id]);
+
+  const getProposalRefNumber = () => {
+    if (proposalRefNumber) return proposalRefNumber;
+    const year = new Date().getFullYear();
+    const randomPart = Math.floor(10000 + Math.random() * 90000);
+    const newRef = `SOC-${year}-${randomPart}`;
+    setProposalRefNumber(newRef);
+    return newRef;
+  };
 
   const handleDownload = async () => {
     if (onValidateRequired && !onValidateRequired()) return;
     if (isDownloading) return;
     setIsDownloading(true);
+    const refNum = getProposalRefNumber();
     try {
       await downloadCalculatorPdf({
+        refNumber: refNum,
         categoryName: category.categoryName,
         breakdownItems: breakdown,
         totalPrice,
@@ -641,9 +659,11 @@ const ProposalPreview = ({
     setEmailError("");
     setIsSendingEmail(true);
 
+    const refNum = getProposalRefNumber();
+
     try {
-      const subject = `Estimate: ${category.categoryName}`;
-      let body = `Hello,\n\nHere is your project estimate breakdown:\n\n* Category: ${category.categoryName}\n`;
+      const subject = `Estimate: ${category.categoryName} (${refNum})`;
+      let body = `Hello,\n\nHere is your project estimate breakdown:\n\n* Reference: ${refNum}\n* Category: ${category.categoryName}\n`;
 
       breakdown.forEach(item => {
         body += `\n- ${item.question}:\n  ${item.answers.join(", ")}`;
@@ -652,6 +672,7 @@ const ProposalPreview = ({
       body += `\n\nTotal Price: ${formatPriceLocal(totalPrice)}\nTimeline: ${displayTimeline || "TBA"}\n\nAttached is your detailed proposal PDF.\n\nGenerated via Society Web Solutions Calculator.`;
 
       const pdfBase64 = await getCalculatorPdfBase64({
+        refNumber: refNum,
         categoryName: category.categoryName,
         breakdownItems: breakdown,
         totalPrice,
@@ -669,6 +690,7 @@ const ProposalPreview = ({
           email: cleanEmail,
           subject,
           messageBody: body,
+          refNumber: refNum,
           categoryName: category.categoryName,
           subtitle: category.subtitle || "",
           totalPrice: formatPriceLocal(totalPrice),
