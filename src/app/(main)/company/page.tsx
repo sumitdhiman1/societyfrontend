@@ -295,7 +295,7 @@ export default function CompanyPage() {
         </section> */}
 
         {/* ── Newsletter Section ───────────────────────────────────────── */}
-        <section className="relative z-20">
+        <section className="relative z-20 pb-12">
           <SupportNewsletter />
         </section>
       </main>
