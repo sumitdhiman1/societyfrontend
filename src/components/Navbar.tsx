@@ -91,6 +91,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
   const notificationRef = useRef<HTMLDivElement>(null);
   const notificationContainerRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const mobileProfileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
 
@@ -333,8 +334,10 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
         (notificationContainerRef.current && notificationContainerRef.current.contains(target)) ||
         (notificationRef.current && notificationRef.current.contains(target));
       if (!insideNotification) setNotificationsOpen(false);
-      if (profileRef.current && !profileRef.current.contains(target))
-        setProfileDropdownOpen(false);
+      const insideProfile =
+        (profileRef.current && profileRef.current.contains(target)) ||
+        (mobileProfileRef.current && mobileProfileRef.current.contains(target));
+      if (!insideProfile) setProfileDropdownOpen(false);
       if (searchRef.current && !searchRef.current.contains(target))
         setShowSuggestions(false);
     };
@@ -615,7 +618,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
                 setUnreadCount={setUnreadCount}
               />
               <Profile
-                profileRef={profileRef}
+                profileRef={mobileProfileRef}
                 avatar={user.avatar ?? ""}
                 profileDropdownOpen={profileDropdownOpen}
                 setIsAuthenticated={setIsAuthenticated}
