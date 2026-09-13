@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { useAnalysis } from "@/context/AnalysisContext";
-import { projectService } from "@/lib/projectService";
+import { analysesService } from "@/lib/analysesService";
 import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";
 import { downloadFile, isImageUrl } from "@/lib/utils";
@@ -163,7 +163,7 @@ export default function AnalysisFilesPage() {
     if (analysisId) {
       setIsLoading(true);
       try {
-        const res = await projectService.getProjectFiles(analysisId);
+        const res = await analysesService.getAnalysisFiles(analysisId);
         const data = Array.isArray(res?.data) ? res.data : (Array.isArray(res?.data?.files) ? res.data.files : []);
         setUploadedFiles(data || []);
       } catch (e) {
@@ -180,9 +180,14 @@ export default function AnalysisFilesPage() {
 
   const fileMap = new Map<string, any>();
 
+  const normalizeKey = (url: string) => {
+    if (!url) return "";
+    return ensureHttps(url).split("?")[0].trim().toLowerCase();
+  };
+
   const registerFile = (fileItem: any) => {
     if (!fileItem?.url) return;
-    const key = ensureHttps(fileItem.url).trim().toLowerCase();
+    const key = normalizeKey(fileItem.url);
     const existing = fileMap.get(key);
     if (!existing) {
       fileMap.set(key, fileItem);
@@ -190,25 +195,35 @@ export default function AnalysisFilesPage() {
     }
     // Priority order: delivery (3) > chat (2) > uploaded (1)
     const priority = (src: string) => (src === "delivery" ? 3 : src === "chat" ? 2 : 1);
-    if (priority(fileItem.source) >= priority(existing.source)) {
-      fileMap.set(key, {
-        ...existing,
-        ...fileItem,
-        canDelete: fileItem.source === "uploaded" ? (existing.canDelete ?? fileItem.canDelete) : false,
-      });
-    }
+    const useNew = priority(fileItem.source) >= priority(existing.source);
+    const primary = useNew ? fileItem : existing;
+    const secondary = useNew ? existing : fileItem;
+
+    const mergedSource = priority(fileItem.source) > priority(existing.source) ? fileItem.source : existing.source;
+    const mergedSize = (primary.size && primary.size > 0) ? primary.size : (secondary.size && secondary.size > 0 ? secondary.size : 0);
+
+    fileMap.set(key, {
+      ...secondary,
+      ...primary,
+      size: mergedSize,
+      source: mergedSource,
+      canDelete: mergedSource === "delivery" ? false : (primary.canDelete ?? false),
+    });
   };
 
   // 1. Final Delivery / Results PDF
   if (analysis?.resultsPdfUrl) {
     const url = ensureHttps(analysis.resultsPdfUrl);
+    const cleanUrl = url.split("?")[0].toLowerCase();
+    const isImg = cleanUrl.match(/\.(jpeg|jpg|gif|png|svg|webp|avif)$/i);
+    const filename = decodeURIComponent(url.split("/").pop()?.split("?")[0] || "Final_Analysis_Output");
     registerFile({
       _id: `delivery-${url}`,
       url,
-      name: "Final_Analysis_Report.pdf",
+      name: filename,
       size: 0,
-      mimeType: "application/pdf",
-      category: "document",
+      mimeType: isImg ? "image/png" : "application/pdf",
+      category: isImg ? "image" : "document",
       uploadedAt: analysis.updatedAt || analysis.createdAt || "",
       source: "delivery",
       canDelete: false,
@@ -218,7 +233,15 @@ export default function AnalysisFilesPage() {
   // 2. Message Attachments & Chat Files
   if (analysis?.messages && Array.isArray(analysis.messages)) {
     analysis.messages.forEach((msg: any) => {
-      const isDelivery = !!msg.isFinalDelivery || msg.type === "final_delivery" || msg.type === "delivery" || msg.isFinal === true;
+      const isDelivery =
+        !!msg.isFinalDelivery ||
+        msg.type === "final_delivery" ||
+        msg.type === "delivery" ||
+        msg.isFinal === true ||
+        msg.content?.isFinalDelivery === true ||
+        msg.content?.type === "final_delivery" ||
+        msg.content?.type === "delivery";
+
       const rawAttached =
         msg.attachments ||
         msg.content?.attachedFiles ||
@@ -248,6 +271,12 @@ export default function AnalysisFilesPage() {
           ? "video/mp4"
           : file.type || "application/octet-stream";
 
+        const isDeliveryFile =
+          isDelivery ||
+          file.source === "delivery" ||
+          file.category === "delivery" ||
+          Boolean(analysis?.resultsPdfUrl && normalizeKey(url) === normalizeKey(analysis.resultsPdfUrl));
+
         registerFile({
           _id: `msg-${url}`,
           url,
@@ -256,7 +285,7 @@ export default function AnalysisFilesPage() {
           mimeType,
           category: getCategory(mimeType, filename),
           uploadedAt: msg.createdAt || msg.sentAt || msg.timestamp || "",
-          source: isDelivery ? "delivery" : "chat",
+          source: isDeliveryFile ? "delivery" : "chat",
           canDelete: false,
         });
       });
@@ -291,10 +320,15 @@ export default function AnalysisFilesPage() {
     });
   });
 
-  // 4. Directly Uploaded Project Files
+  // 4. Directly Uploaded & Analysis Files
   (uploadedFiles || []).forEach((f: any) => {
     const url = ensureHttps(f.url);
     if (!url) return;
+    const isDeliveryFile =
+      f.source === "delivery" ||
+      f.category === "delivery" ||
+      Boolean(analysis?.resultsPdfUrl && normalizeKey(url) === normalizeKey(analysis.resultsPdfUrl));
+    const fileSource = isDeliveryFile ? "delivery" : (f.source || "uploaded");
     registerFile({
       _id: f._id || f.id || `uploaded-${url}`,
       url,
@@ -303,12 +337,19 @@ export default function AnalysisFilesPage() {
       mimeType: f.type || f.mimeType || (isImageUrl(url) ? "image/png" : "application/octet-stream"),
       category: f.category || getCategory(f.type || f.mimeType, f.name),
       uploadedAt: f.uploadedAt || f.createdAt || "",
-      source: "uploaded",
-      canDelete: true,
+      source: fileSource,
+      canDelete: fileSource !== "delivery",
     });
   });
 
   const allFiles = Array.from(fileMap.values());
+
+  const sourceCounts = {
+    all: allFiles.length,
+    uploaded: allFiles.filter((f) => f.source === "uploaded").length,
+    chat: allFiles.filter((f) => f.source === "chat").length,
+    delivery: allFiles.filter((f) => f.source === "delivery").length,
+  };
 
   const filteredFiles = allFiles.filter((f) => {
     const matchesCategory = activeCategory === "all" || f.category === activeCategory;
@@ -385,7 +426,7 @@ export default function AnalysisFilesPage() {
           uploadedAt: new Date().toISOString(),
         };
 
-        await projectService.addProjectFile(analysisId, {
+        await analysesService.addAnalysisFile(analysisId, {
           url,
           name: file.name,
           size: file.size,
@@ -415,7 +456,7 @@ export default function AnalysisFilesPage() {
     if (analysisId) {
       setDeletingId(fileId);
       try {
-        await projectService.deleteProjectFile(analysisId, fileId);
+        await analysesService.deleteAnalysisFile(analysisId, fileId);
         setUploadedFiles((prev) => prev.filter((f) => (f._id || f.id) !== fileId));
         refreshAnalysis();
         toast.success("File deleted successfully");
@@ -492,28 +533,80 @@ export default function AnalysisFilesPage() {
 
           {/* Sources */}
           <div className="border border-gray-200 rounded-xl p-4 sm:p-5">
-            <h3 className="text-xs sm:text-sm font-bold text-[#363636] uppercase tracking-wider mb-3">
-              Sources
-            </h3>
-            <div className="flex lg:flex-col gap-4 lg:gap-2.5 text-[10px] sm:text-xs text-[#6B7280]">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-600 border border-green-100">
-                  Uploaded
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs sm:text-sm font-bold text-[#363636] uppercase tracking-wider">
+                Sources
+              </h3>
+              {activeSource !== "all" && (
+                <button
+                  type="button"
+                  onClick={() => setActiveSource("all")}
+                  className="text-[11px] text-[#4343F0] hover:underline font-semibold cursor-pointer"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+            <div className="flex flex-col gap-2 text-[10px] sm:text-xs">
+              <button
+                type="button"
+                onClick={() => setActiveSource(activeSource === "delivery" ? "all" : "delivery")}
+                className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all cursor-pointer ${
+                  activeSource === "delivery"
+                    ? "bg-[#4343F0]/10 border border-[#4343F0]"
+                    : "hover:bg-gray-50 border border-transparent"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black bg-[#4343F0] text-white border border-[#4343F0]/25 uppercase tracking-tighter">
+                    Delivery
+                  </span>
+                  <span className="text-[11px] sm:text-xs text-[#363636] font-medium">Final analysis outputs</span>
+                </div>
+                <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                  {sourceCounts.delivery}
                 </span>
-                <span className="hidden sm:inline">You uploaded directly</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100">
-                  Chat
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveSource(activeSource === "chat" ? "all" : "chat")}
+                className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all cursor-pointer ${
+                  activeSource === "chat"
+                    ? "bg-blue-50 border border-blue-400"
+                    : "hover:bg-gray-50 border border-transparent"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100">
+                    Chat
+                  </span>
+                  <span className="text-[11px] sm:text-xs text-[#6B7280]">Shared in messages</span>
+                </div>
+                <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                  {sourceCounts.chat}
                 </span>
-                <span className="hidden sm:inline">Shared in messages</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black bg-[#4343F0] text-white border border-[#4343F0]/25 uppercase tracking-tighter">
-                  Delivery
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveSource(activeSource === "uploaded" ? "all" : "uploaded")}
+                className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all cursor-pointer ${
+                  activeSource === "uploaded"
+                    ? "bg-green-50 border border-green-400"
+                    : "hover:bg-gray-50 border border-transparent"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-600 border border-green-100">
+                    Uploaded
+                  </span>
+                  <span className="text-[11px] sm:text-xs text-[#6B7280]">You uploaded directly</span>
+                </div>
+                <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                  {sourceCounts.uploaded}
                 </span>
-                <span className="hidden sm:inline">Final analysis outputs</span>
-              </div>
+              </button>
             </div>
           </div>
         </div>

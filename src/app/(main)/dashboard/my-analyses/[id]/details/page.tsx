@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useAnalysis } from "@/context/AnalysisContext";
-import { projectService } from "@/lib/projectService";
+import { analysesService } from "@/lib/analysesService";
 import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";
 import { packagesService } from "@/lib/packagesService";
@@ -21,20 +21,51 @@ const formatStatusTitle = (rawTitle: string): string => {
     .trim();
 
   const lower = clean.toLowerCase();
-  if (lower === "action required: payment" || lower === "payment required") {
-    return "Project paused";
+  if (lower === "action required: payment" || lower === "payment required" || lower === "project paused" || lower === "analysis paused" || lower.includes("paused")) {
+    return "Analysis paused";
   }
-  if (lower.startsWith("project status updated to active") || lower === "active") {
-    return "Project resumed";
+  if (lower.startsWith("project status updated to active") || lower.startsWith("analysis status updated to active") || lower === "active" || lower === "project resumed" || lower === "analysis resumed" || lower.includes("resumed")) {
+    return "Analysis resumed";
+  }
+  if (lower === "project completed" || lower === "analysis completed" || lower === "order completed!" || lower === "order completed" || lower.includes("completed")) {
+    return "Analysis completed!";
+  }
+  if (lower === "project manager assigned" || lower === "analysis manager assigned" || lower === "manager assigned" || lower.includes("manager assigned")) {
+    return "Manager assigned";
+  }
+  if (lower.includes("project")) {
+    clean = clean.replace(/projects/gi, "analyses").replace(/project/gi, "analysis");
   }
   if (clean.length > 0) {
-    clean = clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
+    clean = clean.charAt(0).toUpperCase() + clean.slice(1);
   }
   return clean;
 };
 
-const renderStatusMessageText = (text: string, attachments?: any[]) => {
-  if (!text) return null;
+const sanitizeAnalysisText = (text: string): string => {
+  if (!text) return "";
+  return text
+    .replace(/for this project moving forward/gi, "for this analysis moving forward")
+    .replace(/as project manager/gi, "as manager")
+    .replace(/project manager/gi, "manager")
+    .replace(/Your project financials have been updated/gi, "Your analysis financials have been updated")
+    .replace(/This project has been temporarily paused/gi, "This analysis has been temporarily paused")
+    .replace(/This project is currently paused/gi, "This analysis is currently paused")
+    .replace(/activate your project/gi, "activate your analysis")
+    .replace(/Your project has been resumed/gi, "Your analysis has been resumed")
+    .replace(/This order has been completed/gi, "This analysis has been completed")
+    .replace(/this order/gi, "this analysis")
+    .replace(/the order/gi, "the analysis")
+    .replace(/this project/gi, "this analysis")
+    .replace(/your project/gi, "your analysis")
+    .replace(/the project/gi, "the analysis")
+    .replace(/projects/gi, "analyses")
+    .replace(/project/gi, "analysis");
+};
+
+const renderStatusMessageText = (rawText: string, attachments?: any[]) => {
+  if (!rawText) return null;
+  const text = sanitizeAnalysisText(rawText);
 
   const pdfAttachment = attachments?.find((a: any) => {
     const u = typeof a === "string" ? a : a?.url || "";
@@ -661,7 +692,7 @@ export default function AnalysisDetailsPage() {
       setIsSending(true);
       try {
         const aId = analysis._id || analysis.id;
-        const res = await projectService.addMessage(
+        const res = await analysesService.addMessage(
           aId,
           messageText,
           false,
@@ -692,7 +723,7 @@ export default function AnalysisDetailsPage() {
       const username = actingUser?.fullName || actingUser?.username || currentUser?.fullName || "User";
       const avatar = actingUser?.avatar || currentUser?.avatar;
       const aId = analysis._id || analysis.id;
-      const res = await projectService.acceptProposal(aId, proposalId, username, avatar);
+      const res = await analysesService.acceptProposal(aId, proposalId, username, avatar);
       if (res && (res.isSuccessful || res.success || res.statusCode === 200 || res.statusCode === 201 || res.data)) {
         refreshAnalysis();
       }
@@ -715,9 +746,9 @@ export default function AnalysisDetailsPage() {
         const aId = analysis._id || analysis.id;
 
         if (actionModal.action === "decline") {
-          res = await projectService.declineProposal(aId, actionModal.proposalId, actionComment || "", username, avatar);
+          res = await analysesService.declineProposal(aId, actionModal.proposalId, actionComment || "", username, avatar);
         } else if (actionModal.action === "request_modification") {
-          res = await projectService.requestProposalModification(aId, actionModal.proposalId, actionComment, username, avatar);
+          res = await analysesService.requestProposalModification(aId, actionModal.proposalId, actionComment, username, avatar);
         }
 
         if (res && (res.isSuccessful || res.success || res.statusCode === 200 || res.statusCode === 201 || res.data)) {
@@ -1451,17 +1482,17 @@ export default function AnalysisDetailsPage() {
                 </div>
                 <h4 className="text-lg font-bold text-gray-800 mb-1">{managerName}</h4>
                 <p className="text-sm text-gray-500 mb-4 font-medium uppercase tracking-wider text-[10px]">
-                  Project Manager
+                  Manager
                 </p>
               </div>
             ) : (
               <div>
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 text-center">
-                  Project Managers ({managers.length})
+                  Managers ({managers.length})
                 </h3>
                 <div className="space-y-3">
                   {managers.map((m: any, idx: number) => {
-                    const name = m?.fullName || "Project Manager";
+                    const name = m?.fullName || "Manager";
                     const avatar = m?.avatar;
                     return (
                       <div key={m._id || m.id || idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
@@ -1476,7 +1507,7 @@ export default function AnalysisDetailsPage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <h4 className="text-sm font-bold text-gray-800 truncate">{name}</h4>
-                          <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Project Manager</p>
+                          <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Manager</p>
                         </div>
                       </div>
                     );

@@ -427,7 +427,7 @@ export default function AnalysisPaymentsPage() {
                     <polyline points="7 10 12 15 17 10"></polyline>
                     <line x1="12" x2="12" y1="15" y2="3"></line>
                   </svg>
-                  Download Project (.PDF)
+                  Download Analysis (.PDF)
                 </button>
                 <button
                   type="button"
@@ -587,7 +587,7 @@ export default function AnalysisPaymentsPage() {
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    <span>Download Project (.PDF)</span>
+                    <span>Download Analysis (.PDF)</span>
                   </>
                 )}
               </button>
