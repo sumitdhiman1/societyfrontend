@@ -77,20 +77,20 @@ function FileIcon({ mimeType, url, filename }: { mimeType: string; url: string; 
 function SourceBadge({ source }: { source: string }) {
   if (source === "delivery") {
     return (
-      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#4343F0] text-white uppercase tracking-wider">
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black bg-[#4343F0] text-white border border-[#4343F0]/25 uppercase tracking-tighter ml-2">
         Delivery
       </span>
     );
   }
   if (source === "chat") {
     return (
-      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100">
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 ml-2">
         Chat
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-600 border border-green-100">
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-600 border border-green-100 ml-2">
       Uploaded
     </span>
   );
@@ -152,6 +152,7 @@ export default function AnalysisFilesPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
+  const [activeSource, setActiveSource] = useState<"all" | "uploaded" | "chat" | "delivery">("all");
   const [isDragging, setIsDragging] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [previewFile, setPreviewFile] = useState<any>(null);
@@ -166,7 +167,6 @@ export default function AnalysisFilesPage() {
         const data = Array.isArray(res?.data) ? res.data : (Array.isArray(res?.data?.files) ? res.data.files : []);
         setUploadedFiles(data || []);
       } catch (e) {
-        // Fallback to analysis.files if direct endpoint fails or user is guest
         setUploadedFiles(Array.isArray(analysis?.files) ? analysis.files : []);
       } finally {
         setIsLoading(false);
@@ -178,31 +178,47 @@ export default function AnalysisFilesPage() {
     loadFiles();
   }, [loadFiles]);
 
-  const processedUrls = new Set<string>();
-  const derivedFiles: any[] = [];
+  const fileMap = new Map<string, any>();
+
+  const registerFile = (fileItem: any) => {
+    if (!fileItem?.url) return;
+    const key = ensureHttps(fileItem.url).trim().toLowerCase();
+    const existing = fileMap.get(key);
+    if (!existing) {
+      fileMap.set(key, fileItem);
+      return;
+    }
+    // Priority order: delivery (3) > chat (2) > uploaded (1)
+    const priority = (src: string) => (src === "delivery" ? 3 : src === "chat" ? 2 : 1);
+    if (priority(fileItem.source) >= priority(existing.source)) {
+      fileMap.set(key, {
+        ...existing,
+        ...fileItem,
+        canDelete: fileItem.source === "uploaded" ? (existing.canDelete ?? fileItem.canDelete) : false,
+      });
+    }
+  };
 
   // 1. Final Delivery / Results PDF
   if (analysis?.resultsPdfUrl) {
     const url = ensureHttps(analysis.resultsPdfUrl);
-    if (!processedUrls.has(url)) {
-      processedUrls.add(url);
-      derivedFiles.push({
-        _id: `delivery-${url}`,
-        url,
-        name: "Final_Analysis_Report.pdf",
-        size: 0,
-        mimeType: "application/pdf",
-        category: "document",
-        uploadedAt: analysis.updatedAt || analysis.createdAt || "",
-        source: "delivery",
-        canDelete: false,
-      });
-    }
+    registerFile({
+      _id: `delivery-${url}`,
+      url,
+      name: "Final_Analysis_Report.pdf",
+      size: 0,
+      mimeType: "application/pdf",
+      category: "document",
+      uploadedAt: analysis.updatedAt || analysis.createdAt || "",
+      source: "delivery",
+      canDelete: false,
+    });
   }
 
   // 2. Message Attachments & Chat Files
   if (analysis?.messages && Array.isArray(analysis.messages)) {
     analysis.messages.forEach((msg: any) => {
+      const isDelivery = !!msg.isFinalDelivery || msg.type === "final_delivery" || msg.type === "delivery" || msg.isFinal === true;
       const rawAttached =
         msg.attachments ||
         msg.content?.attachedFiles ||
@@ -215,9 +231,6 @@ export default function AnalysisFilesPage() {
         const fileUrl = typeof file === "string" ? file : file?.url;
         if (!fileUrl) return;
         const url = ensureHttps(fileUrl);
-        if (processedUrls.has(url)) return;
-        processedUrls.add(url);
-
         const rawName = typeof file === "string" ? "" : file.filename || file.name;
         const filename = rawName
           ? decodeURIComponent(rawName)
@@ -235,9 +248,7 @@ export default function AnalysisFilesPage() {
           ? "video/mp4"
           : file.type || "application/octet-stream";
 
-        const isDelivery = !!msg.isFinalDelivery || msg.type === "final_delivery" || msg.type === "delivery";
-
-        derivedFiles.push({
+        registerFile({
           _id: `msg-${url}`,
           url,
           name: filename,
@@ -262,15 +273,12 @@ export default function AnalysisFilesPage() {
     const fileUrl = typeof file === "string" ? file : file?.url;
     if (!fileUrl) return;
     const url = ensureHttps(fileUrl);
-    if (processedUrls.has(url)) return;
-    processedUrls.add(url);
-
     const rawName = typeof file === "string" ? "" : file.filename || file.name;
     const filename = rawName
       ? decodeURIComponent(rawName)
       : decodeURIComponent(url.split("/").pop()?.split("?")[0] || `Request-Attachment-${idx + 1}`);
 
-    derivedFiles.push({
+    registerFile({
       _id: `initial-${url}`,
       url,
       name: filename,
@@ -284,10 +292,10 @@ export default function AnalysisFilesPage() {
   });
 
   // 4. Directly Uploaded Project Files
-  const userUploadedList = (uploadedFiles || []).map((f: any) => {
+  (uploadedFiles || []).forEach((f: any) => {
     const url = ensureHttps(f.url);
-    if (url) processedUrls.add(url);
-    return {
+    if (!url) return;
+    registerFile({
       _id: f._id || f.id || `uploaded-${url}`,
       url,
       name: f.name || decodeURIComponent(url.split("/").pop()?.split("?")[0] || "File"),
@@ -297,12 +305,16 @@ export default function AnalysisFilesPage() {
       uploadedAt: f.uploadedAt || f.createdAt || "",
       source: "uploaded",
       canDelete: true,
-    };
+    });
   });
 
-  const allFiles = [...userUploadedList, ...derivedFiles.filter((f) => !userUploadedList.some((u) => u.url === f.url))];
+  const allFiles = Array.from(fileMap.values());
 
-  const filteredFiles = activeCategory === "all" ? allFiles : allFiles.filter((f) => f.category === activeCategory);
+  const filteredFiles = allFiles.filter((f) => {
+    const matchesCategory = activeCategory === "all" || f.category === activeCategory;
+    const matchesSource = activeSource === "all" || f.source === activeSource;
+    return matchesCategory && matchesSource;
+  });
 
   const formatSize = (bytes: number) => {
     if (!bytes || bytes <= 0) return "—";
@@ -418,7 +430,7 @@ export default function AnalysisFilesPage() {
   if (!analysis) return null;
 
   return (
-    <div className="flex flex-col gap-10 font-sans">
+    <div>
       <AuthPromptModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
@@ -445,28 +457,29 @@ export default function AnalysisFilesPage() {
         {/* Left Column: Filter & Sources */}
         <div className="space-y-4 lg:col-span-1">
           {/* Filter by Type */}
-          <div className="border border-gray-200 rounded-xl p-4 sm:p-5 bg-white shadow-xs">
+          <div className="border border-gray-200 rounded-xl p-4 sm:p-5 bg-white">
             <h3 className="text-xs sm:text-sm font-bold text-[#363636] uppercase tracking-wider mb-3">
               Filter by Type
             </h3>
             <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 scrollbar-hide">
               {filterCategories.map(({ label, value }) => {
                 const count = value === "all" ? allFiles.length : allFiles.filter((f) => f.category === value).length;
+                const isActive = activeCategory === value;
                 return (
                   <button
                     key={value}
                     type="button"
                     onClick={() => setActiveCategory(value)}
                     className={`flex-shrink-0 lg:w-full rounded-lg px-3 py-2 text-sm flex justify-between items-center transition-all cursor-pointer ${
-                      activeCategory === value
-                        ? "bg-[#4343F0] text-white font-semibold shadow-sm"
+                      isActive
+                        ? "bg-[#3232b7] text-white font-semibold shadow-sm"
                         : "text-[#6B7280] hover:bg-gray-100"
                     }`}
                   >
                     <span>{label}</span>
                     <span
                       className={`text-xs font-mono rounded-full px-2 py-0.5 ${
-                        activeCategory === value ? "bg-white/20 text-white font-bold" : "bg-gray-100 text-gray-500"
+                        isActive ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
                       }`}
                     >
                       {count}
@@ -478,28 +491,28 @@ export default function AnalysisFilesPage() {
           </div>
 
           {/* Sources */}
-          <div className="border border-gray-200 rounded-xl p-4 sm:p-5 bg-white shadow-xs">
+          <div className="border border-gray-200 rounded-xl p-4 sm:p-5">
             <h3 className="text-xs sm:text-sm font-bold text-[#363636] uppercase tracking-wider mb-3">
               Sources
             </h3>
-            <div className="flex lg:flex-col gap-4 lg:gap-3 text-xs text-[#6B7280]">
-              <div className="flex items-center gap-2.5">
+            <div className="flex lg:flex-col gap-4 lg:gap-2.5 text-[10px] sm:text-xs text-[#6B7280]">
+              <div className="flex items-center gap-2">
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-600 border border-green-100">
                   Uploaded
                 </span>
-                <span className="text-gray-600">You uploaded directly</span>
+                <span className="hidden sm:inline">You uploaded directly</span>
               </div>
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100">
                   Chat
                 </span>
-                <span className="text-gray-600">Shared in messages</span>
+                <span className="hidden sm:inline">Shared in messages</span>
               </div>
-              <div className="flex items-center gap-2.5">
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#4343F0] text-white uppercase tracking-wider">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black bg-[#4343F0] text-white border border-[#4343F0]/25 uppercase tracking-tighter">
                   Delivery
                 </span>
-                <span className="text-gray-600">Final analysis outputs</span>
+                <span className="hidden sm:inline">Final analysis outputs</span>
               </div>
             </div>
           </div>
@@ -508,17 +521,17 @@ export default function AnalysisFilesPage() {
         {/* Right Column: Upload Box & Files List */}
         <div className="lg:col-span-3 space-y-6">
           {/* Upload Files Box */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-xs">
+          <div className="border border-gray-200 rounded-xl p-4 sm:p-6 bg-white">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-5">
               <div>
                 <h3 className="text-base sm:text-lg font-bold text-[#363636]">Upload Files</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Any file type • Multiple files at once</p>
+                <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">Any file type • Multiple files at once</p>
               </div>
               <button
                 type="button"
                 onClick={handleTriggerUpload}
                 disabled={isUploading}
-                className="w-full sm:w-auto bg-[#4343F0] hover:bg-[#3232b7] text-white px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-60 shadow-sm cursor-pointer"
+                className="w-full sm:w-auto bg-[#3232b7] hover:bg-[#2626a0] text-white px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-60 shadow-sm cursor-pointer"
               >
                 {isUploading ? (
                   <>
@@ -527,8 +540,14 @@ export default function AnalysisFilesPage() {
                   </>
                 ) : (
                   <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                     <span>Upload Files</span>
                   </>
@@ -549,68 +568,73 @@ export default function AnalysisFilesPage() {
                 if (e.dataTransfer.files?.length) handleUploadFiles(e.dataTransfer.files);
               }}
               onClick={handleTriggerUpload}
-              className={`w-full border-2 border-dashed rounded-xl h-[130px] flex flex-col items-center justify-center text-sm cursor-pointer transition-all ${
-                isDragging
-                  ? "border-[#4343F0] bg-blue-50/50"
-                  : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/40 text-gray-400"
+              className={`w-full border-2 border-dashed rounded-xl h-[120px] sm:h-[140px] flex flex-col items-center justify-center text-sm cursor-pointer transition-all border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-400 ${
+                isDragging ? "border-[#3232b7] bg-blue-50/40" : ""
               }`}
             >
-              <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center mb-1.5 text-gray-400">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-              </div>
-              <p className="text-xs sm:text-sm text-center">
+              <div className="text-2xl sm:text-3xl mb-2">☁️</div>
+              <p className="text-xs sm:text-sm text-center px-4">
                 <span className="font-medium text-[#363636]">Drop files here</span> or{" "}
-                <span className="text-[#4343F0] underline font-medium">browse</span>
+                <span className="text-[#3232b7] underline">browse</span>
               </p>
-              <p className="text-[11px] text-gray-400 mt-0.5">Images, PDFs, videos, documents and more</p>
+              <p className="text-[10px] sm:text-xs text-gray-400 mt-1 text-center">
+                Images, PDFs, videos, documents and more
+              </p>
             </div>
           </div>
 
           {/* Files List / Grid Box */}
-          <div className="bg-white border border-gray-200 rounded-xl shadow-xs">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div className="border border-gray-200 rounded-xl bg-white">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-100 gap-4">
               <div className="flex items-center gap-2">
                 <h3 className="text-base sm:text-lg font-bold text-[#363636]">Files</h3>
                 <span className="text-xs text-gray-400">({filteredFiles.length})</span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <div className="flex border border-gray-200 rounded-lg overflow-hidden">
                   <button
+                    type="button"
                     onClick={() => setViewMode("list")}
-                    className={`px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
-                      viewMode === "list" ? "bg-[#4343F0] text-white" : "text-gray-500 hover:bg-gray-50"
+                    className={`px-3 py-1.5 text-[10px] sm:text-xs font-medium transition-colors cursor-pointer ${
+                      viewMode === "list" ? "bg-[#3232b7] text-white" : "text-gray-500 hover:bg-gray-50"
                     }`}
                   >
-                    <span>=</span> List
+                    ☰ List
                   </button>
                   <button
+                    type="button"
                     onClick={() => setViewMode("grid")}
-                    className={`px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
-                      viewMode === "grid" ? "bg-[#4343F0] text-white" : "text-gray-500 hover:bg-gray-50"
+                    className={`px-3 py-1.5 text-[10px] sm:text-xs font-medium transition-colors cursor-pointer ${
+                      viewMode === "grid" ? "bg-[#3232b7] text-white" : "text-gray-500 hover:bg-gray-50"
                     }`}
                   >
-                    <span>::</span> Grid
+                    ⊞ Grid
                   </button>
                 </div>
                 <button
                   type="button"
                   onClick={handleTriggerUpload}
                   disabled={isUploading}
-                  className="hidden sm:inline-flex items-center gap-1.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs font-semibold py-1.5 px-3.5 rounded-lg shadow-sm transition-colors cursor-pointer disabled:opacity-60"
+                  className="bg-[#3232b7] hover:bg-[#2626a0] text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-60 cursor-pointer"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
-                  {isUploading ? "Uploading..." : "Upload"}
+                  <span className="hidden sm:inline">Upload</span>
+                  <span className="sm:hidden">+</span>
                 </button>
               </div>
             </div>
 
             {isLoading ? (
               <div className="py-16 text-center text-gray-400 text-sm">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4343F0] mx-auto mb-2"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3232b7] mx-auto mb-2"></div>
                 Loading files...
               </div>
             ) : filteredFiles.length === 0 ? (
@@ -628,7 +652,7 @@ export default function AnalysisFilesPage() {
                 {filteredFiles.map((file) => (
                   <div
                     key={file._id}
-                    className="group relative rounded-xl overflow-hidden bg-gray-100 border border-gray-200 aspect-square cursor-pointer hover:border-[#4343F0] transition-all"
+                    className="group relative rounded-xl overflow-hidden bg-gray-100 border border-gray-200 aspect-square cursor-pointer hover:border-[#3232b7] transition-all"
                     onClick={() => isImage(file.mimeType, file.url, file.name) && setPreviewFile(file)}
                   >
                     {isImage(file.mimeType, file.url, file.name) ? (
@@ -699,7 +723,7 @@ export default function AnalysisFilesPage() {
                   return (
                     <div
                       key={file._id}
-                      className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/70 transition-colors group"
+                      className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 hover:bg-gray-50 transition-colors group"
                     >
                       <div
                         onClick={() => isImage(file.mimeType, file.url, file.name) && setPreviewFile(file)}
@@ -709,21 +733,27 @@ export default function AnalysisFilesPage() {
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-[#363636] truncate">{file.name}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className="text-xs sm:text-sm font-medium text-[#363636] truncate max-w-[200px] sm:max-w-[280px]"
+                            title={file.name}
+                          >
+                            {file.name}
+                          </span>
                           <SourceBadge source={file.source} />
                         </div>
-                        <p className="text-xs text-gray-400 mt-0.5 font-normal">
-                          {dateFormatted ? `— ${dateFormatted}` : ""}
-                          {file.size > 0 ? ` · ${formatSize(file.size)}` : ""}
+                        <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">
+                          {formatSize(file.size)}
+                          {dateFormatted ? ` · ${dateFormatted}` : ""}
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-2 flex-shrink-0 lg:opacity-0 lg:group-hover:opacity-100 lg:transition-opacity">
                         <button
                           type="button"
+                          title="Download"
                           onClick={(e) => downloadFile(e as any, file.url, file.name)}
-                          className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-semibold text-gray-700 hover:bg-white hover:border-gray-300 transition-colors shadow-2xs cursor-pointer"
+                          className="border border-gray-200 rounded-lg px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs text-[#363636] font-medium hover:bg-white hover:border-gray-300 transition-colors cursor-pointer"
                         >
                           Download
                         </button>
@@ -732,7 +762,7 @@ export default function AnalysisFilesPage() {
                             type="button"
                             onClick={() => handleDeleteFile(file._id)}
                             disabled={deletingId === file._id}
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-1 sm:p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                             title="Delete file"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -752,3 +782,4 @@ export default function AnalysisFilesPage() {
     </div>
   );
 }
+

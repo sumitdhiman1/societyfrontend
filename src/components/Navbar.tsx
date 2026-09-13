@@ -480,11 +480,10 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
                             {item.text}
                           </span>
                           <span
-                            className={`text-[10px] uppercase tracking-wider font-bold ${
-                              item.category === "Free Package"
+                            className={`text-[10px] uppercase tracking-wider font-bold ${item.category === "Free Package"
                                 ? "text-emerald-600"
                                 : "text-gray-400"
-                            }`}
+                              }`}
                           >
                             {item.category}
                           </span>

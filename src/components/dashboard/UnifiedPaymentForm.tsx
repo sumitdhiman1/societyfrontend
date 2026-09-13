@@ -206,7 +206,7 @@ function PaymentForm({
   };
 
   const getActiveVatRate = () => {
-    if (propVatRate !== undefined && propVatRate !== null) {
+    if (propVatRate !== undefined && propVatRate !== null && Number(propVatRate) > 0) {
       return Number(propVatRate);
     }
     const activeCode = getActiveCountryCode();
@@ -228,19 +228,23 @@ function PaymentForm({
   };
 
   useEffect(() => {
+    const currentDeliverablesSum = (deliverableItems || []).reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+    const currentSubtotal = currentDeliverablesSum > 0 ? currentDeliverablesSum : (totalCost + amountPaid);
     const vatMultiplier = 1 + getActiveVatRate() / 100;
-    const effectivePending = totalCost * (getActiveVatRate() > 0 ? vatMultiplier : 1);
+    const effectivePending = amountPaid > 0
+      ? Math.max(0, (currentSubtotal * vatMultiplier) - amountPaid)
+      : totalCost * (getActiveVatRate() > 0 ? vatMultiplier : 1);
     const convertedPending = convertCurrencyAmount(effectivePending, currency, nativeCurrency || "USD", conversionRate);
 
     const paramAmount = searchParams?.get("amount");
     if (paramAmount && !isNaN(Number(paramAmount)) && Number(paramAmount) > 0) {
       setPaymentOption("custom");
       setCustomAmount(Number(paramAmount).toFixed(2));
-    } else if (amountPaid > 0 && totalCost > 0) {
+    } else if (amountPaid > 0) {
       setPaymentOption("custom");
       setCustomAmount(convertedPending.toFixed(2));
     }
-  }, [searchParams, amountPaid, totalCost, currency, conversionRate, nativeCurrency, countriesList, userCountry, billingSameAsBusiness, billingAddress.country, propVatRate]);
+  }, [searchParams, amountPaid, totalCost, deliverableItems, currency, conversionRate, nativeCurrency, countriesList, userCountry, billingSameAsBusiness, billingAddress.country, propVatRate]);
 
   const [popup, setPopup] = useState({
     isOpen: false,
@@ -256,6 +260,11 @@ function PaymentForm({
     else if (paymentOption === "custom" && customAmount) amount = parseFloat(customAmount);
     
     if (paymentOption !== "custom") {
+      if (amountPaid > 0 && paymentOption === "full") {
+        const totalWithVat = projectSubtotal + getVatAmount(projectSubtotal);
+        const pendingWithVat = Math.max(0, totalWithVat - amountPaid);
+        return convertCurrencyAmount(pendingWithVat, currency, nativeCurrency || "USD", conversionRate);
+      }
       amount = convertCurrencyAmount(amount, currency, nativeCurrency || "USD", conversionRate);
       const vatRate = getActiveVatRate();
       if (vatRate > 0) {
@@ -513,7 +522,7 @@ function PaymentForm({
             </p>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] sm:text-xs text-gray-500">
               <span className="whitespace-nowrap">
-                Project No: <span className="text-gray-700 font-medium">#{entityNumber}</span>
+                {type === "ANALYSIS" ? "Analysis No:" : "Project No:"} <span className="text-gray-700 font-medium">#{entityNumber}</span>
               </span>
               <span className="hidden sm:inline text-gray-300">|</span>
               <span className="whitespace-nowrap">
@@ -539,34 +548,45 @@ function PaymentForm({
             </div>
           </div>
 
-          <div className="w-full sm:w-auto text-left sm:text-right space-y-2 order-1 sm:order-2 bg-gray-50 sm:bg-transparent p-4 sm:p-0 rounded-lg">
-            <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8">
-              <span className="text-xs sm:text-sm text-gray-600 uppercase sm:capitalize font-bold sm:font-normal">
-                Subtotal:
-              </span>
-              <span className="text-sm font-bold text-gray-700">{formatPrice(projectSubtotal)}</span>
+          {(type === "BUNDLE" || type === "ANALYSIS") && amountPaid === 0 ? (
+            <div className="w-full sm:w-auto order-1 sm:order-2 bg-gray-50 sm:bg-transparent p-4 sm:p-0 rounded-lg space-y-2">
+              <div className="flex justify-between items-center sm:justify-end gap-4">
+                <span className="text-xs sm:text-sm text-gray-500 font-medium font-sans w-32 text-right">Total Cost:</span>
+                <span className="text-sm sm:text-base font-bold text-gray-800 font-sans w-32 text-left">{formatPrice(totalCost)}</span>
+              </div>
+              <div className="flex justify-between items-center sm:justify-end gap-4">
+                <span className="text-xs sm:text-sm text-gray-700 font-bold font-sans w-32 text-right">Total Payable:</span>
+                <span className="text-base sm:text-lg font-extrabold text-[#4343F0] font-sans w-32 text-left">{formatPrice(totalCost * (1 + getActiveVatRate() / 100))}</span>
+              </div>
             </div>
-            {getActiveVatRate() > 0 && (
+          ) : (
+            <div className="w-full sm:w-auto text-left sm:text-right space-y-2 order-1 sm:order-2 bg-gray-50 sm:bg-transparent p-4 sm:p-0 rounded-lg">
+              <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8">
+                <span className="text-xs sm:text-sm text-gray-600 uppercase sm:capitalize font-bold sm:font-normal">
+                  Subtotal:
+                </span>
+                <span className="text-sm font-bold text-gray-700">{formatPrice(projectSubtotal)}</span>
+              </div>
               <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8">
                 <span className="text-xs sm:text-sm text-gray-600 font-bold sm:font-semibold">VAT ({getActiveVatRate()}%):</span>
                 <span className="text-sm text-gray-600 font-bold sm:font-semibold">{formatPrice(getVatAmount(projectSubtotal))}</span>
               </div>
-            )}
-            <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8 border-t border-gray-100 pt-2">
-              <span className="text-xs sm:text-sm text-gray-800 uppercase sm:capitalize font-bold">
-                Total Cost:
-              </span>
-              <span className="text-lg sm:text-xl font-bold text-gray-800">{formatPrice(projectSubtotal + getVatAmount(projectSubtotal))}</span>
+              <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8 border-t border-gray-100 pt-2">
+                <span className="text-xs sm:text-sm text-gray-800 uppercase sm:capitalize font-bold">
+                  Total Cost:
+                </span>
+                <span className="text-lg sm:text-xl font-bold text-gray-800">{formatPrice(projectSubtotal + getVatAmount(projectSubtotal))}</span>
+              </div>
+              <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8">
+                <span className="text-xs sm:text-sm text-green-600 font-bold sm:font-semibold">Paid:</span>
+                <span className="text-sm text-green-600 font-bold sm:font-semibold">{formatPrice(amountPaid)}</span>
+              </div>
+              <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8">
+                <span className="text-xs sm:text-sm text-red-600 font-bold sm:font-semibold">Pending Balance:</span>
+                <span className="text-sm text-red-600 font-bold sm:font-semibold">{formatPrice(Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid))}</span>
+              </div>
             </div>
-            <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8">
-              <span className="text-xs sm:text-sm text-green-600 font-bold sm:font-semibold">Paid:</span>
-              <span className="text-sm text-green-600 font-bold sm:font-semibold">{formatPrice(amountPaid)}</span>
-            </div>
-            <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8">
-              <span className="text-xs sm:text-sm text-red-600 font-bold sm:font-semibold">Pending Balance:</span>
-              <span className="text-sm text-red-600 font-bold sm:font-semibold">{formatPrice(pendingAmount + getVatAmount(pendingAmount))}</span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     )}
@@ -597,7 +617,7 @@ function PaymentForm({
                 </tr>
               ))}
 
-              {addonItems.length > 0 && (
+              {type !== "BUNDLE" && type !== "ANALYSIS" && addonItems.length > 0 && (
                 <>
                   <tr className="bg-gray-800">
                     <td colSpan={3} className="py-3 px-6 text-xs font-bold text-white tracking-wider">
@@ -621,47 +641,78 @@ function PaymentForm({
                 </>
               )}
 
-              <tr className="border-t border-gray-200 bg-gray-50/10">
-                <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm font-semibold text-gray-600 text-center sm:text-left">
-                  Base Amount
-                </td>
-                <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm text-gray-400">
-                  -
-                </td>
-                <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm font-semibold text-gray-600 text-right">
-                  {formatPrice(subtotalRegular + subtotalAddons)}
-                </td>
-              </tr>
+              {type === "BUNDLE" || (type === "ANALYSIS" && amountPaid === 0) ? (
+                <>
+                  <tr className="border-t-2 border-gray-200 bg-gray-50/70">
+                    <td colSpan={2} className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-500">
+                      Base Amount:
+                    </td>
+                    <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
+                      {formatPrice(subtotalRegular)}
+                    </td>
+                  </tr>
+                  <tr className="bg-gray-50/70">
+                    <td colSpan={2} className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-500">
+                      VAT ({getActiveVatRate()}%):
+                    </td>
+                    <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
+                      {formatPrice(getVatAmount(subtotalRegular))}
+                    </td>
+                  </tr>
+                  <tr className="bg-blue-50/50 border-t border-gray-200">
+                    <td colSpan={2} className="py-3 px-3 sm:px-6 text-right text-xs sm:text-sm font-bold text-gray-800 uppercase font-sans">
+                      Total Payable:
+                    </td>
+                    <td className="py-3 px-3 sm:px-6 text-right text-sm sm:text-base font-extrabold text-[#4343F0] font-sans">
+                      {formatPrice(subtotalRegular + getVatAmount(subtotalRegular))}
+                    </td>
+                  </tr>
+                </>
+              ) : (
+                <>
+                  <tr className="border-t border-gray-200 bg-gray-50/10">
+                    <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm font-semibold text-gray-600 text-center sm:text-left">
+                      Base Amount
+                    </td>
+                    <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm text-gray-400">
+                      -
+                    </td>
+                    <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm font-semibold text-gray-600 text-right">
+                      {formatPrice(subtotalRegular + subtotalAddons)}
+                    </td>
+                  </tr>
 
-              <tr className="border-t border-gray-200 bg-gray-50/30">
-                <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm font-semibold text-gray-600 text-center sm:text-left">
-                  VAT ({getActiveVatRate()}%):
-                </td>
-                <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm text-gray-400">
-                  -
-                </td>
-                <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm font-semibold text-gray-600 text-right">
-                  {formatPrice(getVatAmount(subtotalRegular + subtotalAddons))}
-                </td>
-              </tr>
+                  <tr className="border-t border-gray-200 bg-gray-50/30">
+                    <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm font-semibold text-gray-600 text-center sm:text-left">
+                      VAT ({getActiveVatRate()}%):
+                    </td>
+                    <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm text-gray-400">
+                      -
+                    </td>
+                    <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm font-semibold text-gray-600 text-right">
+                      {formatPrice(getVatAmount(subtotalRegular + subtotalAddons))}
+                    </td>
+                  </tr>
 
-              <tr className="border-t-2 border-gray-300 bg-gray-50">
-                <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm font-bold text-gray-800 uppercase text-center sm:text-left">
-                  TOTAL PAYABLE:
-                </td>
-                <td className="py-4 px-3 sm:px-6 text-[10px] sm:text-sm font-semibold text-gray-600 whitespace-nowrap">
-                  {(() => {
-                    const totalDays = [...regularItems, ...addonItems].reduce((acc, item) => {
-                      const dur = parseInt(item.duration || "0");
-                      return acc + (isNaN(dur) ? 0 : dur);
-                    }, 0);
-                    return totalDays > 0 ? `${totalDays} Days` : "-";
-                  })()}
-                </td>
-                <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm font-bold text-gray-800 text-right">
-                  {formatPrice((subtotalRegular + subtotalAddons) + getVatAmount(subtotalRegular + subtotalAddons))}
-                </td>
-              </tr>
+                  <tr className="border-t-2 border-gray-300 bg-gray-50">
+                    <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm font-bold text-gray-800 uppercase text-center sm:text-left">
+                      TOTAL PAYABLE:
+                    </td>
+                    <td className="py-4 px-3 sm:px-6 text-[10px] sm:text-sm font-semibold text-gray-600 whitespace-nowrap">
+                      {(() => {
+                        const totalDays = [...regularItems, ...addonItems].reduce((acc, item) => {
+                          const dur = parseInt(item.duration || "0");
+                          return acc + (isNaN(dur) ? 0 : dur);
+                        }, 0);
+                        return totalDays > 0 ? `${totalDays} Days` : "-";
+                      })()}
+                    </td>
+                    <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm font-bold text-gray-800 text-right">
+                      {formatPrice((subtotalRegular + subtotalAddons) + getVatAmount(subtotalRegular + subtotalAddons))}
+                    </td>
+                  </tr>
+                </>
+              )}
             </tbody>
           </table>
         </div>
@@ -684,7 +735,7 @@ function PaymentForm({
         </div>
       )}
 
-      {!isFullyPaid && (
+      {(!isFullyPaid || (amountPaid > 0 && Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid) > 0.009)) && (
         <div>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <h3 className="text-gray-700 font-bold text-lg">Pay Amount</h3>
@@ -713,7 +764,7 @@ function PaymentForm({
                   onChange={() => setPaymentOption("half")}
                 />
                 <span className="text-gray-600 text-sm">
-                  Deposit half: <span className="font-medium">{formatPrice(depositAmount)}</span>
+                  Deposit half: <span className="font-medium">{formatPrice(depositAmount * (1 + getActiveVatRate() / 100))}</span>
                 </span>
               </label>
             )}
@@ -734,7 +785,14 @@ function PaymentForm({
                 onChange={() => setPaymentOption("full")}
               />
               <span className="text-gray-600 text-sm">
-                Pay the full amount: <span className="font-medium">{formatPrice(totalCost * (1 + getActiveVatRate() / 100))}</span>
+                Pay the full amount:{" "}
+                <span className="font-medium">
+                  {formatPrice(
+                    amountPaid > 0
+                      ? Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid)
+                      : totalCost * (1 + getActiveVatRate() / 100)
+                  )}
+                </span>
               </span>
             </label>
 
@@ -1173,6 +1231,14 @@ function PaymentForm({
       <InvoicePreviewModal
         isOpen={showInvoiceModal}
         onClose={() => setShowInvoiceModal(false)}
+        type={type}
+        packageData={{
+          name: title,
+          description: description,
+        }}
+        selectedColumn={{
+          title: type === "ANALYSIS" ? "Analysis" : type === "BUNDLE" ? "Bundle" : "Standard",
+        }}
         projectNumber={entityNumber}
         totalCost={projectSubtotal}
         deliverableItems={deliverableItems}
