@@ -935,6 +935,18 @@ const ProposalPreview = ({
   );
 };
 
+const resolveUserName = (u: any): string => {
+  if (!u) return "";
+  if (typeof u.fullName === "string" && u.fullName.trim()) return u.fullName.trim();
+  if (typeof u.name === "string" && u.name.trim()) return u.name.trim();
+  const first = u.firstName || u.first_name || "";
+  const last = u.lastName || u.last_name || "";
+  const combined = `${first} ${last}`.trim();
+  if (combined) return combined;
+  if (typeof u.displayName === "string" && u.displayName.trim()) return u.displayName.trim();
+  return "";
+};
+
 const CalculatorPaymentForm = ({
   totalPrice,
   timeline,
@@ -955,7 +967,15 @@ const CalculatorPaymentForm = ({
 
   const [paymentOption, setPaymentOption] = useState("full");
   const [customAmount, setCustomAmount] = useState("");
-  const [cardholderName, setCardholderName] = useState("");
+  const [cardholderName, setCardholderName] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const u = authService.getUser();
+        return resolveUserName(u);
+      } catch {}
+    }
+    return "";
+  });
   const [billingSameAsBusiness, setBillingSameAsBusiness] = useState(true);
   const [billingAddress, setBillingAddress] = useState({
     street: "",
@@ -969,40 +989,62 @@ const CalculatorPaymentForm = ({
   const [isEmailVerified, setIsEmailVerified] = useState(true);
 
   useEffect(() => {
-    const checkAuth = () => {
+    const checkAuth = async () => {
       const authenticated = authService.isAuthenticated();
       setIsAuth(authenticated);
       if (authenticated) {
         const user = authService.getUser();
         if (user) {
           setIsEmailVerified(!!user.isEmailVerified);
-          if (user.fullName) {
-            setCardholderName(user.fullName);
+          const initialName = resolveUserName(user);
+          if (initialName) {
+            setCardholderName((prev) => (prev?.trim() ? prev : initialName));
           }
-          if (user && !user.isEmailVerified) {
-            authService.getProfile().then((freshUser) => {
-              if (freshUser) {
-                setIsEmailVerified(!!freshUser.isEmailVerified);
-              }
-            });
-          }
-          (async () => {
-            try {
-              const { profileService } = await import("@/lib/profileService");
-              const profile = await profileService.getMyProfile();
-              if (profile?.data) {
-                setUserCountry(profile.data.country || profile.data.billingCountry || (currency === "eur" ? "DE" : "US"));
-              }
-            } catch {
-              setUserCountry(currency === "eur" ? "DE" : "US");
-            }
-          })();
         }
+
+        try {
+          const { profileService } = await import("@/lib/profileService");
+          const profile = await profileService.getMyProfile();
+          const profileUser = profile?.data?.user || profile?.data || profile?.user;
+          if (profileUser) {
+            const profileName = resolveUserName(profileUser);
+            if (profileName) {
+              setCardholderName((prev) => (prev?.trim() ? prev : profileName));
+            }
+            if (profileUser.isEmailVerified !== undefined) {
+              setIsEmailVerified(!!profileUser.isEmailVerified);
+            }
+            setUserCountry(
+              profileUser.country ||
+              profileUser.billingCountry ||
+              (currency === "eur" ? "DE" : "US")
+            );
+          }
+        } catch {
+          setUserCountry(currency === "eur" ? "DE" : "US");
+        }
+
+        try {
+          const freshUser = await authService.getProfile();
+          if (freshUser) {
+            const freshName = resolveUserName(freshUser);
+            if (freshName) {
+              setCardholderName((prev) => (prev?.trim() ? prev : freshName));
+            }
+            if (freshUser.isEmailVerified !== undefined) {
+              setIsEmailVerified(!!freshUser.isEmailVerified);
+            }
+          }
+        } catch {}
+      } else {
+        setCardholderName("");
       }
     };
 
     checkAuth();
-    const handleAuthChange = () => checkAuth();
+    const handleAuthChange = () => {
+      checkAuth();
+    };
     window.addEventListener("auth:login", handleAuthChange);
     window.addEventListener("auth:logout", handleAuthChange);
     window.addEventListener("auth:user_update", handleAuthChange);
