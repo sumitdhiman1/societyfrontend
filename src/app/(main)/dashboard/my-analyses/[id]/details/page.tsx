@@ -492,13 +492,53 @@ export default function AnalysisDetailsPage() {
     };
   }, [analysis?._id, analysis?.id]);
 
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.location.hash === "#messages") {
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 300);
+  const scrollToBottomMessages = React.useCallback((behavior: ScrollBehavior = "smooth") => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior, block: "center" });
+    } else {
+      const el = document.getElementById("messages");
+      if (el) el.scrollIntoView({ behavior, block: "start" });
     }
-  }, [analysis?.messages]);
+  }, []);
+
+  useEffect(() => {
+    const handleScrollIfHash = (smooth = true) => {
+      if (typeof window === "undefined") return;
+      if (window.location.hash === "#messages") {
+        const behavior: ScrollBehavior = smooth ? "smooth" : "auto";
+        requestAnimationFrame(() => {
+          scrollToBottomMessages(behavior);
+        });
+        const t1 = setTimeout(() => scrollToBottomMessages(behavior), 100);
+        const t2 = setTimeout(() => scrollToBottomMessages(behavior), 300);
+        const t3 = setTimeout(() => scrollToBottomMessages(behavior), 600);
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+          clearTimeout(t3);
+        };
+      }
+    };
+
+    const cleanup = handleScrollIfHash(true);
+
+    const onHashChange = () => {
+      handleScrollIfHash(true);
+    };
+
+    const onCustomNavigate = () => {
+      handleScrollIfHash(true);
+    };
+
+    window.addEventListener("hashchange", onHashChange);
+    window.addEventListener("navigate-to-messages", onCustomNavigate);
+
+    return () => {
+      if (cleanup) cleanup();
+      window.removeEventListener("hashchange", onHashChange);
+      window.removeEventListener("navigate-to-messages", onCustomNavigate);
+    };
+  }, [analysis?._id, analysis?.messages?.length, scrollToBottomMessages]);
 
   if (!analysis) return null;
 

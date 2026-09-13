@@ -475,8 +475,13 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
                     <li key={i}>
                       <button
                         onClick={() => {
-                          setSearchQuery(item.text);
-                          handleSearch(item.text);
+                          if (item.link) {
+                            setShowSuggestions(false);
+                            router.push(item.link);
+                          } else {
+                            setSearchQuery(item.text);
+                            handleSearch(item.text);
+                          }
                         }}
                         className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center justify-between group"
                       >
@@ -484,7 +489,13 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
                           <span className="text-sm font-semibold text-gray-800 group-hover:text-[#4343F0]">
                             {item.text}
                           </span>
-                          <span className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">
+                          <span
+                            className={`text-[10px] uppercase tracking-wider font-bold ${
+                              item.category === "Free Package"
+                                ? "text-emerald-600"
+                                : "text-gray-400"
+                            }`}
+                          >
                             {item.category}
                           </span>
                         </div>

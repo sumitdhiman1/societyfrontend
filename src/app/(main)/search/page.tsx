@@ -116,7 +116,13 @@ function SearchResults() {
                           </div>
                         </div>
                         <div className="flex gap-4 lg:gap-[16px] items-center justify-start lg:justify-end w-full">
-                          <button onClick={() => router.push(`${project.infoUrl}/details#messages`)} className="bg-[#E3E6F5] text-[#5356ff] flex-1 lg:flex-none lg:w-[105px] lg:h-[38px] py-3 lg:py-0 rounded-[8px] lg:rounded-[6px] text-[14px] lg:text-[13px] font-bold relative hover:bg-[#d4d8f0] lg:hover:bg-[#cdd1ec] transition-colors">
+                          <button onClick={() => {
+                            const base = (project.infoUrl || `/dashboard/my-projects/${project.id || project._id}`).replace(/\/details\/?$/, "").replace(/\/$/, "");
+                            router.push(`${base}/details#messages`);
+                            if (typeof window !== "undefined") {
+                              window.dispatchEvent(new CustomEvent("navigate-to-messages"));
+                            }
+                          }} className="bg-[#E3E6F5] text-[#5356ff] flex-1 lg:flex-none lg:w-[105px] lg:h-[38px] py-3 lg:py-0 rounded-[8px] lg:rounded-[6px] text-[14px] lg:text-[13px] font-bold relative hover:bg-[#d4d8f0] lg:hover:bg-[#cdd1ec] transition-colors cursor-pointer">
                             {project.messages > 0 && (
                               <span className="absolute -top-[10px] lg:-top-[9px] -left-[10px] lg:-left-[9px] bg-[#363636] text-white rounded-full w-[26px] lg:w-[24px] h-[26px] lg:h-[24px] flex items-center justify-center text-[12px] font-bold shadow-md">
                                 {project.messages}
@@ -176,36 +182,72 @@ function SearchResults() {
                   Packages & Services
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 transition-opacity duration-200">
-                  {data.packages.map((pkg: any) => (
-                    <Link key={pkg._id} href={pkg.isCategory ? `/dashboard/new-project/packages?categorycode=${(pkg.categorycode || pkg.slug || '').toUpperCase()}` : `/dashboard/new-project/packages/${pkg._id}`} className="bg-white rounded-[10px] border border-[#d1d1d1] p-6 hover:shadow-lg transition-shadow duration-300 flex flex-col items-center text-center group cursor-pointer h-full">
-                      <div className="w-full h-48 bg-[#d9d9d9] rounded-md mb-6 flex items-center justify-center relative overflow-hidden">
-                        {(pkg.mediumUrl || pkg.imageUrl || pkg.image) ? (
-                          <img src={pkg.mediumUrl || pkg.imageUrl || pkg.image} alt={pkg.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                        ) : (
-                          <svg className="w-16 h-16 text-[#646464]" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                        )}
-                        {pkg.isCategory && (
-                          <div className="absolute top-2 right-2 bg-[#5356ff] text-white text-[10px] font-bold px-2 py-1 rounded uppercase">
-                            Category
-                          </div>
-                        )}
-                      </div>
-                      <span className="text-[11px] font-bold text-[#808080] bg-[#e0e0e0] px-3 py-1 rounded-full uppercase tracking-wide mb-3">
-                        {pkg.isCategory ? "Service Category" : (pkg.type || "Package")}
-                      </span>
-                      <h3 className="text-xl font-bold text-[#646464] mb-3 leading-tight group-hover:text-[#5356ff] transition-colors">
-                        {pkg.name || pkg.title}
-                      </h3>
-                      <p className="text-[13px] text-[#808080] mb-6 leading-relaxed px-2 line-clamp-3">
-                        {pkg.description || "Explore our comprehensive range of services and solutions tailored for your business needs."}
-                      </p>
-                      <div className="mt-auto text-[22px] font-bold text-[#808080] border-t border-gray-100 w-full pt-4">
-                        {pkg.amount}
-                      </div>
-                    </Link>
-                  ))}
+                  {data.packages.map((pkg: any) => {
+                    const pkgUrl = pkg.link || (
+                      pkg.isCategory
+                        ? `/dashboard/new-project/packages?categorycode=${(pkg.categorycode || pkg.slug || '').toUpperCase()}`
+                        : (pkg.isAnalysis || pkg.isFree || String(pkg.amount).toUpperCase() === 'FREE')
+                          ? `/dashboard/new-project/analysis/${pkg._id}`
+                          : `/dashboard/new-project/packages/${pkg._id}`
+                    );
+                    const isFree = pkg.isFree || String(pkg.amount).toUpperCase() === 'FREE';
+
+                    return (
+                      <Link
+                        key={pkg._id}
+                        href={pkgUrl}
+                        className="bg-white rounded-[10px] border border-[#d1d1d1] p-6 hover:shadow-lg transition-shadow duration-300 flex flex-col items-center text-center group cursor-pointer h-full"
+                      >
+                        <div className="w-full h-48 bg-[#d9d9d9] rounded-md mb-6 flex items-center justify-center relative overflow-hidden">
+                          {(pkg.mediumUrl || pkg.imageUrl || pkg.image) ? (
+                            <img
+                              src={pkg.mediumUrl || pkg.imageUrl || pkg.image}
+                              alt={pkg.name || pkg.title}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                          ) : (
+                            <svg className="w-16 h-16 text-[#646464]" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          )}
+                          {pkg.isCategory && (
+                            <div className="absolute top-2 right-2 bg-[#5356ff] text-white text-[10px] font-bold px-2 py-1 rounded uppercase">
+                              Category
+                            </div>
+                          )}
+                          {isFree && (
+                            <div className="absolute top-2 right-2 bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-1 rounded uppercase shadow-sm">
+                              Free
+                            </div>
+                          )}
+                        </div>
+                        <span
+                          className={`text-[11px] font-bold ${
+                            isFree
+                              ? "text-emerald-700 bg-emerald-50 border border-emerald-200"
+                              : "text-[#808080] bg-[#e0e0e0]"
+                          } px-3 py-1 rounded-full uppercase tracking-wide mb-3`}
+                        >
+                          {pkg.isCategory
+                            ? "Service Category"
+                            : (isFree ? "Free Package" : (pkg.type || "Package"))}
+                        </span>
+                        <h3 className="text-xl font-bold text-[#646464] mb-3 leading-tight group-hover:text-[#5356ff] transition-colors">
+                          {pkg.name || pkg.title}
+                        </h3>
+                        <p className="text-[13px] text-[#808080] mb-6 leading-relaxed px-2 line-clamp-3">
+                          {pkg.description || "Explore our comprehensive range of services and solutions tailored for your business needs."}
+                        </p>
+                        <div
+                          className={`mt-auto text-[22px] font-bold ${
+                            isFree ? 'text-emerald-600' : 'text-[#808080]'
+                          } border-t border-gray-100 w-full pt-4`}
+                        >
+                          {pkg.amount}
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               </section>
             )}
