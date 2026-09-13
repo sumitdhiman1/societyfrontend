@@ -8,6 +8,7 @@ import StatusPopup from "@/components/common/StatusPopup";
 import FacebookIcon from "@/components/icons/facebook";
 import GoogleIcon from "@/components/icons/google";
 import CloseIcon from "@/components/icons/close";
+import { countryService, Country } from "@/lib/countryService";
 
 // Internal Components from chunk logic
 const Stepper = ({ current, onStepClick }: { current: number; onStepClick: (step: number) => void }) => {
@@ -67,7 +68,7 @@ const InputField = ({ label, required, type = "text", value, onChange, placehold
       onChange={onChange}
       required={required}
       placeholder={placeholder}
-      className="w-full border border-gray-300 bg-white rounded-md px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 transition-all"
+      className="w-full border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 rounded-md px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 transition-all"
     />
   </div>
 );
@@ -93,16 +94,31 @@ function RegisterForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [companyName, setCompanyName] = useState("");
-  const [registrationNumber, setRegistrationNumber] = useState("");
+  const [vatNumber, setVatNumber] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [country, setCountry] = useState("");
   const [state, setState] = useState("");
   const [city, setCity] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [streetAddress, setStreetAddress] = useState("");
+  const [countriesList, setCountriesList] = useState<Country[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [statusPopup, setStatusPopup] = useState({ isOpen: false, type: "success" as "success" | "error", title: "", message: "" });
+
+  useEffect(() => {
+    const fetchCountries = async () => {
+      try {
+        const list = await countryService.getAllCountries();
+        if (list && list.length > 0) {
+          setCountriesList(list);
+        }
+      } catch (err) {
+        console.error("Failed to load countries in register page:", err);
+      }
+    };
+    fetchCountries();
+  }, []);
 
   useEffect(() => {
     // Only autofill if user specifically navigated from analysis details page
@@ -161,7 +177,7 @@ function RegisterForm() {
         phoneNumber: phoneNumber || undefined,
         state: state || undefined,
         zipCode: zipCode || undefined,
-        registrationNumber: registrationNumber || undefined,
+        vatNumber: vatNumber || undefined,
         country: country || undefined,
         city: city || undefined,
         streetAddress: streetAddress || undefined,
@@ -265,11 +281,44 @@ function RegisterForm() {
               <form className="space-y-5" onSubmit={handleRegister}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <InputField label="Company name" value={companyName} onChange={(e: any) => setCompanyName(e.target.value)} />
-                  <InputField label="Registration number" value={registrationNumber} onChange={(e: any) => setRegistrationNumber(e.target.value)} />
+                  <InputField label="VAT Number / Tax ID" value={vatNumber} onChange={(e: any) => setVatNumber(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <InputField label="Phone number" value={phoneNumber} onChange={(e: any) => setPhoneNumber(e.target.value)} />
-                  <InputField label="Country" value={country} onChange={(e: any) => setCountry(e.target.value)} />
+                  <div className="flex flex-col gap-1 w-full">
+                    <label className="text-sm text-gray-700 font-semibold text-left">Country</label>
+                    <div className="relative">
+                      <select
+                        className="w-full border border-gray-300 bg-white rounded-md px-3 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-300 transition-all appearance-none cursor-pointer pr-10"
+                        value={country}
+                        onChange={(e) => setCountry(e.target.value)}
+                      >
+                        <option value="">Select country...</option>
+                        {countriesList && countriesList.length > 0 ? (
+                          countriesList.map((c) => (
+                            <option key={c.iso2 || c._id} value={c.name}>
+                              {c.flagEmoji ? `${c.flagEmoji} ` : ""}{c.name}
+                            </option>
+                          ))
+                        ) : (
+                          <>
+                            <option value="United States">United States</option>
+                            <option value="United Kingdom">United Kingdom</option>
+                            <option value="Canada">Canada</option>
+                            <option value="Germany">Germany</option>
+                            <option value="France">France</option>
+                            <option value="India">India</option>
+                            <option value="Australia">Australia</option>
+                          </>
+                        )}
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <InputField label="State" value={state} onChange={(e: any) => setState(e.target.value)} />

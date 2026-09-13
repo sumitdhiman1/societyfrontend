@@ -89,7 +89,7 @@
 }
 
 .login-input-field {
-  @apply w-full border border-gray-300 bg-white rounded-md px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 transition-all;
+  @apply w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 transition-all;
 }
 
 .login-submit-button {

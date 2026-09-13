@@ -232,21 +232,23 @@ const NumberStepper = ({
   validateMin = 0,
   validateMax,
 }: {
-  value: number;
+  value?: number;
   onChange: (n: number) => void;
   validateMin?: number;
   validateMax?: number;
 }) => {
-  const [localVal, setLocalVal] = useState<string>(String(value ?? validateMin));
+  const [localVal, setLocalVal] = useState<string>(
+    value != null ? String(value) : "0"
+  );
 
   useEffect(() => {
-    setLocalVal(String(value ?? validateMin));
-  }, [value, validateMin]);
+    setLocalVal(value != null ? String(value) : "0");
+  }, [value]);
 
   const parseCurrent = (): number => {
     const parsed = parseInt(localVal, 10);
     if (!isNaN(parsed)) return parsed;
-    if (!isNaN(value)) return value;
+    if (value != null && !isNaN(value)) return value;
     return validateMin;
   };
 
@@ -314,7 +316,7 @@ const NumberStepper = ({
           onChange={handleInputChange}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          className="w-24 h-14 bg-white text-[#334155] text-2xl font-bold text-center outline-none focus:ring-2 focus:ring-[#4F46E5]/15 transition-all border-x border-gray-200 tabular-nums select-all"
+          className="w-20 h-14 bg-white text-[#334155] text-2xl font-bold text-center outline-none focus:ring-2 focus:ring-[#4F46E5]/15 transition-all border-x border-gray-200 tabular-nums select-all"
         />
         <button
           type="button"
@@ -334,7 +336,6 @@ const QuestionCard = ({
   selection,
   onToggleAnswer,
   tier,
-  tierQuestion,
   categoryKey,
   categorySelections,
   baselineDays,
@@ -345,31 +346,18 @@ const QuestionCard = ({
   selection: any;
   onToggleAnswer: any;
   tier: string;
-  tierQuestion?: any;
   categoryKey?: string | null;
   categorySelections?: string[];
   baselineDays?: number;
   seoServiceMode?: string;
   error?: string;
 }) => {
-  const isPagesQuestion = isWebsitePagesQuestion(question);
-  const pageTierConfig = useMemo(
-    () => (isPagesQuestion ? getWebsitePageTierConfig(tier, tierQuestion) : null),
-    [isPagesQuestion, tier, tierQuestion]
-  );
-
   const [textVal, setTextVal] = useState(selection?.textValue || "");
-  const numVal = selection?.numericValue ?? (isPagesQuestion && pageTierConfig ? pageTierConfig.limit : 0);
+  const numVal = selection?.numericValue ?? 0;
 
   useEffect(() => {
     setTextVal(selection?.textValue || "");
   }, [selection?.textValue]);
-
-  useEffect(() => {
-    if (isPagesQuestion && pageTierConfig && selection?.numericValue === undefined) {
-      onToggleAnswer(question.key, pageTierConfig.limit, "number");
-    }
-  }, [isPagesQuestion, pageTierConfig, selection?.numericValue, question.key, onToggleAnswer]);
 
   const activeKeys = selection?.answerKeys || [];
   const filteredQuestion = filterQuestionAnswers(question, tier);
@@ -1720,22 +1708,6 @@ export default function CalculatorPage() {
       if (changedQuestion && isTierSourceQuestion(changedQuestion, selectedCategoryKey)) {
         const timelineKey = findTimelineQuestionKey(sortedQuestions);
         if (timelineKey) delete next[timelineKey];
-
-        const pagesQuestion = sortedQuestions.find((q) => isWebsitePagesQuestion(q));
-        if (pagesQuestion) {
-          const currentPages = next[pagesQuestion.key]?.numericValue;
-          const oldTier = getSelectedTier(prev, changedQuestion.key, sortedQuestions);
-          const oldConfig = getWebsitePageTierConfig(oldTier, changedQuestion);
-          const newTier = getSelectedTier(next, changedQuestion.key, sortedQuestions);
-          const newConfig = getWebsitePageTierConfig(newTier, changedQuestion);
-          if (currentPages === undefined || currentPages === oldConfig.limit) {
-            next[pagesQuestion.key] = {
-              questionKey: pagesQuestion.key,
-              answerKeys: [],
-              numericValue: newConfig.limit,
-            };
-          }
-        }
       }
       if (selectedCategoryKey === "seo") {
         const seoTypeQuestion = sortedQuestions.find(
@@ -1859,7 +1831,6 @@ export default function CalculatorPage() {
                       selection={selections[q.key]}
                       onToggleAnswer={handleToggleAnswer}
                       tier={tier}
-                      tierQuestion={sortedQuestions.find((sq: any) => isTierSourceQuestion(sq, selectedCategoryKey))}
                       categoryKey={selectedCategoryKey}
                       categorySelections={graphicsCategoryKeys}
                       baselineDays={

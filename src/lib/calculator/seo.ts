@@ -1,4 +1,4 @@
-﻿/**
+/**
  * calculator/seo.ts
  *
  * All logic specific to the "Search Engine Optimization" calculator category.
