@@ -359,6 +359,7 @@ function PaymentForm({
     try {
       const effectiveInvoiceId = invoiceId || searchParams?.get("invoiceId") || extraMetadata?.invoiceId || undefined;
       const effectiveInvoiceNumber = searchParams?.get("invoiceNumber") || extraMetadata?.invoiceNumber || undefined;
+      const effectiveMessageId = searchParams?.get("messageId") || extraMetadata?.messageId || undefined;
       const rawDescription = searchParams?.get("description") || extraMetadata?.description || description || undefined;
       const effectiveDescription = rawDescription && rawDescription.length > 400
         ? rawDescription.substring(0, 397) + "..."
