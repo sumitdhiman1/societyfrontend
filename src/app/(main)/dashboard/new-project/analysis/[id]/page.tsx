@@ -157,6 +157,7 @@ export default function AnalysisOrderPage() {
         additionalComments: formData.additionalComments,
         clientEmail: clientEmail,
         clientName: formData.fullName || currentUser?.fullName || currentUser?.username || "Client",
+        origin: typeof window !== "undefined" ? window.location.origin : undefined,
       };
 
       const res: any = await requestAnalysisService.createProject(payload);
