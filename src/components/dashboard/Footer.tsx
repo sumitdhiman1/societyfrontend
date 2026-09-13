@@ -149,7 +149,7 @@ export default function Footer() {
           </div>
 
           {/* Column 4: Blog Feed */}
-          <div className="flex flex-col gap-4 md:gap-2">
+          <div className="flex flex-col gap-4 md:gap-4 md:mt-0">
             <h3 className="text-[#363636] font-bold text-xl md:text-lg mb-2 md:mb-2">
               Recent From The Blog
             </h3>
@@ -158,7 +158,7 @@ export default function Footer() {
                 blogs.map((blog) => (
                   <div key={blog.slug} className="group cursor-pointer">
                     <Link href={`/blog/${blog.slug}`}>
-                      <h4 className="font-bold text-gray-800 text-sm mb-1 group-hover:text-[#5356ff] transition-colors line-clamp-2 uppercase">
+                      <h4 className="font-bold text-gray-800 text-sm md:text-sm mb-1.5 group-hover:text-[#4343F0] transition-colors line-clamp-2">
                         {blog.title}
                       </h4>
                     </Link>
@@ -172,7 +172,7 @@ export default function Footer() {
                           })
                           : "Recently Published"}
                       </span>
-                      <Link href={`/blog/${blog.slug}`} className="text-[#5356ff] font-bold hover:underline">
+                      <Link href={`/blog/${blog.slug}`} className="text-[#4343F0] font-bold ml-auto hover:underline uppercase tracking-tight">
                         READ MORE
                       </Link>
                     </div>
@@ -187,11 +187,11 @@ export default function Footer() {
 
         {/* Footer Bottom Row 1: Payment & VAT */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-0 md:mb-2 gap-4">
-          <div className="flex items-center gap-4 opacity-70 grayscale hover:grayscale-0 transition-all scale-90 md:scale-100">
-            <VisaIcon className="h-6" />
-            <MastercardIcon className="h-6" />
-            <AmexIcon className="h-6" />
-            <DiscoverIcon className="h-6" />
+          <div className="flex items-center gap-3 md:gap-4 opacity-70 grayscale hover:grayscale-0 transition-all text-gray-600 scale-90 md:scale-100">
+            <VisaIcon className="" />
+            <MastercardIcon className="" />
+            <AmexIcon className="" />
+            <DiscoverIcon className="" />
           </div>
           <p className="text-sm text-custom-4 font-semibold">
             Prices exclude VAT
@@ -230,22 +230,22 @@ export default function Footer() {
             <span className="font-bold text-[#363636]">© 2024 - Society | All rights reserved</span>
           </div>
 
-          <div className="flex items-center gap-5 text-[#5356ff]">
+          <div className="flex items-center gap-5 text-[#4343f0]">
             <Link href="/" className="hover:opacity-80 transition-opacity">
-              <FacebookIcon className="w-[34px] h-[34px]" />
+              <FacebookIcon className="text-primary-300 h-[34px] w-[34px]" />
             </Link>
             <Link href="/" className="hover:opacity-80 transition-opacity">
-              <InstagramIcon className="w-[34px] h-[34px]" />
+              <InstagramIcon className="text-primary-300 h-[34px] w-[34px]" />
             </Link>
             <Link href="/" className="hover:opacity-80 transition-opacity">
-              <LinkedIn className="w-[34px] h-[34px]" />
+              <LinkedIn className="text-primary-300 h-[34px] w-[34px]" />
             </Link>
             <Link href="/" className="hover:opacity-80 transition-opacity">
-              <TwitterIcon className="w-[34px] h-[34px]" />
+              <TwitterIcon className="text-primary-300 h-[34px] w-[34px]" />
             </Link>
 
             <Link href="/" className="hover:opacity-80 transition-opacity">
-              <YoutubeIcon className="w-[34px] h-[34px]" />
+              <YoutubeIcon className="text-primary-300 h-[34px] w-[34px]" />
             </Link>
           </div>
         </div>

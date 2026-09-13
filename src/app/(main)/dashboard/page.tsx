@@ -17,7 +17,9 @@ export default function DashboardPage() {
           {/* Top Section: Welcome and Promo */}
           <div className="flex flex-col gap-5 md:gap-6 lg:grid lg:grid-cols-[404px_1fr] lg:gap-[53px]">
             <UserWelcome />
-            <PromoCarousel />
+            <div className="flex-1 min-w-0">
+              <PromoCarousel />
+            </div>
           </div>
 
           {/* Middle Section: Services */}

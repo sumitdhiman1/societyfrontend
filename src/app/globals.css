@@ -312,6 +312,38 @@ body {
   display: block !important;
 }
 
+.company-bg {
+  mask-image: linear-gradient(to left, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0));
+  -webkit-mask-image: linear-gradient(to left, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0));
+}
+
+.company1 {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  color: transparent;
+}
+
+img.object-cover.company-set {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  color: transparent;
+}
+
+.slider-btn-cs {
+  width: 44.71px;
+  height: 44.71px;
+}
+
 @media screen and (max-width: 1660px) {
   .p-inline-set {
     padding-right: 0;

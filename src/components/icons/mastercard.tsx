@@ -2,8 +2,8 @@ export default function MastercardIcon({ className }: { className?: string }) {
     return (
         <svg
             className={className}
-            width="40"
-            height="25"
+            width="39.956"
+            height="24.691"
             viewBox="0 0 40 25"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"

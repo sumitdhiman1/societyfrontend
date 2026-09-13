@@ -36,10 +36,10 @@ const PlusIcon = () => (
 );
 
 // Sub-component for Adding a New Card
-function AddCardForm({ clientSecret, onSuccess, onCancel }: { 
-  clientSecret: string; 
-  onSuccess: () => void; 
-  onCancel: () => void; 
+function AddCardForm({ clientSecret, onSuccess, onCancel }: {
+  clientSecret: string;
+  onSuccess: () => void;
+  onCancel: () => void;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -181,7 +181,7 @@ export default function BillingPage() {
   const fetchData = async () => {
     const userData = authService.getUser();
     setUser(userData);
-    
+
     if (!userData?.isEmailVerified) {
       setIsLoading(false);
       return;
@@ -354,18 +354,17 @@ export default function BillingPage() {
                         {new Intl.NumberFormat("en-US", { style: "currency", currency: (inv.currency || "USD").toUpperCase() }).format(inv.amount)}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                          (inv.status || "").toUpperCase() === "PAID" 
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${(inv.status || "").toUpperCase() === "PAID"
                             ? "bg-green-50 text-green-700 border-green-200"
                             : (inv.status || "").toUpperCase() === "OVERDUE"
-                            ? "bg-rose-50 text-rose-700 border-rose-200 font-bold"
-                            : "bg-amber-50 text-amber-700 border-amber-200"
-                        }`}>
+                              ? "bg-rose-50 text-rose-700 border-rose-200 font-bold"
+                              : "bg-amber-50 text-amber-700 border-amber-200"
+                          }`}>
                           {inv.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button 
+                        <button
                           onClick={() => invoiceService.downloadInvoicePDF(inv._id)}
                           className="text-primary-300 hover:text-primary-400 text-xs font-bold underline underline-offset-2"
                         >
@@ -392,7 +391,7 @@ export default function BillingPage() {
             <h3 className="text-xl font-bold text-gray-800 mb-8">
               Adding new card
             </h3>
-            
+
             {clientSecret ? (
               <Elements stripe={stripePromise} options={{ clientSecret }}>
                 <AddCardForm

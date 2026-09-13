@@ -142,7 +142,7 @@ export default function PromoCarousel() {
         </div>
       </>
 
-      <div className="absolute bottom-[47px] left-8 md:left-10 flex gap-3 z-20">
+      <div className="absolute bottom-[47px] left-8 md:left-10 flex gap-3 z-20 ss">
         {activeSlides.map((_, i) => (
           <button
             key={`promo-dot-${i}`}

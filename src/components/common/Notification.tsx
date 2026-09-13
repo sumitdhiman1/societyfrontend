@@ -141,7 +141,7 @@ const Notification = ({
 
       {notificationsOpen && (
         <div
-          className="absolute top-[100%] mt-[14px] right-[120px] rounded-[16px] w-[500px] bg-white shadow-2xl z-50 text-left overflow-hidden formobile-cs pointer-events-auto"
+          className="absolute top-[100%] mt-[15px] right-[120px] rounded-[16px] w-[500px] bg-white shadow-2xl z-50 text-left overflow-hidden formobile-cs pointer-events-auto"
           onMouseDown={(e) => e.stopPropagation()}
         >
           <div className="px-6 sm:px-8 py-5 sm:py-6 border-b border-gray-100 bg-white flex justify-between items-center">

@@ -22,20 +22,18 @@ export const Profile = ({
   const router = useRouter();
 
   return (
-    <div className="relative" ref={profileRef}>
+    <div className="relative flex items-center justify-center shrink-0" ref={profileRef}>
       <button
-        className="hover:scale-110 transition-transform"
+        className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 bg-white flex items-center justify-center transition-transform hover:scale-105 shadow-sm shrink-0"
         onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
       >
-        <div className="w-10 mt-1 h-10 rounded-full overflow-hidden border-2 border-[#1a2847] bg-white">
-          <Image
-            src={avatar || "/images/Avatar.png"}
-            alt="User"
-            width={50}
-            height={50}
-            className="w-full h-full object-cover"
-          />
-        </div>
+        <Image
+          src={avatar || "/images/loggedoutaccount.svg"}
+          alt="User"
+          width={50}
+          height={50}
+          className="w-full h-full object-cover"
+        />
       </button>
       {profileDropdownOpen && (
         <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl py-2 z-50 border border-gray-100 font-sans">
