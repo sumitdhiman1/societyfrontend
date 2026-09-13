@@ -359,8 +359,15 @@ function PaymentForm({
     try {
       const effectiveInvoiceId = invoiceId || searchParams?.get("invoiceId") || extraMetadata?.invoiceId || undefined;
       const effectiveInvoiceNumber = searchParams?.get("invoiceNumber") || extraMetadata?.invoiceNumber || undefined;
-      const effectiveMessageId = searchParams?.get("messageId") || extraMetadata?.messageId || undefined;
-      const effectiveDescription = searchParams?.get("description") || extraMetadata?.description || description || undefined;
+      const rawDescription = searchParams?.get("description") || extraMetadata?.description || description || undefined;
+      const effectiveDescription = rawDescription && rawDescription.length > 400
+        ? rawDescription.substring(0, 397) + "..."
+        : rawDescription;
+
+      const rawLineItems = extraMetadata?.lineItems || (deliverableItems && deliverableItems.length > 0 ? deliverableItems.map((d: any) => d.description).join(", ") : undefined);
+      const effectiveLineItems = rawLineItems && rawLineItems.length > 400
+        ? rawLineItems.substring(0, 397) + "..."
+        : rawLineItems;
 
       setPaymentStep("gateway");
       const intentResponse = await paymentService.createPaymentIntent({
@@ -372,7 +379,7 @@ function PaymentForm({
         metadata: {
           ...extraMetadata,
           title: title || extraMetadata?.title,
-          lineItems: extraMetadata?.lineItems || (deliverableItems && deliverableItems.length > 0 ? deliverableItems.map((d: any) => d.description).join(", ") : undefined),
+          lineItems: effectiveLineItems,
           type,
           [`${type.toLowerCase()}Id`]: entityId,
           [`${type.toLowerCase()}Number`]: entityNumber,

@@ -259,7 +259,9 @@ export default function ProjectPaymentsPage() {
                 ? `Payment for ${searchDescription}`
                 : (allAddonItems.length > 0
                   ? "Payment for accepted add-on project deliverables"
-                  : (activeProject.description || "Payment for accepted project deliverables"))
+                  : (activeProject.description && !activeProject.description.includes("Selected Options:") && activeProject.description.length < 250
+                    ? activeProject.description
+                    : "Payment for accepted project deliverables"))
             }
             date={activeProject.createdAt}
             startDate={activeProject.startDate}
