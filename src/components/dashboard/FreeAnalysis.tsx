@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { requestAnalysisService } from "@/lib/requestAnalysisService";
+import { requestAnalysisService, savePendingAnalysisId } from "@/lib/requestAnalysisService";
 import { authService } from "@/lib/authService";
 import StatusPopup from "@/components/common/StatusPopup";
 
@@ -48,16 +48,44 @@ export default function FreeAnalysis() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await requestAnalysisService.submitRequest({ email, websiteUrl: website });
+      const user = authService.getUser();
+      let clientName: string | undefined;
+      let clientId: string | undefined;
+      let phoneNumber: string | undefined;
+      let companyName: string | undefined;
+
+      if (user) {
+        const computedName = (user.fullName || `${user.firstName || ''} ${user.lastName || ''}`).trim();
+        if (computedName && !['unknown', 'prospect', 'client'].includes(computedName.toLowerCase())) {
+          clientName = computedName;
+        }
+        clientId = user.id || user._id;
+        phoneNumber = user.phoneNumber || undefined;
+        companyName = user.companyName || undefined;
+      }
+
+      const res = await requestAnalysisService.submitRequest({
+        email: email.trim(),
+        websiteUrl: website.trim(),
+        clientName,
+        fullName: clientName,
+        clientId,
+        phoneNumber,
+        companyName,
+      });
+
       if (res.statusCode === 201) {
+        if (res.data?._id || res.data?.id) {
+          savePendingAnalysisId(res.data._id || res.data.id);
+        }
         setStatus({
           type: "success",
           title: "Request Received",
           message: "We've received your request and will email you the analysis soon!",
         });
         setWebsite("");
-        const user = authService.getUser();
-        setEmail(user?.email || "");
+        const currentUser = authService.getUser();
+        setEmail(currentUser?.email || "");
       } else {
         setStatus({
           type: "error",

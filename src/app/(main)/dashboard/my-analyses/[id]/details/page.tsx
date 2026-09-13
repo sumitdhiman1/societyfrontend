@@ -771,10 +771,9 @@ export default function AnalysisDetailsPage() {
   const submittedDateStr = formatDateTime(analysis.createdAt || analysis.startDate);
   const deliveryDueStr = analysis.deadline ? formatDateTime(analysis.deadline) : "";
 
-  const managers = (Array.isArray(analysis.assignedManagers) && analysis.assignedManagers.length > 0)
-    ? analysis.assignedManagers
-    : (analysis.projectManager ? [analysis.projectManager] : []);
-  const manager = managers[0];
+  const manager = (Array.isArray(analysis.assignedManagers) && analysis.assignedManagers.length > 0)
+    ? analysis.assignedManagers[0]
+    : analysis.projectManager;
   const managerName = manager?.fullName || "Not assigned yet";
   const managerAvatar = manager?.avatar;
 
@@ -850,64 +849,124 @@ export default function AnalysisDetailsPage() {
               </table>
             </div>
           </div>
+        </div>
 
-          {/* Section Divider Banner: Analysis Initiated */}
-          <div className="relative py-4 flex items-center justify-center w-full my-2">
-            <div className="flex-grow border-t border-gray-300"></div>
-            <span className="px-4 text-xs sm:text-sm font-medium text-gray-500 text-center whitespace-normal sm:whitespace-nowrap">
-              Analysis Initiated {deliveryDueStr ? `| Delivery due on ${deliveryDueStr}` : ""}
-            </span>
-            <div className="flex-grow border-t border-gray-300"></div>
+        {/* Right Column / Sidebar (col-span-1) */}
+        <div className="lg:col-span-1">
+          <div className="bg-white border border-gray-300 rounded-[12px] shadow-sm p-6 sm:p-8">
+            <div className="text-center">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gray-100 border border-gray-200">
+                {managerAvatar ? (
+                  <img src={managerAvatar} alt={managerName} className="w-full h-full object-cover" />
+                ) : manager ? (
+                  <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-3xl font-bold">
+                    {managerName[0] || "M"}
+                  </div>
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white text-3xl font-bold">
+                    ?
+                  </div>
+                )}
+              </div>
+              <h4 className="text-lg font-bold text-gray-800 mb-1">{managerName}</h4>
+              <p className="text-sm text-gray-500 mb-4 font-medium uppercase tracking-wider text-[10px]">
+                Manager
+              </p>
+            </div>
           </div>
+        </div>
+      </div>
 
-          {/* Messages & Delivery History if any */}
-          {analysis.messages && analysis.messages.length > 0 && (
-            <div className="flex flex-col gap-6 w-full mb-4">
-              {analysis.messages.map((msg: any, idx: number) => {
-                const msgId = msg.id || `msg-${idx}`;
+      {/* Section Divider Banner: Analysis Initiated */}
+      <div className="relative py-6 flex items-center justify-center w-full my-2">
+        <div className="flex-grow border-t border-gray-300"></div>
+        <span className="px-4 text-xs sm:text-sm font-medium text-gray-500 text-center whitespace-normal sm:whitespace-nowrap">
+          Analysis Initiated {deliveryDueStr ? `| Delivery due on ${deliveryDueStr}` : ""}
+        </span>
+        <div className="flex-grow border-t border-gray-300"></div>
+      </div>
 
-                if (msg.type === "system_notification") {
-                  const rawTitle = msg.content?.systemText || msg.message || "System Notification";
-                  const title = formatStatusTitle(rawTitle);
-                  const text = msg.content?.text || "";
-                  const attachments = msg.attachments || [];
-                  return (
-                    <div key={msgId} className="text-center py-6 px-4 bg-white/70 rounded-xl border border-gray-200">
-                      <h3 className="text-xl font-bold text-gray-700 mb-1">{title}</h3>
-                      <div className="text-sm font-medium text-gray-500">{renderStatusMessageText(text, attachments)}</div>
+      {/* Messages & Delivery History if any */}
+      {analysis.messages && analysis.messages.length > 0 && (
+        <div className="flex flex-col gap-6 w-full mb-4">
+          {analysis.messages.map((msg: any, idx: number) => {
+            const msgId = msg.id || msg._id || `msg-${idx}`;
+
+            if (msg.type === "system_notification" || msg.isSystemMessage) {
+              const rawTitle = msg.content?.systemText || msg.systemText || msg.message || "System Notification";
+              const title = formatStatusTitle(rawTitle);
+              const text = msg.content?.text || msg.text || "";
+              const attachments = msg.attachments || [];
+
+              if (
+                title.toLowerCase().includes("offer") ||
+                title.toLowerCase().includes("proposal") ||
+                text.toLowerCase().includes("sent you a new offer") ||
+                text.toLowerCase().includes("prepared a custom proposal")
+              ) {
+                return null;
+              }
+
+              return (
+                <div key={msgId} className="text-center py-6 px-4 my-2">
+                  <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
+                    {title}
+                  </h3>
+                  <div className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
+                    {renderStatusMessageText(text, attachments)}
+                  </div>
+                </div>
+              );
+            }
+
+            if (msg.type === "quote_proposal") {
+              const content = msg.content || {};
+              const items =
+                (content.recommendedSolutions && content.recommendedSolutions.length > 0 ? content.recommendedSolutions : null) ||
+                (msg.recommendedSolutions && msg.recommendedSolutions.length > 0 ? msg.recommendedSolutions : null) ||
+                (content.deliverableItems && content.deliverableItems.length > 0 ? content.deliverableItems : null) ||
+                (content.lineItems && content.lineItems.length > 0 ? content.lineItems : null) ||
+                (Array.isArray(content.items) && content.items.length > 0 ? content.items : null) ||
+                [];
+              const isAccepted = content.status === "accepted";
+              const isClient = msg.sender === "client" || msg.role === "client";
+              const clientName =
+                currentUser?.fullName ||
+                (currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ""}`.trim() : "") ||
+                currentUser?.username;
+              const senderName = msg.username || (isClient ? (clientName || "You") : (analysis.projectManager?.fullName || "Staff"));
+              const senderAvatar = msg.userAvatar || (isClient ? currentUser?.avatar : (analysis.projectManager?.avatar || undefined));
+              const senderInitial = (senderName || "A").charAt(0).toUpperCase();
+              const messageBody = msg.message || content.text || content.projectDescription || "";
+              const attachmentList = (msg.attachments && msg.attachments.length > 0) ? msg.attachments : (content?.attachedFiles || (msg as any).attachedFiles || []);
+
+              return (
+                <div key={msgId} className="w-full">
+                  {/* Header above offer card */}
+                  {Boolean(content.lineItems && content.lineItems.length > 0) && (
+                    <div className="text-center py-6 px-4 my-2">
+                      <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
+                        You Received an Offer
+                      </h3>
+                      <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
+                        We’ve prepared a custom proposal for your project.
+                      </p>
                     </div>
-                  );
-                }
+                  )}
 
-                if (msg.type === "quote_proposal") {
-                  const content = msg.content || {};
-                  const items = content.deliverableItems || content.items || [];
-                  const isAccepted = content.status === "accepted";
-                  const isClient = msg.sender === "client" || msg.role === "client";
-                  const clientName =
-                    currentUser?.fullName ||
-                    (currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ""}`.trim() : "") ||
-                    currentUser?.username;
-                  const senderName = msg.username || (isClient ? (clientName || "You") : (analysis.projectManager?.fullName || "Staff"));
-                  const senderAvatar = msg.userAvatar || (isClient ? currentUser?.avatar : (analysis.projectManager?.avatar || undefined));
-                  const senderInitial = (senderName || "A").charAt(0).toUpperCase();
-                  const messageBody = msg.message || content.text || content.projectDescription || "";
-                  const attachmentList = (msg.attachments && msg.attachments.length > 0) ? msg.attachments : (content?.attachedFiles || (msg as any).attachedFiles || []);
-
-                  return (
-                    <div key={msgId} className="bg-white rounded-xl shadow-sm border border-gray-300 overflow-hidden w-full">
-                      <div className="p-4 sm:p-6 md:p-8">
-                        {/* Header: Avatar, Name, Timestamp */}
-                        <div className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-4">
-                          <div className="flex items-center gap-4">
-                            {senderAvatar ? (
-                              <img
-                                src={senderAvatar}
-                                alt={senderName}
-                                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover shadow-sm"
-                              />
-                            ) : (
-                              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-sm bg-gray-800">
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-300 overflow-hidden w-full">
+                    <div className="p-4 sm:p-6 md:p-8">
+                      {/* Header: Avatar, Name, Timestamp */}
+                      <div className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-4">
+                        <div className="flex items-center gap-4">
+                          {senderAvatar ? (
+                            <img
+                              src={senderAvatar}
+                              alt={senderName}
+                              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover shadow-sm"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-sm bg-gray-800">
                                 {senderInitial}
                               </div>
                             )}
@@ -1014,268 +1073,23 @@ export default function AnalysisDetailsPage() {
                         {/* Recommended Solutions */}
                         {items.length > 0 && (
                           <div className="pl-0 md:pl-[64px] mb-6">
-                            <h5 className="text-sm font-bold text-gray-700 mb-3">Recommended Solutions</h5>
-                            <div className="border-t border-gray-200 mb-4"></div>
-                            <div
-                              className="flex flex-nowrap overflow-x-auto pb-4 gap-4 scrollbar-hide"
-                              style={{ cursor: "grab" }}
-                            >
-                              {items.map((item: any, sIdx: number) => {
-                                const match = availablePackages.find(
-                                  (p: any) =>
-                                    (p._id && (String(p._id) === String(item._id || item.id || item.packageId))) ||
-                                    (p.name && (p.name.trim().toLowerCase() === (item.name || item.title || item.description || "").trim().toLowerCase())) ||
-                                    (p.title && (p.title.trim().toLowerCase() === (item.name || item.title || item.description || "").trim().toLowerCase()))
-                                );
-
-                                const normName = (item.name || item.title || match?.name || match?.title || "").toLowerCase();
-
-                                let rawImage =
-                                  item.imageUrl ||
-                                  item.thumbnailUrl ||
-                                  item.mediumUrl ||
-                                  item.coverImage ||
-                                  item.image ||
-                                  match?.imageUrl ||
-                                  match?.thumbnailUrl ||
-                                  match?.mediumUrl ||
-                                  match?.coverImage ||
-                                  match?.image;
-
-                                if (!rawImage) {
-                                  if (normName.includes("shopping") || normName.includes("e-commerce") || normName.includes("ecommerce")) {
-                                    rawImage = "https://res.cloudinary.com/dgg6e3flf/image/upload/v1785191252/packages/shopping-ecommerce-ads-management-packages.webp";
-                                  } else if (normName.includes("audit") || normName.includes("paid ads")) {
-                                    rawImage = "https://res.cloudinary.com/dgg6e3flf/image/upload/v1785191377/packages/paid-ads-audit-strategy-setup-packages.webp";
-                                  } else if (normName.includes("graphic") || normName.includes("brand")) {
-                                    rawImage = "https://res.cloudinary.com/dzllquuof/image/upload/v1766925547/Website/Services/q9cdia9ugzrbwqcoshcx.png";
-                                  } else if (normName.includes("development") || normName.includes("website dev")) {
-                                    rawImage = "https://res.cloudinary.com/dzllquuof/image/upload/v1766925656/Website/Services/eka2bc78jzyqc29qgtql.png";
-                                  } else if (normName.includes("maintenance")) {
-                                    rawImage = "https://res.cloudinary.com/dzllquuof/image/upload/v1766925669/Website/Services/o8hx0iuppsqf1jirki0q.png";
-                                  } else if (normName.includes("seo") || normName.includes("search engine")) {
-                                    rawImage = "https://res.cloudinary.com/dzllquuof/image/upload/v1766925617/Website/Services/cfbweuiwymvpzjpcbz6p.png";
-                                  } else if (normName.includes("social media") || normName.includes("smm")) {
-                                    rawImage = "https://res.cloudinary.com/dzllquuof/image/upload/v1766925642/Website/Services/ldi5mje9jw6igxajabmx.png";
-                                  }
-                                }
-
-                                const itemImage = rawImage
-                                  ? getSafeUrl(rawImage)
-                                  : "https://res.cloudinary.com/dgg6e3flf/image/upload/v1785191377/packages/paid-ads-audit-strategy-setup-packages.webp";
-
-                                const isBundle = match?.isBundle || item.isBundle || match?.categorycode?.toUpperCase() === 'BUNDLES';
-                                const pkgId = match?._id || match?.id || item._id || item.id || item.packageId || item.package || "6a67dbe0f4538bf364e54f88";
-                                const pkgHref = `/dashboard/new-project/${isBundle ? 'bundles' : 'packages'}/${pkgId}`;
-
-                                const categoryMap: Record<string, string> = {
-                                  // Short auto-generated codes (from initials)
-                                  "PAM": "Paid Ads Marketing",
-                                  "GDB": "Graphic Design & Branding",
-                                  "GD": "Graphic Design & Branding",
-                                  "WD": "Websites Development",
-                                  "WDE": "Websites Development",
-                                  "WM": "Website Maintenance",
-                                  "SMM": "Social Media Marketing",
-                                  "SEO": "SEO",
-                                  "BUN": "Bundles",
-                                  // Full codes with underscores
-                                  "PAID_ADS": "Paid Ads Marketing",
-                                  "PAID_ADS_MARKETING": "Paid Ads Marketing",
-                                  "PAIDADS": "Paid Ads Marketing",
-                                  "PAID ADS MARKETING": "Paid Ads Marketing",
-                                  "PAID ADS": "Paid Ads Marketing",
-                                  "GRAPHIC_DESIGN": "Graphic Design & Branding",
-                                  "GRAPHIC_DESIGN_BRANDING": "Graphic Design & Branding",
-                                  "GRAPHIC DESIGN & BRANDING": "Graphic Design & Branding",
-                                  "GRAPHIC DESIGN": "Graphic Design & Branding",
-                                  "WEBSITES_DEVELOPMENT": "Websites Development",
-                                  "WEBSITE_DEVELOPMENT": "Websites Development",
-                                  "WEBSITES DEVELOPMENT": "Websites Development",
-                                  "WEBSITE MAINTENANCE": "Website Maintenance",
-                                  "WEBSITE_MAINTENANCE": "Website Maintenance",
-                                  "SOCIAL_MEDIA_MARKETING": "Social Media Marketing",
-                                  "SOCIAL MEDIA MARKETING": "Social Media Marketing",
-                                  "BUNDLES": "Bundles",
-                                  "BUNDLE": "Bundles",
-                                  "ANALYSIS": "Analysis",
-                                };
-                                // Also try stripping auto-generated numeric suffix (e.g. "PAM-001" → "PAM")
-                                const stripSuffix = (code: string) => code.replace(/-\d+$/, '').toUpperCase().trim();
-
-                                let resolvedCategory = "";
-                                if (match?.category && typeof match.category === 'object' && match.category.name) {
-                                  resolvedCategory = match.category.name;
-                                } else if (match?.categoryName) {
-                                  resolvedCategory = match.categoryName;
-                                } else if (item.categoryName) {
-                                  resolvedCategory = item.categoryName;
-                                } else if (match?.category && typeof match.category === 'string' && !match.category.match(/^[0-9a-fA-F]{24}$/)) {
-                                  resolvedCategory = match.category;
-                                } else if (item.category && typeof item.category === 'string' && !item.category.match(/^[0-9a-fA-F]{24}$/)) {
-                                  resolvedCategory = item.category;
-                                }
-
-                                if (!resolvedCategory || resolvedCategory.match(/^[0-9a-fA-F]{24}$/)) {
-                                  const catId = match?.category || item.category || match?.categoryId || item.categoryId;
-                                  const catCode = match?.categorycode || item.categorycode;
-                                  const found = availableCategories.find(c => c._id === catId || (c.categorycode && c.categorycode === catCode) || (c.slug && c.slug === catCode));
-                                  if (found?.name) {
-                                    resolvedCategory = found.name;
-                                  }
-                                }
-
-                                const upperCat = (resolvedCategory || match?.categorycode || item.categorycode || "").toUpperCase().trim();
-                                const strippedCat = stripSuffix(match?.categorycode || item.categorycode || upperCat);
-                                if (categoryMap[upperCat]) {
-                                  resolvedCategory = categoryMap[upperCat];
-                                } else if (categoryMap[strippedCat]) {
-                                  resolvedCategory = categoryMap[strippedCat];
-                                } else if (!resolvedCategory || resolvedCategory.includes("_") || resolvedCategory.match(/^[A-Z]+-\d+$/i)) {
-                                  if (normName.includes("ads") || normName.includes("shopping") || normName.includes("e-commerce")) {
-                                    resolvedCategory = "Paid Ads Marketing";
-                                  } else if (normName.includes("graphic") || normName.includes("brand") || normName.includes("logo")) {
-                                    resolvedCategory = "Graphic Design & Branding";
-                                  } else if (normName.includes("development") || normName.includes("website dev")) {
-                                    resolvedCategory = "Websites Development";
-                                  } else if (normName.includes("maintenance")) {
-                                    resolvedCategory = "Website Maintenance";
-                                  } else if (normName.includes("seo") || normName.includes("search engine")) {
-                                    resolvedCategory = "SEO";
-                                  } else if (normName.includes("social media") || normName.includes("smm")) {
-                                    resolvedCategory = "Social Media Marketing";
-                                  } else if (isBundle || upperCat.includes("BUNDLE")) {
-                                    resolvedCategory = "Bundles";
-                                  } else {
-                                    resolvedCategory = resolvedCategory || "Service Package";
-                                  }
-                                }
-
-                                const itemName = item.name || item.title || match?.name || match?.title || "Package Solution";
-                                let itemDescription = match?.description || item.description || item.subtitle || item.details || "";
-                                if (!itemDescription) {
-                                  if (normName.includes("audit") || normName.includes("paid ads")) {
-                                    itemDescription = "Audit of existing ad accounts, conversion tracking setup, and a complete strategy roadmap.";
-                                  } else if (normName.includes("shopping") || normName.includes("ecommerce") || normName.includes("e-commerce")) {
-                                    itemDescription = "End-to-end management of Google Shopping, Meta Product Ads, and e-commerce campaigns.";
-                                  } else if (normName.includes("graphic") || normName.includes("brand") || normName.includes("logo")) {
-                                    itemDescription = "Professional branding, visual assets, logo design, and graphic materials.";
-                                  } else if (normName.includes("development") || normName.includes("website dev")) {
-                                    itemDescription = "Custom modern web development with responsive design and high performance.";
-                                  } else if (normName.includes("maintenance")) {
-                                    itemDescription = "Ongoing security updates, bug fixes, performance monitoring, and backups.";
-                                  } else if (normName.includes("seo") || normName.includes("search engine")) {
-                                    itemDescription = "Complete search engine optimization to boost organic visibility and rankings.";
-                                  } else if (normName.includes("social media") || normName.includes("smm")) {
-                                    itemDescription = "Content creation, campaign management, and audience growth across social channels.";
-                                  } else if (normName.includes("analysis")) {
-                                    itemDescription = "Our standard free analysis offer covering brand, UI/UX, functionalities, AI potentiality, tech stack.";
-                                  } else if (normName.includes("checking")) {
-                                    itemDescription = "An offer to check the completed work of any other web professionals, including your own in-house team.";
-                                  } else {
-                                    itemDescription = "Comprehensive package solution tailored for your business needs.";
-                                  }
-                                }
-
-                                const isMonthlyProduct = Boolean(
-                                  match?.paymentType?.toLowerCase() === 'monthly' ||
-                                  match?.billingType?.toLowerCase() === 'monthly' ||
-                                  match?.isMonthly === true ||
-                                  item?.isMonthly === true ||
-                                  item?.paymentType?.toLowerCase() === 'monthly' ||
-                                  item?.billingType?.toLowerCase() === 'monthly' ||
-                                  (Array.isArray(match?.columns) && match.columns.some((c: any) =>
-                                    c.billingType?.toLowerCase() === 'monthly' ||
-                                    c.paymentType?.toLowerCase() === 'monthly' ||
-                                    String(c.period || '').toLowerCase().includes('month') ||
-                                    String(c.billingLabel || '').toLowerCase().includes('month')
-                                  )) ||
-                                  String(item.duration || '').toLowerCase().includes('month') ||
-                                  String(item.priceText || '').toLowerCase().includes('/month') ||
-                                  String(item.priceText || '').toLowerCase().includes('month') ||
-                                  String(match?.amount || '').toLowerCase().includes('/month') ||
-                                  ((itemName.toLowerCase().includes('management') || normName.includes('management')) && !itemName.toLowerCase().includes('audit')) ||
-                                  itemName.toLowerCase().includes('maintenance') ||
-                                  itemName.toLowerCase().includes('monthly') ||
-                                  itemName.toLowerCase().includes('retainer')
-                                );
-
-                                const suffix = isMonthlyProduct ? '/month' : '';
-
-                                let priceText = "";
-                                if (match?.minPrice !== undefined && match?.maxPrice !== undefined && (match.minPrice > 0 || match.maxPrice > 0)) {
-                                  if (match.minPrice === match.maxPrice) {
-                                    priceText = `$${match.minPrice}${suffix}`;
-                                  } else {
-                                    priceText = `$${match.minPrice} - $${match.maxPrice}${suffix}`;
-                                  }
-                                } else if (item.priceText) {
-                                  let cleanPrice = item.priceText.replace(/\$\s+/g, '$').trim();
-                                  if (isMonthlyProduct && !cleanPrice.toLowerCase().includes('/month') && !cleanPrice.toLowerCase().includes('month')) {
-                                    cleanPrice = `${cleanPrice}/month`;
-                                  }
-                                  priceText = cleanPrice;
-                                } else {
-                                  const amount = item.cost || item.amount || item.price || match?.amount || match?.price || 0;
-                                  priceText = `$${amount}${suffix}`;
-                                }
-
-                                const isPkgSvg = itemImage ? itemImage.toLowerCase().includes(".svg") : false;
-
-                                return (
-                                  <a
-                                    key={sIdx}
-                                    href={pkgHref}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex flex-col bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-all group w-full max-w-[240px] shrink-0"
-                                  >
-                                    <div className="h-32 bg-gray-50 relative overflow-hidden flex items-center justify-center">
-                                      <img
-                                        alt={itemName}
-                                        className={
-                                          isPkgSvg
-                                            ? "w-full h-full object-contain p-2.5 transition-transform group-hover:scale-105"
-                                            : "w-full h-full object-cover transition-transform group-hover:scale-105"
-                                        }
-                                        src={itemImage}
-                                        onError={(e) => {
-                                          const target = e.currentTarget;
-                                          if (target.src.startsWith("http:")) {
-                                            target.src = target.src.replace("http:", "https:");
-                                          }
-                                        }}
-                                      />
-                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors"></div>
-                                    </div>
-
-                                    <div className="p-4 flex flex-col flex-1 bg-white">
-                                      <div
-                                        className="bg-[#EBEBEB] text-[#8C8C8C] text-[8.5px] sm:text-[9px] font-extrabold px-2.5 py-0.5 rounded-full inline-flex items-center w-fit mb-2 tracking-wide uppercase font-sans shrink-0"
-                                        title={resolvedCategory}
-                                      >
-                                        {resolvedCategory}
-                                      </div>
-
-                                      <h4 className="font-bold text-gray-700 text-sm leading-snug mb-1 group-hover:text-blue-600 transition-colors line-clamp-2">
-                                        {itemName}
-                                      </h4>
-
-                                      {itemDescription && (
-                                        <p className="text-[11px] text-gray-400 font-medium leading-relaxed mb-4 line-clamp-2">
-                                          {itemDescription}
-                                        </p>
-                                      )}
-
-                                      <div className="mt-auto pt-2">
-                                        <span className="text-gray-500 font-extrabold text-xs">
-                                          {priceText}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </a>
-                                );
-                              })}
+                            <h5 className="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">
+                              Recommended Solutions
+                            </h5>
+                            <div className="border-t border-gray-200 mb-4" />
+                            <div className="flex flex-wrap sm:flex-nowrap sm:overflow-x-auto pb-2 gap-4 scrollbar-hide">
+                              {items.map((sol: any, sIdx: number) => (
+                                <PackageCard
+                                  key={(sol.packageId || sol._id || sol.id || sIdx) + "-" + sIdx}
+                                  packageId={sol.packageId || sol._id || sol.id}
+                                  title={sol.title || sol.name}
+                                  price={sol.price || sol.cost || sol.amount || sol.priceText}
+                                  imageUrl={sol.imageUrl || sol.mediumUrl || sol.thumbnailUrl || sol.image}
+                                  category={sol.category || sol.categorycode}
+                                  description={sol.description}
+                                  link={sol.link || `/dashboard/new-project/packages/${sol.packageId || sol._id || sol.id}`}
+                                />
+                              ))}
                             </div>
                           </div>
                         )}
@@ -1310,8 +1124,9 @@ export default function AnalysisDetailsPage() {
                         )}
                       </div>
                     </div>
-                  );
-                }
+                  </div>
+                );
+              }
 
                 const isClient = msg.sender === "client" || msg.role === "client" || (currentUser?._id && msg.userId === currentUser._id) || (currentUser?.id && msg.userId === currentUser.id);
                 const clientName = currentUser?.fullName || (currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim() : '') || currentUser?.username;
@@ -1321,7 +1136,7 @@ export default function AnalysisDetailsPage() {
                 const attachmentList = Array.isArray(rawAttachments) ? rawAttachments : [];
 
                 return (
-                  <div key={msgId} className="bg-white rounded-xl shadow-sm border border-gray-300 p-6 md:p-8">
+                  <div key={msgId} className="w-full bg-white rounded-xl shadow-sm border border-gray-300 p-6 md:p-8">
                     <div className="flex justify-between items-start mb-6">
                       <div className="flex items-center gap-4">
                         {senderAvatar ? (
@@ -1443,8 +1258,8 @@ export default function AnalysisDetailsPage() {
                                 key={(sol.packageId || sol._id || j) + "-" + j}
                                 packageId={sol.packageId || sol._id || sol.id}
                                 title={sol.title || sol.name}
-                                price={sol.price || sol.cost || sol.amount}
-                                imageUrl={sol.imageUrl || sol.mediumUrl || sol.thumbnailUrl}
+                                price={sol.price || sol.cost || sol.amount || sol.priceText}
+                                imageUrl={sol.imageUrl || sol.mediumUrl || sol.thumbnailUrl || sol.image}
                                 category={sol.category || sol.categorycode}
                                 description={sol.description}
                                 link={sol.link || `/dashboard/new-project/packages/${sol.packageId || sol._id || sol.id}`}
@@ -1460,66 +1275,7 @@ export default function AnalysisDetailsPage() {
             </div>
           )}
 
-        </div>
-
-        {/* Right Column / Sidebar (col-span-1) */}
-        <div className="lg:col-span-1">
-          <div className="bg-white border border-gray-300 rounded-[12px] shadow-sm p-6 sm:p-8">
-            {managers.length <= 1 ? (
-              <div className="text-center">
-                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gray-100 border border-gray-200">
-                  {managerAvatar ? (
-                    <img src={managerAvatar} alt={managerName} className="w-full h-full object-cover" />
-                  ) : manager ? (
-                    <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-3xl font-bold">
-                      {managerName[0]}
-                    </div>
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white text-3xl font-bold">
-                      ?
-                    </div>
-                  )}
-                </div>
-                <h4 className="text-lg font-bold text-gray-800 mb-1">{managerName}</h4>
-                <p className="text-sm text-gray-500 mb-4 font-medium uppercase tracking-wider text-[10px]">
-                  Manager
-                </p>
-              </div>
-            ) : (
-              <div>
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 text-center">
-                  Managers ({managers.length})
-                </h3>
-                <div className="space-y-3">
-                  {managers.map((m: any, idx: number) => {
-                    const name = m?.fullName || "Manager";
-                    const avatar = m?.avatar;
-                    return (
-                      <div key={m._id || m.id || idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-sm overflow-hidden bg-gray-200 shrink-0">
-                          {avatar ? (
-                            <img src={avatar} alt={name} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-bold text-sm">
-                              {name[0] || "M"}
-                            </div>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="text-sm font-bold text-gray-800 truncate">{name}</h4>
-                          <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Manager</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div ref={messagesEndRef} className="h-4 w-full shrink-0 snjhjdjjhghj" />
+          <div ref={messagesEndRef} className="h-4 w-full shrink-0" />
 
       {/* New Message Box Form */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden w-full">
