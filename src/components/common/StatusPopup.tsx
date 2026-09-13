@@ -43,8 +43,8 @@ export default function StatusPopup({
   if (!mounted || typeof document === "undefined") return null;
 
   const isSuccess = type === "success";
-  const iconColor = isSuccess ? "text-[#5356ff]" : "text-red-500";
-  const bgColor = isSuccess ? "bg-[#5356ff]/10" : "bg-red-50";
+  const iconColor = isSuccess ? "text-[#4343f0]" : "text-red-500";
+  const bgColor = isSuccess ? "bg-[#4343f0]/10" : "bg-red-50";
 
   const content = (
     <div
@@ -111,7 +111,7 @@ export default function StatusPopup({
             type="button"
             onClick={actionButton?.onClick || onClose}
             className={`w-full py-3.5 rounded-xl font-bold text-white transition-all shadow-lg hover:shadow-xl active:scale-[0.98] cursor-pointer ${
-              isSuccess ? "bg-[#5356ff] hover:bg-[#3232b7]" : "bg-red-500 hover:bg-red-600"
+              isSuccess ? "bg-[#4343f0] hover:bg-[#3232b7]" : "bg-red-500 hover:bg-red-600"
             }`}
           >
             {actionButton?.text || (isSuccess ? "Continue" : "Try Again")}
