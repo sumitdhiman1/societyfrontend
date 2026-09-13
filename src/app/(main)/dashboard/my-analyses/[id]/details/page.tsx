@@ -820,7 +820,14 @@ export default function AnalysisDetailsPage() {
             </div>
           </div>
 
-
+          {/* Section Divider Banner: Analysis Initiated */}
+          <div className="relative py-4 flex items-center justify-center w-full my-2">
+            <div className="flex-grow border-t border-gray-300"></div>
+            <span className="px-4 text-xs sm:text-sm font-medium text-gray-500 text-center whitespace-normal sm:whitespace-nowrap">
+              Analysis Initiated {deliveryDueStr ? `| Delivery due on ${deliveryDueStr}` : ""}
+            </span>
+            <div className="flex-grow border-t border-gray-300"></div>
+          </div>
 
           {/* Messages & Delivery History if any */}
           {analysis.messages && analysis.messages.length > 0 && (
@@ -1479,14 +1486,6 @@ export default function AnalysisDetailsPage() {
             )}
           </div>
         </div>
-      </div>
-      {/* Section Divider Banner */}
-      <div className="relative py-6 flex items-center justify-center w-full my-2">
-        <div className="flex-grow border-t border-gray-300"></div>
-        <span className="px-4 text-xs sm:text-sm font-medium text-gray-500 text-center whitespace-normal sm:whitespace-nowrap">
-          Analysis Initiated {deliveryDueStr ? `| Delivery due on ${deliveryDueStr}` : ""}
-        </span>
-        <div className="flex-grow border-t border-gray-300"></div>
       </div>
 
       <div ref={messagesEndRef} className="h-4 w-full shrink-0 snjhjdjjhghj" />
