@@ -12,7 +12,13 @@
  */
 
 import { CalculatorQuestion, CalculatorSelection } from "../priceCalculatorService";
-import { getWebsiteQuestionVisibility } from "./website";
+import {
+  getWebsiteQuestionVisibility,
+  isWebsitePagesQuestion,
+  getWebsitePageTierConfig,
+  calculateWebsiteExtraPages,
+} from "./website";
+export { isWebsitePagesQuestion, getWebsitePageTierConfig, calculateWebsiteExtraPages };
 import { getGraphicsQuestionVisibility, getGraphicsCategoryKeys, isGraphicsItemsQuestion, filterGraphicsAnswers } from "./graphics";
 import { getSeoQuestionVisibility, getSeoServiceMode, filterSeoAnswers } from "./seo";
 import { getMarketingQuestionVisibility } from "./marketing";
@@ -158,8 +164,12 @@ export function getSelectedTier(
   const tierFromMeta = answer ? getAnswerTierScope(answer as TierScopedAnswer) : undefined;
   if (tierFromMeta) return tierFromMeta;
 
-  if (answerKey.includes("PREMIUM")) return "premium";
-  if (answerKey.includes("STANDARD")) return "standard";
+  const answerText = (answer?.text || "").toLowerCase();
+  const rawKey = String(answerKey || "").toLowerCase();
+  if (rawKey.includes("premium") || answerText.includes("premium")) return "premium";
+  if (rawKey.includes("standard") || answerText.includes("standard")) return "standard";
+  if (rawKey.includes("starter") || answerText.includes("starter")) return "starter";
+
   return "starter";
 }
 
