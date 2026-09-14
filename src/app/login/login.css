@@ -27,7 +27,7 @@
 
 /* Header link */
 .header-link-container {
-  @apply flex flex-row justify-between items-start gap-4 mt-8;
+  @apply flex flex-row justify-between items-start gap-4 mt-6;
 }
 
 .register-link-desktop {
@@ -81,7 +81,7 @@
 }
 
 .section-title {
-  @apply mb-6 text-primary-100 font-bold text-lg tracking-tight;
+  @apply mb-6 text-[#1a1a40] font-bold text-lg tracking-tight;
 }
 
 .login-input-label {
@@ -95,4 +95,3 @@
 .login-submit-button {
   @apply w-full h-[48px] mt-6 rounded-[8px] text-white text-[15px] font-bold transition-all active:scale-[0.98] bg-primary-300 hover:bg-primary-500 shadow-md hover:shadow-lg disabled:opacity-50;
 }
-

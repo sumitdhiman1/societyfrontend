@@ -26,13 +26,15 @@ body {
   font-family: var(--font-sans);
 }
 
-input, textarea, select {
+input,
+textarea,
+select {
   color: #111827;
 }
 
 /* Ensure autofill never causes invisible text */
 input:-webkit-autofill,
-input:-webkit-autofill:hover, 
+input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 textarea:-webkit-autofill,
 select:-webkit-autofill {
@@ -347,6 +349,10 @@ img.object-cover.company-set {
   color: transparent;
 }
 
+.country-before-select {
+  color: #9ca3af;
+}
+
 .slider-btn-cs {
   width: 44.71px;
   height: 44.71px;
@@ -381,6 +387,7 @@ img.object-cover.company-set {
   0% {
     transform: translate(0);
   }
+
   to {
     transform: translate(-100%);
   }
@@ -414,6 +421,7 @@ select:-webkit-autofill:focus {
 }
 
 @media screen and (max-width: 768px) {
+
   input,
   select,
   textarea,
@@ -440,7 +448,7 @@ select:-webkit-autofill:focus {
   }
 }
 
-.dashboard-content-wrapper main > :last-child {
+.dashboard-content-wrapper main> :last-child {
   margin-bottom: 0 !important;
 }
 

@@ -967,295 +967,120 @@ export default function AnalysisDetailsPage() {
                             />
                           ) : (
                             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-sm bg-gray-800">
-                                {senderInitial}
-                              </div>
-                            )}
-                            <div>
-                              <h4 className="font-bold text-gray-800 text-base sm:text-lg">{senderName}</h4>
-                              {content.status && content.status !== "pending" && (
-                                <span
-                                  className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border mt-1 ${content.status === "accepted"
-                                    ? "border-green-300 bg-green-50 text-green-700"
-                                    : content.status === "declined"
-                                      ? "border-red-300 bg-red-50 text-red-700"
-                                      : "border-blue-300 bg-blue-50 text-blue-700"
-                                    }`}
-                                >
-                                  {content.status}
-                                </span>
-                              )}
+                              {senderInitial}
                             </div>
+                          )}
+                          <div>
+                            <h4 className="font-bold text-gray-800 text-base sm:text-lg">{senderName}</h4>
+                            {content.status && content.status !== "pending" && (
+                              <span
+                                className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border mt-1 ${content.status === "accepted"
+                                  ? "border-green-300 bg-green-50 text-green-700"
+                                  : content.status === "declined"
+                                    ? "border-red-300 bg-red-50 text-red-700"
+                                    : "border-blue-300 bg-blue-50 text-blue-700"
+                                  }`}
+                              >
+                                {content.status}
+                              </span>
+                            )}
                           </div>
-                          <span className="text-[10px] sm:text-sm text-gray-500 font-bold uppercase tracking-wide">
-                            {formatDateTime(msg.createdAt)}
-                          </span>
                         </div>
+                        <span className="text-[10px] sm:text-sm text-gray-500 font-bold uppercase tracking-wide">
+                          {formatDateTime(msg.createdAt)}
+                        </span>
+                      </div>
 
-                        {/* Message text */}
-                        {messageBody && (
-                          <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap pl-0 md:pl-[64px] mb-6">
-                            {messageBody}
-                          </div>
-                        )}
+                      {/* Message text */}
+                      {messageBody && (
+                        <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap pl-0 md:pl-[64px] mb-6">
+                          {messageBody}
+                        </div>
+                      )}
 
-                        {/* Attachments if any (comes first before Recommended Solutions) */}
-                        {attachmentList.length > 0 && (
-                          <div className="pl-0 md:pl-[64px] mb-6">
-                            <h5 className="text-sm font-bold text-gray-700 mb-3">Attached Files</h5>
-                            <div className="border-t border-gray-200 mb-4" />
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
-                              {attachmentList.map((att: any, aIdx: number) => {
-                                const url = typeof att === "string" ? att : att.url;
-                                const filename = (typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "Attachment") : att.filename || att.name || "Attachment");
-                                const safeUrl = getSafeUrl(url);
-                                const isImg = isImageUrl(url);
-                                const isSvg = url.toLowerCase().includes(".svg");
-                                const isPdf = url.toLowerCase().includes(".pdf");
+                      {/* Attachments if any (comes first before Recommended Solutions) */}
+                      {attachmentList.length > 0 && (
+                        <div className="pl-0 md:pl-[64px] mb-6">
+                          <h5 className="text-sm font-bold text-gray-700 mb-3">Attached Files</h5>
+                          <div className="border-t border-gray-200 mb-4" />
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
+                            {attachmentList.map((att: any, aIdx: number) => {
+                              const url = typeof att === "string" ? att : att.url;
+                              const filename = (typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "Attachment") : att.filename || att.name || "Attachment");
+                              const safeUrl = getSafeUrl(url);
+                              const isImg = isImageUrl(url);
+                              const isSvg = url.toLowerCase().includes(".svg");
+                              const isPdf = url.toLowerCase().includes(".pdf");
 
-                                return (
-                                  <a
-                                    key={aIdx}
-                                    href={safeUrl}
-                                    onClick={(e) => downloadFile(e, safeUrl, filename)}
-                                    download={filename}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
-                                  >
-                                    <div className="flex-grow flex items-center justify-center bg-white relative overflow-hidden">
-                                      {isImg ? (
-                                        <img
-                                          src={safeUrl}
-                                          alt={filename}
-                                          className={
-                                            isSvg
-                                              ? "w-full h-full object-contain p-2.5 group-hover:scale-105 transition-transform duration-300"
-                                              : "w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              return (
+                                <a
+                                  key={aIdx}
+                                  href={safeUrl}
+                                  onClick={(e) => downloadFile(e, safeUrl, filename)}
+                                  download={filename}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
+                                >
+                                  <div className="flex-grow flex items-center justify-center bg-white relative overflow-hidden">
+                                    {isImg ? (
+                                      <img
+                                        src={safeUrl}
+                                        alt={filename}
+                                        className={
+                                          isSvg
+                                            ? "w-full h-full object-contain p-2.5 group-hover:scale-105 transition-transform duration-300"
+                                            : "w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        }
+                                        onError={(e) => {
+                                          const target = e.currentTarget;
+                                          if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
+                                            target.src = target.src.replace("http:", "https:");
                                           }
-                                          onError={(e) => {
-                                            const target = e.currentTarget;
-                                            if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
-                                              target.src = target.src.replace("http:", "https:");
-                                            }
-                                          }}
-                                        />
-                                      ) : isPdf ? (
-                                        <div className="flex flex-col items-center gap-1">
-                                          <svg className="w-12 h-12 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M11.363 2c4.155 0 2.637 6 2.637 6s6-1.518 6 2.638c0 4.155-3.345 7.518-7.5 7.518s-7.5-3.363-7.5-7.518c0-4.155 3.345-7.518 7.5-7.518zm1.5 7h-3v1h3v-1zm0 2h-3v1h3v-1zm0 2h-3v1h3v-1z" />
-                                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM6 4h7v5h5v11H6V4z" />
-                                          </svg>
-                                          <span className="text-[10px] font-bold text-red-600 uppercase">PDF</span>
-                                        </div>
-                                      ) : (
-                                        <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        }}
+                                      />
+                                    ) : isPdf ? (
+                                      <div className="flex flex-col items-center gap-1">
+                                        <svg className="w-12 h-12 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                                          <path d="M11.363 2c4.155 0 2.637 6 2.637 6s6-1.518 6 2.638c0 4.155-3.345 7.518-7.5 7.518s-7.5-3.363-7.5-7.518c0-4.155 3.345-7.518 7.5-7.518zm1.5 7h-3v1h3v-1zm0 2h-3v1h3v-1zm0 2h-3v1h3v-1z" />
+                                          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM6 4h7v5h5v11H6V4z" />
                                         </svg>
-                                      )}
-                                      <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
-                                        <div className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center">
-                                          <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                          </svg>
-                                        </div>
+                                        <span className="text-[10px] font-bold text-red-600 uppercase">PDF</span>
+                                      </div>
+                                    ) : (
+                                      <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                    )}
+                                    <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
+                                      <div className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
                                       </div>
                                     </div>
-                                    <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex items-center justify-center h-10 min-h-[40px]">
-                                      <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={filename}>{filename}</span>
-                                    </div>
-                                  </a>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Recommended Solutions */}
-                        {items.length > 0 && (
-                          <div className="pl-0 md:pl-[64px] mb-6">
-                            <h5 className="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">
-                              Recommended Solutions
-                            </h5>
-                            <div className="border-t border-gray-200 mb-4" />
-                            <div className="flex flex-wrap sm:flex-nowrap sm:overflow-x-auto pb-2 gap-4 scrollbar-hide">
-                              {items.map((sol: any, sIdx: number) => (
-                                <PackageCard
-                                  key={(sol.packageId || sol._id || sol.id || sIdx) + "-" + sIdx}
-                                  packageId={sol.packageId || sol._id || sol.id}
-                                  title={sol.title || sol.name}
-                                  price={sol.price || sol.cost || sol.amount || sol.priceText}
-                                  imageUrl={sol.imageUrl || sol.mediumUrl || sol.thumbnailUrl || sol.image}
-                                  category={sol.category || sol.categorycode}
-                                  description={sol.description}
-                                  link={sol.link || `/dashboard/new-project/packages/${sol.packageId || sol._id || sol.id}`}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-
-
-                        {actionModal.isOpen && actionModal.proposalId === msg.id && (
-                          <div className="mt-6 p-6 bg-gray-50 rounded-xl border border-gray-300">
-                            <h4 className="font-bold text-gray-800 mb-2">{actionModal.title}</h4>
-                            <textarea
-                              className="w-full min-h-[100px] p-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:border-[#4343F0]"
-                              placeholder={actionModal.placeholder}
-                              value={actionComment}
-                              onChange={(e) => setActionComment(e.target.value)}
-                            />
-                            <div className="flex justify-end gap-3 mt-4">
-                              <button
-                                onClick={() => setActionModal({ ...actionModal, isOpen: false })}
-                                className="px-5 py-2 bg-gray-200 text-gray-700 text-xs font-bold rounded hover:bg-gray-300 cursor-pointer"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                onClick={handleActionSubmit}
-                                disabled={isActionLoading || (actionModal.required && !actionComment.trim())}
-                                className="px-6 py-2 bg-[#4343F0] text-white text-xs font-bold rounded hover:bg-[#3232b7] disabled:opacity-50 cursor-pointer"
-                              >
-                                Submit
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              }
-
-                const isClient = msg.sender === "client" || msg.role === "client" || (currentUser?._id && msg.userId === currentUser._id) || (currentUser?.id && msg.userId === currentUser.id);
-                const clientName = currentUser?.fullName || (currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim() : '') || currentUser?.username;
-                const senderName = msg.username || (isClient ? (clientName || "You") : "Analysis Team");
-                const senderAvatar = msg.userAvatar || (isClient ? currentUser?.avatar : undefined);
-                const rawAttachments = msg.attachments || msg.content?.attachedFiles || msg.attachedFiles || (msg.content as any)?.attachedFilesUrl || msg.attachedFilesUrl || [];
-                const attachmentList = Array.isArray(rawAttachments) ? rawAttachments : [];
-
-                return (
-                  <div key={msgId} className="w-full bg-white rounded-xl shadow-sm border border-gray-300 p-6 md:p-8">
-                    <div className="flex justify-between items-start mb-6">
-                      <div className="flex items-center gap-4">
-                        {senderAvatar ? (
-                          <img src={senderAvatar} alt={senderName} className="w-12 h-12 rounded-full object-cover shadow-sm" />
-                        ) : (
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm ${isClient ? 'bg-blue-900' : 'bg-gray-800'}`}>
-                            {(senderName || "U")[0]?.toUpperCase()}
-                          </div>
-                        )}
-                        <div>
-                          <h4 className="font-bold text-gray-800 text-base sm:text-lg">{senderName}</h4>
-                          {msg.isFinalDelivery && (
-                            <span className="inline-block px-2.5 py-0.5 bg-green-100 text-green-800 text-[10px] font-bold rounded-full uppercase mt-1">
-                              Final Delivery Report
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <span className="text-xs text-gray-400 font-medium whitespace-nowrap">
-                        {formatDateTime(msg.createdAt || msg.timestamp)}
-                      </span>
-                    </div>
-
-                    <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap pl-0 sm:pl-16 mb-6">
-                      {msg.message || msg.content?.text}
-                    </div>
-
-                    {attachmentList.length > 0 && (
-                      <div className="pl-0 sm:pl-16 mb-6">
-                        <h5 className="text-sm font-bold text-gray-700 mb-3">
-                          {isClient ? "Attached Files" : "Delivery Attachments"}
-                        </h5>
-                        <div className="border-t border-gray-200 mb-4" />
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
-                          {attachmentList.map((att: any, attIdx: number) => {
-                            const url = typeof att === "string" ? att : (att.url || att.secure_url || att.path);
-                            const name = typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "file") : (att.name || att.filename || decodeURIComponent((url || "").split("/").pop() || "file"));
-                            if (!url) return null;
-                            const safeUrl = getSafeUrl(url);
-                            const isImg = isImageUrl(url);
-                            const isSvg = url.toLowerCase().includes(".svg");
-                            const isPdf = url.toLowerCase().includes(".pdf");
-
-                            return (
-                              <a
-                                key={url + attIdx}
-                                href={safeUrl}
-                                onClick={(e) => downloadFile(e, safeUrl, name)}
-                                download={name}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
-                              >
-                                <div className="flex-grow flex items-center justify-center bg-white relative overflow-hidden">
-                                  {isImg ? (
-                                    <img
-                                      src={safeUrl}
-                                      alt={name}
-                                      className={
-                                        isSvg
-                                          ? "w-full h-full object-contain p-2.5 group-hover:scale-105 transition-transform duration-300"
-                                          : "w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                      }
-                                      onError={(e) => {
-                                        const target = e.currentTarget;
-                                        if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
-                                          target.src = target.src.replace("http:", "https:");
-                                        }
-                                      }}
-                                    />
-                                  ) : isPdf ? (
-                                    <div className="flex flex-col items-center gap-1">
-                                      <svg className="w-12 h-12 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M11.363 2c4.155 0 2.637 6 2.637 6s6-1.518 6 2.638c0 4.155-3.345 7.518-7.5 7.518s-7.5-3.363-7.5-7.518c0-4.155 3.345-7.518 7.5-7.518zm1.5 7h-3v1h3v-1zm0 2h-3v1h3v-1zm0 2h-3v1h3v-1z" />
-                                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM6 4h7v5h5v11H6V4z" />
-                                      </svg>
-                                      <span className="text-[10px] font-bold text-red-600 uppercase">PDF</span>
-                                    </div>
-                                  ) : (
-                                    <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                  )}
-                                  <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
-                                    <div className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center">
-                                      <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                      </svg>
-                                    </div>
                                   </div>
-                                </div>
-                                <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex items-center justify-center h-10 min-h-[40px]">
-                                  <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={name}>{name}</span>
-                                </div>
-                              </a>
-                            );
-                          })}
+                                  <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex items-center justify-center h-10 min-h-[40px]">
+                                    <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={filename}>{filename}</span>
+                                  </div>
+                                </a>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    {/* Recommended Solutions if any */}
-                    {(() => {
-                      const recs =
-                        (msg.recommendedSolutions && msg.recommendedSolutions.length > 0 ? msg.recommendedSolutions : null) ||
-                        (msg.content?.recommendedSolutions && msg.content.recommendedSolutions.length > 0 ? msg.content.recommendedSolutions : null) ||
-                        (msg.content?.deliverableItems && msg.content.deliverableItems.length > 0 ? msg.content.deliverableItems : null) ||
-                        (msg.content?.lineItems && msg.content.lineItems.length > 0 ? msg.content.lineItems : null) ||
-                        [];
-                      if (recs.length === 0) return null;
-                      return (
-                        <div className="pl-0 sm:pl-16 mb-6">
+                      )}
+
+                      {/* Recommended Solutions */}
+                      {items.length > 0 && (
+                        <div className="pl-0 md:pl-[64px] mb-6">
                           <h5 className="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">
                             Recommended Solutions
                           </h5>
                           <div className="border-t border-gray-200 mb-4" />
                           <div className="flex flex-wrap sm:flex-nowrap sm:overflow-x-auto pb-2 gap-4 scrollbar-hide">
-                            {recs.map((sol: any, j: number) => (
+                            {items.map((sol: any, sIdx: number) => (
                               <PackageCard
-                                key={(sol.packageId || sol._id || j) + "-" + j}
+                                key={(sol.packageId || sol._id || sol.id || sIdx) + "-" + sIdx}
                                 packageId={sol.packageId || sol._id || sol.id}
                                 title={sol.title || sol.name}
                                 price={sol.price || sol.cost || sol.amount || sol.priceText}
@@ -1267,15 +1092,190 @@ export default function AnalysisDetailsPage() {
                             ))}
                           </div>
                         </div>
-                      );
-                    })()}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                      )}
 
-          <div ref={messagesEndRef} className="h-4 w-full shrink-0" />
+
+
+                      {actionModal.isOpen && actionModal.proposalId === msg.id && (
+                        <div className="mt-6 p-6 bg-gray-50 rounded-xl border border-gray-300">
+                          <h4 className="font-bold text-gray-800 mb-2">{actionModal.title}</h4>
+                          <textarea
+                            className="w-full min-h-[100px] p-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:border-[#4343F0]"
+                            placeholder={actionModal.placeholder}
+                            value={actionComment}
+                            onChange={(e) => setActionComment(e.target.value)}
+                          />
+                          <div className="flex justify-end gap-3 mt-4">
+                            <button
+                              onClick={() => setActionModal({ ...actionModal, isOpen: false })}
+                              className="px-5 py-2 bg-gray-200 text-gray-700 text-xs font-bold rounded hover:bg-gray-300 cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleActionSubmit}
+                              disabled={isActionLoading || (actionModal.required && !actionComment.trim())}
+                              className="px-6 py-2 bg-[#4343F0] text-white text-xs font-bold rounded hover:bg-[#3232b7] disabled:opacity-50 cursor-pointer"
+                            >
+                              Submit
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            const isClient = msg.sender === "client" || msg.role === "client" || (currentUser?._id && msg.userId === currentUser._id) || (currentUser?.id && msg.userId === currentUser.id);
+            const clientName = currentUser?.fullName || (currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim() : '') || currentUser?.username;
+            const senderName = msg.username || (isClient ? (clientName || "You") : "Analysis Team");
+            const senderAvatar = msg.userAvatar || (isClient ? currentUser?.avatar : undefined);
+            const rawAttachments = msg.attachments || msg.content?.attachedFiles || msg.attachedFiles || (msg.content as any)?.attachedFilesUrl || msg.attachedFilesUrl || [];
+            const attachmentList = Array.isArray(rawAttachments) ? rawAttachments : [];
+
+            return (
+              <div key={msgId} className="w-full bg-white rounded-xl shadow-sm border border-gray-300 p-6 md:p-8">
+                <div className="flex justify-between items-start mb-6">
+                  <div className="flex items-center gap-4">
+                    {senderAvatar ? (
+                      <img src={senderAvatar} alt={senderName} className="w-12 h-12 rounded-full object-cover shadow-sm" />
+                    ) : (
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm ${isClient ? 'bg-blue-900' : 'bg-gray-800'}`}>
+                        {(senderName || "U")[0]?.toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <h4 className="font-bold text-gray-800 text-base sm:text-lg">{senderName}</h4>
+                      {msg.isFinalDelivery && (
+                        <span className="inline-block px-2.5 py-0.5 bg-green-100 text-green-800 text-[10px] font-bold rounded-full uppercase mt-1">
+                          Final Delivery Report
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-xs text-gray-400 font-medium whitespace-nowrap">
+                    {formatDateTime(msg.createdAt || msg.timestamp)}
+                  </span>
+                </div>
+
+                <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap pl-0 sm:pl-16 mb-6">
+                  {msg.message || msg.content?.text}
+                </div>
+
+                {attachmentList.length > 0 && (
+                  <div className="pl-0 sm:pl-16 mb-6">
+                    <h5 className="text-sm font-bold text-gray-700 mb-3">
+                      {isClient ? "Attached Files" : "Delivery Attachments"}
+                    </h5>
+                    <div className="border-t border-gray-200 mb-4" />
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
+                      {attachmentList.map((att: any, attIdx: number) => {
+                        const url = typeof att === "string" ? att : (att.url || att.secure_url || att.path);
+                        const name = typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "file") : (att.name || att.filename || decodeURIComponent((url || "").split("/").pop() || "file"));
+                        if (!url) return null;
+                        const safeUrl = getSafeUrl(url);
+                        const isImg = isImageUrl(url);
+                        const isSvg = url.toLowerCase().includes(".svg");
+                        const isPdf = url.toLowerCase().includes(".pdf");
+
+                        return (
+                          <a
+                            key={url + attIdx}
+                            href={safeUrl}
+                            onClick={(e) => downloadFile(e, safeUrl, name)}
+                            download={name}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
+                          >
+                            <div className="flex-grow flex items-center justify-center bg-white relative overflow-hidden">
+                              {isImg ? (
+                                <img
+                                  src={safeUrl}
+                                  alt={name}
+                                  className={
+                                    isSvg
+                                      ? "w-full h-full object-contain p-2.5 group-hover:scale-105 transition-transform duration-300"
+                                      : "w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                  }
+                                  onError={(e) => {
+                                    const target = e.currentTarget;
+                                    if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
+                                      target.src = target.src.replace("http:", "https:");
+                                    }
+                                  }}
+                                />
+                              ) : isPdf ? (
+                                <div className="flex flex-col items-center gap-1">
+                                  <svg className="w-12 h-12 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M11.363 2c4.155 0 2.637 6 2.637 6s6-1.518 6 2.638c0 4.155-3.345 7.518-7.5 7.518s-7.5-3.363-7.5-7.518c0-4.155 3.345-7.518 7.5-7.518zm1.5 7h-3v1h3v-1zm0 2h-3v1h3v-1zm0 2h-3v1h3v-1z" />
+                                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM6 4h7v5h5v11H6V4z" />
+                                  </svg>
+                                  <span className="text-[10px] font-bold text-red-600 uppercase">PDF</span>
+                                </div>
+                              ) : (
+                                <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              )}
+                              <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
+                                <div className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                  </svg>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex items-center justify-center h-10 min-h-[40px]">
+                              <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={name}>{name}</span>
+                            </div>
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {/* Recommended Solutions if any */}
+                {(() => {
+                  const recs =
+                    (msg.recommendedSolutions && msg.recommendedSolutions.length > 0 ? msg.recommendedSolutions : null) ||
+                    (msg.content?.recommendedSolutions && msg.content.recommendedSolutions.length > 0 ? msg.content.recommendedSolutions : null) ||
+                    (msg.content?.deliverableItems && msg.content.deliverableItems.length > 0 ? msg.content.deliverableItems : null) ||
+                    (msg.content?.lineItems && msg.content.lineItems.length > 0 ? msg.content.lineItems : null) ||
+                    [];
+                  if (recs.length === 0) return null;
+                  return (
+                    <div className="pl-0 sm:pl-16 mb-6">
+                      <h5 className="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">
+                        Recommended Solutions
+                      </h5>
+                      <div className="border-t border-gray-200 mb-4" />
+                      <div className="flex flex-wrap sm:flex-nowrap sm:overflow-x-auto pb-2 gap-4 scrollbar-hide">
+                        {recs.map((sol: any, j: number) => (
+                          <PackageCard
+                            key={(sol.packageId || sol._id || j) + "-" + j}
+                            packageId={sol.packageId || sol._id || sol.id}
+                            title={sol.title || sol.name}
+                            price={sol.price || sol.cost || sol.amount || sol.priceText}
+                            imageUrl={sol.imageUrl || sol.mediumUrl || sol.thumbnailUrl || sol.image}
+                            category={sol.category || sol.categorycode}
+                            description={sol.description}
+                            link={sol.link || `/dashboard/new-project/packages/${sol.packageId || sol._id || sol.id}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div ref={messagesEndRef} className="h-4 w-full shrink-0" />
 
       {/* New Message Box Form */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden w-full">

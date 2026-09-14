@@ -54,7 +54,7 @@ const FacebookIconLocal = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const InputField = ({ label, required, type = "text", value, onChange, placeholder }: any) => (
+const InputField = ({ label, required, type = "text", value, onChange, placeholder, rightElement }: any) => (
   <div className="flex flex-col gap-1 w-full">
     {label && (
       <label className="text-sm text-gray-700 font-semibold text-left">
@@ -62,14 +62,17 @@ const InputField = ({ label, required, type = "text", value, onChange, placehold
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
     )}
-    <input
-      type={type}
-      value={value}
-      onChange={onChange}
-      required={required}
-      placeholder={placeholder}
-      className="w-full border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 rounded-md px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 transition-all"
-    />
+    <div className="relative w-full">
+      <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        required={required}
+        placeholder={placeholder}
+        className={`w-full border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 rounded-md px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 transition-all ${rightElement ? "pr-10" : ""}`}
+      />
+      {rightElement}
+    </div>
   </div>
 );
 
@@ -93,6 +96,7 @@ function RegisterForm() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [companyName, setCompanyName] = useState("");
   const [vatNumber, setVatNumber] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -216,12 +220,18 @@ function RegisterForm() {
 
       {/* Left Panel */}
       <div className="hidden lg:block w-[40%] h-screen sticky top-0 overflow-hidden shrink-0">
-        <img src="images/worldpic.jpg" className="w-full h-full object-cover opacity-80" alt="Panel" />
+        <img src="images/worldpic.png" className="w-full h-full object-cover" alt="Panel" />
       </div>
 
       {/* Right Panel */}
       <div className="flex-1 flex justify-center items-start px-6 md:px-12 lg:px-16 xl:px-24 pt-10 pb-24">
         <div className="w-full max-w-xl lg:max-w-2xl">
+          <div className="mt-4 mb-6">
+            <a className="w-10 h-10 border border-gray-400 rounded-full flex items-center justify-center text-[#1a1a40] hover:bg-gray-50 hover:border-gray-600 transition-colors" href="/">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+              </svg>
+            </a>
+          </div>
           <div className="flex flex-row justify-between items-start gap-4 mt-6">
             <div className="flex flex-col">
               {step === 3 ? (
@@ -265,7 +275,32 @@ function RegisterForm() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <InputField label="Email address" required type="email" value={email} onChange={(e: any) => setEmail(e.target.value)} />
-                  <InputField label="Set a password" required type="password" value={password} onChange={(e: any) => setPassword(e.target.value)} />
+                  <InputField
+                    label="Set a password"
+                    required
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e: any) => setPassword(e.target.value)}
+                    rightElement={
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? (
+                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                          </svg>
+                        ) : (
+                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        )}
+                      </button>
+                    }
+                  />
                 </div>
                 <SubmitButton label="Continue" type="submit" />
               </form>
@@ -289,7 +324,11 @@ function RegisterForm() {
                     <label className="text-sm text-gray-700 font-semibold text-left">Country</label>
                     <div className="relative">
                       <select
-                        className="w-full border border-gray-300 bg-white rounded-md px-3 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-300 transition-all appearance-none cursor-pointer pr-10"
+                        className={`w-full bg-white border border-gray-300 rounded-[4px] 
+                          px-4 py-3 text-sm focus:outline-none 
+                          focus:border-primary-300 focus:ring-1 focus:ring-primary-300
+                          transition-all pr-10 cursor-pointer appearance-none
+                          ${country ? "text-black" : "country-before-select"}`}
                         value={country}
                         onChange={(e) => setCountry(e.target.value)}
                       >
@@ -330,9 +369,9 @@ function RegisterForm() {
                 </div>
                 {errorMsg && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{errorMsg}</div>}
                 <div className="flex gap-4 pt-3">
-                  <button type="button" onClick={() => setStep(1)} className="flex-1 h-[48px] rounded-[8px] border-2 border-[#BDBDBD] text-[#3A3A3A] font-bold hover:bg-gray-50 transition-all active:scale-[0.98]">
+                  {/* <button type="button" onClick={() => setStep(1)} className="flex-1 h-[48px] rounded-[8px] border-2 border-[#BDBDBD] text-[#3A3A3A] font-bold hover:bg-gray-50 transition-all active:scale-[0.98]">
                     Back
-                  </button>
+                  </button> */}
                   <SubmitButton label={loading ? "Creating account..." : "Create my account"} type="submit" disabled={loading} className="flex-[2] !mt-0" />
                 </div>
               </form>
