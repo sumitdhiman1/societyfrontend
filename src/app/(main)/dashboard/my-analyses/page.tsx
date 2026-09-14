@@ -67,16 +67,16 @@ export default function MyAnalysesPage() {
             return {
               id: aid,
               title: item.title || `Free website analysis - ${cleanTarget}`,
-              analysisNumber: item.projectNumber || item.invoiceNumber || `INV-2026-${aid.slice(-3)}`,
+              analysisNumber: item.projectNumber || item.invoiceNumber || (aid ? `INV-2026-${aid.slice(-3).toUpperCase()}` : "INV-2026-150"),
               targetUrl: fullTargetUrl,
               displayTarget: cleanTarget,
               submittedDate: item.createdAt
                 ? new Date(item.createdAt).toLocaleString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })
                 : "Recently",
               status: normalizedStatus,
             };
@@ -153,10 +153,10 @@ export default function MyAnalysesPage() {
 
   return (
     <div
-      className="bg-white min-h-screen flex flex-col font-sans"
+      className="bg-[#F4F5FA] flex-grow flex flex-col font-sans"
       style={{ fontFamily: "var(--font-inter), sans-serif" }}
     >
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-6 md:pb-8 flex flex-col justify-between">
+      <main className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-6 md:pb-8 flex flex-col justify-between flex-grow">
         {/* Top Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-6 md:gap-0">
           <div className="w-full md:w-auto min-w-0 overflow-hidden">
@@ -177,10 +177,11 @@ export default function MyAnalysesPage() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`pb-3 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 rounded-none cursor-pointer ${isActive
-                      ? "text-primary-300 border-b-2 border-primary-300 font-bold"
-                      : "text-gray-500 hover:text-gray-700 font-normal"
-                      }`}
+                    className={`pb-3 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 rounded-none cursor-pointer ${
+                      isActive
+                        ? "text-primary-300 border-b-2 border-primary-300"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
                   >
                     {tab.label} ({tab.count})
                   </button>
@@ -193,10 +194,10 @@ export default function MyAnalysesPage() {
           <div className="hidden md:flex flex-col justify-center border-2 border-[#707070] rounded-[8px] px-8 bg-[#EEEEEE] text-left w-[254px] h-[99px] shrink-0">
             <div className="flex flex-col justify-center">
               <div className="text-[12px] font-semibold text-[#707070] mb-1.5 leading-none">
-                {currentTime.time || "10:35 PM"}
+                {currentTime.time || "2:09 PM"}
               </div>
               <div className="text-[15px] font-medium text-[#505050] leading-tight">
-                {currentTime.date || "Friday 4, Sep, 2026"}
+                {currentTime.date || "Sunday 13, Sep, 2026"}
               </div>
             </div>
           </div>
@@ -256,7 +257,7 @@ export default function MyAnalysesPage() {
                         target="_blank"
                         rel="noreferrer"
                       >
-                        {a.targetUrl}
+                        {a.displayTarget || a.targetUrl}
                       </a>
                     </div>
                   </div>
@@ -304,3 +305,4 @@ export default function MyAnalysesPage() {
     </div>
   );
 }
+

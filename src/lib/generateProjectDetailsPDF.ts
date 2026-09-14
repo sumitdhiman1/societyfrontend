@@ -239,15 +239,22 @@ export function extractProjectDetails(data: any): ProjectPDFData {
     (data.title && data.title.includes(" - ") ? data.title.split(" - ").pop()?.trim() : "") ||
     "Client";
 
+  const year = new Date(data.startDate || data.createdAt || data.submittedAt || Date.now()).getFullYear();
   let rawProjectNumber =
     data.projectNumber ||
     data.refNumber ||
     data.quoteNumber ||
-    (data._id ? data._id.slice(-8).toUpperCase() : "968728E3");
+    (data._id && typeof data._id === "string" && data._id.length >= 4
+      ? `SOC-${year}-${data._id.slice(-5).toUpperCase()}`
+      : `SOC-${year}-${Math.floor(10000 + Math.random() * 90000)}`);
   rawProjectNumber = String(rawProjectNumber)
     .replace(/^INV-/i, "")
-    .replace(/^PROJECT-/i, "");
-  const projectNumber = rawProjectNumber.startsWith("#") ? rawProjectNumber : `#${rawProjectNumber}`;
+    .replace(/^PROJECT-/i, "")
+    .trim();
+  const projectNumber =
+    rawProjectNumber.startsWith("#") || /^[A-Za-z]/.test(rawProjectNumber)
+      ? rawProjectNumber
+      : `#${rawProjectNumber}`;
 
   const title = data.title || "Website Redesign";
 
@@ -269,22 +276,16 @@ export function extractProjectDetails(data: any): ProjectPDFData {
 
   const currency = (data.currency || "USD").toUpperCase();
 
-  const calculatorSettlement =
-    data.calculatorSpecs && Number(data.amountPaid || 0) > 0
-      ? Number(data.amountPaid)
-      : null;
-
   const rawTotalPrice = Number(
-    calculatorSettlement ??
-      (data.totalCost ||
-        data.price ||
-        data.amount ||
-        data.totalPrice ||
-        data.total ||
-        data.package?.price ||
-        data.bundle?.price ||
-        data.amountPaid ||
-        0)
+    data.totalCost ||
+      data.price ||
+      data.amount ||
+      data.totalPrice ||
+      data.total ||
+      data.package?.price ||
+      data.bundle?.price ||
+      data.amountPaid ||
+      0
   );
 
   // Deliverables extraction

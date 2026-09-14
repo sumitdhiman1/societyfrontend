@@ -667,16 +667,31 @@ export default function ProjectDetailsPage() {
   const isUploading = attachments.some(a => a.status === "uploading");
 
   // Calculations for base amount, VAT, and total cost
-  const baseAmount = Number(project.baseAmount ?? project.subtotal ?? (project.price != null ? project.price : 0));
-  const vatRate = Number(project.vatRate ?? project.vatPercentage ?? (project.taxPercentage != null ? project.taxPercentage : 0));
-  const vatAmount = Number(project.vatAmount ?? project.tax ?? 0);
-  const totalCost = Number(project.totalCost ?? project.totalAmount ?? (project.price != null ? project.price : baseAmount + vatAmount));
-  const calculatorPaidTotal =
-    project.calculatorSpecs && Number(project.amountPaid || 0) > 0
-      ? Number(project.amountPaid)
-      : totalCost;
-  const calculatorBaseAmount = project.calculatorSpecs ? calculatorPaidTotal : baseAmount;
-  const calculatorVatAmount = project.calculatorSpecs ? 0 : vatAmount;
+  const rawTotalCost = Number(
+    project.totalCost ??
+    project.totalAmount ??
+    (project.price != null ? project.price : 0)
+  );
+  const vatRate = Number(
+    project.vatRate ??
+    project.vatPercentage ??
+    (project.taxPercentage != null ? project.taxPercentage : 0)
+  );
+  const rawVatAmount = Number(project.vatAmount ?? project.tax ?? 0);
+  const vatAmount =
+    rawVatAmount > 0
+      ? rawVatAmount
+      : vatRate > 0 && rawTotalCost > 0
+      ? (rawTotalCost * vatRate) / (100 + vatRate)
+      : 0;
+  const rawBaseAmount = Number(project.baseAmount ?? project.subtotal ?? 0);
+  const baseAmount =
+    rawBaseAmount > 0
+      ? rawBaseAmount
+      : vatAmount > 0
+      ? rawTotalCost - vatAmount
+      : rawTotalCost;
+  const totalCost = rawTotalCost > 0 ? rawTotalCost : baseAmount + vatAmount;
 
   // Date for delivery due divider
   const deliveryDueStr = project.deadline ? formatSubmittedDate(project.deadline) : "";
@@ -745,7 +760,7 @@ export default function ProjectDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Project Details Card */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-4 sm:p-6 md:p-8">
+          <div className="bg-white border border-gray-300 rounded-[12px] shadow-sm p-4 sm:p-6 md:p-8">
             {/* Header: Submitted Date and Status Badge */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
               <span className="text-[10px] sm:text-xs text-gray-500 font-bold">
@@ -848,7 +863,7 @@ export default function ProjectDetailsPage() {
 
             {/* Deliverables Table — hidden for calculator projects (specs card covers it) */}
             {!project.calculatorSpecs && (
-              <div className="border border-gray-400 rounded-lg overflow-x-auto mb-4">
+              <div className="border border-gray-400 rounded-[12px] overflow-hidden overflow-x-auto mb-4">
                 <table className="w-full min-w-[500px] sm:min-w-0">
                   <thead>
                     <tr className="border-b border-gray-400">
@@ -937,7 +952,7 @@ export default function ProjectDetailsPage() {
                         {project.calculatorSpecs?.estimatedTimeline || project.timeline || "-"}
                       </td>
                       <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top">
-                        {formatCurrency(calculatorPaidTotal)}
+                        {formatCurrency(totalCost)}
                       </td>
                     </tr>
                   </tbody>
@@ -949,17 +964,17 @@ export default function ProjectDetailsPage() {
             <div className={`flex flex-row justify-end gap-6 sm:gap-12 text-xs sm:text-sm ${project.calculatorSpecs ? "mb-4" : "mb-8"}`}>
               <div className="text-center">
                 <div className="text-gray-500 font-bold mb-1 sm:mb-2">Base Amount</div>
-                <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(calculatorBaseAmount)}</div>
+                <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(baseAmount)}</div>
               </div>
               <div className="text-center">
                 <div className="text-gray-500 font-bold mb-1 sm:mb-2">VAT ({vatRate}%)</div>
-                <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(calculatorVatAmount)}</div>
+                <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(vatAmount)}</div>
               </div>
               <div className="text-center">
-                <div className={`font-bold mb-1 sm:mb-2 ${project.calculatorSpecs ? "text-gray-500" : "text-gray-800"}`}>
-                  {project.calculatorSpecs ? "Total Paid" : "Total Cost"}
+                <div className="font-bold mb-1 sm:mb-2 text-gray-800">
+                  Total Amount
                 </div>
-                <div className={project.calculatorSpecs ? "font-bold text-gray-800" : "font-bold text-gray-900"}>{formatCurrency(calculatorPaidTotal)}</div>
+                <div className="font-bold text-gray-900">{formatCurrency(totalCost)}</div>
               </div>
             </div>
 
@@ -1024,7 +1039,7 @@ export default function ProjectDetailsPage() {
 
         {/* Right Column: Project Manager Card */}
         <div className="lg:col-span-1">
-          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 sm:p-8 sticky top-24">
+          <div className="bg-white border border-gray-300 rounded-[12px] shadow-sm p-6 sm:p-8 sticky top-24">
             {(() => {
               const managers = (Array.isArray(project.assignedManagers) && project.assignedManagers.length > 0)
                 ? project.assignedManagers

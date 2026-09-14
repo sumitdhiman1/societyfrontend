@@ -152,6 +152,7 @@ export default function ProjectFilesPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
+  const [activeSource, setActiveSource] = useState<"all" | "uploaded" | "chat" | "delivery">("all");
   const [isDragging, setIsDragging] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [previewFile, setPreviewFile] = useState<any>(null);
@@ -186,31 +187,48 @@ export default function ProjectFilesPage() {
     loadFiles();
   }, [loadFiles]);
 
-  const processedUrls = new Set<string>();
-  const derivedFiles: any[] = [];
+  const fileMap = new Map<string, any>();
+
+  const registerFile = (fileItem: any) => {
+    if (!fileItem?.url) return;
+    const key = ensureHttps(fileItem.url).trim().toLowerCase();
+    const existing = fileMap.get(key);
+    if (!existing) {
+      fileMap.set(key, fileItem);
+      return;
+    }
+    // Priority order: delivery (3) > chat (2) > uploaded (1)
+    const priority = (src: string) => (src === "delivery" ? 3 : src === "chat" ? 2 : 1);
+    if (priority(fileItem.source) >= priority(existing.source)) {
+      fileMap.set(key, {
+        ...existing,
+        ...fileItem,
+        canDelete: fileItem.source === "uploaded" ? (existing.canDelete ?? fileItem.canDelete) : false,
+      });
+    }
+  };
 
   // 1. Final Delivery / Results PDF
   if (project?.resultsPdfUrl) {
     const url = ensureHttps(project.resultsPdfUrl);
-    if (!processedUrls.has(url)) {
-      processedUrls.add(url);
-      derivedFiles.push({
-        _id: `delivery-${url}`,
-        url,
-        name: "Final_Project_Report.pdf",
-        size: 0,
-        mimeType: "application/pdf",
-        category: "document",
-        uploadedAt: project.updatedAt || project.createdAt || "",
-        source: "delivery",
-        canDelete: false,
-      });
-    }
+    registerFile({
+      _id: `delivery-${url}`,
+      url,
+      name: "Final_Project_Report.pdf",
+      size: 0,
+      mimeType: "application/pdf",
+      category: "document",
+      uploadedAt: project.updatedAt || project.createdAt || "",
+      source: "delivery",
+      canDelete: false,
+    });
   }
 
   // 2. Message Attachments & Chat Files
   if (project?.messages && Array.isArray(project.messages)) {
     project.messages.forEach((msg: any) => {
+      const isDelivery =
+        !!msg.isFinalDelivery || msg.type === "final_delivery" || msg.type === "delivery" || msg.isFinal === true;
       const rawAttached =
         msg.attachments ||
         msg.content?.attachedFiles ||
@@ -223,9 +241,6 @@ export default function ProjectFilesPage() {
         const fileUrl = typeof file === "string" ? file : file?.url;
         if (!fileUrl) return;
         const url = ensureHttps(fileUrl);
-        if (processedUrls.has(url)) return;
-        processedUrls.add(url);
-
         const rawName = typeof file === "string" ? "" : file.filename || file.name;
         const filename = rawName
           ? decodeURIComponent(rawName)
@@ -246,10 +261,7 @@ export default function ProjectFilesPage() {
           ? "video/mp4"
           : file.type || "application/octet-stream";
 
-        const isDelivery =
-          !!msg.isFinalDelivery || msg.type === "final_delivery" || msg.type === "delivery";
-
-        derivedFiles.push({
+        registerFile({
           _id: `msg-${url}`,
           url,
           name: filename,
@@ -274,15 +286,12 @@ export default function ProjectFilesPage() {
     const fileUrl = typeof file === "string" ? file : file?.url;
     if (!fileUrl) return;
     const url = ensureHttps(fileUrl);
-    if (processedUrls.has(url)) return;
-    processedUrls.add(url);
-
     const rawName = typeof file === "string" ? "" : file.filename || file.name;
     const filename = rawName
       ? decodeURIComponent(rawName)
       : decodeURIComponent(url.split("/").pop()?.split("?")[0] || `Project-Attachment-${idx + 1}`);
 
-    derivedFiles.push({
+    registerFile({
       _id: `initial-${url}`,
       url,
       name: filename,
@@ -296,10 +305,10 @@ export default function ProjectFilesPage() {
   });
 
   // 4. Directly Uploaded Project Files
-  const userUploadedList = (uploadedFiles || []).map((f: any) => {
+  (uploadedFiles || []).forEach((f: any) => {
     const url = ensureHttps(f.url);
-    if (url) processedUrls.add(url);
-    return {
+    if (!url) return;
+    registerFile({
       _id: f._id || f.id || `uploaded-${url}`,
       url,
       name: f.name || decodeURIComponent(url.split("/").pop()?.split("?")[0] || "File"),
@@ -309,16 +318,16 @@ export default function ProjectFilesPage() {
       uploadedAt: f.uploadedAt || f.createdAt || "",
       source: "uploaded",
       canDelete: true,
-    };
+    });
   });
 
-  const allFiles = [
-    ...userUploadedList,
-    ...derivedFiles.filter((f) => !userUploadedList.some((u) => u.url === f.url)),
-  ];
+  const allFiles = Array.from(fileMap.values());
 
-  const filteredFiles =
-    activeCategory === "all" ? allFiles : allFiles.filter((f) => f.category === activeCategory);
+  const filteredFiles = allFiles.filter((f) => {
+    const matchesCategory = activeCategory === "all" || f.category === activeCategory;
+    const matchesSource = activeSource === "all" || f.source === activeSource;
+    return matchesCategory && matchesSource;
+  });
 
   const formatSize = (bytes: number) => {
     if (!bytes || bytes <= 0) return "—";
@@ -501,28 +510,28 @@ export default function ProjectFilesPage() {
           </div>
 
           {/* Sources */}
-          <div className="border border-gray-200 rounded-xl p-4 sm:p-5 bg-white shadow-xs">
+          <div className="border border-gray-200 rounded-xl p-4 sm:p-5">
             <h3 className="text-xs sm:text-sm font-bold text-[#363636] uppercase tracking-wider mb-3">
               Sources
             </h3>
-            <div className="flex lg:flex-col gap-4 lg:gap-3 text-xs text-[#6B7280]">
-              <div className="flex items-center gap-2.5">
+            <div className="flex lg:flex-col gap-4 lg:gap-2.5 text-[10px] sm:text-xs text-[#6B7280]">
+              <div className="flex items-center gap-2">
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-600 border border-green-100">
                   Uploaded
                 </span>
-                <span className="text-gray-600">You uploaded directly</span>
+                <span className="hidden sm:inline">You uploaded directly</span>
               </div>
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100">
                   Chat
                 </span>
-                <span className="text-gray-600">Shared in messages</span>
+                <span className="hidden sm:inline">Shared in messages</span>
               </div>
-              <div className="flex items-center gap-2.5">
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#4343F0] text-white uppercase tracking-wider">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black bg-[#4343F0] text-white border border-[#4343F0]/25 uppercase tracking-tighter">
                   Delivery
                 </span>
-                <span className="text-gray-600">Final project outputs</span>
+                <span className="hidden sm:inline">Final analysis outputs</span>
               </div>
             </div>
           </div>

@@ -64,10 +64,10 @@ export default function DashboardLayout({
   if (!isAuthorized) return null;
 
   return (
-    <div className="bg-[#E3E6E5] min-h-screen flex flex-col overflow-x-hidden" style={{ scrollBehavior: "smooth" }}>
-      <main className="flex-grow w-full pb-0">
+    <div className="bg-[#E3E6E5] flex-grow flex flex-col overflow-x-hidden" style={{ scrollBehavior: "smooth" }}>
+      <div className="flex-grow w-full pb-0">
         {children}
-      </main>
+      </div>
     </div>
   );
 }

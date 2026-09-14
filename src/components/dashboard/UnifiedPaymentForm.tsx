@@ -206,7 +206,7 @@ function PaymentForm({
   };
 
   const getActiveVatRate = () => {
-    if (propVatRate !== undefined && propVatRate !== null) {
+    if (propVatRate !== undefined && propVatRate !== null && Number(propVatRate) > 0) {
       return Number(propVatRate);
     }
     const activeCode = getActiveCountryCode();
@@ -228,19 +228,23 @@ function PaymentForm({
   };
 
   useEffect(() => {
+    const currentDeliverablesSum = (deliverableItems || []).reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+    const currentSubtotal = currentDeliverablesSum > 0 ? currentDeliverablesSum : (totalCost + amountPaid);
     const vatMultiplier = 1 + getActiveVatRate() / 100;
-    const effectivePending = totalCost * (getActiveVatRate() > 0 ? vatMultiplier : 1);
+    const effectivePending = amountPaid > 0
+      ? Math.max(0, (currentSubtotal * vatMultiplier) - amountPaid)
+      : totalCost * (getActiveVatRate() > 0 ? vatMultiplier : 1);
     const convertedPending = convertCurrencyAmount(effectivePending, currency, nativeCurrency || "USD", conversionRate);
 
     const paramAmount = searchParams?.get("amount");
     if (paramAmount && !isNaN(Number(paramAmount)) && Number(paramAmount) > 0) {
       setPaymentOption("custom");
       setCustomAmount(Number(paramAmount).toFixed(2));
-    } else if (amountPaid > 0 && totalCost > 0) {
+    } else if (amountPaid > 0) {
       setPaymentOption("custom");
       setCustomAmount(convertedPending.toFixed(2));
     }
-  }, [searchParams, amountPaid, totalCost, currency, conversionRate, nativeCurrency, countriesList, userCountry, billingSameAsBusiness, billingAddress.country, propVatRate]);
+  }, [searchParams, amountPaid, totalCost, deliverableItems, currency, conversionRate, nativeCurrency, countriesList, userCountry, billingSameAsBusiness, billingAddress.country, propVatRate]);
 
   const [popup, setPopup] = useState({
     isOpen: false,
@@ -256,6 +260,11 @@ function PaymentForm({
     else if (paymentOption === "custom" && customAmount) amount = parseFloat(customAmount);
     
     if (paymentOption !== "custom") {
+      if (amountPaid > 0 && paymentOption === "full") {
+        const totalWithVat = projectSubtotal + getVatAmount(projectSubtotal);
+        const pendingWithVat = Math.max(0, totalWithVat - amountPaid);
+        return convertCurrencyAmount(pendingWithVat, currency, nativeCurrency || "USD", conversionRate);
+      }
       amount = convertCurrencyAmount(amount, currency, nativeCurrency || "USD", conversionRate);
       const vatRate = getActiveVatRate();
       if (vatRate > 0) {
@@ -278,11 +287,28 @@ function PaymentForm({
     if (e) e.preventDefault();
     if (!stripe || !elements) return;
 
+    const isVerifiedUser = (u: any): boolean => {
+      if (!u) return true;
+      return (
+        u.isEmailVerified === true ||
+        String(u.isEmailVerified) === "true" ||
+        u.emailVerified === true ||
+        u.isVerified === true
+      );
+    };
+
     let user = authService.getUser();
-    if (user && !user.isEmailVerified) {
-      user = await authService.getProfile();
+    let isVerified = isVerifiedUser(user);
+
+    if (!isVerified) {
+      const freshUser = await authService.getProfile();
+      if (freshUser) {
+        user = freshUser;
+        isVerified = isVerifiedUser(freshUser);
+      }
     }
-    if (user && !user.isEmailVerified) {
+
+    if (!isVerified && amountPaid <= 0) {
       setPopup({
         isOpen: true,
         type: "error",
@@ -334,7 +360,15 @@ function PaymentForm({
       const effectiveInvoiceId = invoiceId || searchParams?.get("invoiceId") || extraMetadata?.invoiceId || undefined;
       const effectiveInvoiceNumber = searchParams?.get("invoiceNumber") || extraMetadata?.invoiceNumber || undefined;
       const effectiveMessageId = searchParams?.get("messageId") || extraMetadata?.messageId || undefined;
-      const effectiveDescription = searchParams?.get("description") || extraMetadata?.description || description || undefined;
+      const rawDescription = searchParams?.get("description") || extraMetadata?.description || description || undefined;
+      const effectiveDescription = rawDescription && rawDescription.length > 400
+        ? rawDescription.substring(0, 397) + "..."
+        : rawDescription;
+
+      const rawLineItems = extraMetadata?.lineItems || (deliverableItems && deliverableItems.length > 0 ? deliverableItems.map((d: any) => d.description).join(", ") : undefined);
+      const effectiveLineItems = rawLineItems && rawLineItems.length > 400
+        ? rawLineItems.substring(0, 397) + "..."
+        : rawLineItems;
 
       setPaymentStep("gateway");
       const intentResponse = await paymentService.createPaymentIntent({
@@ -346,7 +380,7 @@ function PaymentForm({
         metadata: {
           ...extraMetadata,
           title: title || extraMetadata?.title,
-          lineItems: extraMetadata?.lineItems || (deliverableItems && deliverableItems.length > 0 ? deliverableItems.map((d: any) => d.description).join(", ") : undefined),
+          lineItems: effectiveLineItems,
           type,
           [`${type.toLowerCase()}Id`]: entityId,
           [`${type.toLowerCase()}Number`]: entityNumber,
@@ -478,8 +512,8 @@ function PaymentForm({
 
       {!hideHeader && (
         <div className="mb-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start mb-6 sm:mb-4 gap-4 sm:gap-6">
-          <div className="w-full sm:max-w-[70%] order-2 sm:order-1">
+        <div className="flex flex-col lg:flex-row justify-between items-start mb-6 gap-6">
+          <div className="flex-1 min-w-0 order-2 lg:order-1">
             <div className="flex items-center gap-4 mb-4">
               <h2 className="text-lg font-bold text-gray-800">Secure Payment</h2>
               {!hideCurrencyToggle && (
@@ -506,67 +540,71 @@ function PaymentForm({
               )}
             </div>
             <p
-              className="text-sm sm:text-gray-600 mb-4 leading-relaxed line-clamp-3 sm:line-clamp-2"
-              title={description}
+              className="text-sm sm:text-base font-semibold text-gray-700 mb-4 leading-relaxed line-clamp-2"
+              title={title || description}
             >
-              {description || title}
+              {title || description}
             </p>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] sm:text-xs text-gray-500">
               <span className="whitespace-nowrap">
-                Project No: <span className="text-gray-700 font-medium">#{entityNumber}</span>
-              </span>
-              <span className="hidden sm:inline text-gray-300">|</span>
-              <span className="whitespace-nowrap">
-                Start Date:{" "}
-                <span className="text-gray-700 font-medium">
-                  {startDate ? new Date(startDate).toLocaleDateString() : date ? new Date(date).toLocaleDateString() : "Pending"}
-                </span>
-              </span>
-              <span className="hidden sm:inline text-gray-300">|</span>
-              <span className="whitespace-nowrap">
-                Expected Deadline:{" "}
-                <span className="text-gray-700 font-medium">
-                  {deadline ? new Date(deadline).toLocaleDateString() : "Pending"}
-                </span>
+                {type === "ANALYSIS" ? "Analysis No:" : "Project No:"} <span className="text-gray-700 font-medium">#{entityNumber}</span>
               </span>
               <span className="hidden sm:inline text-gray-300">|</span>
               <button
                 onClick={() => setShowInvoiceModal(true)}
-                className="text-gray-500 underline decoration-gray-400 underline-offset-2 hover:text-gray-700 whitespace-nowrap cursor-pointer hover:font-bold transition-all"
+                className="text-xs sm:text-sm font-semibold text-[#4343F0] hover:text-[#3232b7] underline decoration-[#4343F0]/40 hover:decoration-[#4343F0] underline-offset-2 whitespace-nowrap cursor-pointer transition-colors"
               >
                 View invoice
               </button>
             </div>
           </div>
 
-          <div className="w-full sm:w-auto text-left sm:text-right space-y-2 order-1 sm:order-2 bg-gray-50 sm:bg-transparent p-4 sm:p-0 rounded-lg">
-            <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8">
-              <span className="text-xs sm:text-sm text-gray-600 uppercase sm:capitalize font-bold sm:font-normal">
-                Subtotal:
-              </span>
-              <span className="text-sm font-bold text-gray-700">{formatPrice(projectSubtotal)}</span>
-            </div>
-            {getActiveVatRate() > 0 && (
-              <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8">
-                <span className="text-xs sm:text-sm text-gray-600 font-bold sm:font-semibold">VAT ({getActiveVatRate()}%):</span>
-                <span className="text-sm text-gray-600 font-bold sm:font-semibold">{formatPrice(getVatAmount(projectSubtotal))}</span>
+          {(type === "BUNDLE" || type === "ANALYSIS") && amountPaid === 0 ? (
+            <div className="w-full sm:w-60 shrink-0 order-1 lg:order-2 space-y-1.5 text-xs sm:text-sm">
+              <div className="flex justify-between items-center font-semibold">
+                <span className="text-gray-900">Total Cost:</span>
+                <span className="text-gray-900 font-bold">{formatPrice(totalCost * (1 + getActiveVatRate() / 100))}</span>
               </div>
-            )}
-            <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8 border-t border-gray-100 pt-2">
-              <span className="text-xs sm:text-sm text-gray-800 uppercase sm:capitalize font-bold">
-                Total Cost:
-              </span>
-              <span className="text-lg sm:text-xl font-bold text-gray-800">{formatPrice(projectSubtotal + getVatAmount(projectSubtotal))}</span>
             </div>
-            <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8">
-              <span className="text-xs sm:text-sm text-green-600 font-bold sm:font-semibold">Paid:</span>
-              <span className="text-sm text-green-600 font-bold sm:font-semibold">{formatPrice(amountPaid)}</span>
+          ) : (
+            <div className="w-full sm:w-60 shrink-0 order-1 lg:order-2 space-y-1.5 text-xs sm:text-sm">
+              <div className="flex justify-between items-center font-semibold">
+                <span className="text-gray-900">Total Cost</span>
+                <span className="text-gray-900 font-bold">
+                  {formatPrice(projectSubtotal + getVatAmount(projectSubtotal))}
+                </span>
+              </div>
+
+              {amountPaid > 0 && (
+                <div className="flex justify-between items-center text-green-600">
+                  <span className="font-medium">Paid to Date</span>
+                  <span className="font-semibold">
+                    {formatPrice(amountPaid)}
+                  </span>
+                </div>
+              )}
+
+              {Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid) > 0.009 ? (
+                <div className="flex justify-between items-center pt-1 border-t border-gray-100 font-semibold text-red-600">
+                  <span>
+                    Pending Balance
+                  </span>
+                  <span className="font-bold">
+                    {formatPrice(Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid))}
+                  </span>
+                </div>
+              ) : amountPaid > 0 ? (
+                <div className="flex justify-between items-center pt-1 border-t border-gray-100 font-semibold text-green-600">
+                  <span>
+                    Fully Paid
+                  </span>
+                  <span className="font-bold">
+                    {formatPrice(amountPaid)}
+                  </span>
+                </div>
+              ) : null}
             </div>
-            <div className="flex justify-between items-center sm:justify-end gap-6 sm:gap-8">
-              <span className="text-xs sm:text-sm text-red-600 font-bold sm:font-semibold">Pending Balance:</span>
-              <span className="text-sm text-red-600 font-bold sm:font-semibold">{formatPrice(pendingAmount + getVatAmount(pendingAmount))}</span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     )}
@@ -577,7 +615,7 @@ function PaymentForm({
             <thead>
               <tr className="border-b border-gray-200 bg-white">
                 <th className="text-left py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Item</th>
-                <th className="text-left py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Duration</th>
+                <th className="text-center py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Duration</th>
                 <th className="text-right py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Amount</th>
               </tr>
             </thead>
@@ -588,7 +626,7 @@ function PaymentForm({
                     <div className="font-medium mb-1">{item.description}</div>
                     {item.details && <div className="text-gray-400 text-[10px] sm:text-xs line-clamp-2">{item.details}</div>}
                   </td>
-                  <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm text-gray-500 whitespace-nowrap">
+                  <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm text-gray-500 whitespace-nowrap text-center">
                     {item.duration} {item.unit || ""}
                   </td>
                   <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm text-gray-600 font-bold sm:font-medium text-right">
@@ -597,7 +635,7 @@ function PaymentForm({
                 </tr>
               ))}
 
-              {addonItems.length > 0 && (
+              {type !== "BUNDLE" && type !== "ANALYSIS" && addonItems.length > 0 && (
                 <>
                   <tr className="bg-gray-800">
                     <td colSpan={3} className="py-3 px-6 text-xs font-bold text-white tracking-wider">
@@ -610,7 +648,7 @@ function PaymentForm({
                         <div className="font-medium mb-1">{item.description}</div>
                         {item.details && <div className="text-gray-400 text-[10px] sm:text-xs line-clamp-2">{item.details}</div>}
                       </td>
-                      <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm text-gray-500 whitespace-nowrap">
+                      <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm text-gray-500 whitespace-nowrap text-center">
                         {item.duration} {item.unit || ""}
                       </td>
                       <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm text-gray-600 font-bold sm:font-medium text-right">
@@ -621,45 +659,28 @@ function PaymentForm({
                 </>
               )}
 
-              <tr className="border-t border-gray-200 bg-gray-50/10">
-                <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm font-semibold text-gray-600 text-center sm:text-left">
-                  Base Amount
+              <tr className="border-t-2 border-gray-200 bg-gray-50/70">
+                <td colSpan={2} className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-500">
+                  Base Amount:
                 </td>
-                <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm text-gray-400">
-                  -
-                </td>
-                <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm font-semibold text-gray-600 text-right">
-                  {formatPrice(subtotalRegular + subtotalAddons)}
+                <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
+                  {formatPrice(projectSubtotal)}
                 </td>
               </tr>
-
-              <tr className="border-t border-gray-200 bg-gray-50/30">
-                <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm font-semibold text-gray-600 text-center sm:text-left">
+              <tr className="bg-gray-50/70">
+                <td colSpan={2} className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-500">
                   VAT ({getActiveVatRate()}%):
                 </td>
-                <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm text-gray-400">
-                  -
-                </td>
-                <td className="py-3 px-3 sm:px-6 text-xs sm:text-sm font-semibold text-gray-600 text-right">
-                  {formatPrice(getVatAmount(subtotalRegular + subtotalAddons))}
+                <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
+                  {formatPrice(getVatAmount(projectSubtotal))}
                 </td>
               </tr>
-
-              <tr className="border-t-2 border-gray-300 bg-gray-50">
-                <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm font-bold text-gray-800 uppercase text-center sm:text-left">
-                  TOTAL PAYABLE:
+              <tr className="bg-blue-50/50 border-t border-gray-200">
+                <td colSpan={2} className="py-3 px-3 sm:px-6 text-right text-xs sm:text-sm font-bold text-gray-800 uppercase font-sans">
+                  Total Payable:
                 </td>
-                <td className="py-4 px-3 sm:px-6 text-[10px] sm:text-sm font-semibold text-gray-600 whitespace-nowrap">
-                  {(() => {
-                    const totalDays = [...regularItems, ...addonItems].reduce((acc, item) => {
-                      const dur = parseInt(item.duration || "0");
-                      return acc + (isNaN(dur) ? 0 : dur);
-                    }, 0);
-                    return totalDays > 0 ? `${totalDays} Days` : "-";
-                  })()}
-                </td>
-                <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm font-bold text-gray-800 text-right">
-                  {formatPrice((subtotalRegular + subtotalAddons) + getVatAmount(subtotalRegular + subtotalAddons))}
+                <td className="py-3 px-3 sm:px-6 text-right text-sm sm:text-base font-extrabold text-[#4343F0] font-sans">
+                  {formatPrice(projectSubtotal + getVatAmount(projectSubtotal))}
                 </td>
               </tr>
             </tbody>
@@ -684,7 +705,7 @@ function PaymentForm({
         </div>
       )}
 
-      {!isFullyPaid && (
+      {(!isFullyPaid || (amountPaid > 0 && Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid) > 0.009)) && (
         <div>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <h3 className="text-gray-700 font-bold text-lg">Pay Amount</h3>
@@ -713,7 +734,7 @@ function PaymentForm({
                   onChange={() => setPaymentOption("half")}
                 />
                 <span className="text-gray-600 text-sm">
-                  Deposit half: <span className="font-medium">{formatPrice(depositAmount)}</span>
+                  Deposit half: <span className="font-medium">{formatPrice(depositAmount * (1 + getActiveVatRate() / 100))}</span>
                 </span>
               </label>
             )}
@@ -734,7 +755,14 @@ function PaymentForm({
                 onChange={() => setPaymentOption("full")}
               />
               <span className="text-gray-600 text-sm">
-                Pay the full amount: <span className="font-medium">{formatPrice(totalCost * (1 + getActiveVatRate() / 100))}</span>
+                Pay the full amount:{" "}
+                <span className="font-medium">
+                  {formatPrice(
+                    amountPaid > 0
+                      ? Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid)
+                      : totalCost * (1 + getActiveVatRate() / 100)
+                  )}
+                </span>
               </span>
             </label>
 
@@ -1127,17 +1155,7 @@ function PaymentForm({
             <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg mb-8 animate-in fade-in duration-300">
               <p className="text-sm text-gray-600">You are paying with your saved card.</p>
             </div>
-          ) : (
-            <div className="p-6 bg-green-50 border border-green-200 rounded-lg text-center mb-6 animate-in fade-in slide-in-from-bottom-2">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <p className="text-green-800 font-bold">Fully Covered by Credits!</p>
-              <p className="text-xs text-green-600 mt-1">No credit card required for this transaction.</p>
-            </div>
-          )}
+          ) : null}
 
           {!stripePromise && (
             <div className="p-3 mb-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
@@ -1173,6 +1191,14 @@ function PaymentForm({
       <InvoicePreviewModal
         isOpen={showInvoiceModal}
         onClose={() => setShowInvoiceModal(false)}
+        type={type}
+        packageData={{
+          name: title,
+          description: description,
+        }}
+        selectedColumn={{
+          title: type === "ANALYSIS" ? "Analysis" : type === "BUNDLE" ? "Bundle" : "Standard",
+        }}
         projectNumber={entityNumber}
         totalCost={projectSubtotal}
         deliverableItems={deliverableItems}

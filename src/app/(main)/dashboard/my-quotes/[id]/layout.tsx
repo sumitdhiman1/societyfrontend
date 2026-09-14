@@ -120,8 +120,8 @@ function MyQuotesLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="bg-white min-h-screen flex flex-col font-sans" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
+    <div className="bg-white flex-grow flex flex-col font-sans" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
+      <main className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
         {children}
       </main>
     </div>

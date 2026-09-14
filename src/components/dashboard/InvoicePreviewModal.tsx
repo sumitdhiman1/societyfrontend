@@ -17,6 +17,7 @@ interface IncludedFeature {
 interface InvoicePreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
+  type?: string;
   packageData?: any;
   selectedColumn?: any;
   totalCost: number;
@@ -31,6 +32,7 @@ interface InvoicePreviewModalProps {
 export default function InvoicePreviewModal({
   isOpen,
   onClose,
+  type,
   packageData,
   selectedColumn,
   totalCost,
@@ -115,7 +117,7 @@ export default function InvoicePreviewModal({
             </div>
             <div className="text-right">
               <h3 className="text-2xl font-bold text-gray-800 mb-1">INVOICE</h3>
-              <p className="text-sm text-gray-500 font-semibold">Project No: {projectNumber}</p>
+              <p className="text-sm text-gray-500 font-semibold">{type === "ANALYSIS" ? "Analysis No:" : "Project No:"} {projectNumber}</p>
               <p className="text-sm text-gray-500 font-semibold">Date: {new Date().toLocaleDateString()}</p>
             </div>
           </div>
@@ -124,7 +126,7 @@ export default function InvoicePreviewModal({
           <div className="grid grid-cols-2 gap-8 mb-12">
             <div>
               <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2">
-                Package Selected
+                {type === "ANALYSIS" ? "Analysis Selected" : "Package Selected"}
               </p>
               <h4 className="text-lg font-bold text-gray-800">
                 {packageData?.name || "Service Selection"}

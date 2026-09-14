@@ -28,6 +28,9 @@ import {
   getNumberQuestionMax,
   getNumberQuestionMin,
   isTierSourceQuestion,
+  isWebsitePagesQuestion,
+  getWebsitePageTierConfig,
+  calculateWebsiteExtraPages,
   getGraphicsCategoryKeys,
   isGraphicsItemsQuestion,
   filterGraphicsAnswers,
@@ -229,21 +232,23 @@ const NumberStepper = ({
   validateMin = 0,
   validateMax,
 }: {
-  value: number;
+  value?: number;
   onChange: (n: number) => void;
   validateMin?: number;
   validateMax?: number;
 }) => {
-  const [localVal, setLocalVal] = useState<string>(String(value ?? validateMin));
+  const [localVal, setLocalVal] = useState<string>(
+    value != null ? String(value) : "0"
+  );
 
   useEffect(() => {
-    setLocalVal(String(value ?? validateMin));
-  }, [value, validateMin]);
+    setLocalVal(value != null ? String(value) : "0");
+  }, [value]);
 
   const parseCurrent = (): number => {
     const parsed = parseInt(localVal, 10);
     if (!isNaN(parsed)) return parsed;
-    if (!isNaN(value)) return value;
+    if (value != null && !isNaN(value)) return value;
     return validateMin;
   };
 
@@ -265,9 +270,11 @@ const NumberStepper = ({
       setLocalVal("");
       return;
     }
+    setLocalVal(raw);
     const parsed = parseInt(raw, 10);
-    if (isNaN(parsed)) return;
-    applyValue(parsed);
+    if (!isNaN(parsed)) {
+      onChange(parsed);
+    }
   };
 
   const handleBlur = () => {
@@ -572,13 +579,31 @@ const ProposalPreview = ({
     : "Please select a timeline option above";
 
   const [isDownloading, setIsDownloading] = useState(false);
+  const [proposalRefNumber, setProposalRefNumber] = useState<string>("");
+
+  useEffect(() => {
+    const year = new Date().getFullYear();
+    const randomPart = Math.floor(10000 + Math.random() * 90000);
+    setProposalRefNumber(`SOC-${year}-${randomPart}`);
+  }, [category?.categoryKey, category?._id]);
+
+  const getProposalRefNumber = () => {
+    if (proposalRefNumber) return proposalRefNumber;
+    const year = new Date().getFullYear();
+    const randomPart = Math.floor(10000 + Math.random() * 90000);
+    const newRef = `SOC-${year}-${randomPart}`;
+    setProposalRefNumber(newRef);
+    return newRef;
+  };
 
   const handleDownload = async () => {
     if (onValidateRequired && !onValidateRequired()) return;
     if (isDownloading) return;
     setIsDownloading(true);
+    const refNum = getProposalRefNumber();
     try {
       await downloadCalculatorPdf({
+        refNumber: refNum,
         categoryName: category.categoryName,
         breakdownItems: breakdown,
         totalPrice,
@@ -634,9 +659,11 @@ const ProposalPreview = ({
     setEmailError("");
     setIsSendingEmail(true);
 
+    const refNum = getProposalRefNumber();
+
     try {
-      const subject = `Estimate: ${category.categoryName}`;
-      let body = `Hello,\n\nHere is your project estimate breakdown:\n\n* Category: ${category.categoryName}\n`;
+      const subject = `Estimate: ${category.categoryName} (${refNum})`;
+      let body = `Hello,\n\nHere is your project estimate breakdown:\n\n* Reference: ${refNum}\n* Category: ${category.categoryName}\n`;
 
       breakdown.forEach(item => {
         body += `\n- ${item.question}:\n  ${item.answers.join(", ")}`;
@@ -645,6 +672,7 @@ const ProposalPreview = ({
       body += `\n\nTotal Price: ${formatPriceLocal(totalPrice)}\nTimeline: ${displayTimeline || "TBA"}\n\nAttached is your detailed proposal PDF.\n\nGenerated via Society Web Solutions Calculator.`;
 
       const pdfBase64 = await getCalculatorPdfBase64({
+        refNumber: refNum,
         categoryName: category.categoryName,
         breakdownItems: breakdown,
         totalPrice,
@@ -662,6 +690,7 @@ const ProposalPreview = ({
           email: cleanEmail,
           subject,
           messageBody: body,
+          refNumber: refNum,
           categoryName: category.categoryName,
           subtitle: category.subtitle || "",
           totalPrice: formatPriceLocal(totalPrice),
@@ -935,6 +964,18 @@ const ProposalPreview = ({
   );
 };
 
+const resolveUserName = (u: any): string => {
+  if (!u) return "";
+  if (typeof u.fullName === "string" && u.fullName.trim()) return u.fullName.trim();
+  if (typeof u.name === "string" && u.name.trim()) return u.name.trim();
+  const first = u.firstName || u.first_name || "";
+  const last = u.lastName || u.last_name || "";
+  const combined = `${first} ${last}`.trim();
+  if (combined) return combined;
+  if (typeof u.displayName === "string" && u.displayName.trim()) return u.displayName.trim();
+  return "";
+};
+
 const CalculatorPaymentForm = ({
   totalPrice,
   timeline,
@@ -955,7 +996,15 @@ const CalculatorPaymentForm = ({
 
   const [paymentOption, setPaymentOption] = useState("full");
   const [customAmount, setCustomAmount] = useState("");
-  const [cardholderName, setCardholderName] = useState("");
+  const [cardholderName, setCardholderName] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const u = authService.getUser();
+        return resolveUserName(u);
+      } catch {}
+    }
+    return "";
+  });
   const [billingSameAsBusiness, setBillingSameAsBusiness] = useState(true);
   const [billingAddress, setBillingAddress] = useState({
     street: "",
@@ -969,40 +1018,62 @@ const CalculatorPaymentForm = ({
   const [isEmailVerified, setIsEmailVerified] = useState(true);
 
   useEffect(() => {
-    const checkAuth = () => {
+    const checkAuth = async () => {
       const authenticated = authService.isAuthenticated();
       setIsAuth(authenticated);
       if (authenticated) {
         const user = authService.getUser();
         if (user) {
           setIsEmailVerified(!!user.isEmailVerified);
-          if (user.fullName) {
-            setCardholderName(user.fullName);
+          const initialName = resolveUserName(user);
+          if (initialName) {
+            setCardholderName((prev) => (prev?.trim() ? prev : initialName));
           }
-          if (user && !user.isEmailVerified) {
-            authService.getProfile().then((freshUser) => {
-              if (freshUser) {
-                setIsEmailVerified(!!freshUser.isEmailVerified);
-              }
-            });
-          }
-          (async () => {
-            try {
-              const { profileService } = await import("@/lib/profileService");
-              const profile = await profileService.getMyProfile();
-              if (profile?.data) {
-                setUserCountry(profile.data.country || profile.data.billingCountry || (currency === "eur" ? "DE" : "US"));
-              }
-            } catch {
-              setUserCountry(currency === "eur" ? "DE" : "US");
-            }
-          })();
         }
+
+        try {
+          const { profileService } = await import("@/lib/profileService");
+          const profile = await profileService.getMyProfile();
+          const profileUser = profile?.data?.user || profile?.data || profile?.user;
+          if (profileUser) {
+            const profileName = resolveUserName(profileUser);
+            if (profileName) {
+              setCardholderName((prev) => (prev?.trim() ? prev : profileName));
+            }
+            if (profileUser.isEmailVerified !== undefined) {
+              setIsEmailVerified(!!profileUser.isEmailVerified);
+            }
+            setUserCountry(
+              profileUser.country ||
+              profileUser.billingCountry ||
+              (currency === "eur" ? "DE" : "US")
+            );
+          }
+        } catch {
+          setUserCountry(currency === "eur" ? "DE" : "US");
+        }
+
+        try {
+          const freshUser = await authService.getProfile();
+          if (freshUser) {
+            const freshName = resolveUserName(freshUser);
+            if (freshName) {
+              setCardholderName((prev) => (prev?.trim() ? prev : freshName));
+            }
+            if (freshUser.isEmailVerified !== undefined) {
+              setIsEmailVerified(!!freshUser.isEmailVerified);
+            }
+          }
+        } catch {}
+      } else {
+        setCardholderName("");
       }
     };
 
     checkAuth();
-    const handleAuthChange = () => checkAuth();
+    const handleAuthChange = () => {
+      checkAuth();
+    };
     window.addEventListener("auth:login", handleAuthChange);
     window.addEventListener("auth:logout", handleAuthChange);
     window.addEventListener("auth:user_update", handleAuthChange);

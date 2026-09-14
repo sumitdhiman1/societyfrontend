@@ -1,4 +1,5 @@
 import { authService } from "./authService";
+import type { CalculatorSelection } from "./priceCalculatorService";
 import {
   calculateGraphicsRawTimelineDays,
   calculateSeoRawTimelineDays,
@@ -49,6 +50,27 @@ export interface CalculatorPDFData {
   [key: string]: any;
 }
 
+export function generateUniqueRefNumber(prefix: string = "SOC", dateInput?: any): string {
+  const d = dateInput ? new Date(dateInput) : new Date();
+  const year = isNaN(d.getTime()) ? new Date().getFullYear() : d.getFullYear();
+  const randomPart = Math.floor(10000 + Math.random() * 90000);
+  return `${prefix}-${year}-${randomPart}`;
+}
+
+function isPlaceholderRefNumber(val: any): boolean {
+  if (!val) return true;
+  const str = String(val).trim();
+  return (
+    str === "" ||
+    str === "1" ||
+    str === "#1" ||
+    str === "0" ||
+    str === "#0" ||
+    str.toLowerCase() === "preview" ||
+    str.toLowerCase() === "quote"
+  );
+}
+
 export function extractCalculatorPDFData(data: any): CalculatorPDFData {
   const currentUser = authService.getUser();
   const clientEmail =
@@ -74,13 +96,36 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     (data.title && data.title.includes(" - ") ? data.title.split(" - ").pop()?.trim() : "") ||
     "Client";
 
+  const year = new Date(data.startDate || data.createdAt || Date.now()).getFullYear();
+
   let rawProjectNumber =
     data.refNumber ||
     data.quoteNumber ||
     data.projectNumber ||
-    (data._id ? `1` : "1");
-  rawProjectNumber = String(rawProjectNumber).replace(/^INV-/i, "");
-  const projectNumber = rawProjectNumber.startsWith("#") ? rawProjectNumber : `#${rawProjectNumber}`;
+    data.proposalNumber ||
+    data.referenceNumber;
+
+  if (isPlaceholderRefNumber(rawProjectNumber)) {
+    if (data._id && typeof data._id === "string" && data._id.length >= 4) {
+      rawProjectNumber = `SOC-${year}-${data._id.slice(-5).toUpperCase()}`;
+    } else {
+      rawProjectNumber = generateUniqueRefNumber("SOC", data.startDate || data.createdAt);
+    }
+  }
+
+  rawProjectNumber = String(rawProjectNumber)
+    .replace(/^INV-/i, "")
+    .trim();
+
+  // If already prefixed with letters (e.g. SOC-2026-12345) or starts with #, keep as is. Otherwise prefix #.
+  const projectNumber =
+    rawProjectNumber.startsWith("#") || /^[A-Za-z]/.test(rawProjectNumber)
+      ? rawProjectNumber
+      : `#${rawProjectNumber}`;
+
+  if (!data.refNumber) {
+    data.refNumber = rawProjectNumber;
+  }
 
   let categoryName =
     data.categoryName ||
@@ -146,11 +191,39 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     (data.timelineInDays ? `${data.timelineInDays} Days` : "") ||
     "";
 
-  const categoryKey = data.categoryKey || calculatorSpecs.categoryKey || "";
+  let categoryKey = data.categoryKey || calculatorSpecs.categoryKey || "";
+  if (!categoryKey && categoryName) {
+    const cLower = categoryName.toLowerCase();
+    if (cLower.includes("web") || cLower.includes("site") || cLower.includes("store") || cLower.includes("shop")) {
+      categoryKey = "web";
+    } else if (cLower.includes("graphic") || cLower.includes("design") || cLower.includes("logo") || cLower.includes("brand")) {
+      categoryKey = "graphics";
+    } else if (cLower.includes("seo") || cLower.includes("search engine")) {
+      categoryKey = "seo";
+    } else if (cLower.includes("market") || cLower.includes("social")) {
+      categoryKey = "marketing";
+    }
+  }
 
   // Baseline from item selections when API timeline not yet stored
   let graphicsRawTimelineDays = 0;
   let seoRawTimelineDays = 0;
+  const selectionsMap: Record<string, CalculatorSelection> = Array.isArray(rawSelections)
+    ? Object.fromEntries(
+        rawSelections
+          .filter((s: any) => s && s.questionKey)
+          .map((s: any) => [
+            s.questionKey,
+            {
+              questionKey: s.questionKey,
+              answerKeys: Array.isArray(s.answerKeys) ? s.answerKeys : [],
+              textValue: s.textValue,
+              numericValue: s.numericValue,
+            },
+          ])
+      )
+    : {};
+
   if (categoryKey === "graphics" && Array.isArray(rawSelections)) {
     const itemsSel = rawSelections.find(
       (s: any) =>
@@ -159,67 +232,54 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
         /include in this project/i.test(s.questionText || "")
     );
     const tierSel = rawSelections.find(
-      (s: any) => s.questionKey === "GD_TIER" || s.questionKey === "GFX_TIER"
+      (s: any) => s.questionKey === "GD_TIER" || s.questionKey === "1"
     );
-    const tierKey = tierSel?.answerKeys?.[0] || "starter";
-    const tier =
-      /premium/i.test(tierKey) ? "premium" : /standard/i.test(tierKey) ? "standard" : "starter";
-    if (itemsSel?.answerKeys?.length) {
-      const pseudoQuestion = {
-        key: itemsSel.questionKey,
-        answers: itemsSel.answerKeys.map((k: string) => {
-          const meta = itemsSel.answerMetadata?.[k];
-          return { key: k, metadata: meta };
-        }),
-      };
-      graphicsRawTimelineDays = calculateGraphicsRawTimelineDays(
-        pseudoQuestion,
-        { [itemsSel.questionKey]: { questionKey: itemsSel.questionKey, answerKeys: itemsSel.answerKeys } },
-        tier
-      );
-    }
-  }
-  if (categoryKey === "seo" && Array.isArray(rawSelections)) {
+    const tier = tierSel?.answerKeys?.[0] || "standard";
+    const pseudoQuestion = itemsSel
+      ? {
+          key: itemsSel.questionKey,
+          answers: Array.isArray(itemsSel.answers)
+            ? itemsSel.answers
+            : (itemsSel.answerKeys || []).map((k: string) => ({
+                key: k,
+                metadata: itemsSel.answerMetadata?.[k],
+              })),
+        }
+      : undefined;
+    graphicsRawTimelineDays = calculateGraphicsRawTimelineDays(pseudoQuestion, selectionsMap, tier);
+  } else if (categoryKey === "seo" && Array.isArray(rawSelections)) {
     const itemsSel = rawSelections.find(
       (s: any) => s.questionKey === "SEO_ITEMS" || s.questionKey === "2"
     );
     const tierSel = rawSelections.find(
       (s: any) => s.questionKey === "SEO_TIER" || s.questionKey === "1"
     );
-    const tierKey = tierSel?.answerKeys?.[0] || "starter";
-    const tier =
-      /premium/i.test(tierKey) ? "premium" : /standard/i.test(tierKey) ? "standard" : "starter";
-    if (itemsSel?.answerKeys?.length) {
-      const pseudoQuestion = {
-        key: itemsSel.questionKey,
-        answers: itemsSel.answerKeys.map((k: string) => {
-          const meta = itemsSel.answerMetadata?.[k];
-          return { key: k, metadata: meta };
-        }),
-      };
-      seoRawTimelineDays = calculateSeoRawTimelineDays(
-        pseudoQuestion,
-        { [itemsSel.questionKey]: { questionKey: itemsSel.questionKey, answerKeys: itemsSel.answerKeys } },
-        tier
-      );
-    }
+    const tier = tierSel?.answerKeys?.[0] || "starter";
+    const pseudoQuestion = itemsSel
+      ? {
+          key: itemsSel.questionKey,
+          answers: Array.isArray(itemsSel.answers)
+            ? itemsSel.answers
+            : (itemsSel.answerKeys || []).map((k: string) => ({
+                key: k,
+                metadata: itemsSel.answerMetadata?.[k],
+              })),
+        }
+      : undefined;
+    seoRawTimelineDays = calculateSeoRawTimelineDays(pseudoQuestion, selectionsMap, tier);
   }
 
   let seoServiceMode: string | undefined =
     categoryKey === "seo" && Array.isArray(rawSelections)
-      ? getSeoServiceMode(
-          Object.fromEntries(
-            rawSelections
-              .filter((s: any) => /SEO_TYPE|SEO_SERVICE_TYPE|^0$/.test(s.questionKey || ""))
-              .map((s: any) => [s.questionKey, { questionKey: s.questionKey, answerKeys: s.answerKeys || [] }])
-          )
-        )
+      ? getSeoServiceMode(selectionsMap)
       : data.seoServiceMode;
 
-  if (categoryKey === "seo" && data.billingType === "monthly") {
-    seoServiceMode = "monthly";
-  } else if (categoryKey === "seo" && data.billingType === "onetime") {
-    seoServiceMode = "onetime";
+  if (categoryKey === "seo" && !seoServiceMode) {
+    if (data.calculatorSpecs?.billingType === "monthly" || (!data.calculatorSpecs && data.billingType === "monthly")) {
+      seoServiceMode = "monthly";
+    } else if (data.calculatorSpecs?.billingType === "onetime" || (!data.calculatorSpecs && data.billingType === "onetime")) {
+      seoServiceMode = "onetime";
+    }
   }
 
   // Map known key codes to human readable labels
@@ -308,25 +368,12 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     else duration = "2 weeks";
   }
 
-  // Calculate delivery deadline / valid until date using identical project calculation
-  const estimatedDeadlineObj =
-    getProjectEstimatedDeadline(data) ||
-    (data.deadline ? new Date(data.deadline) : null) ||
-    (data.validUntil ? new Date(data.validUntil) : null);
-
-  let validUntilDate = "";
-  if (estimatedDeadlineObj && !isNaN(estimatedDeadlineObj.getTime())) {
-    validUntilDate = formatPdfDate(estimatedDeadlineObj);
-  } else {
-    const days =
-      parseDurationToDays(duration) ||
-      parseDurationToDays(finalTimelineAnswer) ||
-      parseDurationToDays(directTimeline) ||
-      14;
-    const validUntilObj = new Date(issuedDateObj);
-    validUntilObj.setDate(validUntilObj.getDate() + days);
-    validUntilDate = formatPdfDate(validUntilObj);
-  }
+  // Quote is valid for 3 months from issued date
+ 
+  const validUntilObj = new Date(issuedDateObj);
+  validUntilObj.setMonth(validUntilObj.getMonth() + 3);
+  let validUntilDate = formatPdfDate(validUntilObj);
+  
 
   const currency = (data.currency || "USD").toUpperCase();
 
@@ -348,7 +395,7 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
   if (isCalculatorEstimatePdf) {
     data.breakdownItems.forEach((item: any) => {
       const qText = item.question || "";
-      if (/timeline/i.test(qText)) return;
+      if (/timeline/i.test(qText) || /^category:?$/i.test(qText.trim())) return;
       selectedOptions.push({
         question: qText,
         answers: Array.isArray(item.answers) ? item.answers : [String(item.answers || "")],
@@ -359,7 +406,12 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     if (Array.isArray(rawSelections) && rawSelections.length > 0) {
       rawSelections.forEach((sel: any) => {
         const qText = sel.questionText || sel.questionKey || "";
-        if (/timeline/i.test(sel.questionKey || "") || /timeline/i.test(qText)) {
+        if (
+          /timeline/i.test(sel.questionKey || "") ||
+          /timeline/i.test(qText) ||
+          /^category:?$/i.test(qText.trim()) ||
+          sel.questionKey === "CATEGORY"
+        ) {
           return;
         }
         let ansList: string[] = [];
@@ -467,7 +519,7 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
   const isMonthlySeoCalculatorPdf =
     isCalculatorEstimatePdf &&
     categoryKey === "seo" &&
-    (data.billingType === "monthly" || seoServiceMode === "monthly");
+    seoServiceMode === "monthly";
 
   if (isMonthlySeoCalculatorPdf) {
     const withoutTimeline = selectedOptions.filter((opt) => !/timeline/i.test(opt.question));
@@ -511,9 +563,20 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     maximumFractionDigits: 2,
   }).format(totalPrice);
 
+  const isOneTimeCategory =
+    categoryKey === "web" ||
+    categoryKey === "website" ||
+    categoryKey === "ecommerce" ||
+    categoryKey === "graphics" ||
+    categoryKey === "mobile" ||
+    categoryKey === "app" ||
+    categoryKey === "custom" ||
+    (categoryKey === "seo" && seoServiceMode === "onetime");
+
   const isMonthlyPricing =
-    data.billingType === "monthly" ||
-    isMonthlyBillingCategory(categoryKey, seoServiceMode || data.seoServiceMode);
+    !isOneTimeCategory &&
+    (isMonthlyBillingCategory(categoryKey, seoServiceMode || data.seoServiceMode) ||
+      (data.billingType === "monthly" && (categoryKey === "marketing" || (categoryKey === "seo" && seoServiceMode === "monthly"))));
 
   if (isMonthlyPricing) {
     formattedPrice = `${formattedPrice} /month`;
@@ -600,10 +663,17 @@ function renderSelectedOptionsList(options: Array<{ question: string; answers: s
       ${options
         .map((opt) => {
           let cleanQuestion = opt.question.trim();
-          if (!cleanQuestion.endsWith("?") && !cleanQuestion.endsWith(":")) {
-            cleanQuestion = cleanQuestion + "?:";
-          } else if (cleanQuestion.endsWith("?")) {
-            cleanQuestion = cleanQuestion + ":";
+          // Remove any colon after question mark (e.g. "?:" -> "?")
+          cleanQuestion = cleanQuestion.replace(/\?\s*:\s*$/, "?").trim();
+
+          // Do NOT add ":" after questions ending in "?"
+          // Only ensure ":" for statements like "Describe your..." if missing
+          if (/^(Describe your|Tell us|Share with us|Please provide)/i.test(cleanQuestion)) {
+            if (/\(Optional\)$/i.test(cleanQuestion) && !/:\s*\(Optional\)$/i.test(cleanQuestion)) {
+              cleanQuestion = cleanQuestion.replace(/\s*\(Optional\)$/i, ": (Optional)");
+            } else if (!cleanQuestion.endsWith(":") && !/\(Optional\)$/i.test(cleanQuestion)) {
+              cleanQuestion = cleanQuestion + ":";
+            }
           }
           const hasMultiple = opt.answers.length > 1;
           return `
@@ -792,7 +862,7 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
             ? `
         <!-- ── Main Header ── -->
         <header style="width: 100%; display: flex; flex-direction: row; justify-content: space-between; align-items: flex-start; margin: 0; padding: 0; box-sizing: border-box;">
-          <div style="display: flex; align-items: flex-start; margin: 0; padding-top: 2px;">
+          <div class="header-logo" style="display: flex; flex-direction: column; align-items: flex-start; margin: 0; padding-top: 10px;">
             ${LOGO_SVG}
           </div>
           <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; margin: 0; padding: 0; white-space: nowrap;">
@@ -840,11 +910,15 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
           </div>
         </section>
 
-        <!-- ── Category & Subtitle Header ── -->
-        <div style="margin-top: 24px; margin-bottom: 20px;">
-          <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14px; color: #0F172A; margin-bottom: 3px;">Category: ${d.categoryName}</div>
-          ${(d.scopeOverviewLead || d.subtitle) ? `<div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 13px; color: #2A2AA0;">${d.scopeOverviewLead || d.subtitle}</div>` : ""}
-        </div>
+        ${
+          (d.scopeOverviewLead || d.subtitle)
+            ? `
+        <!-- ── Subtitle / Scope Overview ── -->
+        <div style="margin-top: 22px; margin-bottom: 16px;">
+          <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 13px; color: #2A2AA0;">${d.scopeOverviewLead || d.subtitle}</div>
+        </div>`
+            : `<div style="margin-top: 24px;"></div>`
+        }
         `
             : ""
         }
@@ -943,6 +1017,65 @@ async function ensurePdfLibraries(): Promise<{ html2canvasLib: any; jsPdfLib: an
   return { html2canvasLib, jsPdfLib };
 }
 
+/**
+ * Saves the final HTML that will be rendered by html2canvas as a downloadable
+ * .html file. Only active in development mode — gives you a browser-openable
+ * snapshot to debug fonts, spacing, and layout without going through html2canvas.
+ */
+function saveHtmlSnapshot(html: string, projectNumber: string): void {
+  if (typeof window === "undefined") return;
+  if (process.env.NODE_ENV !== "development") return;
+
+  const cleanNum = (projectNumber || "preview").replace(/[^a-zA-Z0-9-_#]/g, "") || "preview";
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const filename = `pdf_snapshot_${cleanNum}_${timestamp}.html`;
+
+  const fullDoc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=794px, initial-scale=1" />
+  <title>PDF Snapshot ${cleanNum}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { margin: 0; padding: 0; background: #e5e7eb; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0F172A; -webkit-font-smoothing: antialiased; }
+    .pdf-page { margin: 24px auto; box-shadow: 0 4px 24px rgba(0,0,0,0.12); }
+    .header-logo {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <!-- PDF Snapshot: ${new Date().toLocaleString()} | Project ${cleanNum} -->
+  <!-- Open in browser to inspect layout at 794px width (A4 pdf render width) -->
+  <div style="width:794px;background:#fff;">
+    ${html}
+  </div>
+</body>
+</html>`;
+
+  const blob = new Blob([fullDoc], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    if (document.body.contains(a)) document.body.removeChild(a);
+  }, 1000);
+
+  console.info(`[PDF Debug] HTML snapshot saved: ${filename}`);
+}
+
 export async function downloadCalculatorProjectPDF(data: any): Promise<void> {
   if (typeof window === "undefined") return;
 
@@ -960,7 +1093,9 @@ export async function downloadCalculatorProjectPDF(data: any): Promise<void> {
     container.style.backgroundColor = "#ffffff";
     container.style.opacity = "1";
     container.style.pointerEvents = "none";
-    container.innerHTML = getCalculatorProjectHTML(d);
+    const pdfHtml = getCalculatorProjectHTML(d);
+    saveHtmlSnapshot(pdfHtml, d.rawProjectNumber);
+    container.innerHTML = pdfHtml;
 
     document.body.appendChild(container);
 
@@ -1031,7 +1166,9 @@ export async function generateCalculatorProjectPDFBase64(data: any): Promise<str
   container.style.backgroundColor = "#ffffff";
   container.style.opacity = "1";
   container.style.pointerEvents = "none";
-  container.innerHTML = getCalculatorProjectHTML(d);
+  const pdfHtmlB64 = getCalculatorProjectHTML(d);
+  saveHtmlSnapshot(pdfHtmlB64, d.rawProjectNumber);
+  container.innerHTML = pdfHtmlB64;
 
   document.body.appendChild(container);
 
@@ -1107,6 +1244,12 @@ export function printCalculatorProjectPDF(data: any): void {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             color: #0F172A;
             -webkit-font-smoothing: antialiased;
+          }
+          .header-logo {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding-top: 10px;
           }
         </style>
       </head>
