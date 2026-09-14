@@ -678,19 +678,27 @@ export default function ProjectDetailsPage() {
     (project.taxPercentage != null ? project.taxPercentage : 0)
   );
   const rawVatAmount = Number(project.vatAmount ?? project.tax ?? 0);
-  const vatAmount =
-    rawVatAmount > 0
-      ? rawVatAmount
-      : vatRate > 0 && rawTotalCost > 0
-      ? (rawTotalCost * vatRate) / (100 + vatRate)
-      : 0;
-  const rawBaseAmount = Number(project.baseAmount ?? project.subtotal ?? 0);
+  const rawBaseAmount = Number(
+    project.baseAmount ??
+    project.subtotal ??
+    project.calculatorSpecs?.calculatedPrice ??
+    project.calculatorSpecs?.subtotal ??
+    project.quoteId?.requirements?.calculatedPrice ??
+    project.quoteId?.requirements?.subtotal ??
+    0
+  );
   const baseAmount =
     rawBaseAmount > 0
       ? rawBaseAmount
-      : vatAmount > 0
-      ? rawTotalCost - vatAmount
+      : vatRate > 0 && rawTotalCost > 0
+      ? Math.round((rawTotalCost / (1 + vatRate / 100)) * 100) / 100
       : rawTotalCost;
+  const vatAmount =
+    rawVatAmount > 0
+      ? rawVatAmount
+      : vatRate > 0
+      ? Math.round((baseAmount * (vatRate / 100)) * 100) / 100
+      : 0;
   const totalCost = rawTotalCost > 0 ? rawTotalCost : baseAmount + vatAmount;
 
   // Date for delivery due divider
@@ -893,7 +901,7 @@ export default function ProjectDetailsPage() {
                         <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-semibold">{project.title}</td>
                         <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-center">-</td>
                         <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-800 text-right font-bold">
-                          {formatCurrency(project.price ?? 0)}
+                          {formatCurrency(baseAmount)}
                         </td>
                       </tr>
                     )}
@@ -952,9 +960,33 @@ export default function ProjectDetailsPage() {
                         {project.calculatorSpecs?.estimatedTimeline || project.timeline || "-"}
                       </td>
                       <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top">
-                        {formatCurrency(totalCost)}
+                        {formatCurrency(baseAmount)}
                       </td>
                     </tr>
+                    {/* Add-ons section if exists for calculator projects */}
+                    {project.addons && project.addons.length > 0 && (
+                      <React.Fragment>
+                        <tr className="bg-gray-800">
+                          <td colSpan={3} className="px-6 py-2.5 text-xs font-bold text-white tracking-wider">Add-On Tasks</td>
+                        </tr>
+                        {project.addons.map((addon: any, aIdx: number) => (
+                          addon.deliverableItems.map((item: any, iIdx: number) => (
+                            <tr key={`addon-calc-${aIdx}-${iIdx}`} className={(aIdx === project.addons.length - 1 && iIdx === addon.deliverableItems.length - 1) ? "" : "border-b border-gray-400"}>
+                              <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
+                                <div className="font-medium text-gray-700 mb-1">{item.description}</div>
+                                {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
+                              </td>
+                              <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
+                                {item.duration} {item.unit || "Days"}
+                              </td>
+                              <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
+                                {formatCurrency(item.amount ?? 0)}
+                              </td>
+                            </tr>
+                          ))
+                        ))}
+                      </React.Fragment>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1003,7 +1035,11 @@ export default function ProjectDetailsPage() {
                     if (isDownloadingPdf) return;
                     setIsDownloadingPdf(true);
                     try {
-                      await downloadProjectDetailsPDF(project);
+                      if (project.calculatorSpecs) {
+                        await downloadCalculatorProjectPDF(project);
+                      } else {
+                        await downloadProjectDetailsPDF(project);
+                      }
                     } catch (err) {
                       console.error("Failed to download PDF", err);
                       toast.error("Failed to download PDF. Please try again.");
@@ -1026,7 +1062,11 @@ export default function ProjectDetailsPage() {
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
-                    printProjectDetails(project);
+                    if (project.calculatorSpecs) {
+                      printCalculatorProjectPDF(project);
+                    } else {
+                      printProjectDetails(project);
+                    }
                   }}
                   className="flex-1 sm:flex-initial px-6 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap"
                 >

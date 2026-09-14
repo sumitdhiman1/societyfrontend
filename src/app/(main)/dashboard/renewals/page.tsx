@@ -325,8 +325,8 @@ function UnifiedRenewalDetailsBox({
 
         {/* Cardholder Name */}
         <div className="mb-5">
-          <label className="text-xs font-bold text-gray-700 mb-1.5 block">
-            Name on the card
+          <label className="block text-[15px] font-medium text-[#111827] mb-2">
+            Name on the card:
           </label>
           <input
             type="text"
@@ -361,8 +361,8 @@ function UnifiedRenewalDetailsBox({
         {/* Stripe Card Elements */}
         <div className="space-y-4 mb-6">
           <div>
-            <label className="text-xs font-bold text-gray-700 mb-1.5 block">
-              Card number
+            <label className="block text-[15px] font-medium text-[#111827] mb-2">
+              Card number:
             </label>
             <div className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus-within:border-[#4545F0] focus-within:ring-1 focus-within:ring-[#4545F0]">
               <CardNumberElement options={CARD_ELEMENT_OPTIONS} />
@@ -371,16 +371,16 @@ function UnifiedRenewalDetailsBox({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-bold text-gray-700 mb-1.5 block">
-                Expiry
+              <label className="block text-[15px] font-medium text-[#111827] mb-2">
+                Expiry date:
               </label>
               <div className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus-within:border-[#4545F0] focus-within:ring-1 focus-within:ring-[#4545F0]">
                 <CardExpiryElement options={CARD_ELEMENT_OPTIONS} />
               </div>
             </div>
             <div>
-              <label className="text-xs font-bold text-gray-700 mb-1.5 block">
-                CVC
+              <label className="block text-[15px] font-medium text-[#111827] mb-2">
+                CVC:
               </label>
               <div className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus-within:border-[#4545F0] focus-within:ring-1 focus-within:ring-[#4545F0]">
                 <CardCvcElement options={CARD_ELEMENT_OPTIONS} />

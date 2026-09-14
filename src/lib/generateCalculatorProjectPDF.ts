@@ -47,6 +47,11 @@ export interface CalculatorPDFData {
   totalPrice: number;
   currency: string;
   formattedPrice: string;
+  subtotal?: number;
+  vatRate?: number;
+  vatAmount?: number;
+  formattedSubtotal?: string;
+  formattedVatAmount?: string;
   [key: string]: any;
 }
 
@@ -626,6 +631,28 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
   const cleanSubtitle = isRawDump(data.subtitle) ? "" : (data.subtitle || "");
   const cleanDescription = isRawDump(data.description) ? "" : (data.description || "");
 
+  const vatRate = Number(data.vatRate) || 0;
+  const rawSubtotal = data.subtotal !== undefined && Number(data.subtotal) > 0
+    ? Number(data.subtotal)
+    : (vatRate > 0 ? Math.round((totalPrice / (1 + vatRate / 100)) * 100) / 100 : totalPrice);
+  const vatAmount = data.vatAmount !== undefined && Number(data.vatAmount) > 0
+    ? Number(data.vatAmount)
+    : (vatRate > 0 ? Math.round((totalPrice - rawSubtotal) * 100) / 100 : 0);
+
+  const formattedSubtotal = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(rawSubtotal);
+
+  const formattedVatAmount = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(vatAmount);
+
   return {
     rawProjectNumber,
     projectNumber,
@@ -645,6 +672,11 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     totalPrice,
     currency,
     formattedPrice,
+    subtotal: rawSubtotal,
+    vatRate,
+    vatAmount,
+    formattedSubtotal,
+    formattedVatAmount,
   };
 }
 
@@ -696,20 +728,37 @@ function renderSelectedOptionsList(options: Array<{ question: string; answers: s
 }
 
 function renderSummaryBoxAndFooter(d: CalculatorPDFData): string {
+  const hasVat = typeof d.vatRate === "number" && d.vatRate > 0;
   return `
     <div style="margin-top: 28px; width: 100%;">
-      <!-- Summary Card: Timeline + Investment -->
+      <!-- Summary Card: Timeline + (Subtotal + VAT) + Investment -->
       <div style="display: flex; justify-content: flex-end;">
-        <div style="width: 320px; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div style="width: 380px; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border: 1px solid #1E293B;">
           <!-- Timeline Row -->
-          <div style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; height: 44px;">
+          <div style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px;">
             <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">ESTIMATED TIMELINE</span>
-            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF;">${d.duration}</span>
+            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${d.duration}</span>
           </div>
+          ${
+            hasVat
+              ? `
+          <!-- Subtotal Row -->
+          <div style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; border-top: 1px solid #1E293B;">
+            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">SUBTOTAL</span>
+            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${d.formattedSubtotal}</span>
+          </div>
+          <!-- VAT Row -->
+          <div style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; border-top: 1px solid #1E293B;">
+            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">VAT (${d.vatRate}%)</span>
+            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${d.formattedVatAmount}</span>
+          </div>
+          `
+              : ""
+          }
           <!-- Investment Row -->
-          <div style="background-color: #2A2AA0; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; height: 64px;">
-            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12.5px; letter-spacing: 0.05em; color: #FFFFFF; text-transform: uppercase;">INVESTMENT TOTAL</span>
-            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 23px; color: #FFFFFF;">${d.formattedPrice}</span>
+          <div style="background-color: #2A2AA0; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 62px; ${hasVat ? "border-top: 1px solid #3E3EE8;" : ""}">
+            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; letter-spacing: 0.06em; color: #FFFFFF; text-transform: uppercase; white-space: nowrap;">INVESTMENT TOTAL</span>
+            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 21px; color: #FFFFFF; white-space: nowrap; margin-left: 16px;">${d.formattedPrice}</span>
           </div>
         </div>
       </div>

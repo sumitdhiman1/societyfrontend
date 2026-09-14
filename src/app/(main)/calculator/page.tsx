@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { useChatWidget } from "@/context/ChatWidgetContext";
 import { useCurrency } from "@/context/CurrencyContext";
 import { authService } from "@/lib/authService";
+import { countryService, Country } from "@/lib/countryService";
 import { paymentService } from "@/lib/paymentService";
 import { priceCalculatorService, CalculatorCategory, CalculatorConfig, CalculatorSelection } from "@/lib/priceCalculatorService";
 import {
@@ -501,6 +502,9 @@ const ProposalPreview = ({
   category,
   selections,
   totalPrice,
+  vatRate = 0,
+  vatAmount = 0,
+  totalWithVat = totalPrice,
   timeline,
   billingType,
   onDownloadPdf,
@@ -606,7 +610,10 @@ const ProposalPreview = ({
         refNumber: refNum,
         categoryName: category.categoryName,
         breakdownItems: breakdown,
-        totalPrice,
+        totalPrice: totalWithVat,
+        subtotal: totalPrice,
+        vatRate,
+        vatAmount,
         timeline: timeline || category.timeline,
         currency: currency,
         conversionRate,
@@ -669,13 +676,16 @@ const ProposalPreview = ({
         body += `\n- ${item.question}:\n  ${item.answers.join(", ")}`;
       });
 
-      body += `\n\nTotal Price: ${formatPriceLocal(totalPrice)}\nTimeline: ${displayTimeline || "TBA"}\n\nAttached is your detailed proposal PDF.\n\nGenerated via Society Web Solutions Calculator.`;
+      body += `\n\nTotal Price: ${formatPriceLocal(totalWithVat)}${vatRate > 0 ? ` (Includes ${vatRate}% VAT)` : ''}\nTimeline: ${displayTimeline || "TBA"}\n\nAttached is your detailed proposal PDF.\n\nGenerated via Society Web Solutions Calculator.`;
 
       const pdfBase64 = await getCalculatorPdfBase64({
         refNumber: refNum,
         categoryName: category.categoryName,
         breakdownItems: breakdown,
-        totalPrice,
+        totalPrice: totalWithVat,
+        subtotal: totalPrice,
+        vatRate,
+        vatAmount,
         timeline: timeline || category.timeline,
         currency: currency,
         conversionRate,
@@ -693,7 +703,7 @@ const ProposalPreview = ({
           refNumber: refNum,
           categoryName: category.categoryName,
           subtitle: category.subtitle || "",
-          totalPrice: formatPriceLocal(totalPrice),
+          totalPrice: formatPriceLocal(totalWithVat),
           timeline: displayTimeline || category.timeline || "",
           breakdownItems: breakdown,
           pdfBase64,
@@ -751,11 +761,18 @@ const ProposalPreview = ({
         <div className="mt-10 mb-6">
           <h3 className="text-[#111827] text-[24px] md:text-[26px] font-bold tracking-tight mb-1">
             PROJECT TOTAL COST:{" "}
-            <span className="text-[#4F46E5] font-black font-bold">{formatPriceLocal(totalPrice)}</span>
+            <span className="text-[#4F46E5] font-black font-bold">{formatPriceLocal(totalWithVat)}</span>
             {isMonthly && (
               <span className="text-[#64748B] text-[18px] md:text-[20px] font-medium"> /month</span>
             )}
           </h3>
+          {vatRate > 0 && (
+            <div className="flex flex-wrap items-center gap-2 text-[13px] md:text-[14px] font-semibold text-gray-500 mt-1.5">
+              <span>Base: {formatPriceLocal(totalPrice)}</span>
+              <span>•</span>
+              <span className="text-[#4338CA]">VAT ({vatRate}%): {formatPriceLocal(vatAmount)}</span>
+            </div>
+          )}
           {isMonthly && <p className="text-[#363636] text-[13px] font-medium mt-1 opacity-75">First month billed on start. Then auto-renewed monthly.</p>}
         </div>
 
@@ -1014,8 +1031,17 @@ const CalculatorPaymentForm = ({
     country: "US",
   });
   const [userCountry, setUserCountry] = useState("US");
+  const [countriesList, setCountriesList] = useState<Country[]>([]);
   const [isAuth, setIsAuth] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(true);
+
+  useEffect(() => {
+    countryService.getAllCountries().then((list) => {
+      if (list && list.length > 0) {
+        setCountriesList(list);
+      }
+    }).catch((e) => console.error("Failed to load countries in calculator:", e));
+  }, []);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -1028,6 +1054,9 @@ const CalculatorPaymentForm = ({
           const initialName = resolveUserName(user);
           if (initialName) {
             setCardholderName((prev) => (prev?.trim() ? prev : initialName));
+          }
+          if (user.country || user.billingCountry) {
+            setUserCountry(user.country || user.billingCountry);
           }
         }
 
@@ -1046,11 +1075,13 @@ const CalculatorPaymentForm = ({
             setUserCountry(
               profileUser.country ||
               profileUser.billingCountry ||
+              user?.country ||
+              user?.billingCountry ||
               (currency === "eur" ? "DE" : "US")
             );
           }
         } catch {
-          setUserCountry(currency === "eur" ? "DE" : "US");
+          setUserCountry(user?.country || user?.billingCountry || (currency === "eur" ? "DE" : "US"));
         }
 
         try {
@@ -1062,6 +1093,9 @@ const CalculatorPaymentForm = ({
             }
             if (freshUser.isEmailVerified !== undefined) {
               setIsEmailVerified(!!freshUser.isEmailVerified);
+            }
+            if (freshUser.country || freshUser.billingCountry) {
+              setUserCountry(freshUser.country || freshUser.billingCountry);
             }
           }
         } catch {}
@@ -1129,7 +1163,30 @@ const CalculatorPaymentForm = ({
     }
   };
 
-  const vatRate = 0;
+  const isEstonia = (cStr: string) => {
+    if (!cStr) return false;
+    const trimmed = cStr.trim().toLowerCase();
+    return trimmed === "estonia" || trimmed === "ee" || trimmed === "est";
+  };
+
+  const vatRate = useMemo(() => {
+    if (!isAuth) return 0;
+    const codeOrName = userCountry?.trim() || "";
+    if (!codeOrName) return 0;
+    if (isEstonia(codeOrName)) return 24;
+    const direct = countryService.getVatRateSync(codeOrName);
+    if (direct > 0) return direct;
+    const found = countriesList.find(
+      (c) =>
+        c.iso2?.toUpperCase() === codeOrName.toUpperCase() ||
+        c.iso3?.toUpperCase() === codeOrName.toUpperCase() ||
+        c.name?.toLowerCase() === codeOrName.toLowerCase()
+    );
+    if (found && isEstonia(found.name || found.iso2)) return 24;
+    return found ? Number(found.vatRate) || 0 : 0;
+  }, [isAuth, userCountry, countriesList]);
+
+  const vatMultiplier = vatRate > 0 ? vatRate / 100 : 0;
   const currencyLabel = currency.toUpperCase();
   const requiresVerification = !isEmailVerified;
   const getBasePayableAmount = () => {
@@ -1140,7 +1197,7 @@ const CalculatorPaymentForm = ({
   };
 
   const baseAmount = getBasePayableAmount();
-  const vatAmount = Math.round(baseAmount * vatRate * 100) / 100;
+  const vatAmount = Math.round(baseAmount * vatMultiplier * 100) / 100;
   const totalPayable = Math.round((baseAmount + vatAmount) * 100) / 100;
 
   const formatPaymentLine = (amt: number) =>
@@ -1254,7 +1311,7 @@ const CalculatorPaymentForm = ({
 
       setPaymentStep("gateway");
       const intentRes = await paymentService.createPaymentIntent({
-        amount,          // actual charge amount in chosen currency (may be EUR-converted)
+        amount,          // actual charge amount in chosen currency (totalPayable, including VAT)
         currency,        // "usd" or "eur"
         useCredits: false,
         metadata: {
@@ -1264,6 +1321,9 @@ const CalculatorPaymentForm = ({
           // fullAmount is the USD base price so backend always compares like-for-like
           fullAmount: usdBaseAmount,
           calculatedPrice: usdBaseAmount,
+          vatRate: String(vatRate),
+          vatAmount: String(vatAmount),
+          userCountry: userCountry || undefined,
           // store conversion rate so backend can normalise EUR payments back to USD
           conversionRate: String(conversionRate),
           paymentCurrency: currency,
@@ -1421,10 +1481,12 @@ const CalculatorPaymentForm = ({
             <span className="text-gray-600">Base Amount ({currencyLabel}):</span>
             <span className="font-semibold text-gray-800">{formatPaymentLine(baseAmount)}</span>
           </div>
-          <div className="flex justify-between text-[15px]">
-            <span className="text-gray-600">VAT ({Math.round(vatRate * 100)}%):</span>
-            <span className="font-semibold text-gray-800">{formatPaymentLine(vatAmount)}</span>
-          </div>
+          {vatRate > 0 && (
+            <div className="flex justify-between text-[15px]">
+              <span className="text-gray-600">VAT ({vatRate}%):</span>
+              <span className="font-semibold text-gray-800">{formatPaymentLine(vatAmount)}</span>
+            </div>
+          )}
           <div className="pt-2 border-t border-gray-200 flex justify-between items-center text-base font-bold text-gray-900">
             <span className="">Total Payable:</span>
             <span className="text-[#4F46E5] text-lg font-black">{formatPaymentLine(totalPayable)}</span>
@@ -1531,6 +1593,79 @@ export default function CalculatorPage() {
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
   const [selections, setSelections] = useState<Record<string, CalculatorSelection>>({});
   const [questionErrors, setQuestionErrors] = useState<Record<string, string>>({});
+  const [userCountry, setUserCountry] = useState<string>("");
+  const [countriesList, setCountriesList] = useState<Country[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const list = await countryService.getAllCountries();
+        setCountriesList(list || []);
+      } catch (err) {
+        console.error("Failed to load countries list", err);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    const checkUserCountry = async () => {
+      if (authService.isAuthenticated()) {
+        const user = authService.getUser();
+        if (user?.country || user?.billingCountry) {
+          setUserCountry(user.country || user.billingCountry);
+        }
+        try {
+          const { profileService } = await import("@/lib/profileService");
+          const profile = await profileService.getMyProfile();
+          const profileUser = profile?.data?.user || profile?.data || profile?.user;
+          if (profileUser?.country || profileUser?.billingCountry) {
+            setUserCountry(profileUser.country || profileUser.billingCountry);
+          }
+        } catch {}
+      } else {
+        setUserCountry("");
+      }
+    };
+
+    checkUserCountry();
+    const handleAuthChange = () => {
+      checkUserCountry();
+    };
+    window.addEventListener("auth:login", handleAuthChange);
+    window.addEventListener("auth:logout", handleAuthChange);
+    window.addEventListener("auth:user_update", handleAuthChange);
+    return () => {
+      window.removeEventListener("auth:login", handleAuthChange);
+      window.removeEventListener("auth:logout", handleAuthChange);
+      window.removeEventListener("auth:user_update", handleAuthChange);
+    };
+  }, []);
+
+  const isEstonia = (cStr: string) => {
+    if (!cStr) return false;
+    const trimmed = cStr.trim().toLowerCase();
+    return trimmed === "estonia" || trimmed === "ee" || trimmed === "est";
+  };
+
+  const vatRate = useMemo(() => {
+    if (!authService.isAuthenticated()) return 0;
+    const codeOrName = userCountry?.trim() || "";
+    if (!codeOrName) return 0;
+    if (isEstonia(codeOrName)) return 24;
+    const direct = countryService.getVatRateSync(codeOrName);
+    if (direct > 0) return direct;
+    const found = countriesList.find(
+      (c) =>
+        c.iso2?.toUpperCase() === codeOrName.toUpperCase() ||
+        c.iso3?.toUpperCase() === codeOrName.toUpperCase() ||
+        c.name?.toLowerCase() === codeOrName.toLowerCase()
+    );
+    if (found && isEstonia(found.name || found.iso2)) return 24;
+    return found ? Number(found.vatRate) || 0 : 0;
+  }, [userCountry, countriesList]);
+
+  const vatMultiplier = vatRate > 0 ? vatRate / 100 : 0;
+
   useEffect(() => {
     (async () => {
       try {
@@ -1557,6 +1692,10 @@ export default function CalculatorPage() {
     totalPrice: 0,
     timeline: undefined,
   });
+
+  const baseTotalPrice = calculation.totalPrice;
+  const vatAmount = Math.round(baseTotalPrice * vatMultiplier * 100) / 100;
+  const totalWithVat = Math.round((baseTotalPrice + vatAmount) * 100) / 100;
   const calcTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selectedCategory = useMemo(
@@ -1883,6 +2022,9 @@ export default function CalculatorPage() {
                     category={selectedCategory}
                     selections={selections}
                     totalPrice={calculation.totalPrice}
+                    vatRate={vatRate}
+                    vatAmount={vatAmount}
+                    totalWithVat={totalWithVat}
                     timeline={calculation.timeline}
                     billingType={isMonthlyBilling ? "monthly" : undefined}
                     onValidateRequired={validateRequiredSelections}
@@ -1890,6 +2032,9 @@ export default function CalculatorPage() {
                   <div className="w-full mt-6">
                     <WrappedPaymentForm
                       totalPrice={calculation.totalPrice}
+                      vatRate={vatRate}
+                      vatAmount={vatAmount}
+                      totalWithVat={totalWithVat}
                       timeline={calculation.timeline}
                       categoryKey={selectedCategoryKey || selectedCategory.categoryKey}
                       category={selectedCategory}

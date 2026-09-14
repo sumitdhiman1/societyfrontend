@@ -56,6 +56,14 @@ class CountryService {
     return this.fetchPromise;
   }
 
+  async getCountries(isActiveOnly = false): Promise<Country[]> {
+    const list = await this.getAllCountries();
+    if (isActiveOnly) {
+      return list.filter((c) => c.isActive !== false);
+    }
+    return list;
+  }
+
   async getCountryByIso(iso: string): Promise<Country | null> {
     if (!iso) return null;
     const countries = await this.getAllCountries();

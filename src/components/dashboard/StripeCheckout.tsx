@@ -449,7 +449,7 @@ export default function StripeCheckout({
                   )}
 
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Cardholder Name</label>
+                    <label className="block text-[15px] font-medium text-[#111827] mb-2">Name on the card:</label>
                     <input 
                       type="text" 
                       value={cardholderName} 
@@ -459,20 +459,20 @@ export default function StripeCheckout({
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Card Number</label>
+                    <label className="block text-[15px] font-medium text-[#111827] mb-2">Card number:</label>
                     <div className={`w-full px-4 py-3 bg-white border ${errors.cardNumber ? "border-red-500" : "border-gray-300"} rounded-[4px] text-sm focus-within:border-primary-300`}>
                       <CardNumberElement options={CARD_ELEMENT_OPTIONS} onChange={(e) => setCardStatus((p: any) => ({ ...p, number: { complete: e.complete, error: e.error } }))} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Expiry</label>
+                      <label className="block text-[15px] font-medium text-[#111827] mb-2">Expiry date:</label>
                       <div className={`w-full px-4 py-3 bg-white border ${errors.cardExpiry ? "border-red-500" : "border-gray-300"} rounded-[4px] text-sm focus-within:border-primary-300`}>
                         <CardExpiryElement options={CARD_ELEMENT_OPTIONS} onChange={(e) => setCardStatus((p: any) => ({ ...p, expiry: { complete: e.complete, error: e.error } }))} />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">CVC</label>
+                      <label className="block text-[15px] font-medium text-[#111827] mb-2">CVC:</label>
                       <div className={`w-full px-4 py-3 bg-white border ${errors.cardCvc ? "border-red-500" : "border-gray-300"} rounded-[4px] text-sm focus-within:border-primary-300`}>
                         <CardCvcElement options={CARD_ELEMENT_OPTIONS} onChange={(e) => setCardStatus((p: any) => ({ ...p, cvc: { complete: e.complete, error: e.error } }))} />
                       </div>

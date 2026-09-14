@@ -112,6 +112,20 @@ export default function ProjectPaymentsPage() {
     activeProject.projectNumber ||
     (activeProject.quoteNumber || (activeProject._id ? `INV-2026-${activeProject._id.slice(-3).toUpperCase()}` : "INV-2026-188"));
 
+  const vatRate = Number(
+    activeProject.vatRate ??
+    activeProject.vatPercentage ??
+    (activeProject.taxPercentage != null ? activeProject.taxPercentage : 0)
+  );
+
+  const rawBaseCost = Number(activeProject.price ?? activeProject.totalCost ?? 0);
+  const baseSubtotal = Number(
+    activeProject.subtotal ??
+    (vatRate > 0 && rawBaseCost > 0
+      ? Math.round((rawBaseCost / (1 + vatRate / 100)) * 100) / 100
+      : rawBaseCost)
+  );
+
   // 1. Regular items
   const regularItems = (activeProject.deliverableItems && activeProject.deliverableItems.length > 0)
     ? activeProject.deliverableItems.map((item: any) => ({
@@ -125,7 +139,7 @@ export default function ProjectPaymentsPage() {
       ? [{
         description: activeProject.title,
         duration: activeProject.timelineInDays ? `${activeProject.timelineInDays} Days` : "30 Days",
-        amount: Number(activeProject.price ?? activeProject.totalCost ?? 0),
+        amount: baseSubtotal,
         isAddOn: false,
       }]
       : [];
@@ -165,10 +179,13 @@ export default function ProjectPaymentsPage() {
     .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
 
   const amountPaid = Math.max(Number(activeProject.amountPaid || 0), totalPaidFromTransactions);
-  const baseCost = Number(activeProject.price ?? activeProject.totalCost ?? 0);
   const addonsTotal = allAddonItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
-  const deliverablesTotal = deliverableItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
-  const totalProjectCost = deliverablesTotal > 0 ? deliverablesTotal : (baseCost > 0 ? baseCost : addonsTotal);
+  const totalSubtotal = baseSubtotal + addonsTotal;
+  const effectiveVatAmount = Number(
+    activeProject.vatAmount ??
+    (vatRate > 0 ? Math.round((totalSubtotal * (vatRate / 100)) * 100) / 100 : 0)
+  );
+  const totalProjectCost = totalSubtotal + effectiveVatAmount;
 
   const pendingBalance = Math.max(0, totalProjectCost - amountPaid);
   const payableAmount = pendingBalance;
@@ -242,7 +259,11 @@ export default function ProjectPaymentsPage() {
   const searchInvoiceNumber = searchParams?.get("invoiceNumber") || undefined;
   const searchMessageId = searchParams?.get("messageId") || undefined;
   const searchDescription = searchParams?.get("description") || undefined;
-  const targetCost = searchAmount > 0 ? searchAmount : pendingBalance;
+  const targetCost = searchAmount > 0
+    ? searchAmount
+    : (amountPaid === 0
+      ? baseSubtotal
+      : (vatRate > 0 ? Math.round((pendingBalance / (1 + vatRate / 100)) * 100) / 100 : pendingBalance));
 
   return (
     <div className="w-full font-sans space-y-8">
@@ -267,13 +288,14 @@ export default function ProjectPaymentsPage() {
             startDate={activeProject.startDate}
             deadline={activeProject.deadline}
             totalCost={targetCost}
+            depositAmount={baseSubtotal > 0 ? baseSubtotal / 2 : totalProjectCost / 2}
             deliverableItems={deliverableItems}
             clientEmail={currentUser?.email || activeProject.clientEmail || ""}
             successRedirectUrl={`/dashboard/my-projects/${projectId}/payments?success=true`}
             amountPaid={amountPaid}
             isFullyPaid={isFullyPaid}
             nativeCurrency={activeProject.currency || "USD"}
-            vatRate={Number(activeProject.vatRate ?? activeProject.vatPercentage ?? (activeProject.taxPercentage != null ? activeProject.taxPercentage : 0))}
+            vatRate={vatRate}
             invoiceId={searchInvoiceId}
             metadata={{
               invoiceId: searchInvoiceId,

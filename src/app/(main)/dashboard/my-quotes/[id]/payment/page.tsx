@@ -361,12 +361,12 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
             
             <div className="space-y-6">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-2">Name on card</label>
+                <label className="block text-[15px] font-medium text-[#111827] mb-2">Name on the card:</label>
                 <input type="text" value={cardHolderName} onChange={e => setCardHolderName(e.target.value)} className="w-full bg-gray-100 rounded-md px-4 py-3 text-sm outline-none" />
                 {errors.cardHolderName && <p className="text-red-500 text-xs mt-1">{errors.cardHolderName}</p>}
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-2">Card number</label>
+                <label className="block text-[15px] font-medium text-[#111827] mb-2">Card number:</label>
                 <div className="w-full bg-gray-100 rounded-md px-4 py-3 text-sm">
                   <CardNumberElement options={stripeOptions} onChange={e => setCardState(s => ({ ...s, number: { complete: e.complete, error: e.error } }))} />
                 </div>
@@ -374,14 +374,14 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
               </div>
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-2">Expiry</label>
+                  <label className="block text-[15px] font-medium text-[#111827] mb-2">Expiry date:</label>
                   <div className="w-full bg-gray-100 rounded-md px-4 py-3 text-sm">
                     <CardExpiryElement options={stripeOptions} onChange={e => setCardState(s => ({ ...s, expiry: { complete: e.complete, error: e.error } }))} />
                   </div>
                   {errors.cardExpiry && <p className="text-red-500 text-xs mt-1">{errors.cardExpiry}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-2">CVC</label>
+                  <label className="block text-[15px] font-medium text-[#111827] mb-2">CVC:</label>
                   <div className="w-full bg-gray-100 rounded-md px-4 py-3 text-sm">
                     <CardCvcElement options={stripeOptions} onChange={e => setCardState(s => ({ ...s, cvc: { complete: e.complete, error: e.error } }))} />
                   </div>

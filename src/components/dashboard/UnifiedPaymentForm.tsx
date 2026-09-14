@@ -945,8 +945,8 @@ function PaymentForm({
           {selectedMethod === "new" && finalPayable > 0 ? (
             <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
               <div>
-                <label htmlFor="card-holder-name" className="block text-xs font-bold text-gray-700 mb-2">
-                  Name on the card
+                <label htmlFor="card-holder-name" className="block text-[15px] font-medium text-[#111827] mb-2">
+                  Name on the card:
                 </label>
                 <input
                   id="card-holder-name"
@@ -993,10 +993,10 @@ function PaymentForm({
                       value={billingAddress.line1}
                       onChange={(e) => {
                         setBillingAddress({ ...billingAddress, line1: e.target.value });
-                        setFormErrors((prev: any) => ({ ...prev, billingLine1: "" }));
+                        setFormErrors((prev: any) => ({ ...prev, billingAddress: "" }));
                       }}
                       className={`w-full bg-white border ${
-                        formErrors.billingLine1 ? "border-red-500 focus:ring-red-300" : "border-gray-300 focus:ring-indigo-300"
+                        formErrors.billingAddress ? "border-red-500 focus:ring-red-300" : "border-gray-300 focus:ring-indigo-300"
                       } rounded-md px-4 py-2 text-sm text-gray-800 outline-none focus:ring-2`}
                     />
                     {formErrors.billingLine1 && <span className="text-[10px] text-red-500">{formErrors.billingLine1}</span>}
@@ -1071,7 +1071,7 @@ function PaymentForm({
               )}
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-2">Card number</label>
+                <label className="block text-[15px] font-medium text-[#111827] mb-2">Card number:</label>
                 <div
                   className={`w-full bg-gray-100 border ${
                     formErrors.cardNumber ? "border-red-500 ring-1 ring-red-500" : "border-none"
@@ -1093,7 +1093,7 @@ function PaymentForm({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-2">Expiry date</label>
+                  <label className="block text-[15px] font-medium text-[#111827] mb-2">Expiry date:</label>
                   <div
                     className={`w-full bg-gray-100 border ${
                       formErrors.cardExpiry ? "border-red-500 ring-1 ring-red-500" : "border-none"
@@ -1113,7 +1113,7 @@ function PaymentForm({
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-2">CVC</label>
+                  <label className="block text-[15px] font-medium text-[#111827] mb-2">CVC:</label>
                   <div
                     className={`w-full bg-gray-100 border ${
                       formErrors.cardCvc ? "border-red-500 ring-1 ring-red-500" : "border-none"

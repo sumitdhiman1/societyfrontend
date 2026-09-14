@@ -27,6 +27,23 @@ export function ReceiptModal({
   const totalPrice = Number(payment?.amount ?? project.amountPaid ?? project.price ?? project.totalCost ?? 0);
   const currency = (payment?.currency || project.currency || "USD").toUpperCase();
 
+  const vatRate = Number(
+    payment?.vatRate ??
+    project.vatRate ??
+    project.vatPercentage ??
+    (project.taxPercentage != null ? project.taxPercentage : 0)
+  );
+  const vatAmount = Number(
+    payment?.vatAmount ??
+    project.vatAmount ??
+    (vatRate > 0 ? Math.round(((totalPrice * vatRate) / (100 + vatRate)) * 100) / 100 : 0)
+  );
+  const subtotal = Number(
+    payment?.subtotal ??
+    project.subtotal ??
+    (vatRate > 0 ? Math.round((totalPrice - vatAmount) * 100) / 100 : totalPrice)
+  );
+
   const formatCurrency = (amt: number) =>
     new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -126,7 +143,7 @@ export function ReceiptModal({
                     {project.timelineInDays ? `${project.timelineInDays} Days` : "30 Days"}
                   </td>
                   <td className="px-5 py-3.5 text-right text-gray-900 font-bold">
-                    {formatCurrency(totalPrice)}
+                    {formatCurrency(subtotal)}
                   </td>
                 </tr>
               </tbody>
@@ -137,11 +154,11 @@ export function ReceiptModal({
             <div className="w-full max-w-xs space-y-2">
               <div className="flex justify-between items-center text-xs">
                 <span className="text-gray-500 font-semibold">Subtotal:</span>
-                <span className="text-gray-800 font-bold">{formatCurrency(totalPrice)}</span>
+                <span className="text-gray-800 font-bold">{formatCurrency(subtotal)}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-gray-500 font-semibold">Tax (0%):</span>
-                <span className="text-gray-800 font-bold">$0.00</span>
+                <span className="text-gray-500 font-semibold">VAT ({vatRate}%):</span>
+                <span className="text-gray-800 font-bold">{formatCurrency(vatAmount)}</span>
               </div>
               <div className="h-px bg-gray-200 w-full pt-0.5" />
               <div className="flex justify-between items-center pt-1">
@@ -249,19 +266,32 @@ export default function CalculatorProjectPayments({
     activeProject.timeline ||
     "2 weeks";
 
-  const quoteTotalCost = Number(
-    linkedQuote.totalCost ??
-    linkedQuote.requirements?.calculatedPrice ??
-    specs.calculatedPrice ??
-    0
+  const vatRate = Number(
+    activeProject.vatRate ??
+    activeProject.vatPercentage ??
+    linkedQuote.vatRate ??
+    linkedQuote.vatPercentage ??
+    (activeProject.taxPercentage != null ? activeProject.taxPercentage : 0)
   );
 
-  const rawBaseCost = Math.max(
-    quoteTotalCost,
+  const rawTotalCost = Math.max(
+    Number(linkedQuote.totalCost || 0),
     Number(activeProject.totalCost || 0),
     Number(activeProject.price || 0),
     Number(activeProject.totalPrice || 0),
     (Number(activeProject.amountPaid || 0) + Number(activeProject.amountDue || 0))
+  );
+
+  const baseSubtotal = Number(
+    activeProject.subtotal ??
+    linkedQuote.subtotal ??
+    specs.subtotal ??
+    specs.calculatedPrice ??
+    linkedQuote.requirements?.subtotal ??
+    linkedQuote.requirements?.calculatedPrice ??
+    (vatRate > 0 && rawTotalCost > 0
+      ? Math.round((rawTotalCost / (1 + vatRate / 100)) * 100) / 100
+      : rawTotalCost)
   );
 
   const primaryItemTitle =
@@ -274,7 +304,7 @@ export default function CalculatorProjectPayments({
       description: primaryItemTitle,
       details: "Based on calculator selections",
       duration: itemDuration,
-      amount: rawBaseCost,
+      amount: baseSubtotal,
       isAddOn: false,
     },
   ];
@@ -284,8 +314,13 @@ export default function CalculatorProjectPayments({
     : primaryItems;
 
   const addonsTotal = allAddonItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
-  const deliverablesTotal = deliverableItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
-  const totalProjectCost = deliverablesTotal > 0 ? deliverablesTotal : (rawBaseCost > 0 ? rawBaseCost : addonsTotal);
+  const totalSubtotal = baseSubtotal + addonsTotal;
+  const effectiveVatAmount = Number(
+    activeProject.vatAmount ??
+    linkedQuote.vatAmount ??
+    (vatRate > 0 ? Math.round((totalSubtotal * (vatRate / 100)) * 100) / 100 : 0)
+  );
+  const totalProjectCost = totalSubtotal + effectiveVatAmount;
 
   const totalPaidFromTransactions = (payments || [])
     .filter((p: any) => ["succeeded", "paid", "completed"].includes(p.status?.toLowerCase()))
@@ -348,7 +383,7 @@ export default function CalculatorProjectPayments({
   const depositAmount = Number(
     activeProject.depositAmount ||
     linkedQuote.depositAmount ||
-    (totalProjectCost > 0 && amountPaid === 0 ? totalProjectCost / 2 : 0)
+    (baseSubtotal > 0 ? baseSubtotal / 2 : (totalProjectCost > 0 ? totalProjectCost / 2 : 0))
   );
 
   const currency = (activeProject.currency || linkedQuote.currency || payments[0]?.currency || "USD").toUpperCase();
@@ -436,7 +471,11 @@ export default function CalculatorProjectPayments({
     const searchInvoiceNumber = searchParams?.get("invoiceNumber") || undefined;
     const searchMessageId = searchParams?.get("messageId") || undefined;
     const searchDescription = searchParams?.get("description") || undefined;
-    const targetCost = searchAmount > 0 ? searchAmount : pendingBalance;
+    const targetCost = searchAmount > 0
+      ? searchAmount
+      : (amountPaid === 0
+        ? baseSubtotal
+        : (vatRate > 0 ? Math.round((pendingBalance / (1 + vatRate / 100)) * 100) / 100 : pendingBalance));
 
     return (
       <div className="w-full font-sans space-y-8">
@@ -475,7 +514,7 @@ export default function CalculatorProjectPayments({
               amountPaid={amountPaid}
               isFullyPaid={isFullyPaid}
               nativeCurrency={currency}
-              vatRate={Number(activeProject.vatRate ?? activeProject.vatPercentage ?? (activeProject.taxPercentage != null ? activeProject.taxPercentage : 0))}
+              vatRate={vatRate}
               invoiceId={searchInvoiceId}
               metadata={{
                 invoiceId: searchInvoiceId,
@@ -614,11 +653,9 @@ export default function CalculatorProjectPayments({
   const totalPaidAmount = Number(
     activeProject.amountPaid ??
     (totalPaidFromTransactions > 0 ? totalPaidFromTransactions : undefined) ??
+    totalProjectCost ??
     activeProject.totalCost ??
     activeProject.price ??
-    activeProject.totalPrice ??
-    linkedQuote.totalCost ??
-    linkedQuote.requirements?.calculatedPrice ??
     0
   );
 
@@ -700,7 +737,7 @@ export default function CalculatorProjectPayments({
                       {itemDuration}
                     </td>
                     <td className="py-4 px-6 text-sm font-bold text-gray-800 text-right whitespace-nowrap">
-                      {formatCurrency(totalPaidAmount)}
+                      {formatCurrency(baseSubtotal)}
                     </td>
                   </tr>
                   {allAddonItems.map((addon: any, idx: number) => (
@@ -719,17 +756,48 @@ export default function CalculatorProjectPayments({
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t border-gray-200 bg-gray-50/30">
-                    <td className="py-3 px-6" colSpan={2}></td>
-                    <td className="py-3 px-6 text-right">
-                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                        Total Paid
-                      </div>
-                      <div className="text-sm font-bold text-gray-800 mt-0.5">
-                        {formatCurrency(totalPaidAmount)}
-                      </div>
-                    </td>
-                  </tr>
+                  {vatRate > 0 && effectiveVatAmount > 0 ? (
+                    <>
+                      <tr className="border-t border-gray-200 bg-gray-50/20">
+                        <td className="py-2.5 px-6 text-right text-xs font-semibold text-gray-500" colSpan={2}>
+                          Subtotal:
+                        </td>
+                        <td className="py-2.5 px-6 text-right text-xs font-bold text-gray-800">
+                          {formatCurrency(totalSubtotal)}
+                        </td>
+                      </tr>
+                      <tr className="bg-gray-50/20">
+                        <td className="py-2.5 px-6 text-right text-xs font-semibold text-gray-500" colSpan={2}>
+                          VAT ({vatRate}%):
+                        </td>
+                        <td className="py-2.5 px-6 text-right text-xs font-bold text-gray-800">
+                          {formatCurrency(effectiveVatAmount)}
+                        </td>
+                      </tr>
+                      <tr className="border-t border-gray-200 bg-gray-50/40">
+                        <td className="py-3 px-6 text-right text-xs font-bold text-gray-500 uppercase tracking-wider" colSpan={2}>
+                          Total Paid
+                        </td>
+                        <td className="py-3 px-6 text-right">
+                          <div className="text-sm font-black text-gray-900">
+                            {formatCurrency(totalPaidAmount)}
+                          </div>
+                        </td>
+                      </tr>
+                    </>
+                  ) : (
+                    <tr className="border-t border-gray-200 bg-gray-50/30">
+                      <td className="py-3 px-6" colSpan={2}></td>
+                      <td className="py-3 px-6 text-right">
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                          Total Paid
+                        </div>
+                        <div className="text-sm font-bold text-gray-800 mt-0.5">
+                          {formatCurrency(totalPaidAmount)}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 </tfoot>
               </table>
             </div>
