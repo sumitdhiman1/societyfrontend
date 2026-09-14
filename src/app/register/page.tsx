@@ -219,7 +219,7 @@ function RegisterForm() {
       />
 
       {/* Left Panel */}
-      <div className="hidden lg:block w-[40%] h-screen sticky top-0 overflow-hidden shrink-0">
+      <div className="hidden lg:block w-[40%] h-screen top-0 self-start overflow-hidden shrink-0 bg-[#060a12] relative">
         <img src="images/worldpic.png" className="w-full h-full object-cover" alt="Panel" />
       </div>
 
@@ -372,7 +372,17 @@ function RegisterForm() {
                   {/* <button type="button" onClick={() => setStep(1)} className="flex-1 h-[48px] rounded-[8px] border-2 border-[#BDBDBD] text-[#3A3A3A] font-bold hover:bg-gray-50 transition-all active:scale-[0.98]">
                     Back
                   </button> */}
-                  <SubmitButton label={loading ? "Creating account..." : "Create my account"} type="submit" disabled={loading} className="flex-[2] !mt-0" />
+                  <SubmitButton label={loading ? "Creating account..." : "Create my account"} type="submit" disabled={loading} className="
+        w-full
+        h-[48px]
+        mt-6
+        rounded-[8px]
+        text-white
+        text-[15px]
+        font-bold
+        transition-all
+        active:scale-[0.98]
+        bg-primary-300 hover:bg-primary-500 shadow-md hover:shadow-lg" />
                 </div>
               </form>
             </>

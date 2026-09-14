@@ -45,14 +45,14 @@ function LoginForm() {
   };
 
   return (
-    <div className="login-container">
+    <div className="min-h-screen w-full flex bg-white">
       {/* Left Panel - Image */}
-      <div className="login-left-panel">
+      <div className="hidden lg:block w-[40%] h-screen top-0 self-start overflow-hidden shrink-0 bg-[#060a12] relative">
         <Image
           src="/images/worldpic.png"
           alt="Left Panel Image"
           fill
-          className="w-full h-full object-cover"
+          className="object-cover object-center transition-opacity duration-300"
           priority
         />
       </div>
