@@ -12,8 +12,9 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect");
-  
+
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(searchParams.get("error") || "");
   const [formData, setFormData] = useState({
     email: "",
@@ -48,10 +49,10 @@ function LoginForm() {
       {/* Left Panel - Image */}
       <div className="login-left-panel">
         <Image
-          src="/images/worldpic.jpg"
+          src="/images/worldpic.png"
           alt="Left Panel Image"
           fill
-          className="w-full h-full object-cover opacity-80"
+          className="w-full h-full object-cover"
           priority
         />
       </div>
@@ -59,15 +60,25 @@ function LoginForm() {
       {/* Right Panel - Form */}
       <div className="login-right-panel">
         <div className="login-form-wrapper">
+          <div className="mt-4 mb-6">
+            <Link
+              href="/"
+              className="w-10 h-10 border border-gray-400 rounded-full flex items-center justify-center text-[#1a1a40] hover:bg-gray-50 hover:border-gray-600 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+            </Link>
+          </div>
           <div className="header-link-container">
             <div className="flex flex-col">
-              <h1 className="login-h1">Log in</h1>
-              <p className="login-subtitle">Welcome back</p>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1a1a40] tracking-tight">Log in</h1>
+              <p className="text-gray-400 font-bold text-sm sm:text-[15px] uppercase tracking-wider mt-1">Welcome back</p>
             </div>
             <div className="register-link-desktop">
               <div className="text-sm">
-                <span className="link-label">Not a member?</span>
-                <Link href="/register" className="link-action">
+                <span className="opacity-60 text-gray-400 font-bold uppercase tracking-wider text-[11px]">Not a member?</span>
+                <Link href="/register" className="font-extrabold text-[#1a1a40] ml-3 hover:underline transition-all tracking-tight">
                   Register now
                 </Link>
               </div>
@@ -173,14 +184,33 @@ function LoginForm() {
                   <label className="login-input-label">
                     Password<span className="text-error ml-1">*</span>
                   </label>
-                  <input
-                    type="password"
-                    name="password"
-                    required
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    className="login-input-field"
-                  />
+                  <div className="relative w-full">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      required
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      className="login-input-field pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                        </svg>
+                      ) : (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
                 <Link
                   href="/forgot-password"
