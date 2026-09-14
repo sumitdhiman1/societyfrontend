@@ -166,28 +166,22 @@ const asId = (val: any): string => {
   return String(val);
 };
 
-const sameText = (a: any, b: any): boolean => {
-  const left = String(a || "").trim().toLowerCase();
-  const right = String(b || "").trim().toLowerCase();
-  return Boolean(left && right && left === right);
-};
-
 function isExactPaymentRequestPaid(msg: any, project: any, payments: any[]): boolean {
   const content = typeof msg?.content === "object" && msg.content ? msg.content : {};
-  const description = content.description || msg.description || "";
   const invId = asId(content.invoiceId || msg.invoiceId);
-  const invNum = String(content.invoiceNumber || msg.invoiceNumber || "");
+  const invNum = String(content.invoiceNumber || msg.invoiceNumber || "").trim();
   const msgIds = [asId(msg._id), asId(msg.id), asId(content.messageId)].filter(Boolean);
 
-  const matchesTarget = (target: { messageId?: any; invoiceId?: any; invoiceNumber?: any; description?: any }) => {
+  if (!invId && !invNum && msgIds.length === 0) return false;
+
+  const matchesTarget = (target: { messageId?: any; invoiceId?: any; invoiceNumber?: any }) => {
     const tMsgId = asId(target.messageId);
     const tInvId = asId(target.invoiceId);
-    const tInvNum = String(target.invoiceNumber || "");
+    const tInvNum = String(target.invoiceNumber || "").trim();
     return Boolean(
       (tMsgId && msgIds.includes(tMsgId)) ||
       (invId && tInvId && invId === tInvId) ||
-      (invNum && tInvNum && invNum === tInvNum) ||
-      sameText(description, target.description)
+      (invNum && tInvNum && invNum === tInvNum)
     );
   };
 
@@ -207,7 +201,6 @@ function isExactPaymentRequestPaid(msg: any, project: any, payments: any[]): boo
       messageId: c.messageId || m.messageId,
       invoiceId: c.invoiceId || m.invoiceId,
       invoiceNumber: c.invoiceNumber || m.invoiceNumber,
-      description: c.description || m.description,
     });
   })) {
     return true;
@@ -220,7 +213,6 @@ function isExactPaymentRequestPaid(msg: any, project: any, payments: any[]): boo
       messageId: meta.messageId,
       invoiceId: meta.invoiceId || meta.invoice_id,
       invoiceNumber: meta.invoiceNumber,
-      description: meta.description || p.description,
     });
   });
 }

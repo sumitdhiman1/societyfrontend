@@ -48,6 +48,7 @@ const sanitizeAnalysisText = (text: string): string => {
     .replace(/for this project moving forward/gi, "for this analysis moving forward")
     .replace(/as project manager/gi, "as manager")
     .replace(/project manager/gi, "manager")
+    .replace(/We've received your payment of ([\d.]+)\s+([A-Z]{3})\.?\s+for\s+"[^"]*"\.?/gi, "We've received your payment of $1 $2.")
     .replace(/Your project financials have been updated/gi, "Your analysis financials have been updated")
     .replace(/This project has been temporarily paused/gi, "This analysis has been temporarily paused")
     .replace(/This project is currently paused/gi, "This analysis is currently paused")
@@ -145,33 +146,13 @@ const renderStatusMessageText = (rawText: string, attachments?: any[]) => {
     );
   }
 
-  // 2. Contact phrase regex without markdown
-  const contactRegex = /(click here to contact us for further assistance\.?|click here to contact us\.?|contact us for further assistance\.?|contact us\.?)/i;
-  if (contactRegex.test(text)) {
-    const parts = text.split(contactRegex);
-    return (
-      <span>
-        {parts.map((part, i) =>
-          contactRegex.test(part) ? (
-            <Link
-              key={i}
-              href="/help-support/contact-us"
-              className="text-[#5356ff] underline hover:text-[#3232b7] font-semibold transition-colors"
-            >
-              {part}
-            </Link>
-          ) : (
-            <span key={i}>{part}</span>
-          )
-        )}
-        {renderPdfButton()}
-      </span>
-    );
-  }
+  // Payment confirmations may include a website URL in the title — keep it as
+  // plain text so it is not rendered as a clickable link.
+  const isPaymentReceived = /we've received your payment/i.test(text);
 
   // 3. Raw URL
   const urlRegex = /(https?:\/\/[^\s]+)/g;
-  if (urlRegex.test(text)) {
+  if (!isPaymentReceived && urlRegex.test(text)) {
     const parts = text.split(urlRegex);
     return (
       <span>
@@ -1135,145 +1116,195 @@ export default function AnalysisDetailsPage() {
             const rawAttachments = msg.attachments || msg.content?.attachedFiles || msg.attachedFiles || (msg.content as any)?.attachedFilesUrl || msg.attachedFilesUrl || [];
             const attachmentList = Array.isArray(rawAttachments) ? rawAttachments : [];
 
+            const isDeliveryMsg = Boolean(
+              msg.isFinalDelivery ||
+              msg.type === "final_delivery" ||
+              msg.type === "delivery" ||
+              msg.content?.isFinalDelivery ||
+              msg.content?.type === "final_delivery"
+            );
+
+            const hasSubsequentCompletionMsg = (analysis.messages || []).slice(idx + 1).some(
+              (m: any) =>
+                (m.type === "system_notification" || m.isSystem) &&
+                (m.message?.toLowerCase().includes("completed") ||
+                  m.content?.systemText?.toLowerCase().includes("completed") ||
+                  m.content?.text?.toLowerCase().includes("completed"))
+            );
+
             return (
-              <div key={msgId} className="w-full bg-white rounded-xl shadow-sm border border-gray-300 p-6 md:p-8">
-                <div className="flex justify-between items-start mb-6">
-                  <div className="flex items-center gap-4">
-                    {senderAvatar ? (
-                      <img src={senderAvatar} alt={senderName} className="w-12 h-12 rounded-full object-cover shadow-sm" />
-                    ) : (
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm ${isClient ? 'bg-blue-900' : 'bg-gray-800'}`}>
-                        {(senderName || "U")[0]?.toUpperCase()}
-                      </div>
-                    )}
-                    <div>
-                      <h4 className="font-bold text-gray-800 text-base sm:text-lg">{senderName}</h4>
-                      {msg.isFinalDelivery && (
-                        <span className="inline-block px-2.5 py-0.5 bg-green-100 text-green-800 text-[10px] font-bold rounded-full uppercase mt-1">
-                          Final Delivery Report
-                        </span>
+              <React.Fragment key={msgId}>
+                <div className="w-full bg-white rounded-xl shadow-sm border border-gray-300 p-6 md:p-8">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-4">
+                      {senderAvatar ? (
+                        <img src={senderAvatar} alt={senderName} className="w-12 h-12 rounded-full object-cover shadow-sm" />
+                      ) : (
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm ${isClient ? 'bg-blue-900' : 'bg-gray-800'}`}>
+                          {(senderName || "U")[0]?.toUpperCase()}
+                        </div>
                       )}
+                      <div>
+                        <h4 className="font-bold text-gray-800 text-base sm:text-lg">{senderName}</h4>
+                        {msg.isFinalDelivery && (
+                          <span className="inline-block px-2.5 py-0.5 bg-green-100 text-green-800 text-[10px] font-bold rounded-full uppercase mt-1">
+                            Final Delivery Report
+                          </span>
+                        )}
+                      </div>
                     </div>
+                    <span className="text-xs text-gray-400 font-medium whitespace-nowrap">
+                      {formatDateTime(msg.createdAt || msg.timestamp)}
+                    </span>
                   </div>
-                  <span className="text-xs text-gray-400 font-medium whitespace-nowrap">
-                    {formatDateTime(msg.createdAt || msg.timestamp)}
-                  </span>
-                </div>
 
-                <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap pl-0 sm:pl-16 mb-6">
-                  {msg.message || msg.content?.text}
-                </div>
+                  <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap pl-0 sm:pl-16 mb-6">
+                    {msg.message || msg.content?.text}
+                  </div>
 
-                {attachmentList.length > 0 && (
-                  <div className="pl-0 sm:pl-16 mb-6">
-                    <h5 className="text-sm font-bold text-gray-700 mb-3">
-                      {isClient ? "Attached Files" : "Delivery Attachments"}
-                    </h5>
-                    <div className="border-t border-gray-200 mb-4" />
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
-                      {attachmentList.map((att: any, attIdx: number) => {
-                        const url = typeof att === "string" ? att : (att.url || att.secure_url || att.path);
-                        const name = typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "file") : (att.name || att.filename || decodeURIComponent((url || "").split("/").pop() || "file"));
-                        if (!url) return null;
-                        const safeUrl = getSafeUrl(url);
-                        const isImg = isImageUrl(url);
-                        const isSvg = url.toLowerCase().includes(".svg");
-                        const isPdf = url.toLowerCase().includes(".pdf");
+                  {attachmentList.length > 0 && (
+                    <div className="pl-0 sm:pl-16 mb-6">
+                      <h5 className="text-sm font-bold text-gray-700 mb-3">
+                        {isClient ? "Attached Files" : "Delivery Attachments"}
+                      </h5>
+                      <div className="border-t border-gray-200 mb-4" />
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
+                        {attachmentList.map((att: any, attIdx: number) => {
+                          const url = typeof att === "string" ? att : (att.url || att.secure_url || att.path);
+                          const name = typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "file") : (att.name || att.filename || decodeURIComponent((url || "").split("/").pop() || "file"));
+                          if (!url) return null;
+                          const safeUrl = getSafeUrl(url);
+                          const isImg = isImageUrl(url);
+                          const isSvg = url.toLowerCase().includes(".svg");
+                          const isPdf = url.toLowerCase().includes(".pdf");
 
-                        return (
-                          <a
-                            key={url + attIdx}
-                            href={safeUrl}
-                            onClick={(e) => downloadFile(e, safeUrl, name)}
-                            download={name}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
-                          >
-                            <div className="flex-grow flex items-center justify-center bg-white relative overflow-hidden">
-                              {isImg ? (
-                                <img
-                                  src={safeUrl}
-                                  alt={name}
-                                  className={
-                                    isSvg
-                                      ? "w-full h-full object-contain p-2.5 group-hover:scale-105 transition-transform duration-300"
-                                      : "w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                  }
-                                  onError={(e) => {
-                                    const target = e.currentTarget;
-                                    if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
-                                      target.src = target.src.replace("http:", "https:");
+                          return (
+                            <a
+                              key={url + attIdx}
+                              href={safeUrl}
+                              onClick={(e) => downloadFile(e, safeUrl, name)}
+                              download={name}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
+                            >
+                              <div className="flex-grow flex items-center justify-center bg-white relative overflow-hidden">
+                                {isImg ? (
+                                  <img
+                                    src={safeUrl}
+                                    alt={name}
+                                    className={
+                                      isSvg
+                                        ? "w-full h-full object-contain p-2.5 group-hover:scale-105 transition-transform duration-300"
+                                        : "w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                     }
-                                  }}
-                                />
-                              ) : isPdf ? (
-                                <div className="flex flex-col items-center gap-1">
-                                  <svg className="w-12 h-12 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M11.363 2c4.155 0 2.637 6 2.637 6s6-1.518 6 2.638c0 4.155-3.345 7.518-7.5 7.518s-7.5-3.363-7.5-7.518c0-4.155 3.345-7.518 7.5-7.518zm1.5 7h-3v1h3v-1zm0 2h-3v1h3v-1zm0 2h-3v1h3v-1z" />
-                                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM6 4h7v5h5v11H6V4z" />
+                                    onError={(e) => {
+                                      const target = e.currentTarget;
+                                      if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
+                                        target.src = target.src.replace("http:", "https:");
+                                      }
+                                    }}
+                                  />
+                                ) : isPdf ? (
+                                  <div className="flex flex-col items-center gap-1">
+                                    <svg className="w-12 h-12 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M11.363 2c4.155 0 2.637 6 2.637 6s6-1.518 6 2.638c0 4.155-3.345 7.518-7.5 7.518s-7.5-3.363-7.5-7.518c0-4.155 3.345-7.518 7.5-7.518zm1.5 7h-3v1h3v-1zm0 2h-3v1h3v-1zm0 2h-3v1h3v-1z" />
+                                      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM6 4h7v5h5v11H6V4z" />
+                                    </svg>
+                                    <span className="text-[10px] font-bold text-red-600 uppercase">PDF</span>
+                                  </div>
+                                ) : (
+                                  <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                   </svg>
-                                  <span className="text-[10px] font-bold text-red-600 uppercase">PDF</span>
-                                </div>
-                              ) : (
-                                <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                              )}
-                              <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
-                                <div className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center">
-                                  <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                  </svg>
+                                )}
+                                <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
+                                  <div className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex items-center justify-center h-10 min-h-[40px]">
-                              <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={name}>{name}</span>
-                            </div>
-                          </a>
-                        );
-                      })}
+                              <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex items-center justify-center h-10 min-h-[40px]">
+                                <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={name}>{name}</span>
+                              </div>
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {/* Recommended Solutions if any */}
+                  {(() => {
+                    const recs =
+                      (msg.recommendedSolutions && msg.recommendedSolutions.length > 0 ? msg.recommendedSolutions : null) ||
+                      (msg.content?.recommendedSolutions && msg.content.recommendedSolutions.length > 0 ? msg.content.recommendedSolutions : null) ||
+                      (msg.content?.deliverableItems && msg.content.deliverableItems.length > 0 ? msg.content.deliverableItems : null) ||
+                      (msg.content?.lineItems && msg.content.lineItems.length > 0 ? msg.content.lineItems : null) ||
+                      [];
+                    if (recs.length === 0) return null;
+                    return (
+                      <div className="pl-0 sm:pl-16 mb-6">
+                        <h5 className="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">
+                          Recommended Solutions
+                        </h5>
+                        <div className="border-t border-gray-200 mb-4" />
+                        <div className="flex flex-wrap sm:flex-nowrap sm:overflow-x-auto pb-2 gap-4 scrollbar-hide">
+                          {recs.map((sol: any, j: number) => (
+                            <PackageCard
+                              key={(sol.packageId || sol._id || j) + "-" + j}
+                              packageId={sol.packageId || sol._id || sol.id}
+                              title={sol.title || sol.name}
+                              price={sol.price || sol.cost || sol.amount || sol.priceText}
+                              imageUrl={sol.imageUrl || sol.mediumUrl || sol.thumbnailUrl || sol.image}
+                              category={sol.category || sol.categorycode}
+                              description={sol.description}
+                              link={sol.link || `/dashboard/new-project/packages/${sol.packageId || sol._id || sol.id}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {isDeliveryMsg && !hasSubsequentCompletionMsg && (
+                  <div className="text-center py-6 px-4 my-2">
+                    <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
+                      Analysis completed!
+                    </h3>
+                    <div className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
+                      This analysis has been completed.
                     </div>
                   </div>
                 )}
-                {/* Recommended Solutions if any */}
-                {(() => {
-                  const recs =
-                    (msg.recommendedSolutions && msg.recommendedSolutions.length > 0 ? msg.recommendedSolutions : null) ||
-                    (msg.content?.recommendedSolutions && msg.content.recommendedSolutions.length > 0 ? msg.content.recommendedSolutions : null) ||
-                    (msg.content?.deliverableItems && msg.content.deliverableItems.length > 0 ? msg.content.deliverableItems : null) ||
-                    (msg.content?.lineItems && msg.content.lineItems.length > 0 ? msg.content.lineItems : null) ||
-                    [];
-                  if (recs.length === 0) return null;
-                  return (
-                    <div className="pl-0 sm:pl-16 mb-6">
-                      <h5 className="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">
-                        Recommended Solutions
-                      </h5>
-                      <div className="border-t border-gray-200 mb-4" />
-                      <div className="flex flex-wrap sm:flex-nowrap sm:overflow-x-auto pb-2 gap-4 scrollbar-hide">
-                        {recs.map((sol: any, j: number) => (
-                          <PackageCard
-                            key={(sol.packageId || sol._id || j) + "-" + j}
-                            packageId={sol.packageId || sol._id || sol.id}
-                            title={sol.title || sol.name}
-                            price={sol.price || sol.cost || sol.amount || sol.priceText}
-                            imageUrl={sol.imageUrl || sol.mediumUrl || sol.thumbnailUrl || sol.image}
-                            category={sol.category || sol.categorycode}
-                            description={sol.description}
-                            link={sol.link || `/dashboard/new-project/packages/${sol.packageId || sol._id || sol.id}`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
+              </React.Fragment>
             );
           })}
         </div>
       )}
+
+      {/* Fallback Banner if analysis status is completed and no message rendered completion */}
+      {analysis.status === "completed" && !(analysis.messages || []).some((m: any) =>
+        m.isFinalDelivery ||
+        m.type === "final_delivery" ||
+        m.content?.isFinalDelivery ||
+        m.content?.type === "final_delivery" ||
+        ((m.type === "system_notification" || m.isSystem) &&
+          (m.message?.toLowerCase().includes("completed") ||
+            m.content?.systemText?.toLowerCase().includes("completed") ||
+            m.content?.text?.toLowerCase().includes("completed")))
+      ) && (
+          <div className="text-center py-6 px-4 my-2">
+            <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
+              Analysis completed!
+            </h3>
+            <div className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
+              This analysis has been completed.
+            </div>
+          </div>
+        )}
 
       <div ref={messagesEndRef} className="h-4 w-full shrink-0" />
 

@@ -159,6 +159,10 @@ function PackageDetailsContent() {
   };
 
   const handleSaveOrder = async (tier: any) => {
+    if (!authService.isAuthenticated()) {
+      authService.redirectToLogin();
+      return;
+    }
     if (!(parsePrice(tier.price) > 0 || parsePrice(tier.recurringAmount) > 0)) {
       router.push("/dashboard/new-project/custom-quote");
       return;
@@ -198,10 +202,18 @@ function PackageDetailsContent() {
         setStatus({ isOpen: true, type: "success", title: "Order Created", message: "Invoice generated successfully. Redirecting to your project..." });
         setTimeout(() => router.push(`/dashboard/my-projects/${res.data.projectId}/details`), 2000);
       } else {
+        if (authService.isUnauthorizedError(res)) {
+          authService.redirectToLogin();
+          return;
+        }
         throw new Error(res.message || "Failed to create order.");
       }
     } catch (err: any) {
       console.error("Order Error:", err);
+      if (authService.isUnauthorizedError(err)) {
+        authService.redirectToLogin();
+        return;
+      }
       setStatus({ isOpen: true, type: "error", title: "Order Failed", message: err.message || "Could not generate invoice." });
     } finally {
       setProcessing(false);

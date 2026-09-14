@@ -326,6 +326,33 @@ export class AuthService {
     window.dispatchEvent(new Event("auth:login"));
     claimPendingAnalyses();
   }
+
+  /**
+   * Send unauthenticated users to login, preserving the current (or given) path.
+   */
+  redirectToLogin(redirectPath?: string): void {
+    if (typeof window === "undefined") return;
+    const path = redirectPath ?? `${window.location.pathname}${window.location.search}`;
+    window.location.assign(`/login?redirect=${encodeURIComponent(path)}`);
+  }
+
+  /**
+   * True when an API/UI error is an auth failure (guest or expired session).
+   */
+  isUnauthorizedError(error: unknown): boolean {
+    if (error == null) return false;
+    if (typeof error === "string") {
+      return error.trim().toLowerCase() === "unauthorized";
+    }
+    if (typeof error === "object") {
+      const record = error as { status?: number; message?: unknown };
+      if (record.status === 401) return true;
+      if (typeof record.message === "string") {
+        return record.message.trim().toLowerCase() === "unauthorized";
+      }
+    }
+    return false;
+  }
 }
 
 export const authService = new AuthService();
