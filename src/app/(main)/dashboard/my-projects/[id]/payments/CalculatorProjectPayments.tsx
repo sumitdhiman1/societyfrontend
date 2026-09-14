@@ -236,7 +236,10 @@ export default function CalculatorProjectPayments({
       specs.categoryName || linkedQuote.serviceType
     ) || "Website";
 
-  const itemTitle = `Custom ${categoryDisplayName} Development Project`;
+  const itemTitle = `Custom ${categoryDisplayName} Development Project`
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
   const itemDuration =
     specs.estimatedTimeline ||
@@ -636,7 +639,10 @@ export default function CalculatorProjectPayments({
               <div className="flex items-start justify-between gap-4 mb-1">
                 <div className="flex items-center gap-3 flex-wrap">
                   <h3 className="text-lg font-bold text-[#0d1939]">
-                    {activeProject.title || `Website Price Calculator - ${activeProject.clientName || activeProject.client?.fullName || "Client"}`}
+                    {(activeProject.title || `Website Price Calculator - ${activeProject.clientName || activeProject.client?.fullName || "Client"}`)
+                      .replace(/<br\s*\/?>/gi, " ")
+                      .replace(/\s+/g, " ")
+                      .trim()}
                   </h3>
                   <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200">
                     {paymentStatus}
