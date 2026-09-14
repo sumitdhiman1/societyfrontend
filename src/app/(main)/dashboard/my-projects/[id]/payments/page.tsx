@@ -85,7 +85,7 @@ export default function ProjectPaymentsPage() {
 
   useEffect(() => {
     const rawQuoteId = typeof activeProject?.quoteId === "string" ? activeProject.quoteId : activeProject?.quoteId?._id;
-    if (rawQuoteId && !fetchedQuote && !activeProject?.calculatorSpecs && !activeProject?.isCalculator) {
+    if (rawQuoteId && !fetchedQuote && (!activeProject?.quoteId || typeof activeProject?.quoteId === "string" || !activeProject?.quoteId?.requirements)) {
       quoteService
         .getQuoteById(rawQuoteId)
         .then((res) => {

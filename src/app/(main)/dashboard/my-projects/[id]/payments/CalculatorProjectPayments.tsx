@@ -204,6 +204,7 @@ export default function CalculatorProjectPayments({
   const [showReceipt, setShowReceipt] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
   const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null);
 
   const activeProject = project || {};
@@ -289,41 +290,57 @@ export default function CalculatorProjectPayments({
 
   const amountPaid = Math.max(Number(activeProject.amountPaid || 0), totalPaidFromTransactions);
   const explicitAmountDue = activeProject.amountDue != null && !isNaN(Number(activeProject.amountDue)) ? Number(activeProject.amountDue) : null;
-  const pendingBalance = Math.max(0, explicitAmountDue !== null ? explicitAmountDue : totalProjectCost - amountPaid);
-  const isFullyPaid = pendingBalance <= 0.009 && amountPaid > 0 && activeProject.paymentStatus !== "pending";
+  const calculatedPending = Math.max(0, totalProjectCost - amountPaid);
+  const pendingBalance =
+    totalPaidFromTransactions >= totalProjectCost - 0.009 ||
+    amountPaid >= totalProjectCost - 0.009 ||
+    activeProject.paymentStatus === "paid" ||
+    activeProject.paymentStatus === "succeeded"
+      ? 0
+      : explicitAmountDue !== null && explicitAmountDue < calculatedPending
+      ? explicitAmountDue
+      : calculatedPending;
+
+  const isFullyPaid =
+    (pendingBalance <= 0.009 && amountPaid > 0) ||
+    activeProject.paymentStatus === "paid" ||
+    activeProject.paymentStatus === "succeeded" ||
+    (totalProjectCost > 0 && amountPaid >= totalProjectCost - 0.009);
 
   const successfulPayments = (payments || []).filter((p: any) =>
     ["succeeded", "paid", "completed"].includes(p.status?.toLowerCase())
   );
 
+  const hasInvoiceOrAmountQuery = Boolean(searchParams?.get("amount")) || Boolean(searchParams?.get("invoiceId"));
+
   // Check if payment was done in parts or has a pending balance:
-  // Whenever there is a pending balance or multiple installments, display the Unified Payment UI
+  // ONLY render the Unified Payment form if the project is NOT fully paid (or has an explicit invoice/amount query)
   const isPartPayment =
-    pendingBalance > 0.009 ||
-    (explicitAmountDue !== null && explicitAmountDue > 0.009) ||
-    (amountPaid < totalProjectCost - 0.009) ||
-    activeProject.paymentStatus === "partially_paid" ||
-    activeProject.paymentStatus === "partial" ||
-    activeProject.paymentStatus === "pending" ||
-    activeProject.paymentStatus === "unpaid" ||
-    linkedQuote.paymentStatus === "partially_paid" ||
-    linkedQuote.paymentStatus === "partial" ||
-    successfulPayments.length > 1 ||
-    payments.length > 1 ||
-    activeProject.billingType === "milestone" ||
-    activeProject.billingType === "installment" ||
-    linkedQuote.billingType === "milestone" ||
-    linkedQuote.billingType === "installment" ||
-    activeProject.paymentOption === "half" ||
-    activeProject.paymentOption === "deposit" ||
-    activeProject.paymentOption === "part" ||
-    linkedQuote.paymentOption === "half" ||
-    Number(activeProject.depositAmount) > 0 ||
-    Number(linkedQuote.depositAmount) > 0 ||
-    Number(activeProject.depositPercentage) > 0 ||
-    Number(linkedQuote.depositPercentage) > 0 ||
-    Boolean(searchParams?.get("amount")) ||
-    Boolean(searchParams?.get("invoiceId"));
+    !isFullyPaid &&
+    (
+      pendingBalance > 0.009 ||
+      (explicitAmountDue !== null && explicitAmountDue > 0.009) ||
+      (amountPaid < totalProjectCost - 0.009) ||
+      activeProject.paymentStatus === "partially_paid" ||
+      activeProject.paymentStatus === "partial" ||
+      activeProject.paymentStatus === "pending" ||
+      activeProject.paymentStatus === "unpaid" ||
+      linkedQuote.paymentStatus === "partially_paid" ||
+      linkedQuote.paymentStatus === "partial" ||
+      activeProject.billingType === "milestone" ||
+      activeProject.billingType === "installment" ||
+      linkedQuote.billingType === "milestone" ||
+      linkedQuote.billingType === "installment" ||
+      activeProject.paymentOption === "half" ||
+      activeProject.paymentOption === "deposit" ||
+      activeProject.paymentOption === "part" ||
+      linkedQuote.paymentOption === "half" ||
+      Number(activeProject.depositAmount) > 0 ||
+      Number(linkedQuote.depositAmount) > 0 ||
+      Number(activeProject.depositPercentage) > 0 ||
+      Number(linkedQuote.depositPercentage) > 0
+    ) ||
+    hasInvoiceOrAmountQuery;
 
   const depositAmount = Number(
     activeProject.depositAmount ||
@@ -366,7 +383,7 @@ export default function CalculatorProjectPayments({
 
   const handleDownloadProject = async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (isDownloadingPdf) return;
+    if (isDownloadingPdf || isDownloadingInvoice) return;
     setIsDownloadingPdf(true);
     try {
       await downloadCalculatorProjectPDF(projectPayloadForPdf);
@@ -374,6 +391,19 @@ export default function CalculatorProjectPayments({
       console.error("Failed to download calculator project PDF:", err);
     } finally {
       setIsDownloadingPdf(false);
+    }
+  };
+
+  const handleViewInvoice = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isDownloadingInvoice || isDownloadingPdf) return;
+    setIsDownloadingInvoice(true);
+    try {
+      await downloadCalculatorProjectPDF(projectPayloadForPdf);
+    } catch (err) {
+      console.error("Failed to download invoice PDF:", err);
+    } finally {
+      setIsDownloadingInvoice(false);
     }
   };
 
@@ -623,19 +653,18 @@ export default function CalculatorProjectPayments({
                 <span className="text-gray-200">|</span>
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedPayment(
-                      payments[0] || {
-                        amount: totalPaidAmount,
-                        createdAt: activeProject.createdAt,
-                        status: paymentStatus,
-                      }
-                    );
-                    setShowReceipt(true);
-                  }}
-                  className="text-[#4343F0] underline decoration-[#4343F0]/40 underline-offset-2 hover:text-[#3232b7] font-semibold transition-colors disabled:opacity-50 cursor-pointer text-xs sm:text-sm"
+                  disabled={isDownloadingInvoice || isDownloadingPdf}
+                  onClick={handleViewInvoice}
+                  className="text-[#4343F0] underline decoration-[#4343F0]/40 underline-offset-2 hover:text-[#3232b7] font-semibold transition-colors disabled:opacity-50 cursor-pointer text-xs sm:text-sm inline-flex items-center gap-1.5"
                 >
-                  View Receipt
+                  {isDownloadingInvoice ? (
+                    <>
+                      <div className="w-3 h-3 border-2 border-[#4343F0] border-t-transparent rounded-full animate-spin" />
+                      <span>Downloading Invoice...</span>
+                    </>
+                  ) : (
+                    "View Invoice"
+                  )}
                 </button>
               </div>
             </div>
@@ -702,7 +731,7 @@ export default function CalculatorProjectPayments({
             <div className="px-6 py-4 flex flex-wrap justify-end gap-3 border-t border-gray-100">
               <button
                 type="button"
-                disabled={isDownloadingPdf}
+                disabled={isDownloadingPdf || isDownloadingInvoice}
                 onClick={handleDownloadProject}
                 className="flex items-center gap-2 px-5 py-2 bg-[#3535b8] hover:bg-[#2a2a9a] text-white text-sm font-bold rounded transition-all shadow-sm disabled:opacity-60 cursor-pointer"
               >
@@ -764,7 +793,7 @@ export default function CalculatorProjectPayments({
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                disabled={isDownloadingPdf}
+                disabled={isDownloadingPdf || isDownloadingInvoice}
                 onClick={handleDownloadProject}
                 className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-2xs disabled:opacity-75 disabled:cursor-not-allowed"
               >

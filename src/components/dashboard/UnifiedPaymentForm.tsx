@@ -554,7 +554,7 @@ function PaymentForm({
                 onClick={() => setShowInvoiceModal(true)}
                 className="text-xs sm:text-sm font-semibold text-[#4343F0] hover:text-[#3232b7] underline decoration-[#4343F0]/40 hover:decoration-[#4343F0] underline-offset-2 whitespace-nowrap cursor-pointer transition-colors"
               >
-                View receipt
+                View invoice
               </button>
             </div>
           </div>
