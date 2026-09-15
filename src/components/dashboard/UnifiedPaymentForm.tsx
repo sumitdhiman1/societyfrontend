@@ -17,9 +17,9 @@ import Link from "next/link";
 import { useCurrency } from "@/context/CurrencyContext";
 import StatusPopup from "@/components/common/StatusPopup";
 type PaymentProcessStep = "idle" | "preparing" | "gateway" | "bank_auth" | "confirming" | "activating" | "success" | "error";
-import InvoicePreviewModal from "./InvoicePreviewModal";
 import { countryService, Country } from "@/lib/countryService";
 import { convertCurrencyAmount, formatPriceWithCurrency, formatActiveCurrency } from "@/lib/currencyUtils";
+import { downloadInvoicePDF } from "@/lib/generateInvoicePDF";
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -68,6 +68,8 @@ interface UnifiedPaymentFormProps {
   hideHeader?: boolean;
   vatRate?: number;
   containerClassName?: string;
+  onDownloadInvoice?: () => void | Promise<void>;
+  isDownloadingInvoice?: boolean;
 }
 
 function PaymentForm({
@@ -94,6 +96,8 @@ function PaymentForm({
   hideHeader = false,
   vatRate: propVatRate,
   containerClassName,
+  onDownloadInvoice,
+  isDownloadingInvoice: propIsDownloadingInvoice,
 }: UnifiedPaymentFormProps & { hideHeader?: boolean }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -252,7 +256,41 @@ function PaymentForm({
     title: "",
     message: "",
   });
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [localDownloadingInvoice, setLocalDownloadingInvoice] = useState(false);
+  const isDownloadingInvoiceState = propIsDownloadingInvoice !== undefined ? propIsDownloadingInvoice : localDownloadingInvoice;
+
+  const handleDownloadInvoiceClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isDownloadingInvoiceState) return;
+
+    if (onDownloadInvoice) {
+      await onDownloadInvoice();
+      return;
+    }
+
+    setLocalDownloadingInvoice(true);
+    try {
+      await downloadInvoicePDF({
+        invoiceNumber: entityNumber,
+        title: title || description,
+        description: description,
+        date: date,
+        deliverableItems: deliverableItems,
+        subtotal: projectSubtotal,
+        vatRate: getActiveVatRate(),
+        vatAmount: getVatAmount(projectSubtotal),
+        totalAmount: projectSubtotal + getVatAmount(projectSubtotal),
+        amountPaid: amountPaid,
+        pendingBalance: Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid),
+        currency: nativeCurrency || "USD",
+        clientEmail: clientEmail,
+      });
+    } catch (err) {
+      console.error("Failed to download invoice PDF:", err);
+    } finally {
+      setLocalDownloadingInvoice(false);
+    }
+  };
 
   const getPayableAmount = () => {
     let amount = totalCost;
@@ -551,10 +589,19 @@ function PaymentForm({
               </span>
               <span className="hidden sm:inline text-gray-300">|</span>
               <button
-                onClick={() => setShowInvoiceModal(true)}
-                className="text-xs sm:text-sm font-semibold text-[#4343F0] hover:text-[#3232b7] underline decoration-[#4343F0]/40 hover:decoration-[#4343F0] underline-offset-2 whitespace-nowrap cursor-pointer transition-colors"
+                type="button"
+                disabled={isDownloadingInvoiceState}
+                onClick={handleDownloadInvoiceClick}
+                className="text-xs sm:text-sm font-semibold text-[#4343F0] hover:text-[#3232b7] underline decoration-[#4343F0]/40 hover:decoration-[#4343F0] underline-offset-2 whitespace-nowrap cursor-pointer transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
               >
-                View invoice
+                {isDownloadingInvoiceState ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-[#4343F0] border-t-transparent rounded-full animate-spin" />
+                    <span>Downloading Invoice...</span>
+                  </>
+                ) : (
+                  "View invoice"
+                )}
               </button>
             </div>
           </div>
@@ -1188,23 +1235,7 @@ function PaymentForm({
         </div>
       )}
 
-      <InvoicePreviewModal
-        isOpen={showInvoiceModal}
-        onClose={() => setShowInvoiceModal(false)}
-        type={type}
-        packageData={{
-          name: title,
-          description: description,
-        }}
-        selectedColumn={{
-          title: type === "ANALYSIS" ? "Analysis" : type === "BUNDLE" ? "Bundle" : "Standard",
-        }}
-        projectNumber={entityNumber}
-        totalCost={projectSubtotal}
-        deliverableItems={deliverableItems}
-        vatAmount={getVatAmount(projectSubtotal)}
-        vatRate={getActiveVatRate() / 100}
-      />
+
     </div>
   );
 }

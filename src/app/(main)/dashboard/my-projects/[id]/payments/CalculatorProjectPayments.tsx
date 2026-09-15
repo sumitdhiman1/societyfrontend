@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authService } from "@/lib/authService";
 import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "@/lib/generateCalculatorProjectPDF";
+import { downloadCalculatorInvoicePDF } from "@/lib/generateCalculatorInvoicePDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { getMainCalculatorCategory } from "@/lib/calculatorUtils";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
@@ -23,7 +24,11 @@ export function ReceiptModal({
 
   const projectNumber =
     project.projectNumber ||
-    (project.quoteNumber || (project._id ? `INV-2026-${project._id.slice(-3).toUpperCase()}` : "INV-2026-163"));
+    (project.quoteNumber && !String(project.quoteNumber).startsWith("INV-")
+      ? project.quoteNumber
+      : project._id
+      ? `SOC-2026-${project._id.slice(-4).toUpperCase()}`
+      : "SOC-2026-001");
   const totalPrice = Number(payment?.amount ?? project.amountPaid ?? project.price ?? project.totalCost ?? 0);
   const currency = (payment?.currency || project.currency || "USD").toUpperCase();
 
@@ -231,9 +236,9 @@ export default function CalculatorProjectPayments({
   const projectId = String(activeProject._id || activeProject.id || "");
   const rawNumber =
     activeProject.projectNumber ||
-    linkedQuote.quoteNumber ||
-    activeProject.quoteNumber ||
-    (activeProject._id ? `INV-2026-${activeProject._id.slice(-3).toUpperCase()}` : "INV-2026-201");
+    (linkedQuote?.quoteNumber && !String(linkedQuote.quoteNumber).startsWith("INV-") ? linkedQuote.quoteNumber : "") ||
+    (activeProject.quoteNumber && !String(activeProject.quoteNumber).startsWith("INV-") ? activeProject.quoteNumber : "") ||
+    (activeProject._id ? `SOC-2026-${activeProject._id.slice(-4).toUpperCase()}` : "SOC-2026-001");
   const cleanNumber = String(rawNumber).replace(/^Project\s*#?/i, "").replace(/^#/, "");
   const formattedProjectNumber = `Project #${cleanNumber}`;
 
@@ -245,7 +250,7 @@ export default function CalculatorProjectPayments({
     ? new Date(activeProject.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
     : "Sep 7, 2026";
 
-  const paymentStatus = (activeProject.paymentStatus || payments[0]?.status || "succeeded").toLowerCase();
+  const rawPaymentStatus = (activeProject.paymentStatus || payments[0]?.status || "pending").toLowerCase();
 
   const categoryDisplayName =
     getMainCalculatorCategory(
@@ -329,21 +334,26 @@ export default function CalculatorProjectPayments({
   const amountPaid = Math.max(Number(activeProject.amountPaid || 0), totalPaidFromTransactions);
   const explicitAmountDue = activeProject.amountDue != null && !isNaN(Number(activeProject.amountDue)) ? Number(activeProject.amountDue) : null;
   const calculatedPending = Math.max(0, totalProjectCost - amountPaid);
-  const pendingBalance =
-    totalPaidFromTransactions >= totalProjectCost - 0.009 ||
-    amountPaid >= totalProjectCost - 0.009 ||
-    activeProject.paymentStatus === "paid" ||
-    activeProject.paymentStatus === "succeeded"
-      ? 0
-      : explicitAmountDue !== null && explicitAmountDue < calculatedPending
-      ? explicitAmountDue
-      : calculatedPending;
 
-  const isFullyPaid =
-    (pendingBalance <= 0.009 && amountPaid > 0) ||
-    activeProject.paymentStatus === "paid" ||
-    activeProject.paymentStatus === "succeeded" ||
-    (totalProjectCost > 0 && amountPaid >= totalProjectCost - 0.009);
+  const isActuallyPaidInFull = totalProjectCost > 0 && amountPaid >= totalProjectCost - 0.009;
+
+  const pendingBalance = isActuallyPaidInFull
+    ? 0
+    : explicitAmountDue !== null && explicitAmountDue > 0
+    ? explicitAmountDue
+    : calculatedPending;
+
+  const isPartiallyPaid = !isActuallyPaidInFull && amountPaid > 0.009 && pendingBalance > 0.009;
+
+  const isFullyPaid = isActuallyPaidInFull || (pendingBalance <= 0.009 && amountPaid > 0);
+
+  const resolvedPaymentStatus = isFullyPaid
+    ? "paid"
+    : isPartiallyPaid
+    ? "partially_paid"
+    : (activeProject.paymentStatus || "pending").toLowerCase();
+
+  const paymentStatus = resolvedPaymentStatus;
 
   const successfulPayments = (payments || []).filter((p: any) =>
     ["succeeded", "paid", "completed"].includes(p.status?.toLowerCase())
@@ -357,6 +367,7 @@ export default function CalculatorProjectPayments({
     !isFullyPaid &&
     (
       pendingBalance > 0.009 ||
+      isPartiallyPaid ||
       (explicitAmountDue !== null && explicitAmountDue > 0.009) ||
       (amountPaid < totalProjectCost - 0.009) ||
       activeProject.paymentStatus === "partially_paid" ||
@@ -402,6 +413,10 @@ export default function CalculatorProjectPayments({
       case "paid":
       case "completed":
         return "bg-[#DCFCE7] text-[#15803D] border-[#BBF7D0]";
+      case "partially_paid":
+      case "partial":
+      case "partially paid":
+        return "bg-amber-100 text-amber-700 border-amber-200";
       case "pending":
       case "processing":
         return "bg-amber-100 text-amber-700 border-amber-200";
@@ -432,12 +447,39 @@ export default function CalculatorProjectPayments({
     }
   };
 
-  const handleViewInvoice = async (e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleViewInvoice = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
     if (isDownloadingInvoice || isDownloadingPdf) return;
     setIsDownloadingInvoice(true);
     try {
-      await downloadCalculatorProjectPDF(projectPayloadForPdf);
+      const searchInvoiceId = searchParams?.get("invoiceId") || undefined;
+      const resolvedInvoiceId =
+        activeProject.invoiceNumber ||
+        payments[0]?.invoiceNumber ||
+        searchInvoiceId ||
+        (activeProject._id ? `INV-2026-${activeProject._id.slice(-4).toUpperCase()}` : "INV-2026-001");
+
+      await downloadCalculatorInvoicePDF({
+        project: activeProject,
+        quote: linkedQuote,
+        invoiceNumber: resolvedInvoiceId,
+        projectNumber: formattedProjectNumber,
+        date: paymentDateFormatted,
+        paymentStatus: resolvedPaymentStatus,
+        status: isFullyPaid ? "PAID" : isPartiallyPaid ? "PARTIALLY PAID" : "PENDING",
+        title: itemTitle,
+        duration: itemDuration,
+        deliverableItems: deliverableItems,
+        subtotal: totalSubtotal,
+        vatRate: vatRate,
+        vatAmount: effectiveVatAmount,
+        totalAmount: totalProjectCost,
+        amountPaid: amountPaid,
+        pendingBalance: pendingBalance,
+        currency: currency,
+        payments: payments,
+        clientEmail: currentUser?.email || activeProject.clientEmail || "",
+      });
     } catch (err) {
       console.error("Failed to download invoice PDF:", err);
     } finally {
@@ -516,6 +558,8 @@ export default function CalculatorProjectPayments({
               nativeCurrency={currency}
               vatRate={vatRate}
               invoiceId={searchInvoiceId}
+              onDownloadInvoice={handleViewInvoice}
+              isDownloadingInvoice={isDownloadingInvoice}
               metadata={{
                 invoiceId: searchInvoiceId,
                 invoiceNumber: searchInvoiceNumber,
@@ -681,8 +725,8 @@ export default function CalculatorProjectPayments({
                       .replace(/\s+/g, " ")
                       .trim()}
                   </h3>
-                  <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200">
-                    {paymentStatus}
+                  <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${getStatusColor(paymentStatus)}`}>
+                    {paymentStatus.replace(/_/g, " ")}
                   </span>
                 </div>
                 <span className="text-sm text-indigo-500 font-semibold whitespace-nowrap">

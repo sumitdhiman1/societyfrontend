@@ -1,4 +1,4 @@
-﻿/**
+/**
  * calculator/graphics.ts
  *
  * All logic specific to the "Graphic Designs" calculator category.
@@ -78,6 +78,10 @@ export function getGraphicsCategoryKeys(
   if (selections.GD_CATEGORIES?.answerKeys?.length) {
     const q = questions?.find((x) => x.key === "GD_CATEGORIES");
     addKeys(selections.GD_CATEGORIES.answerKeys, q);
+  }
+  if (selections.GD_TYPE?.answerKeys?.length) {
+    const q = questions?.find((x) => x.key === "GD_TYPE");
+    addKeys(selections.GD_TYPE.answerKeys, q);
   }
   if (questions?.length) {
     const q1 = questions.find(
@@ -222,10 +226,25 @@ export function isGraphicsCategorySelected(
 
   switch (cat) {
     case "logo":
-      return selSet.has("gfx_cat_logo") || selSet.has("gd_cat_logo") || selLower.some((k) => k.includes("logo"));
+      return (
+        selSet.has("gfx_cat_logo") ||
+        selSet.has("gd_cat_logo") ||
+        selLower.some((k) => k.includes("logo")) ||
+        // User spec: If "Full Brand Identity Package" is selected, also show the "Logo Design" section.
+        selSet.has("gfx_cat_brand_id") ||
+        selSet.has("gd_cat_brand") ||
+        selSet.has("gd_cat_brand_id") ||
+        selLower.some(
+          (k) =>
+            k.includes("brand identity") ||
+            k.includes("identity package") ||
+            k.includes("full brand")
+        )
+      );
     case "brand_id":
       return (
         selSet.has("gfx_cat_brand_id") ||
+        selSet.has("gd_cat_brand") ||
         selSet.has("gd_cat_brand_id") ||
         selLower.some(
           (k) =>
@@ -303,23 +322,33 @@ export function filterGraphicsAnswers(answers: any[], categoryKeys: string[]) {
 
 // ─── Timeline Helpers ─────────────────────────────────────────────────────────
 
-/** Snap raw per-heading sum to spec sensible values (matches backend). */
+/** Round raw per-heading sum to nearest sensible value (3 days, 1 week, 10 days, 2 weeks, 3 weeks, 4 weeks). */
 export function snapGraphicsBaselineDays(days: number): number {
+  if (days <= 0) return 0;
   if (days <= 3) return 3;
-  if (days <= 7) return 7;
-  if (days <= 10) return 10;
-  if (days <= 14) return 14;
-  if (days <= 21) return 21;
-  if (days <= 28) return 28;
-  return Math.ceil(days / 7) * 7;
+  const sensible = [3, 7, 10, 14, 21, 28];
+  if (days > 28) {
+    return Math.max(28, Math.round(days / 7) * 7);
+  }
+  let closest = sensible[0];
+  let minDiff = Math.abs(days - closest);
+  for (const s of sensible) {
+    const diff = Math.abs(days - s);
+    if (diff <= minDiff) {
+      minDiff = diff;
+      closest = s;
+    }
+  }
+  return closest;
 }
 
-/** Apply rush on raw heading-sum, then snap (live parity). */
+/** Apply rush on baseline days, reducing the baseline (matches backend). */
 export function applyGraphicsRushDays(rawDays: number, rushType: GraphicsRushType): number {
-  if (rushType === "normal") return snapGraphicsBaselineDays(rawDays);
+  const baseline = snapGraphicsBaselineDays(rawDays);
+  if (rushType === "normal") return baseline;
   const reduction = rushType === "super" ? 0.75 : 0.5;
-  const rushed = Math.max(1, Math.ceil(rawDays * (1 - reduction)));
-  return snapGraphicsBaselineDays(rushed);
+  const reduced = baseline * (1 - reduction);
+  return snapGraphicsBaselineDays(reduced);
 }
 
 /** Discrete graphics timeline labels per product spec. */
@@ -340,13 +369,13 @@ export function getGraphicsRushTypeFromMetadata(
   const isSuper =
     metadata?.fee === 0.5 ||
     metadata?.reduction === 0.75 ||
-    /super\s*rushed/i.test(text || "") ||
+    /super/i.test(text || "") ||
     /50%/i.test(text || "");
   if (isSuper) return "super";
   const isRush =
     metadata?.fee === 0.25 ||
     metadata?.reduction === 0.5 ||
-    /\(rushed\)/i.test(text || "") ||
+    /rush/i.test(text || "") ||
     /25%/i.test(text || "");
   if (isRush) return "rushed";
   return "normal";
@@ -375,27 +404,43 @@ export function resolveGraphicsTimelineAnswer(
   if (!raw) return options?.directTimeline || "";
   const lower = raw.toLowerCase().trim();
 
+  // If raw is already a full formatted rush option label (e.g. "3 days (Super Rushed): +50% rush fee"),
+  // preserve it directly! Never overwrite it with a plain duration like "3 days"!
+  if (
+    /super/i.test(raw) ||
+    /rushed/i.test(raw) ||
+    /\(normal\)/i.test(raw) ||
+    /rush fee/i.test(raw) ||
+    /no extra fee/i.test(raw)
+  ) {
+    if (raw.includes(":") || raw.includes("fee") || raw.includes("(")) {
+      return raw;
+    }
+  }
+
   const isRushTimelineKey =
     lower.startsWith("gfx_time") ||
     lower.startsWith("gd_time") ||
     lower.startsWith("gfx_timeline") ||
     lower.startsWith("seo_time");
 
-  if (!isRushTimelineKey && !/super\s*rushed|rushed|normal/i.test(raw)) {
-    return raw;
-  }
-
-  if (options?.directTimeline && !isRushTimelineKey) {
-    return options.directTimeline;
-  }
-
   const baseline = options?.baselineDays && options.baselineDays > 0 ? options.baselineDays : 14;
   const rushType = getGraphicsRushTypeFromMetadata(options?.metadata, raw);
-  if (isRushTimelineKey || options?.metadata?.fee != null || options?.metadata?.reduction != null) {
+
+  if (
+    isRushTimelineKey ||
+    options?.metadata?.fee != null ||
+    options?.metadata?.reduction != null ||
+    /super|rush/i.test(raw)
+  ) {
     return formatGraphicsTimelineOptionLabel(baseline, rushType);
   }
 
-  return options?.directTimeline || raw;
+  if (options?.directTimeline) {
+    return options.directTimeline;
+  }
+
+  return raw;
 }
 
 function collectGraphicsItemKeys(
@@ -432,7 +477,12 @@ function sumGraphicsHeadingTimelineDays(
 
   const normTier = (tier || "starter").toLowerCase();
   const answersMap = new Map<string, any>();
-  (itemsQuestion?.answers || []).forEach((a: any) => answersMap.set(a.key, a));
+  const answersList = Array.isArray(itemsQuestion?.answers)
+    ? itemsQuestion.answers
+    : itemsQuestion?.answers && typeof itemsQuestion.answers === "object"
+    ? Object.entries(itemsQuestion.answers).map(([k, v]: [string, any]) => ({ ...v, key: v?.key || k }))
+    : [];
+  answersList.forEach((a: any) => answersMap.set(a.key, a));
 
   const headingsTimeline: Record<string, number> = {};
   itemKeys.forEach((key) => {

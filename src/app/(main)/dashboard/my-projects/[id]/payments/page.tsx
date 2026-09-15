@@ -110,7 +110,11 @@ export default function ProjectPaymentsPage() {
   const currentUser = authService.getUser();
   const projectNumber =
     activeProject.projectNumber ||
-    (activeProject.quoteNumber || (activeProject._id ? `INV-2026-${activeProject._id.slice(-3).toUpperCase()}` : "INV-2026-188"));
+    (activeProject.quoteNumber && !String(activeProject.quoteNumber).startsWith("INV-")
+      ? activeProject.quoteNumber
+      : activeProject._id
+      ? `SOC-2026-${activeProject._id.slice(-4).toUpperCase()}`
+      : "SOC-2026-001");
 
   const vatRate = Number(
     activeProject.vatRate ??

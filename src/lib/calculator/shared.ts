@@ -346,6 +346,17 @@ export function shouldShowPriceBar(
   category: any,
   selections: Record<string, CalculatorSelection>
 ): boolean {
+  if (category?.categoryKey === "graphics") {
+    const itemsSel = selections["GD_ITEMS"] || selections["GFX_ITEMS"];
+    if (itemsSel?.answerKeys?.length) return true;
+    for (const [k, sel] of Object.entries(selections)) {
+      if ((k.includes("ITEM") || isGraphicsItemsQuestion({ key: k })) && sel?.answerKeys?.length) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   const trigger = category?.uiRules?.priceBarTrigger;
   if (!trigger?.questionKey) {
     return Object.keys(selections).length > 0;

@@ -144,7 +144,9 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
 
   const status = (data.status || "Active").charAt(0).toUpperCase() + (data.status || "Active").slice(1).toLowerCase();
 
-  const issuedDateObj = data.startDate || data.createdAt || new Date();
+  const rawIssuedDate = data.startDate || data.createdAt || new Date();
+  const issuedDateObj =
+    rawIssuedDate instanceof Date ? rawIssuedDate : new Date(rawIssuedDate);
   const issuedDate = formatPdfDate(issuedDateObj);
 
   // Comprehensive timeline resolution
@@ -333,9 +335,7 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
 
   let finalTimelineAnswer =
     formatRawAnswer(foundTimelineAnswer, timelineSelectionMetadata) ||
-    (directTimeline && (categoryKey === "graphics" || categoryKey === "seo")
-      ? directTimeline
-      : formatRawAnswer(directTimeline)) ||
+    formatRawAnswer(directTimeline, timelineSelectionMetadata) ||
     directTimeline;
 
   // Clean duration for the summary box
@@ -373,10 +373,20 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     else duration = "2 weeks";
   }
 
-  // Quote is valid for 3 months from issued date
- 
-  const validUntilObj = new Date(issuedDateObj);
-  validUntilObj.setMonth(validUntilObj.getMonth() + 3);
+  const validUntilDays =
+    data.validUntilDays ||
+    data.calculatorSpecs?.validUntilDays ||
+    14;
+  const baseIssuedTime =
+    issuedDateObj instanceof Date && !isNaN(issuedDateObj.getTime())
+      ? issuedDateObj.getTime()
+      : Date.now();
+  const validUntilObj =
+    data.validUntil
+      ? (data.validUntil instanceof Date ? data.validUntil : new Date(data.validUntil))
+      : data.calculatorSpecs?.validUntil
+      ? (data.calculatorSpecs.validUntil instanceof Date ? data.calculatorSpecs.validUntil : new Date(data.calculatorSpecs.validUntil))
+      : new Date(baseIssuedTime + validUntilDays * 24 * 60 * 60 * 1000);
   let validUntilDate = formatPdfDate(validUntilObj);
   
 
@@ -547,8 +557,33 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
       !answerText.toLowerCase().includes("month") &&
       !answerText.toLowerCase().includes("business")
     ) {
-      answerText = `${answerText} (Normal): No extra fee`;
+      const isSuper =
+        /super/i.test(foundTimelineAnswer) ||
+        /super/i.test(String(data.timeline || "")) ||
+        (Array.isArray(rawSelections) &&
+          rawSelections.some((s: any) =>
+            s?.answerKeys?.some((k: string) => /super/i.test(k)) ||
+            s?.answerTexts?.some((t: string) => /super/i.test(t))
+          ));
+      const isRush =
+        !isSuper &&
+        (/rush/i.test(foundTimelineAnswer) ||
+          /rush/i.test(String(data.timeline || "")) ||
+          (Array.isArray(rawSelections) &&
+            rawSelections.some((s: any) =>
+              s?.answerKeys?.some((k: string) => /rush/i.test(k)) ||
+              s?.answerTexts?.some((t: string) => /rush/i.test(t))
+            )));
+
+      if (isSuper) {
+        answerText = `${answerText} (Super Rushed): +50% rush fee`;
+      } else if (isRush) {
+        answerText = `${answerText} (Rushed): +25% rush fee`;
+      } else {
+        answerText = `${answerText} (Normal): No extra fee`;
+      }
     }
+
     // Avoid duplicate timeline question
     const alreadyHasTimeline = selectedOptions.some(opt => /timeline/i.test(opt.question));
     if (!alreadyHasTimeline) {
