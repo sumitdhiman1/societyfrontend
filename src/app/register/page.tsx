@@ -9,6 +9,7 @@ import FacebookIcon from "@/components/icons/facebook";
 import GoogleIcon from "@/components/icons/google";
 import CloseIcon from "@/components/icons/close";
 import { countryService, Country } from "@/lib/countryService";
+import CountrySearchSelect from "@/components/common/CountrySearchSelect";
 
 // Internal Components from chunk logic
 const Stepper = ({ current, onStepClick }: { current: number; onStepClick: (step: number) => void }) => {
@@ -228,7 +229,7 @@ function RegisterForm() {
         <div className="w-full max-w-xl lg:max-w-2xl">
           <div className="mt-4 mb-6">
             <a className="w-10 h-10 border border-gray-400 rounded-full flex items-center justify-center text-[#1a1a40] hover:bg-gray-50 hover:border-gray-600 transition-colors" href="/">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
               </svg>
             </a>
           </div>
@@ -322,41 +323,12 @@ function RegisterForm() {
                   <InputField label="Phone number" value={phoneNumber} onChange={(e: any) => setPhoneNumber(e.target.value)} />
                   <div className="flex flex-col gap-1 w-full">
                     <label className="text-sm text-gray-700 font-semibold text-left">Country</label>
-                    <div className="relative">
-                      <select
-                        className={`w-full bg-white border border-gray-300 rounded-[4px] 
-                          px-4 py-3 text-sm focus:outline-none 
-                          focus:border-primary-300 focus:ring-1 focus:ring-primary-300
-                          transition-all pr-10 cursor-pointer appearance-none
-                          ${country ? "text-black" : "country-before-select"}`}
-                        value={country}
-                        onChange={(e) => setCountry(e.target.value)}
-                      >
-                        <option value="">Select country...</option>
-                        {countriesList && countriesList.length > 0 ? (
-                          countriesList.map((c) => (
-                            <option key={c.iso2 || c._id} value={c.name}>
-                              {c.flagEmoji ? `${c.flagEmoji} ` : ""}{c.name}
-                            </option>
-                          ))
-                        ) : (
-                          <>
-                            <option value="United States">United States</option>
-                            <option value="United Kingdom">United Kingdom</option>
-                            <option value="Canada">Canada</option>
-                            <option value="Germany">Germany</option>
-                            <option value="France">France</option>
-                            <option value="India">India</option>
-                            <option value="Australia">Australia</option>
-                          </>
-                        )}
-                      </select>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    </div>
+                    <CountrySearchSelect
+                      value={country}
+                      onChange={setCountry}
+                      countries={countriesList}
+                      placeholder="Select country..."
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

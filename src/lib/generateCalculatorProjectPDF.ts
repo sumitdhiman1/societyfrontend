@@ -198,18 +198,28 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     (data.timelineInDays ? `${data.timelineInDays} Days` : "") ||
     "";
 
-  let categoryKey = data.categoryKey || calculatorSpecs.categoryKey || "";
-  if (!categoryKey && categoryName) {
-    const cLower = categoryName.toLowerCase();
+  let categoryKey = (data.categoryKey || calculatorSpecs.categoryKey || "").toLowerCase();
+  const cLower = `${categoryName || ""} ${data.title || ""} ${calculatorSpecs.categoryName || ""} ${data.serviceType || ""}`.toLowerCase();
+  if (!categoryKey && cLower) {
     if (cLower.includes("web") || cLower.includes("site") || cLower.includes("store") || cLower.includes("shop")) {
       categoryKey = "web";
     } else if (cLower.includes("graphic") || cLower.includes("design") || cLower.includes("logo") || cLower.includes("brand")) {
       categoryKey = "graphics";
     } else if (cLower.includes("seo") || cLower.includes("search engine")) {
       categoryKey = "seo";
-    } else if (cLower.includes("market") || cLower.includes("social")) {
+    } else if (cLower.includes("market") || cLower.includes("social") || cLower.includes("campaign")) {
       categoryKey = "marketing";
     }
+  }
+
+  const isMarketing =
+    categoryKey === "marketing" ||
+    /market|campaign/i.test(categoryName || "") ||
+    /market|campaign/i.test(title || "") ||
+    /market|campaign/i.test(calculatorSpecs.categoryName || "");
+
+  if (isMarketing) {
+    categoryKey = "marketing";
   }
 
   // Baseline from item selections when API timeline not yet stored
@@ -281,11 +291,34 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
       ? getSeoServiceMode(selectionsMap)
       : data.seoServiceMode;
 
-  if (categoryKey === "seo" && !seoServiceMode) {
-    if (data.calculatorSpecs?.billingType === "monthly" || (!data.calculatorSpecs && data.billingType === "monthly")) {
-      seoServiceMode = "monthly";
-    } else if (data.calculatorSpecs?.billingType === "onetime" || (!data.calculatorSpecs && data.billingType === "onetime")) {
-      seoServiceMode = "onetime";
+  // Override seoServiceMode from billingType when:
+  // - selections are absent/empty (e.g. PDF downloaded from calculator page, no stored selections)
+  // - OR getSeoServiceMode returned the default "onetime" but billingType explicitly says "monthly"
+  // This covers the SEO monthly calculator page download case.
+  if (categoryKey === "seo") {
+    const effectiveBillingType =
+      data.billingType ||
+      data.calculatorSpecs?.billingType ||
+      data.requirements?.billingType;
+
+    // Only override if selections didn't conclusively determine the mode
+    // (i.e. empty selectionsMap or no SEO_TYPE selection found)
+    const hasSeoTypeInSelections = selectionsMap["SEO_TYPE"] || selectionsMap["SEO_SERVICE_TYPE"];
+    if (!hasSeoTypeInSelections) {
+      if (effectiveBillingType === "monthly") {
+        seoServiceMode = "monthly";
+      } else if (effectiveBillingType === "onetime" || effectiveBillingType === "fixed") {
+        seoServiceMode = seoServiceMode || "onetime";
+      }
+    }
+
+    // Legacy fallback for stored docs that use calculatorSpecs.billingType
+    if (!seoServiceMode) {
+      if (data.calculatorSpecs?.billingType === "monthly") {
+        seoServiceMode = "monthly";
+      } else if (data.calculatorSpecs?.billingType === "onetime") {
+        seoServiceMode = "onetime";
+      }
     }
   }
 
@@ -369,24 +402,37 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
         (graphicsRawTimelineDays > 0
           ? formatGraphicsTimelineLabel(snapGraphicsBaselineDays(graphicsRawTimelineDays))
           : formatGraphicsTimelineLabel(14));
-    } else if (categoryKey === "marketing") duration = "Ongoing";
+    } else if (categoryKey === "marketing" || isMarketing) duration = directTimeline || "Monthly";
     else duration = "2 weeks";
   }
 
-  const validUntilDays =
-    data.validUntilDays ||
-    data.calculatorSpecs?.validUntilDays ||
-    14;
-  const baseIssuedTime =
+  const baseIssuedDate =
     issuedDateObj instanceof Date && !isNaN(issuedDateObj.getTime())
-      ? issuedDateObj.getTime()
-      : Date.now();
-  const validUntilObj =
-    data.validUntil
-      ? (data.validUntil instanceof Date ? data.validUntil : new Date(data.validUntil))
-      : data.calculatorSpecs?.validUntil
-      ? (data.calculatorSpecs.validUntil instanceof Date ? data.calculatorSpecs.validUntil : new Date(data.calculatorSpecs.validUntil))
-      : new Date(baseIssuedTime + validUntilDays * 24 * 60 * 60 * 1000);
+      ? new Date(issuedDateObj.getTime())
+      : new Date();
+
+  // For proposals, there is no difference for monthly or one-time with "Valid Until" — proposals are valid for 3 months
+  const defaultValidUntil = new Date(baseIssuedDate);
+  defaultValidUntil.setMonth(defaultValidUntil.getMonth() + 3);
+
+  const rawValidUntil =
+    data.validUntil ||
+    data.calculatorSpecs?.validUntil ||
+    data.expirationDate ||
+    data.calculatorSpecs?.expirationDate ||
+    data.expires ||
+    data.calculatorSpecs?.expires;
+
+  let validUntilObj: Date;
+  if (rawValidUntil) {
+    const parsed = rawValidUntil instanceof Date ? rawValidUntil : new Date(rawValidUntil);
+    validUntilObj = !isNaN(parsed.getTime()) ? parsed : defaultValidUntil;
+  } else if (data.validUntilDays || data.calculatorSpecs?.validUntilDays) {
+    const days = Number(data.validUntilDays || data.calculatorSpecs?.validUntilDays);
+    validUntilObj = new Date(baseIssuedDate.getTime() + days * 24 * 60 * 60 * 1000);
+  } else {
+    validUntilObj = defaultValidUntil;
+  }
   let validUntilDate = formatPdfDate(validUntilObj);
   
 
@@ -614,11 +660,12 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     (categoryKey === "seo" && seoServiceMode === "onetime");
 
   const isMonthlyPricing =
-    !isOneTimeCategory &&
-    (isMonthlyBillingCategory(categoryKey, seoServiceMode || data.seoServiceMode) ||
-      (data.billingType === "monthly" && (categoryKey === "marketing" || (categoryKey === "seo" && seoServiceMode === "monthly"))));
+    isMarketing ||
+    (!isOneTimeCategory &&
+      (isMonthlyBillingCategory(categoryKey, seoServiceMode || data.seoServiceMode) ||
+        (data.billingType === "monthly" && (categoryKey === "marketing" || (categoryKey === "seo" && seoServiceMode === "monthly")))));
 
-  if (isMonthlyPricing) {
+  if (isMonthlyPricing && !formattedPrice.endsWith("/month")) {
     formattedPrice = `${formattedPrice} /month`;
   }
 
@@ -858,14 +905,15 @@ function paginateCalculatorOptions(
   const totalHeight = heights.reduce((sum, h) => sum + h, 0);
 
   // Single page capacity:
-  // If totalHeight <= 440px, everything fits on 1 single page!
-  if (totalHeight <= 440) {
+  // If totalHeight <= 520px, everything fits on 1 single page!
+  if (totalHeight <= 520) {
     return [options];
   }
 
   // Multi-page:
-  // Page 1 takes options up to 680px (fills Page 1 comfortably)
-  // Subsequent pages take up to 880px
+  // When options exceed 520px, we split across pages.
+  // Page 1 has header & client quote box, so it takes options up to ~460px.
+  // Page 2 (or subsequent pages) takes remaining options plus the summary card.
   const pages: Array<Array<{ question: string; answers: string[] }>> = [];
   let currentPage: Array<{ question: string; answers: string[] }> = [];
   let currentH = 0;
@@ -874,7 +922,7 @@ function paginateCalculatorOptions(
   for (let i = 0; i < options.length; i++) {
     const opt = options[i];
     const h = heights[i];
-    const capacity = pageIdx === 0 ? 680 : 880;
+    const capacity = pageIdx === 0 ? 460 : 750;
 
     if (currentPage.length > 0 && currentH + h > capacity) {
       pages.push(currentPage);
@@ -891,24 +939,15 @@ function paginateCalculatorOptions(
     pages.push(currentPage);
   }
 
-  // If all options fit on Page 1 (totalHeight <= 680px) but totalHeight > 440:
-  // Page 1 has all questions, and Page 2 gets the Summary Box + Divider + Footer!
-  if (pages.length === 1 && totalHeight > 440) {
-    pages.push([]);
-  } else if (pages.length > 1) {
-    // If the last page options exceed 680px, split to keep summary box on final page
-    const lastP = pages[pages.length - 1];
-    const lastPH = lastP.reduce((sum, o) => sum + estimateOptionHeight(o), 0);
-    if (lastPH > 680) {
-      const splitIdx = Math.floor(lastP.length / 2);
-      if (splitIdx > 0) {
-        const moved = lastP.splice(splitIdx);
-        pages.push(moved);
-      }
-    }
+  // If options were put into only 1 page but totalHeight > 520, split evenly so Page 2 is NEVER empty!
+  if (pages.length === 1 && totalHeight > 520 && options.length > 1) {
+    const half = Math.ceil(options.length / 2);
+    return [options.slice(0, half), options.slice(half)];
   }
 
-  return pages;
+  // Filter out any accidentally empty page arrays so an empty page is NEVER returned
+  const cleanPages = pages.filter((p) => p.length > 0);
+  return cleanPages.length > 0 ? cleanPages : [options];
 }
 
 export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
@@ -1033,7 +1072,8 @@ function appendCanvasToPdf(
   const imgHeight = (canvas.height * pageWidth) / canvas.width;
 
   // Single page element (standard case for all paginated pages)
-  if (imgHeight <= pageHeight + 8) {
+  // Allow up to 35pt margin of error (subpixel rendering) without adding an empty second page
+  if (imgHeight <= pageHeight + 35) {
     pdf.addImage(imgData, "JPEG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
     return;
   }
@@ -1045,7 +1085,7 @@ function appendCanvasToPdf(
   pdf.addImage(imgData, "JPEG", 0, position, pageWidth, imgHeight, undefined, "FAST");
   heightLeft -= pageHeight;
 
-  while (heightLeft > 8) {
+  while (heightLeft > 50) {
     position -= pageHeight;
     pdf.addPage();
     pdf.addImage(imgData, "JPEG", 0, position, pageWidth, imgHeight, undefined, "FAST");

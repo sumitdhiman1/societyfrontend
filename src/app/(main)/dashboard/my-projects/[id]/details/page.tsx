@@ -658,6 +658,16 @@ export default function ProjectDetailsPage() {
 
   const isUploading = attachments.some(a => a.status === "uploading");
 
+  const isMonthlyProject = Boolean(
+    project.billingType === "monthly" ||
+    project.calculatorSpecs?.billingType === "monthly" ||
+    project.calculatorSpecs?.categoryKey === "marketing" ||
+    project.categoryKey === "marketing" ||
+    /marketing|campaign/i.test(project.title || "") ||
+    /marketing|campaign/i.test(project.calculatorSpecs?.categoryName || "") ||
+    (project.calculatorSpecs?.categoryKey === "seo" && project.calculatorSpecs?.seoServiceMode === "monthly")
+  );
+
   // Calculations for base amount, VAT, and total cost
   const rawTotalCost = Number(
     project.totalCost ??
@@ -737,7 +747,7 @@ export default function ProjectDetailsPage() {
         </div>
       )}
 
-      {project.status === "completed" && project.billingType === "monthly" && project.type !== "custom" && !project.quoteId && !project.calculatorSpecs && (
+      {project.status === "completed" && isMonthlyProject && project.type !== "analysis" && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <span className="text-2xl" aria-hidden="true">🔄</span>
           <div className="flex-1">
@@ -798,12 +808,17 @@ export default function ProjectDetailsPage() {
                     ? "Custom Project Details"
                     : "Package Details"}
                 </h2>
-                {(project.type === "bundle" || project.type === "package") && (
+                {(project.type === "bundle" || project.type === "package" || isMonthlyProject) && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {project.type === "bundle" && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded uppercase border border-purple-200">Bundle</span>}
                     {project.type === "package" && (
                       <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase border border-green-200">
                         {project.tierTitle ? `${project.tierTitle} Plan` : project.billingType === "monthly" ? "Monthly Subscription Plan" : "Standard Package"}
+                      </span>
+                    )}
+                    {isMonthlyProject && project.type !== "package" && (
+                      <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded uppercase border border-indigo-200">
+                        Monthly Subscription
                       </span>
                     )}
                   </div>
@@ -1133,8 +1148,8 @@ export default function ProjectDetailsPage() {
             })()}
           </div>
 
-          {/* Subscription & Auto-Renewal Card — only for genuine monthly/recurring projects */}
-          {project.billingType === "monthly" && project.type !== "custom" && !project.quoteId && project.type !== "analysis" && !project.calculatorSpecs && (
+          {/* Subscription & Auto-Renewal Card — for all monthly projects (including calculator monthly projects) */}
+          {isMonthlyProject && project.type !== "analysis" && (
             <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 sm:p-7 mt-8">
               <h3 className="text-xs font-bold text-[#1E293B] uppercase tracking-wider mb-2 font-sans">
                 SUBSCRIPTION &amp; AUTO-RENEWAL
@@ -1146,7 +1161,7 @@ export default function ProjectDetailsPage() {
               <div className="bg-[#F8FAFC] border border-gray-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h4 className="text-sm font-bold text-[#1E293B]">Auto-Renewal</h4>
-                  {project.autoRenewal ? (
+                  {project.autoRenewal !== false ? (
                     <div className="flex items-center gap-1.5 text-xs text-[#00875A] font-medium mt-0.5">
                       <span className="w-2 h-2 rounded-full bg-[#00875A] inline-block" />
                       Enabled
@@ -1159,7 +1174,7 @@ export default function ProjectDetailsPage() {
                   )}
                 </div>
 
-                {project.autoRenewal ? (
+                {project.autoRenewal !== false ? (
                   <button
                     type="button"
                     onClick={() => handleToggleAutoRenewal(false)}

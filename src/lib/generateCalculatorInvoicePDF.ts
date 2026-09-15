@@ -125,6 +125,7 @@ export interface CalcInvoiceData {
   currency: string;
   paymentMethod?: string;
   payments: CalcInvoicePayment[];
+  isMarketing?: boolean;
 }
 
 // ─── Data Extraction ──────────────────────────────────────────────────────────
@@ -225,20 +226,40 @@ export function extractCalcInvoiceData(data: any): CalcInvoiceData {
   const clientCountry =
     data.clientCountry || clientObj.billingCountry || clientObj.country || "United States";
 
+  // Category & Marketing Check
+  const categoryKey = (
+    data.categoryKey ||
+    project.categoryKey ||
+    specs.categoryKey ||
+    ""
+  ).toLowerCase();
+
+  const isMarketing =
+    categoryKey === "marketing" ||
+    /market|campaign/i.test(data.title || "") ||
+    /market|campaign/i.test(project.title || "") ||
+    /market|campaign/i.test(data.categoryName || "") ||
+    /market|campaign/i.test(project.categoryName || "") ||
+    /market|campaign/i.test(specs.categoryName || "");
+
   // Title / Duration
   const title =
     data.title ||
     project.title ||
     specs.categoryName ||
-    "Wordpress Website Development Tasks";
+    (isMarketing ? "A Marketing Campaign" : "Wordpress Website Development Tasks");
 
-  const duration =
+  let duration =
     data.duration ||
     data.timeline ||
     specs.estimatedTimeline ||
     (project.timelineInDays ? `${project.timelineInDays} Days` : "") ||
     project.timeline ||
     "";
+
+  if (!duration && isMarketing) {
+    duration = "Monthly Service";
+  }
 
   // Line items
   let lineItems: CalcInvoiceLineItem[] = [];
@@ -247,7 +268,7 @@ export function extractCalcInvoiceData(data: any): CalcInvoiceData {
       const amt = Number(item.amount ?? 0);
       const qty = Number(item.quantity ?? 1) || 1;
       return {
-        description: item.description || item.title || item.name || "Website development deliverable",
+        description: item.description || item.title || item.name || (isMarketing ? "Marketing campaign deliverable" : "Website development deliverable"),
         details: item.details || "",
         qty,
         unitPrice: item.unitPrice ? Number(item.unitPrice) : amt / qty,
@@ -263,7 +284,7 @@ export function extractCalcInvoiceData(data: any): CalcInvoiceData {
       const amt = Number(item.amount ?? 0);
       const qty = Number(item.quantity ?? 1) || 1;
       return {
-        description: item.description || item.title || item.name || "Website development deliverable",
+        description: item.description || item.title || item.name || (isMarketing ? "Marketing campaign deliverable" : "Website development deliverable"),
         details: item.details || "",
         qty,
         unitPrice: item.unitPrice ? Number(item.unitPrice) : amt / qty,
@@ -282,7 +303,7 @@ export function extractCalcInvoiceData(data: any): CalcInvoiceData {
     lineItems = [
       {
         description: title,
-        details: duration ? `Estimated delivery: ${duration}` : undefined,
+        details: duration ? (isMarketing ? "Monthly service" : `Estimated delivery: ${duration}`) : undefined,
         qty: 1,
         unitPrice: rawCost,
         amount: rawCost,
@@ -416,6 +437,7 @@ export function extractCalcInvoiceData(data: any): CalcInvoiceData {
     currency,
     paymentMethod: data.paymentMethod || "Credit / Debit Card",
     payments,
+    isMarketing,
   };
 }
 
@@ -472,9 +494,10 @@ export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
         .proposal-page.invoice-page {
           box-sizing: border-box;
           width: 794px;
-          min-height: 1123px;
+          min-height: 1080px;
+          max-height: 1123px;
           margin: 0 auto;
-          padding: 60px 68px 48px;
+          padding: 48px 56px 40px;
           background-color: #FFFFFF;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           color: #202124;
@@ -483,6 +506,7 @@ export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
           display: flex;
           flex-direction: column;
           justify-content: space-between;
+          overflow: hidden;
         }
 
         .proposal-header.invoice-header {
@@ -1049,7 +1073,7 @@ export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
             <!-- Total Amount Row (At the end) -->
             <div class="summary-total-banner">
               <span class="summary-total-label">TOTAL AMOUNT</span>
-              <span class="summary-total-value">${fmtCurrency(d.totalAmount, d.currency)}</span>
+              <span class="summary-total-value">${fmtCurrency(d.totalAmount, d.currency)}${d.isMarketing ? " /month" : ""}</span>
             </div>
           </div>
         </div>
@@ -1104,14 +1128,15 @@ export async function downloadCalculatorInvoicePDF(data: any): Promise<void> {
     const ih = (canvas.height * iw) / canvas.width;
     const imgData = canvas.toDataURL("image/jpeg", 0.94);
 
-    if (ih <= ph + 10) {
-      pdf.addImage(imgData, "JPEG", 0, 0, iw, ih, undefined, "FAST");
+    if (ih <= ph + 35 || ih <= ph * 1.12) {
+      const fitH = Math.min(ih, ph);
+      pdf.addImage(imgData, "JPEG", 0, 0, iw, fitH, undefined, "FAST");
     } else {
       let left = ih;
       let pos = 0;
       pdf.addImage(imgData, "JPEG", 0, pos, iw, ih, undefined, "FAST");
       left -= ph;
-      while (left > 10) {
+      while (left > 45) {
         pos -= ph;
         pdf.addPage();
         pdf.addImage(imgData, "JPEG", 0, pos, iw, ih, undefined, "FAST");

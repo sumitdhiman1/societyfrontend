@@ -10,6 +10,7 @@ import { useCurrency } from "@/context/CurrencyContext";
 import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import LoadingDots from "@/components/common/LoadingDots";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
+import CountrySearchSelect from "@/components/common/CountrySearchSelect";
 
 // Timezone list from production dist
 const TIMEZONES = [
@@ -208,6 +209,7 @@ export default function MyAccountPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Password change modal state
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -440,12 +442,11 @@ export default function MyAccountPage() {
           avatar: user.avatar,
           fullName: user.fullName,
         });
-        alert("Profile updated successfully!");
-        window.location.reload();
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
       }
     } catch (error) {
       console.error("Failed to update profile", error);
-      alert("Failed to update profile.");
     } finally {
       setIsUpdating(false);
     }
@@ -789,36 +790,12 @@ export default function MyAccountPage() {
                 {/* Row 3: Country | State / Province */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-gray-700">Country</label>
-                  <div className="relative">
-                    <select
-                      className="w-full bg-white border appearance-none border-gray-300 rounded-[4px] px-4 py-3 text-sm text-gray-700 focus:outline-none focus:border-primary-300 focus:ring-1 focus:ring-primary-300 transition-all pr-10 cursor-pointer "
-                      value={user?.country || ""}
-                      onChange={(e) => updateField("country", e.target.value)}
-                    >
-                      <option value="">Select or type country...</option>
-                      {countriesList && countriesList.length > 0 ? (
-                        countriesList.map((c) => (
-                          <option key={c.iso2 || c._id} value={c.name}>
-                            {c.flagEmoji ? `${c.flagEmoji} ` : ""}
-                            {c.name}
-                          </option>
-                        ))
-                      ) : (
-                        <>
-                          <option value="United States">United States</option>
-                          <option value="United Kingdom">United Kingdom</option>
-                          <option value="Canada">Canada</option>
-                          <option value="Germany">Germany</option>
-                          <option value="France">France</option>
-                          <option value="India">India</option>
-                          <option value="Australia">Australia</option>
-                        </>
-                      )}
-                    </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-600">
-                      <svg className="w-4 h-4 transition-transform duration-200 " fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </div>
-                  </div>
+                  <CountrySearchSelect
+                    value={user?.country || ""}
+                    onChange={(val) => updateField("country", val)}
+                    countries={countriesList}
+                    placeholder="Select country..."
+                  />
                 </div>
                 <InputField
                   label="State / Province"
@@ -916,36 +893,12 @@ export default function MyAccountPage() {
 
                     <div className="flex flex-col gap-2">
                       <label className="text-xs font-bold text-gray-700">Billing Country</label>
-                      <div className="relative">
-                        <select
-                          className="w-full bg-white border border-gray-300 rounded-[4px] px-4 py-3 text-sm text-gray-700 focus:outline-none focus:border-primary-300 focus:ring-1 focus:ring-primary-300 appearance-none cursor-pointer"
-                          value={user?.billingCountry || ""}
-                          onChange={(e) => updateField("billingCountry", e.target.value)}
-                        >
-                          <option value="">Select or type country...</option>
-                          {countriesList && countriesList.length > 0 ? (
-                            countriesList.map((c) => (
-                              <option key={c.iso2 || c._id} value={c.name}>
-                                {c.flagEmoji ? `${c.flagEmoji} ` : ""}
-                                {c.name}
-                              </option>
-                            ))
-                          ) : (
-                            <>
-                              <option value="United States">United States</option>
-                              <option value="United Kingdom">United Kingdom</option>
-                              <option value="Canada">Canada</option>
-                              <option value="Germany">Germany</option>
-                              <option value="France">France</option>
-                              <option value="India">India</option>
-                              <option value="Australia">Australia</option>
-                            </>
-                          )}
-                        </select>
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                          <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="#666" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path></svg>
-                        </div>
-                      </div>
+                      <CountrySearchSelect
+                        value={user?.billingCountry || ""}
+                        onChange={(val) => updateField("billingCountry", val)}
+                        countries={countriesList}
+                        placeholder="Select country..."
+                      />
                     </div>
                     <InputField
                       label="Billing State / Province"
@@ -986,7 +939,7 @@ export default function MyAccountPage() {
         </section>
 
         {/* Save Profile Changes Button (Outside & below card) */}
-        <div>
+        <div className="flex items-center gap-4">
           <button
             type="button"
             onClick={handleSaveProfile}
@@ -996,6 +949,14 @@ export default function MyAccountPage() {
           >
             {isUpdating ? <LoadingDots text="Saving" /> : "Save Profile Changes"}
           </button>
+          {saveSuccess && (
+            <span className="flex items-center gap-1.5 text-sm font-medium text-green-600 animate-in fade-in slide-in-from-left-2 duration-300">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+              Profile saved!
+            </span>
+          )}
         </div>
 
         <div className="mt-16">
