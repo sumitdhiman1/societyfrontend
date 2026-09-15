@@ -19,20 +19,14 @@ export function convertCurrencyAmount(
   const isSourceEur = sourceCurrency?.toLowerCase() === "eur";
   const rate = conversionRate || 1.08;
 
-  if (isTargetEur && !isSourceEur) {
-    // USD -> EUR: convert and round amounts >= 5 to nearest 5
-    const converted = amount / rate;
-    if (converted >= 5) {
-      return roundToNearest5(converted);
-    }
-    return Number(converted.toFixed(2));
+  if (isTargetEur === isSourceEur || targetCurrency?.toLowerCase() === sourceCurrency?.toLowerCase()) {
+    return Number(amount.toFixed(2));
   }
 
-  if (isTargetEur && isSourceEur) {
-    if (amount >= 5) {
-      return roundToNearest5(amount);
-    }
-    return Number(amount.toFixed(2));
+  if (isTargetEur && !isSourceEur) {
+    // USD -> EUR
+    const converted = amount / rate;
+    return Number(converted.toFixed(2));
   }
 
   if (!isTargetEur && isSourceEur) {
@@ -40,7 +34,7 @@ export function convertCurrencyAmount(
     return Number((amount * rate).toFixed(2));
   }
 
-  return amount;
+  return Number(amount.toFixed(2));
 }
 
 export function formatPriceWithCurrency(

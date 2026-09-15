@@ -124,11 +124,21 @@ export function hasTimelineSelected(
   categoryKey?: string | null
 ): boolean {
   const timelineKey = findTimelineQuestionKey(questions);
-  if (!timelineKey) return true;
-  const timelineQ = questions.find((q) => q.key === timelineKey || isTimelineQuestion(q));
+  const timelineQ = questions.find(
+    (q) => (timelineKey && q.key === timelineKey) || isTimelineQuestion(q)
+  );
   if (!timelineQ || !isQuestionVisible(timelineQ, selections, questions, categoryKey)) return true;
 
-  const sel = selections[timelineKey] || selections[timelineQ.key];
+  const resolvedKey = timelineQ.key || timelineKey;
+  const sel =
+    (resolvedKey ? selections[resolvedKey] : undefined) ||
+    selections[timelineKey || ""] ||
+    (timelineQ._id ? selections[String(timelineQ._id)] : undefined) ||
+    (timelineQ.order !== undefined ? selections[String(timelineQ.order)] : undefined) ||
+    (categoryKey === "seo" ? selections.SEO_TIMELINE || selections["6"] || selections["7"] : undefined) ||
+    (categoryKey === "website" ? selections.WEB_TIMELINE || selections["7"] || selections["8"] : undefined) ||
+    (categoryKey === "graphics" ? selections.GFX_TIMELINE || selections.GD_TIMELINE || selections["5"] || selections["6"] : undefined);
+
   if (!sel) return false;
   if (sel.answerKeys && sel.answerKeys.length > 0) return true;
   if (sel.numericValue !== undefined && sel.numericValue > 0) return true;
@@ -601,12 +611,9 @@ export function formatCalculatorQuestionText(
 
 // ─── Pricing Helpers ──────────────────────────────────────────────────────────
 
-/** Nearest 5 for most categories; SEO uses nearest $1 (live parity). */
-export function roundCalculatorPrice(amount: number, categoryKey?: string): number {
+/** Nearest 5 for all categories (USD/EUR payable parity). */
+export function roundCalculatorPrice(amount: number, _categoryKey?: string): number {
   if (!Number.isFinite(amount)) return 0;
-  if (categoryKey === "seo") {
-    return Math.round(amount);
-  }
   return 5 * Math.round(amount / 5);
 }
 
@@ -631,9 +638,9 @@ export function getCalculatorPayableAmount(
   return roundCalculatorPrice(inCurrency, categoryKey);
 }
 
-/** 50% deposit rounded to nearest 5. */
-export function getCalculatorHalfPayableAmount(payableTotal: number, categoryKey?: string): number {
-  return roundCalculatorPrice(payableTotal / 2, categoryKey);
+/** 50% deposit: when divided into payments the amount should not round anymore, just the original price should round to nearest 5. */
+export function getCalculatorHalfPayableAmount(payableTotal: number, _categoryKey?: string): number {
+  return Math.round((payableTotal / 2) * 100) / 100;
 }
 
 export function formatCalculatorPrice(
@@ -652,17 +659,17 @@ export function formatCalculatorPrice(
 export function formatCalculatorDisplayAmount(
   amountInCurrency: number,
   currency: string,
-  categoryKey?: string,
+  _categoryKey?: string,
   fractionDigits = 2
 ): string {
-  const normalizedCurrency = currency.toUpperCase();
-  const rounded = roundCalculatorPrice(amountInCurrency, categoryKey);
+  const normalizedCurrency = (currency || "USD").toUpperCase();
+  const val = Number.isFinite(amountInCurrency) ? amountInCurrency : 0;
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: normalizedCurrency,
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
-  }).format(rounded);
+  }).format(val);
 }
 
 // ─── Duration / Deadline Helpers ──────────────────────────────────────────────

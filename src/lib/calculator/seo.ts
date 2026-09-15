@@ -274,7 +274,13 @@ export function getSeoQuestionVisibility(
     );
   }
   // SEO_TIMELINE visibility is handled in shared.ts alongside isTimelineQuestion check
-  if (question.key === "SEO_TIMELINE") {
+  if (
+    question.key === "SEO_TIMELINE" ||
+    question.roleId === 13 ||
+    question.roleId === 14 ||
+    /timeline/i.test(question.key || "") ||
+    /timeline/i.test(question.text || "")
+  ) {
     return (
       hasSeoTypeSelected(selections, questions) &&
       seoModeNeedsTimeline(getSeoServiceMode(selections, questions))

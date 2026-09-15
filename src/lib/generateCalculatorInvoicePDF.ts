@@ -450,16 +450,175 @@ const LOGO_SVG = `
 </svg>
 `;
 
-// ─── HTML Template matching invoice.html with Calculator PDF Typography & Palette ─
+function estimateInvoiceLineItemHeight(item: CalcInvoiceLineItem): number {
+  const title = (item.description || "").trim();
+  const details = (item.details || "").trim();
+  const titleLines = Math.max(1, Math.ceil(title.length / 45));
+  const detailLines = details ? Math.max(1, Math.ceil(details.length / 55)) : 0;
+  return 28 + titleLines * 16 + detailLines * 14;
+}
 
-export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
-  const hasVat = d.vatRate > 0 || d.vatAmount > 0;
+interface InvoicePageItem {
+  pageItems: CalcInvoiceLineItem[];
+  hasSummaryCard: boolean;
+}
+
+function paginateCalculatorInvoice(
+  items: CalcInvoiceLineItem[],
+  d: CalcInvoiceData
+): InvoicePageItem[] {
+  if (!items || items.length === 0) {
+    return [{ pageItems: [], hasSummaryCard: true }];
+  }
+
+  const heights = items.map(estimateInvoiceLineItemHeight);
+  const totalItemsHeight = heights.reduce((sum, h) => sum + h, 0);
+
+  const hasVat = d.vatRate > 0 && d.vatAmount > 0;
   const hasPartialPayment =
     typeof d.pendingBalance === "number" &&
     d.pendingBalance > 0.009 &&
     typeof d.amountPaid === "number" &&
     d.amountPaid > 0.009;
 
+  let summaryCardHeight = 110;
+  if (d.duration) summaryCardHeight += 44;
+  if (hasVat) summaryCardHeight += 44;
+  if (hasPartialPayment) summaryCardHeight += 88;
+  const summaryFooterHeight = summaryCardHeight + 80 + 30; // summary + footer + margins
+
+  const page1MaxWithSummary = Math.max(180, 680 - summaryFooterHeight);
+  const page1MaxItemsOnly = 660;
+  const subsequentMaxWithSummary = Math.max(260, 920 - summaryFooterHeight);
+  const subsequentMaxItemsOnly = 880;
+
+  // Case 1: Everything fits on Page 1 (items + summary + footer)
+  if (totalItemsHeight <= page1MaxWithSummary) {
+    return [{ pageItems: items, hasSummaryCard: true }];
+  }
+
+  // Case 2: All line items fit on Page 1, but adding Summary Card + Footer overflows Page 1.
+  // Push payment total (summary card) + footer to next page!
+  if (totalItemsHeight <= page1MaxItemsOnly) {
+    return [
+      { pageItems: items, hasSummaryCard: false },
+      { pageItems: [], hasSummaryCard: true },
+    ];
+  }
+
+  // Case 3: Items exceed Page 1 capacity.
+  // Distribute items across pages, then check if summary card fits on the last items page or needs its own page.
+  const pages: InvoicePageItem[] = [];
+  let currentItems: CalcInvoiceLineItem[] = [];
+  let currentHeight = 0;
+  let isPage1 = true;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const h = heights[i];
+    const capacity = isPage1 ? page1MaxItemsOnly : subsequentMaxItemsOnly;
+
+    if (currentItems.length > 0 && currentHeight + h > capacity) {
+      pages.push({ pageItems: currentItems, hasSummaryCard: false });
+      currentItems = [item];
+      currentHeight = h;
+      isPage1 = false;
+    } else {
+      currentItems.push(item);
+      currentHeight += h;
+    }
+  }
+
+  const lastPageCapacityWithSummary =
+    pages.length === 0 ? page1MaxWithSummary : subsequentMaxWithSummary;
+
+  if (currentHeight <= lastPageCapacityWithSummary) {
+    pages.push({ pageItems: currentItems, hasSummaryCard: true });
+  } else {
+    // Doesn't fit on this page, push summary card + footer to next page!
+    pages.push({ pageItems: currentItems, hasSummaryCard: false });
+    pages.push({ pageItems: [], hasSummaryCard: true });
+  }
+
+  return pages;
+}
+
+function renderInvoiceSummaryCard(d: CalcInvoiceData): string {
+  const hasVat = d.vatRate > 0 && d.vatAmount > 0;
+  const hasPartialPayment =
+    typeof d.pendingBalance === "number" &&
+    d.pendingBalance > 0.009 &&
+    typeof d.amountPaid === "number" &&
+    d.amountPaid > 0.009;
+
+  return `
+    <div class="invoice-summary-container" style="display: flex; justify-content: flex-end; margin-top: 24px; margin-bottom: 20px; width: 100%;">
+      <div class="invoice-summary-card" style="width: 380px; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); border: 1px solid #1E293B; background-color: #0B1220;">
+        ${
+          d.duration
+            ? `
+        <div class="summary-row" style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px;">
+          <span class="summary-label" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">ESTIMATED TIMELINE</span>
+          <span class="summary-value" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${d.duration}</span>
+        </div>
+            `
+            : ""
+        }
+        <div class="summary-row" style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; ${d.duration ? "border-top: 1px solid #1E293B;" : ""}">
+          <span class="summary-label" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">SUBTOTAL</span>
+          <span class="summary-value" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${fmtCurrency(d.subtotal, d.currency)}</span>
+        </div>
+
+        ${
+          hasVat && d.vatRate > 0
+            ? `
+        <div class="summary-row" style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; border-top: 1px solid #1E293B;">
+          <span class="summary-label" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">VAT (${d.vatRate}%)</span>
+          <span class="summary-value" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${fmtCurrency(d.vatAmount, d.currency)}</span>
+        </div>
+            `
+            : ""
+        }
+        ${
+          hasPartialPayment
+            ? `
+        <div class="summary-row" style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; border-top: 1px solid #1E293B;">
+          <span class="summary-label" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">PAID TO DATE</span>
+          <span class="summary-value" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${fmtCurrency(d.amountPaid, d.currency)}</span>
+        </div>
+        <div class="summary-row" style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; border-top: 1px solid #1E293B;">
+          <span class="summary-label" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">BALANCE DUE</span>
+          <span class="summary-value" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${fmtCurrency(d.pendingBalance, d.currency)}</span>
+        </div>
+            `
+            : ""
+        }
+
+        <!-- Total Amount Row -->
+        <div class="summary-total-banner" style="background-color: #2A2AA0; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 62px; border-top: 1px solid #3E3EE8;">
+          <span class="summary-total-label" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 12px; letter-spacing: 0.06em; color: #FFFFFF; text-transform: uppercase; white-space: nowrap;">TOTAL AMOUNT</span>
+          <span class="summary-total-value" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 21px; color: #FFFFFF; white-space: nowrap; margin-left: 16px;">${fmtCurrency(d.totalAmount, d.currency)}${d.isMarketing ? " /month" : ""}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderInvoiceFooterOnly(): string {
+  return `
+    <footer class="invoice-footer" style="width: 100%; margin-top: auto; padding-top: 18px; border-top: 1.5px solid #D9D9D9; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 3px;">
+      <div class="invoice-footer-brand" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.14em; color: #CBD5E1; text-transform: uppercase; margin-bottom: 6px;">SOCIETY WEB SOLUTIONS</div>
+      <div class="invoice-footer-address" style="font-family: 'Inter', sans-serif; font-weight: 400; font-size: 10px; line-height: 1.4; color: #879095;">1645 Palm Beach Lakes Blvd, West Palm Beach, FL, USA</div>
+      <div class="invoice-footer-contact" style="font-family: 'Inter', sans-serif; font-weight: 400; font-size: 10px; line-height: 1.4; color: #879095;">
+        For inquiries, please reach out to <a href="mailto:contact@societywebsolutions.com" style="color: #879095; text-decoration: none; font-weight: 600;">contact@societywebsolutions.com</a>
+      </div>
+    </footer>
+  `;
+}
+
+// ─── HTML Template matching invoice.html with Calculator PDF Typography & Palette ─
+
+export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
   // Contact address lines
   const addrParts = [
     d.clientAddress,
@@ -469,51 +628,59 @@ export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
   const contactLine1 = addrParts.join(", ");
   const contactCountry = d.clientCountry || "United States";
 
-  // Table rows
-  const tableRows = d.lineItems
-    .map(
-      (item) => `
-      <tr>
-        <td class="col-desc">
-          <div class="item-title">${item.description}</div>
-          ${item.details ? `<div class="item-details">${item.details}</div>` : ""}
-        </td>
-        <td class="col-qty">${item.qty || 1}</td>
-        <td class="col-unit-price">${fmtCurrency(item.unitPrice, d.currency)}</td>
-        <td class="col-amount">${fmtCurrency(item.amount, d.currency)}</td>
-      </tr>
-    `
-    )
-    .join("");
+  const pages = paginateCalculatorInvoice(d.lineItems || [], d);
+  const totalPages = pages.length;
 
-  return `
-    <div class="proposal-page invoice-page">
+  return pages
+    .map((pageData, index) => {
+      const pageNum = index + 1;
+      const isFirstPage = pageNum === 1;
+      const isLastPage = pageNum === totalPages;
+      const pageItems = pageData.pageItems;
+      const hasSummary = pageData.hasSummaryCard;
+
+      const tableRows = pageItems
+        .map(
+          (item) => `
+          <tr>
+            <td class="col-desc">
+              <div class="item-title">${item.description}</div>
+              ${item.details ? `<div class="item-details">${item.details}</div>` : ""}
+            </td>
+            <td class="col-qty">${item.qty || 1}</td>
+            <td class="col-unit-price">${fmtCurrency(item.unitPrice, d.currency)}</td>
+            <td class="col-amount">${fmtCurrency(item.amount, d.currency)}</td>
+          </tr>
+        `
+        )
+        .join("");
+
+      return `
+    <div class="pdf-page invoice-page" style="
+      width: 794px;
+      height: 1123px;
+      min-height: 1123px;
+      max-height: 1123px;
+      box-sizing: border-box;
+      background-color: #FFFFFF;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #202124;
+      padding: 56px 64px 44px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      page-break-after: ${isLastPage ? "auto" : "always"};
+      break-after: ${isLastPage ? "auto" : "page"};
+    ">
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
-        .proposal-page.invoice-page {
-          box-sizing: border-box;
-          width: 794px;
-          min-height: 1080px;
-          max-height: 1123px;
-          margin: 0 auto;
-          padding: 48px 56px 40px;
-          background-color: #FFFFFF;
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          color: #202124;
-          line-height: 1.5;
-          position: relative;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-          overflow: hidden;
-        }
 
         .proposal-header.invoice-header {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          padding-bottom: 24px;
+          padding-bottom: 20px;
           border-bottom: 1.5px solid #D9D9D9;
         }
 
@@ -575,8 +742,8 @@ export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
           background-color: #F8FAFC;
           border: 1px solid #E2E8F0;
           border-radius: 8px;
-          padding: 18px 22px;
-          margin: 24px 0 24px 0;
+          padding: 16px 20px;
+          margin: 20px 0 20px 0;
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
@@ -591,7 +758,7 @@ export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
         }
 
         .info-group-contact {
-          margin-top: 18px;
+          margin-top: 14px;
         }
 
         .invoice-section-heading {
@@ -602,7 +769,7 @@ export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
           letter-spacing: 0.08em;
           color: #2A2AA0;
           text-transform: uppercase;
-          margin: 0 0 10px 0;
+          margin: 0 0 8px 0;
         }
 
         .bill-to-name {
@@ -611,7 +778,7 @@ export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
           font-size: 14.5px;
           line-height: 1.3;
           color: #0F172A;
-          margin-bottom: 4px;
+          margin-bottom: 3px;
         }
 
         .bill-to-company {
@@ -620,20 +787,20 @@ export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
           font-size: 12px;
           line-height: 1.35;
           color: #475569;
-          margin-bottom: 4px;
+          margin-bottom: 3px;
         }
 
         .contact-address-line-wrap {
           display: flex;
           flex-direction: column;
-          gap: 3px;
+          gap: 2px;
         }
 
         .contact-address-line {
           font-family: 'Inter', sans-serif;
           font-weight: 400;
           font-size: 12px;
-          line-height: 1.45;
+          line-height: 1.4;
           color: #64748B;
         }
 
@@ -647,7 +814,7 @@ export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          margin-bottom: 8px;
+          margin-bottom: 6px;
           font-size: 12px;
         }
 
@@ -687,18 +854,6 @@ export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
           color: #DC2626;
         }
 
-        .invoice-meta-value-wrap {
-          flex: 1;
-          text-align: right;
-          display: flex;
-          flex-direction: column;
-          gap: 3px;
-        }
-
-        .project-name {
-          display: block;
-        }
-
         .deliverables-table-wrapper.invoice-table-wrapper {
           width: 100%;
           border: none;
@@ -733,7 +888,7 @@ export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
         .invoice-table th {
           background-color: #2A2AA0 !important;
           color: #FFFFFF !important;
-          padding: 16px 14px;
+          padding: 14px 14px;
           font-family: 'Inter', sans-serif;
           font-weight: 700;
           font-size: 11px;
@@ -758,18 +913,18 @@ export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
           font-size: 12px;
           line-height: 1.4;
           color: #202124;
-          padding: 15px 14px;
+          padding: 12px 14px;
           border-bottom: 1px solid #E2E8F0;
         }
 
         .invoice-table th:first-child,
         .invoice-table td:first-child {
-          padding-left: 20px;
+          padding-left: 18px;
         }
 
         .invoice-table th:last-child,
         .invoice-table td:last-child {
-          padding-right: 20px;
+          padding-right: 18px;
         }
 
         .invoice-table .col-desc {
@@ -821,139 +976,12 @@ export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
           font-weight: 700;
           color: #0F172A;
         }
-
-        .invoice-summary-container {
-          display: flex;
-          justify-content: flex-end;
-          margin-top: 24px;
-          margin-bottom: 28px;
-          width: 100%;
-        }
-
-        .invoice-summary-card {
-          width: 380px;
-          border-radius: 8px;
-          overflow: hidden;
-          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-          border: 1px solid #1E293B;
-          background-color: #0B1220;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-
-        .summary-row {
-          background-color: #0B1220;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0 24px;
-          height: 44px;
-          border-top: 1px solid #1E293B;
-          box-sizing: border-box;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-
-        .summary-row:first-child {
-          border-top: none;
-        }
-
-        .summary-label {
-          font-family: 'Inter', sans-serif;
-          font-weight: 700;
-          font-size: 11px;
-          letter-spacing: 0.08em;
-          color: #8E9AA8;
-          text-transform: uppercase;
-        }
-
-        .summary-value {
-          font-family: 'Inter', sans-serif;
-          font-weight: 700;
-          font-size: 14.5px;
-          color: #FFFFFF;
-          white-space: nowrap;
-        }
-
-        .summary-total-banner {
-          background-color: #2A2AA0;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0 24px;
-          height: 62px;
-          border-top: 1px solid #3E3EE8;
-          box-sizing: border-box;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-
-        .summary-total-label {
-          font-family: 'Inter', sans-serif;
-          font-weight: 700;
-          font-size: 12px;
-          letter-spacing: 0.06em;
-          color: #FFFFFF;
-          text-transform: uppercase;
-          white-space: nowrap;
-        }
-
-        .summary-total-value {
-          font-family: 'Inter', sans-serif;
-          font-weight: 700;
-          font-size: 21px;
-          color: #FFFFFF;
-          white-space: nowrap;
-          margin-left: 16px;
-        }
-
-        .invoice-footer {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          text-align: center;
-          gap: 4px;
-          margin-top: auto;
-          margin-bottom: 0px;
-          padding-top: 20px;
-          border-top: 1.5px solid #D9D9D9;
-        }
-
-        .invoice-footer-brand {
-          font-family: 'Inter', sans-serif;
-          font-weight: 700;
-          font-size: 11px;
-          line-height: 1.2;
-          letter-spacing: 0.14em;
-          color: #CBD5E1;
-          text-transform: uppercase;
-          margin-bottom: 8px;
-        }
-
-        .invoice-footer-address {
-          font-family: 'Inter', sans-serif;
-          font-weight: 400;
-          font-size: 10px;
-          line-height: 1.4;
-          color: #879095;
-        }
-
-        .invoice-footer-contact {
-          font-family: 'Inter', sans-serif;
-          font-weight: 400;
-          font-size: 10px;
-          line-height: 1.4;
-          color: #879095;
-        }
-
-        .invoice-footer-contact a {
-          color: #879095;
-          text-decoration: none;
-          font-weight: 500;
-        }
       </style>
 
-      <div>
+      <div style="width: 100%; display: flex; flex-direction: column; flex: 1;">
+        ${
+          isFirstPage
+            ? `
         <header class="proposal-header invoice-header">
           <div class="header-logo">
             ${LOGO_SVG}
@@ -1008,16 +1036,32 @@ export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
             </div>
           </div>
         </section>
+        `
+            : `
+        <!-- Subsequent page header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; margin-bottom: 16px; border-bottom: 1.5px solid #E2E8F0;">
+          <div style="font-size: 11px; font-weight: 700; color: #2A2AA0; letter-spacing: 0.08em; text-transform: uppercase;">
+            INVOICE ${d.invoiceNumber} (Page ${pageNum} of ${totalPages})
+          </div>
+          <div style="font-size: 11px; font-weight: 600; color: #64748B;">
+            ${d.clientName}
+          </div>
+        </div>
+        `
+        }
 
+        ${
+          pageItems.length > 0
+            ? `
         <section class="invoice-table-section">
           <div class="deliverables-table-wrapper invoice-table-wrapper">
             <table class="deliverables-table invoice-table">
               <thead>
                 <tr style="background-color: #2A2AA0;">
-                  <th class="col-desc" style="background-color: #2A2AA0; color: #FFFFFF !important; padding: 16px 14px 16px 20px;">DELIVERABLES &amp; WORK SCOPE</th>
-                  <th class="col-qty" style="background-color: #2A2AA0; color: #FFFFFF !important; padding: 16px 14px; text-align: center;">QTY</th>
-                  <th class="col-unit-price" style="background-color: #2A2AA0; color: #FFFFFF !important; padding: 16px 14px; text-align: right;">UNIT PRICE</th>
-                  <th class="col-amount" style="background-color: #2A2AA0; color: #FFFFFF !important; padding: 16px 20px 16px 14px; text-align: right;">AMOUNT</th>
+                  <th class="col-desc" style="background-color: #2A2AA0; color: #FFFFFF !important; padding: 14px 14px 14px 18px;">DELIVERABLES &amp; WORK SCOPE</th>
+                  <th class="col-qty" style="background-color: #2A2AA0; color: #FFFFFF !important; padding: 14px 14px; text-align: center;">QTY</th>
+                  <th class="col-unit-price" style="background-color: #2A2AA0; color: #FFFFFF !important; padding: 14px 14px; text-align: right;">UNIT PRICE</th>
+                  <th class="col-amount" style="background-color: #2A2AA0; color: #FFFFFF !important; padding: 14px 18px 14px 14px; text-align: right;">AMOUNT</th>
                 </tr>
               </thead>
               <tbody>
@@ -1026,68 +1070,18 @@ export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
             </table>
           </div>
         </section>
+        `
+            : ""
+        }
 
-        <!-- Summary Card: (Timeline + Subtotal + VAT) + Total Amount (matching Calculator PDF) -->
-        <div class="invoice-summary-container">
-          <div class="invoice-summary-card">
-            ${
-              d.duration
-                ? `
-            <div class="summary-row">
-              <span class="summary-label">ESTIMATED TIMELINE</span>
-              <span class="summary-value">${d.duration}</span>
-            </div>
-                `
-                : ""
-            }
-            <div class="summary-row">
-              <span class="summary-label">SUBTOTAL</span>
-              <span class="summary-value">${fmtCurrency(d.subtotal, d.currency)}</span>
-            </div>
-
-            ${
-              hasVat && d.vatRate > 0
-                ? `
-            <div class="summary-row">
-              <span class="summary-label">VAT (${d.vatRate}%)</span>
-              <span class="summary-value">${fmtCurrency(d.vatAmount, d.currency)}</span>
-            </div>
-                `
-                : ""
-            }
-            ${
-              hasPartialPayment
-                ? `
-            <div class="summary-row">
-              <span class="summary-label">PAID TO DATE</span>
-              <span class="summary-value">${fmtCurrency(d.amountPaid, d.currency)}</span>
-            </div>
-            <div class="summary-row">
-              <span class="summary-label">BALANCE DUE</span>
-              <span class="summary-value">${fmtCurrency(d.pendingBalance, d.currency)}</span>
-            </div>
-                `
-                : ""
-            }
-
-            <!-- Total Amount Row (At the end) -->
-            <div class="summary-total-banner">
-              <span class="summary-total-label">TOTAL AMOUNT</span>
-              <span class="summary-total-value">${fmtCurrency(d.totalAmount, d.currency)}${d.isMarketing ? " /month" : ""}</span>
-            </div>
-          </div>
-        </div>
+        ${hasSummary ? renderInvoiceSummaryCard(d) : ""}
       </div>
 
-      <footer class="invoice-footer">
-        <div class="invoice-footer-brand">SOCIETY WEB SOLUTIONS</div>
-        <div class="invoice-footer-address">1645 Palm Beach Lakes Blvd, West Palm Beach, FL, USA</div>
-        <div class="invoice-footer-contact">
-          For inquiries, please reach out to <a href="mailto:contact@societywebsolutions.com"><strong>contact@societywebsolutions.com</strong></a>
-        </div>
-      </footer>
+      ${isLastPage ? renderInvoiceFooterOnly() : ""}
     </div>
-  `;
+    `;
+    })
+    .join("\n");
 }
 
 // ─── Download PDF ─────────────────────────────────────────────────────────────
@@ -1107,41 +1101,35 @@ export async function downloadCalculatorInvoicePDF(data: any): Promise<void> {
   try {
     await new Promise((r) => setTimeout(r, 150));
 
-    const canvas = await html2canvasLib(container, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: "#ffffff",
-      width: 794,
-      windowWidth: 794,
-      scrollY: 0,
-      scrollX: 0,
-    });
-
-    if (!canvas || canvas.width === 0 || canvas.height === 0)
-      throw new Error("Canvas render failed");
-
+    const pageElements = container.querySelectorAll(".pdf-page");
     const pdf = new jsPdfLib("p", "pt", "a4");
-    const pw = pdf.internal.pageSize.getWidth();
-    const ph = pdf.internal.pageSize.getHeight();
-    const iw = pw;
-    const ih = (canvas.height * iw) / canvas.width;
-    const imgData = canvas.toDataURL("image/jpeg", 0.94);
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
 
-    if (ih <= ph + 35 || ih <= ph * 1.12) {
-      const fitH = Math.min(ih, ph);
-      pdf.addImage(imgData, "JPEG", 0, 0, iw, fitH, undefined, "FAST");
-    } else {
-      let left = ih;
-      let pos = 0;
-      pdf.addImage(imgData, "JPEG", 0, pos, iw, ih, undefined, "FAST");
-      left -= ph;
-      while (left > 45) {
-        pos -= ph;
+    for (let i = 0; i < pageElements.length; i++) {
+      const pageEl = pageElements[i] as HTMLElement;
+      const captureHeight = pageEl.scrollHeight || 1123;
+      const canvas = await html2canvasLib(pageEl, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+        width: 794,
+        windowWidth: 794,
+        height: captureHeight,
+        windowHeight: captureHeight,
+        scrollY: 0,
+        scrollX: 0,
+      });
+
+      if (!canvas || canvas.width === 0 || canvas.height === 0) continue;
+
+      if (i > 0) {
         pdf.addPage();
-        pdf.addImage(imgData, "JPEG", 0, pos, iw, ih, undefined, "FAST");
-        left -= ph;
       }
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.94);
+      pdf.addImage(imgData, "JPEG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
     }
 
     const ref = d.rawInvoiceNumber.replace(/[^a-zA-Z0-9-_]/g, "") || "invoice";

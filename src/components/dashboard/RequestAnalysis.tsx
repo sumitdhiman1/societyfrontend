@@ -42,7 +42,7 @@ export default function RequestAnalysis() {
   }, []);
 
   useEffect(() => {
-    if (settings && settings.isPopupEnabled === false) return;
+    if (!settings || settings.isPopupEnabled === false) return;
 
     if (document.cookie.includes("requestwebsite_analysis_shown=true")) {
       console.log("RequestAnalysis already shown (cookie found)");
@@ -50,8 +50,11 @@ export default function RequestAnalysis() {
     }
 
     const handleScroll = () => {
-      const scrollPercent = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
-      if (scrollPercent > (settings.popupScrollPercentage || 80)) {
+      if (!settings) return;
+      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+      if (scrollable <= 0) return;
+      const scrollPercent = (window.scrollY / scrollable) * 100;
+      if (scrollPercent > (settings.popupScrollPercentage ?? 80)) {
         console.log("Triggering RequestAnalysis popup", { scrollPercent });
         setIsOpen(true);
         document.cookie = "requestwebsite_analysis_shown=true; path=/; max-age=31536000";

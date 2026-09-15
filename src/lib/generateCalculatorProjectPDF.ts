@@ -809,55 +809,62 @@ function renderSelectedOptionsList(options: Array<{ question: string; answers: s
   `;
 }
 
-function renderSummaryBoxAndFooter(d: CalculatorPDFData): string {
-  const hasVat = typeof d.vatRate === "number" && d.vatRate > 0;
+function renderSummaryCard(d: CalculatorPDFData): string {
+  const hasVat =
+    typeof d.vatRate === "number" &&
+    d.vatRate > 0 &&
+    typeof d.vatAmount === "number" &&
+    d.vatAmount > 0;
   return `
-    <div style="margin-top: 28px; width: 100%;">
-      <!-- Summary Card: Timeline + (Subtotal + VAT) + Investment -->
-      <div style="display: flex; justify-content: flex-end;">
-        <div style="width: 380px; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border: 1px solid #1E293B;">
-          <!-- Timeline Row -->
-          <div style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px;">
-            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">ESTIMATED TIMELINE</span>
-            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${d.duration}</span>
-          </div>
-          ${
-            hasVat
-              ? `
-          <!-- Subtotal Row -->
-          <div style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; border-top: 1px solid #1E293B;">
-            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">SUBTOTAL</span>
-            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${d.formattedSubtotal}</span>
-          </div>
-          <!-- VAT Row -->
-          <div style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; border-top: 1px solid #1E293B;">
-            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">VAT (${d.vatRate}%)</span>
-            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${d.formattedVatAmount}</span>
-          </div>
-          `
-              : ""
-          }
-          <!-- Investment Row -->
-          <div style="background-color: #2A2AA0; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 62px; ${hasVat ? "border-top: 1px solid #3E3EE8;" : ""}">
-            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; letter-spacing: 0.06em; color: #FFFFFF; text-transform: uppercase; white-space: nowrap;">INVESTMENT TOTAL</span>
-            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 21px; color: #FFFFFF; white-space: nowrap; margin-left: 16px;">${d.formattedPrice}</span>
-          </div>
+    <div style="margin-top: 24px; width: 100%; display: flex; justify-content: flex-end;">
+      <div style="width: 380px; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border: 1px solid #1E293B;">
+        <!-- Timeline Row -->
+        <div style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px;">
+          <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">ESTIMATED TIMELINE</span>
+          <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${d.duration}</span>
         </div>
-      </div>
-
-      <!-- Divider Line -->
-      <div style="border-top: 1px solid #E5E7EB; margin-top: 26px; margin-bottom: 20px; width: 100%;"></div>
-
-      <!-- Footer (Centered) -->
-      <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-bottom: 4px;">
-        <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 9.5px; line-height: 1.5; color: #94A3B8; margin: 0;">Acceptance of this quote binds the client to the agreed delivery timeline and total investment.</p>
-        <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 9.5px; line-height: 1.5; color: #94A3B8; margin: 0;">Note: Time spent waiting for client replies does not count towards project deadlines.</p>
-        <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 9.5px; line-height: 1.5; color: #94A3B8; margin: 0;">For inquiries, please reach out to <span style="font-weight: 600; color: #64748B;">contact@societywebsolutions.com</span></p>
-        <div style="margin-top: 14px; text-align: center;">
-          <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.14em; color: #CBD5E1; text-transform: uppercase;">SOCIETY WEB SOLUTIONS</span>
+        ${
+          hasVat
+            ? `
+        <!-- Subtotal Row -->
+        <div style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; border-top: 1px solid #1E293B;">
+          <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">SUBTOTAL</span>
+          <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${d.formattedSubtotal}</span>
+        </div>
+        <!-- VAT Row -->
+        <div style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; border-top: 1px solid #1E293B;">
+          <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">VAT (${d.vatRate}%)</span>
+          <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${d.formattedVatAmount}</span>
+        </div>
+        `
+            : ""
+        }
+        <!-- Investment Row -->
+        <div style="background-color: #2A2AA0; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 62px; ${hasVat ? "border-top: 1px solid #3E3EE8;" : ""}">
+          <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; letter-spacing: 0.06em; color: #FFFFFF; text-transform: uppercase; white-space: nowrap;">INVESTMENT TOTAL</span>
+          <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 21px; color: #FFFFFF; white-space: nowrap; margin-left: 16px;">${d.formattedPrice}</span>
         </div>
       </div>
     </div>
+  `;
+}
+
+function renderFooterOnly(): string {
+  return `
+    <footer style="width: 100%; margin-top: auto; padding-top: 20px;">
+      <!-- Divider Line -->
+      <div style="border-top: 1px solid #E5E7EB; margin-bottom: 14px; width: 100%;"></div>
+
+      <!-- Footer (Centered) -->
+      <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-bottom: 2px;">
+        <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 9.5px; line-height: 1.5; color: #94A3B8; margin: 0;">Acceptance of this quote binds the client to the agreed delivery timeline and total investment.</p>
+        <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 9.5px; line-height: 1.5; color: #94A3B8; margin: 0;">Note: Time spent waiting for client replies does not count towards project deadlines.</p>
+        <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 9.5px; line-height: 1.5; color: #94A3B8; margin: 0;">For inquiries, please reach out to <span style="font-weight: 600; color: #64748B;">contact@societywebsolutions.com</span></p>
+        <div style="margin-top: 12px; text-align: center;">
+          <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.14em; color: #CBD5E1; text-transform: uppercase;">SOCIETY WEB SOLUTIONS</span>
+        </div>
+      </div>
+    </footer>
   `;
 }
 
@@ -896,70 +903,98 @@ function estimateOptionHeight(opt: { question: string; answers: string[] }): num
   return qHeight + aHeight + 15;
 }
 
-function paginateCalculatorOptions(
-  options: Array<{ question: string; answers: string[] }>
-): Array<Array<{ question: string; answers: string[] }>> {
-  if (!options || options.length === 0) return [[]];
+interface PDFPageItem {
+  pageOptions: Array<{ question: string; answers: string[] }>;
+  hasSummaryCard: boolean;
+}
 
-  const heights = options.map(estimateOptionHeight);
-  const totalHeight = heights.reduce((sum, h) => sum + h, 0);
-
-  // Single page capacity:
-  // If totalHeight <= 520px, everything fits on 1 single page!
-  if (totalHeight <= 520) {
-    return [options];
+function paginateCalculatorPDF(
+  options: Array<{ question: string; answers: string[] }>,
+  _hasVat: boolean
+): PDFPageItem[] {
+  if (!options || options.length === 0) {
+    return [{ pageOptions: [], hasSummaryCard: true }];
   }
 
-  // Multi-page:
-  // When options exceed 520px, we split across pages.
-  // Page 1 has header & client quote box, so it takes options up to ~460px.
-  // Page 2 (or subsequent pages) takes remaining options plus the summary card.
-  const pages: Array<Array<{ question: string; answers: string[] }>> = [];
-  let currentPage: Array<{ question: string; answers: string[] }> = [];
-  let currentH = 0;
-  let pageIdx = 0;
+  const heights = options.map(estimateOptionHeight);
+  const totalOptionsHeight = heights.reduce((sum, h) => sum + h, 0);
+
+  const page1MaxWithOptionsAndSummary = 430;
+  const page1MaxOptionsOnly = 730;
+  const subsequentMaxWithOptionsAndSummary = 640;
+  const subsequentMaxOptionsOnly = 920;
+
+  // Case 1: Everything fits on Page 1 (options + summary + footer)
+  if (totalOptionsHeight <= page1MaxWithOptionsAndSummary) {
+    return [{ pageOptions: options, hasSummaryCard: true }];
+  }
+
+  // Case 2: All options fit on Page 1, but adding Summary Card + Footer overflows Page 1.
+  // Push payment total (summary card) + footer to next page!
+  if (totalOptionsHeight <= page1MaxOptionsOnly) {
+    return [
+      { pageOptions: options, hasSummaryCard: false },
+      { pageOptions: [], hasSummaryCard: true },
+    ];
+  }
+
+  // Case 3: Options themselves exceed Page 1 capacity.
+  // Distribute options across pages, then check if summary card fits on the last options page or needs its own page.
+  const pages: PDFPageItem[] = [];
+  let currentOptions: Array<{ question: string; answers: string[] }> = [];
+  let currentHeight = 0;
+  let isPage1 = true;
 
   for (let i = 0; i < options.length; i++) {
     const opt = options[i];
     const h = heights[i];
-    const capacity = pageIdx === 0 ? 460 : 750;
+    const capacity = isPage1 ? page1MaxOptionsOnly : subsequentMaxOptionsOnly;
 
-    if (currentPage.length > 0 && currentH + h > capacity) {
-      pages.push(currentPage);
-      currentPage = [opt];
-      currentH = h;
-      pageIdx++;
+    if (currentOptions.length > 0 && currentHeight + h > capacity) {
+      pages.push({ pageOptions: currentOptions, hasSummaryCard: false });
+      currentOptions = [opt];
+      currentHeight = h;
+      isPage1 = false;
     } else {
-      currentPage.push(opt);
-      currentH += h;
+      currentOptions.push(opt);
+      currentHeight += h;
     }
   }
 
-  if (currentPage.length > 0) {
-    pages.push(currentPage);
+  // Check the last page of options: can summary card + footer fit on it?
+  const lastPageCapacityWithSummary =
+    pages.length === 0
+      ? page1MaxWithOptionsAndSummary
+      : subsequentMaxWithOptionsAndSummary;
+
+  if (currentHeight <= lastPageCapacityWithSummary) {
+    pages.push({ pageOptions: currentOptions, hasSummaryCard: true });
+  } else {
+    // Doesn't fit on this page, push summary card + footer to next page!
+    pages.push({ pageOptions: currentOptions, hasSummaryCard: false });
+    pages.push({ pageOptions: [], hasSummaryCard: true });
   }
 
-  // If options were put into only 1 page but totalHeight > 520, split evenly so Page 2 is NEVER empty!
-  if (pages.length === 1 && totalHeight > 520 && options.length > 1) {
-    const half = Math.ceil(options.length / 2);
-    return [options.slice(0, half), options.slice(half)];
-  }
-
-  // Filter out any accidentally empty page arrays so an empty page is NEVER returned
-  const cleanPages = pages.filter((p) => p.length > 0);
-  return cleanPages.length > 0 ? cleanPages : [options];
+  return pages;
 }
 
 export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
   const options = d.selectedOptions || [];
-  const pages = paginateCalculatorOptions(options);
+  const hasVat =
+    typeof d.vatRate === "number" &&
+    d.vatRate > 0 &&
+    typeof d.vatAmount === "number" &&
+    d.vatAmount > 0;
+  const pages = paginateCalculatorPDF(options, hasVat);
   const totalPages = pages.length;
 
   return pages
-    .map((pageOptions, index) => {
+    .map((pageData, index) => {
       const pageNum = index + 1;
       const isFirstPage = pageNum === 1;
       const isLastPage = pageNum === totalPages;
+      const pageOptions = pageData.pageOptions;
+      const hasSummary = pageData.hasSummaryCard;
 
       return `
     <div class="pdf-page" style="
@@ -971,15 +1006,15 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
       background-color: #FFFFFF;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       color: #202124;
-      padding: 72px 78px 56px;
+      padding: 64px 78px 48px;
       display: flex;
       flex-direction: column;
-      justify-content: ${totalPages === 1 ? "space-between" : "flex-start"};
+      justify-content: space-between;
       overflow: hidden;
       page-break-after: ${isLastPage ? "auto" : "always"};
       break-after: ${isLastPage ? "auto" : "page"};
     ">
-      <div style="width: 100%;">
+      <div style="width: 100%; display: flex; flex-direction: column; flex: 1;">
         ${
           isFirstPage
             ? `
@@ -1007,7 +1042,7 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
           border: 1px solid #E2E8F0;
           border-radius: 8px;
           padding: 18px 22px;
-          margin: 28px 0 0 0;
+          margin: 24px 0 0 0;
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
@@ -1034,13 +1069,13 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
         </section>
 
         ${
-          (d.scopeOverviewLead || d.subtitle)
+          d.scopeOverviewLead || d.subtitle
             ? `
         <!-- ── Subtitle / Scope Overview ── -->
-        <div style="margin-top: 22px; margin-bottom: 16px;">
+        <div style="margin-top: 18px; margin-bottom: 12px;">
           <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 13px; color: #2A2AA0;">${d.scopeOverviewLead || d.subtitle}</div>
         </div>`
-            : `<div style="margin-top: 24px;"></div>`
+            : `<div style="margin-top: 18px;"></div>`
         }
         `
             : ""
@@ -1048,14 +1083,13 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
 
         <!-- ── Scope Questions for this page ── -->
         ${renderSelectedOptionsList(pageOptions, isFirstPage)}
+
+        <!-- ── Summary Box (Payment Total) ── -->
+        ${hasSummary ? renderSummaryCard(d) : ""}
       </div>
 
-      <!-- ── Footer / Summary Box (Only on final page) ── -->
-      ${
-        isLastPage
-          ? renderSummaryBoxAndFooter(d)
-          : ""
-      }
+      <!-- ── Footer (Always bottom of the last page) ── -->
+      ${isLastPage ? renderFooterOnly() : ""}
     </div>
     `;
     })

@@ -161,10 +161,12 @@ export function ReceiptModal({
                 <span className="text-gray-500 font-semibold">Subtotal:</span>
                 <span className="text-gray-800 font-bold">{formatCurrency(subtotal)}</span>
               </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-gray-500 font-semibold">VAT ({vatRate}%):</span>
-                <span className="text-gray-800 font-bold">{formatCurrency(vatAmount)}</span>
-              </div>
+              {vatRate > 0 && vatAmount > 0 && (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-500 font-semibold">VAT ({vatRate}%):</span>
+                  <span className="text-gray-800 font-bold">{formatCurrency(vatAmount)}</span>
+                </div>
+              )}
               <div className="h-px bg-gray-200 w-full pt-0.5" />
               <div className="flex justify-between items-center pt-1">
                 <span className="text-sm font-extrabold text-gray-900 uppercase">Total Paid:</span>
@@ -279,13 +281,19 @@ export default function CalculatorProjectPayments({
     (activeProject.taxPercentage != null ? activeProject.taxPercentage : 0)
   );
 
-  const rawTotalCost = Math.max(
-    Number(linkedQuote.totalCost || 0),
-    Number(activeProject.totalCost || 0),
-    Number(activeProject.price || 0),
-    Number(activeProject.totalPrice || 0),
-    (Number(activeProject.amountPaid || 0) + Number(activeProject.amountDue || 0))
-  );
+  // Prefer project.price (always in payment currency) over quote.totalCost (always USD)
+  // to avoid cross-currency Math.max picking the larger USD value for EUR payers.
+  const projectPrice = Number(activeProject.price || 0) || Number(activeProject.totalPrice || 0);
+  const rawTotalCost = projectPrice > 0
+    ? Math.max(
+        projectPrice,
+        (Number(activeProject.amountPaid || 0) + Number(activeProject.amountDue || 0))
+      )
+    : Math.max(
+        Number(linkedQuote.totalCost || 0),
+        Number(activeProject.totalCost || 0),
+        Number(activeProject.amountPaid || 0) + Number(activeProject.amountDue || 0)
+      );
 
   const baseSubtotal = Number(
     activeProject.subtotal ??
@@ -807,14 +815,16 @@ export default function CalculatorProjectPayments({
                           {formatCurrency(totalSubtotal)}
                         </td>
                       </tr>
-                      <tr className="bg-gray-50/20">
-                        <td className="py-2.5 px-6 text-right text-xs font-semibold text-gray-500" colSpan={2}>
-                          VAT ({vatRate}%):
-                        </td>
-                        <td className="py-2.5 px-6 text-right text-xs font-bold text-gray-800">
-                          {formatCurrency(effectiveVatAmount)}
-                        </td>
-                      </tr>
+                      {vatRate > 0 && effectiveVatAmount > 0 && (
+                        <tr className="bg-gray-50/20">
+                          <td className="py-2.5 px-6 text-right text-xs font-semibold text-gray-500" colSpan={2}>
+                            VAT ({vatRate}%):
+                          </td>
+                          <td className="py-2.5 px-6 text-right text-xs font-bold text-gray-800">
+                            {formatCurrency(effectiveVatAmount)}
+                          </td>
+                        </tr>
+                      )}
                       <tr className="border-t border-gray-200 bg-gray-50/40">
                         <td className="py-3 px-6 text-right text-xs font-bold text-gray-500 uppercase tracking-wider" colSpan={2}>
                           Total Paid
