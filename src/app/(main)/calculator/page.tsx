@@ -513,10 +513,17 @@ const ProposalPreview = ({
   const [showTooltip, setShowTooltip] = useState(false);
   const { currency, conversionRate } = useCurrency();
 
-  const formatPriceLocal = (amt: number) =>
-    formatCalculatorPrice(amt, currency, conversionRate, category.categoryKey);
-
   const isMonthly = billingType === "monthly";
+
+  const baseDisplayPrice = getCalculatorDisplayAmount(
+    totalPrice,
+    currency,
+    conversionRate,
+    category?.categoryKey
+  );
+  const displayVatAmount =
+    vatRate > 0 ? Math.round(baseDisplayPrice * (vatRate / 100) * 100) / 100 : 0;
+  const displayTotalWithVat = Math.round((baseDisplayPrice + displayVatAmount) * 100) / 100;
 
   const sortedQuestions = [...(category.questions || [])].sort(
     (a: any, b: any) => (a.order || 0) - (b.order || 0)
@@ -577,9 +584,17 @@ const ProposalPreview = ({
   });
 
   const displayName = getCategoryProposalName(category.categoryKey, category.categoryName);
-  const hasTimeline = hasTimelineSelected(category.questions || [], selections, category.categoryKey);
+  const isSelectedTimeline =
+    hasTimelineSelected(category.questions || [], selections, category.categoryKey);
+  const hasTimeline =
+    isSelectedTimeline &&
+    Boolean(timeline) &&
+    typeof timeline === "string" &&
+    timeline.trim() !== "" &&
+    timeline !== "Please select a timeline option" &&
+    timeline !== "Please select a timeline option above";
   const displayTimeline = hasTimeline
-    ? (timeline || getDefaultCategoryTimeline(category.categoryKey, category.timeline))
+    ? timeline
     : "Please select a timeline option above";
 
   const [isDownloading, setIsDownloading] = useState(false);
@@ -761,16 +776,20 @@ const ProposalPreview = ({
         <div className="mt-10 mb-6">
           <h3 className="text-[#111827] text-[24px] md:text-[26px] font-bold tracking-tight mb-1">
             PROJECT TOTAL COST:{" "}
-            <span className="text-[#4F46E5] font-black font-bold">{formatPriceLocal(totalWithVat)}</span>
+            <span className="text-[#4F46E5] font-black font-bold">
+              {formatCalculatorDisplayAmount(baseDisplayPrice, currency, category?.categoryKey)}
+            </span>
             {isMonthly && (
               <span className="text-[#64748B] text-[18px] md:text-[20px] font-medium"> /month</span>
             )}
           </h3>
           {vatRate > 0 && (
             <div className="flex flex-wrap items-center gap-2 text-[13px] md:text-[14px] font-semibold text-gray-500 mt-1.5">
-              <span>Base: {formatPriceLocal(totalPrice)}</span>
+              <span>VAT ({vatRate}%): {formatCalculatorDisplayAmount(displayVatAmount, currency, category?.categoryKey)}</span>
               <span>•</span>
-              <span className="text-[#4338CA]">VAT ({vatRate}%): {formatPriceLocal(vatAmount)}</span>
+              <span className="text-[#4338CA]">
+                Total (inc. VAT): {formatCalculatorDisplayAmount(displayTotalWithVat, currency, category?.categoryKey)}
+              </span>
             </div>
           )}
           {isMonthly && <p className="text-[#363636] text-[13px] font-medium mt-1 opacity-75">First month billed on start. Then auto-renewed monthly.</p>}
@@ -1200,6 +1219,10 @@ const CalculatorPaymentForm = ({
   const vatAmount = Math.round(baseAmount * vatMultiplier * 100) / 100;
   const totalPayable = Math.round((baseAmount + vatAmount) * 100) / 100;
 
+  // VAT-inclusive label amounts shown on the Full / 50% radio buttons
+  const fullLabelAmount = Math.round(payableTotal * (1 + vatMultiplier) * 100) / 100;
+  const halfLabelAmount = Math.round(halfPrice * (1 + vatMultiplier) * 100) / 100;
+
   const formatPaymentLine = (amt: number) =>
     formatCalculatorDisplayAmount(amt, currencyLabel, categoryKey);
 
@@ -1441,7 +1464,7 @@ const CalculatorPaymentForm = ({
               )}
             </div>
             <input type="radio" name="paymentOption" className="hidden" checked={paymentOption === "full"} onChange={() => setPaymentOption("full")} />
-            <span className={`transition-colors font-normal text-[16px] ${paymentOption === "full" ? "text-black" : "text-[#475569]"}`}>Full {formatPaymentLine(payableTotal)}</span>
+            <span className={`transition-colors font-normal text-[16px] ${paymentOption === "full" ? "text-black" : "text-[#475569]"}`}>Full {formatPaymentLine(fullLabelAmount)}{vatRate > 0 && <span className="text-[13px] text-gray-400 ml-1">(inc. VAT)</span>}</span>
           </label>
 
           {halfPrice > 0 && (
@@ -1452,7 +1475,7 @@ const CalculatorPaymentForm = ({
                 )}
               </div>
               <input type="radio" name="paymentOption" className="hidden" checked={paymentOption === "half"} onChange={() => setPaymentOption("half")} />
-              <span className={`transition-colors font-normal text-[16px] ${paymentOption === "half" ? "text-black" : "text-[#475569]"}`}>50% {formatPaymentLine(halfPrice)}</span>
+              <span className={`transition-colors font-normal text-[16px] ${paymentOption === "half" ? "text-black" : "text-[#475569]"}`}>50% {formatPaymentLine(halfLabelAmount)}{vatRate > 0 && <span className="text-[13px] text-gray-400 ml-1">(inc. VAT)</span>}</span>
             </label>
           )}
 
@@ -1495,7 +1518,7 @@ const CalculatorPaymentForm = ({
             </div>
           )}
           <div className="pt-2 border-t border-gray-200 flex justify-between items-center text-base font-bold text-gray-900">
-            <span className="">Total Payable:</span>
+            <span className="">Total Amount:</span>
             <span className="text-[#4F46E5] text-lg font-black">{formatPaymentLine(totalPayable)}</span>
           </div>
         </div>

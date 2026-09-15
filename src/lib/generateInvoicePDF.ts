@@ -437,11 +437,16 @@ export function getInvoiceHTML(d: InvoicePDFData): string {
               <span style="color: #64748B; font-weight: 600;">Subtotal:</span>
               <span style="color: #0F172A; font-weight: 700;">${formatCurrency(d.subtotal, d.currency)}</span>
             </div>
+            ${
+              d.vatRate > 0 && d.vatAmount > 0
+                ? `
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 10px;">
               <span style="color: #64748B; font-weight: 600;">VAT / Tax (${vatPercentageLabel}):</span>
               <span style="color: #0F172A; font-weight: 700;">${formatCurrency(d.vatAmount, d.currency)}</span>
             </div>
-            
+            `
+                : ""
+            }
             <div style="height: 1px; background-color: #CBD5E1; margin: 8px 0 10px 0;"></div>
             
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 800; color: #0F172A; margin-bottom: ${d.amountPaid ? "8px" : "0"};">

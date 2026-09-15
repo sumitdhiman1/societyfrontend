@@ -746,14 +746,16 @@ function PaymentForm({
                   {formatPrice(projectSubtotal)}
                 </td>
               </tr>
-              <tr className="bg-gray-50/70">
-                <td colSpan={2} className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-500">
-                  VAT ({getActiveVatRate()}%):
-                </td>
-                <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
-                  {formatPrice(getVatAmount(projectSubtotal))}
-                </td>
-              </tr>
+              {getActiveVatRate() > 0 && getVatAmount(projectSubtotal) > 0 && (
+                <tr className="bg-gray-50/70">
+                  <td colSpan={2} className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-500">
+                    VAT ({getActiveVatRate()}%):
+                  </td>
+                  <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
+                    {formatPrice(getVatAmount(projectSubtotal))}
+                  </td>
+                </tr>
+              )}
               <tr className="bg-blue-50/50 border-t border-gray-200">
                 <td colSpan={2} className="py-3 px-3 sm:px-6 text-right text-xs sm:text-sm font-bold text-gray-800 uppercase font-sans">
                   Total Payable:
