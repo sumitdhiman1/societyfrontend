@@ -1285,6 +1285,9 @@ const CalculatorPaymentForm = ({
       });
 
       const user = authService.getUser();
+      const seoMode = categoryKey === "seo" ? getSeoServiceMode(selections, category?.questions) : undefined;
+      const isMonthlyBilling = isMonthlyBillingCategory(categoryKey, seoMode);
+
       const proposalData = {
         categoryKey,
         selections: enrichedSelections,
@@ -1294,6 +1297,7 @@ const CalculatorPaymentForm = ({
         timeline,
         personName: cardholderName || user?.fullName || "Valued Customer",
         personEmail: user?.email || "customer@example.com",
+        billingType: isMonthlyBilling ? "monthly" : "fixed",
       };
 
       const submitRes = await priceCalculatorService.submitQuote(proposalData);
@@ -1318,6 +1322,9 @@ const CalculatorPaymentForm = ({
           type: "QUOTE",
           quoteId,
           quoteNumber: quoteNum,
+          billingType: isMonthlyBilling ? "monthly" : "fixed",
+          isMonthly: isMonthlyBilling ? "true" : "false",
+          categoryKey,
           // fullAmount is the USD base price so backend always compares like-for-like
           fullAmount: usdBaseAmount,
           calculatedPrice: usdBaseAmount,

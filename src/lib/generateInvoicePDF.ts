@@ -89,6 +89,7 @@ export interface InvoicePDFData {
   pendingBalance?: number;
   currency: string;
   paymentMethod?: string;
+  isMarketing?: boolean;
 }
 
 function formatCurrency(amount: number, currency: string = "USD"): string {
@@ -190,12 +191,27 @@ export function extractInvoicePDFData(data: any): InvoicePDFData {
     clientObj.country ||
     "US";
 
+  const categoryKey = (
+    data.categoryKey ||
+    project.categoryKey ||
+    specs.categoryKey ||
+    ""
+  ).toLowerCase();
+
+  const isMarketing =
+    categoryKey === "marketing" ||
+    /market|campaign/i.test(data.title || "") ||
+    /market|campaign/i.test(project.title || "") ||
+    /market|campaign/i.test(data.categoryName || "") ||
+    /market|campaign/i.test(project.categoryName || "") ||
+    /market|campaign/i.test(specs.categoryName || "");
+
   // Title
   const title =
     data.title ||
     project.title ||
     specs.categoryName ||
-    "Website Development Project";
+    (isMarketing ? "A Marketing Campaign" : "Website Development Project");
 
   const description =
     data.description ||
@@ -301,6 +317,7 @@ export function extractInvoicePDFData(data: any): InvoicePDFData {
     pendingBalance,
     currency,
     paymentMethod: data.paymentMethod || "Credit / Debit Card",
+    isMarketing,
   };
 }
 
@@ -429,7 +446,7 @@ export function getInvoiceHTML(d: InvoicePDFData): string {
             
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 800; color: #0F172A; margin-bottom: ${d.amountPaid ? "8px" : "0"};">
               <span>Total Cost:</span>
-              <span style="font-size: 16px; color: #202794;">${formatCurrency(d.totalAmount, d.currency)}</span>
+              <span style="font-size: 16px; color: #202794;">${formatCurrency(d.totalAmount, d.currency)}${d.isMarketing ? " /month" : ""}</span>
             </div>
 
             ${
@@ -511,8 +528,9 @@ export async function downloadInvoicePDF(data: any): Promise<void> {
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
     const pageImgData = canvas.toDataURL("image/png");
 
-    if (imgHeight <= pageHeight + 5) {
-      pdf.addImage(pageImgData, "PNG", 0, 0, imgWidth, imgHeight, undefined, "FAST");
+    if (imgHeight <= pageHeight + 40 || imgHeight <= pageHeight * 1.12) {
+      const fitH = Math.min(imgHeight, pageHeight);
+      pdf.addImage(pageImgData, "PNG", 0, 0, imgWidth, fitH, undefined, "FAST");
     } else {
       let heightLeft = imgHeight;
       let position = 0;
@@ -520,7 +538,7 @@ export async function downloadInvoicePDF(data: any): Promise<void> {
       pdf.addImage(pageImgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
       heightLeft -= pageHeight;
 
-      while (heightLeft > 0) {
+      while (heightLeft > 50) {
         position -= pageHeight;
         pdf.addPage();
         pdf.addImage(pageImgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");

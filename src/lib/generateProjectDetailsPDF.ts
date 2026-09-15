@@ -401,16 +401,34 @@ export function extractProjectDetails(data: any): ProjectPDFData {
   const addonsSum = addons.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
   const totalPrice = deliverablesSum > 0 ? deliverablesSum + addonsSum : (rawTotalPrice > 0 ? rawTotalPrice : Number(data.amountPaid || 0));
 
-  const formattedPrice = new Intl.NumberFormat("en-US", {
+  let formattedPrice = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(totalPrice);
 
+  const categoryKey = (
+    data.categoryKey ||
+    data.calculatorSpecs?.categoryKey ||
+    ""
+  ).toLowerCase();
+
+  const isMarketing =
+    categoryKey === "marketing" ||
+    /market|campaign/i.test(title || "") ||
+    /market|campaign/i.test(data.categoryName || "") ||
+    /market|campaign/i.test(data.calculatorSpecs?.categoryName || "");
+
+  if (isMarketing && !formattedPrice.endsWith("/month")) {
+    formattedPrice = `${formattedPrice} /month`;
+  }
+
   let description = data.description || "";
   if (!description && data.calculatorSpecs) {
-    description = `Website development project for ${clientName}.`;
+    description = isMarketing
+      ? `Marketing campaign project for ${clientName}.`
+      : `Website development project for ${clientName}.`;
   }
 
   return {
@@ -649,8 +667,9 @@ export async function downloadProjectDetailsPDF(data: any): Promise<void> {
 
       const pageImgData = canvas.toDataURL("image/png");
 
-      if (imgHeight <= pageHeight + 5) {
-        pdf.addImage(pageImgData, "PNG", 0, 0, imgWidth, imgHeight, undefined, "FAST");
+      if (imgHeight <= pageHeight + 40 || imgHeight <= pageHeight * 1.12) {
+        const fitH = Math.min(imgHeight, pageHeight);
+        pdf.addImage(pageImgData, "PNG", 0, 0, imgWidth, fitH, undefined, "FAST");
       } else {
         // Multi-page slicing if needed
         let heightLeft = imgHeight;
@@ -659,7 +678,7 @@ export async function downloadProjectDetailsPDF(data: any): Promise<void> {
         pdf.addImage(pageImgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
         heightLeft -= pageHeight;
 
-        while (heightLeft > 0) {
+        while (heightLeft > 50) {
           position -= pageHeight;
           pdf.addPage();
           pdf.addImage(pageImgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
