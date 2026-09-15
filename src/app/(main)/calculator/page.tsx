@@ -525,6 +525,9 @@ const ProposalPreview = ({
     vatRate > 0 ? Math.round(baseDisplayPrice * (vatRate / 100) * 100) / 100 : 0;
   const displayTotalWithVat = Math.round((baseDisplayPrice + displayVatAmount) * 100) / 100;
 
+  const formatPriceLocal = (amt: number) =>
+    formatCalculatorPrice(amt, currency, conversionRate, category?.categoryKey);
+
   const sortedQuestions = [...(category.questions || [])].sort(
     (a: any, b: any) => (a.order || 0) - (b.order || 0)
   );
