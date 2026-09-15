@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { supportService } from "@/lib/supportService";
@@ -8,6 +8,7 @@ import { authService } from "@/lib/authService";
 import { mediaService } from "@/lib/mediaService";
 import { downloadFile, isImageUrl } from "@/lib/utils";
 import StatusPopup from "@/components/common/StatusPopup";
+import { useSupportTicketLive } from "@/hooks/useSupportTicketLive";
 
 export default function TicketDetailPage() {
   const params = useParams();
@@ -44,7 +45,7 @@ export default function TicketDetailPage() {
     });
   };
 
-  const fetchTicket = async () => {
+  const fetchTicket = useCallback(async () => {
     if (!ticketId) return;
 
     if (!authService.isAuthenticated()) {
@@ -68,12 +69,14 @@ export default function TicketDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [ticketId]);
 
   useEffect(() => {
     setLoading(true);
     fetchTicket();
-  }, [ticketId]);
+  }, [ticketId, fetchTicket]);
+
+  useSupportTicketLive(ticketId, fetchTicket);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {

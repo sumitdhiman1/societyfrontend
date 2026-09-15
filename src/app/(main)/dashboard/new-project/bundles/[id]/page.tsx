@@ -462,6 +462,10 @@ function BundleDetailsContent() {
   };
 
   const handleSaveOrder = async (tier: any) => {
+    if (!authService.isAuthenticated()) {
+      authService.redirectToLogin();
+      return;
+    }
     const recPrice = parsePrice(tier.recurringAmount ?? tier.recurringPrice);
     const setupPrice = parsePrice(tier.price);
     if (!(setupPrice > 0 || recPrice > 0)) {
@@ -515,10 +519,18 @@ function BundleDetailsContent() {
         });
         setTimeout(() => router.push(`/dashboard/my-projects/${res.data.projectId}/details`), 2000);
       } else {
+        if (authService.isUnauthorizedError(res)) {
+          authService.redirectToLogin();
+          return;
+        }
         throw new Error(res.message || "Failed to create order.");
       }
     } catch (err: any) {
       console.error("Order Error:", err);
+      if (authService.isUnauthorizedError(err)) {
+        authService.redirectToLogin();
+        return;
+      }
       setStatus({
         isOpen: true,
         type: "error",

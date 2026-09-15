@@ -231,6 +231,16 @@ function PaymentForm({
     return vatRate > 0 ? (baseAmount * vatRate) / 100 : 0;
   };
 
+  const getPendingWithVat = () => {
+    const currentDeliverablesSum = (deliverableItems || []).reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+    const currentSubtotal = currentDeliverablesSum > 0 ? currentDeliverablesSum : (totalCost + amountPaid);
+    return Math.max(0, currentSubtotal + getVatAmount(currentSubtotal) - amountPaid);
+  };
+
+  const getDepositWithVat = () => depositAmount * (1 + getActiveVatRate() / 100);
+
+  const canPayDepositHalf = depositAmount > 0 && getDepositWithVat() < getPendingWithVat() - 0.009;
+
   useEffect(() => {
     const currentDeliverablesSum = (deliverableItems || []).reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
     const currentSubtotal = currentDeliverablesSum > 0 ? currentDeliverablesSum : (totalCost + amountPaid);
@@ -249,6 +259,12 @@ function PaymentForm({
       setCustomAmount(convertedPending.toFixed(2));
     }
   }, [searchParams, amountPaid, totalCost, deliverableItems, currency, conversionRate, nativeCurrency, countriesList, userCountry, billingSameAsBusiness, billingAddress.country, propVatRate]);
+
+  useEffect(() => {
+    if (paymentOption === "half" && !canPayDepositHalf) {
+      setPaymentOption("full");
+    }
+  }, [paymentOption, canPayDepositHalf]);
 
   const [popup, setPopup] = useState({
     isOpen: false,
@@ -298,17 +314,22 @@ function PaymentForm({
     else if (paymentOption === "custom" && customAmount) amount = parseFloat(customAmount);
     
     if (paymentOption !== "custom") {
-      if (amountPaid > 0 && paymentOption === "full") {
-        const totalWithVat = projectSubtotal + getVatAmount(projectSubtotal);
-        const pendingWithVat = Math.max(0, totalWithVat - amountPaid);
-        return convertCurrencyAmount(pendingWithVat, currency, nativeCurrency || "USD", conversionRate);
+      const pendingWithVat = convertCurrencyAmount(
+        getPendingWithVat(),
+        currency,
+        nativeCurrency || "USD",
+        conversionRate
+      );
+      if (paymentOption === "full") {
+        return pendingWithVat;
       }
       amount = convertCurrencyAmount(amount, currency, nativeCurrency || "USD", conversionRate);
       const vatRate = getActiveVatRate();
-      if (vatRate > 0) {
-        return amount * (1 + vatRate / 100);
+      const withVat = vatRate > 0 ? amount * (1 + vatRate / 100) : amount;
+      if (paymentOption === "half") {
+        return Math.min(withVat, pendingWithVat);
       }
-      return amount;
+      return withVat;
     }
     
     return amount;
@@ -323,6 +344,10 @@ function PaymentForm({
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (!authService.isAuthenticated()) {
+      authService.redirectToLogin();
+      return;
+    }
     if (!stripe || !elements) return;
 
     const isVerifiedUser = (u: any): boolean => {
@@ -361,15 +386,14 @@ function PaymentForm({
     const amount = getPayableAmount();
     const creditsToApply = useCredits ? Math.min(convertedCredits, amount) : 0;
 
-    const vatMultiplier = 1 + getActiveVatRate() / 100;
-    const effectivePending = totalCost * (getActiveVatRate() > 0 ? vatMultiplier : 1);
-    const convertedPending = convertCurrencyAmount(effectivePending, currency, nativeCurrency || "USD", conversionRate);
+    const pendingWithVat = getPendingWithVat();
+    const convertedPending = convertCurrencyAmount(pendingWithVat, currency, nativeCurrency || "USD", conversionRate);
 
     if (paymentOption === "custom") {
       if (!customAmount || parseFloat(customAmount) <= 0) {
         errors.amount = "Please enter a valid amount.";
       } else if (parseFloat(customAmount) > convertedPending + 0.01) {
-        errors.amount = `Amount cannot exceed pending balance (${formatPrice(effectivePending)}).`;
+        errors.amount = `Amount cannot exceed pending balance (${formatPrice(pendingWithVat)}).`;
       }
     }
 
@@ -431,6 +455,10 @@ function PaymentForm({
       });
 
       if (!intentResponse.isSuccessful || !intentResponse.data) {
+        if (authService.isUnauthorizedError(intentResponse)) {
+          authService.redirectToLogin();
+          return;
+        }
         throw new Error(intentResponse.message || "Failed to initialize payment.");
       }
 
@@ -447,6 +475,10 @@ function PaymentForm({
       await confirmStripePayment(clientSecret, transactionId, finalCredits);
     } catch (err: any) {
       console.error("Payment Error:", err);
+      if (authService.isUnauthorizedError(err)) {
+        authService.redirectToLogin();
+        return;
+      }
       setPaymentStep("error");
       setPopup({
         isOpen: true,
@@ -610,7 +642,7 @@ function PaymentForm({
             <div className="w-full sm:w-60 shrink-0 order-1 lg:order-2 space-y-1.5 text-xs sm:text-sm">
               <div className="flex justify-between items-center font-semibold">
                 <span className="text-gray-900">Total Cost:</span>
-                <span className="text-gray-900 font-bold">{formatPrice(totalCost * (1 + getActiveVatRate() / 100))}</span>
+                <span className="text-gray-900 font-bold">{formatPrice(projectSubtotal + getVatAmount(projectSubtotal))}</span>
               </div>
             </div>
           ) : (
@@ -764,7 +796,7 @@ function PaymentForm({
           </div>
 
           <div className="space-y-4 mb-8">
-            {depositAmount > 0 && (
+            {canPayDepositHalf && (
               <label className="flex items-center gap-3 cursor-pointer group">
                 <div
                   className={`w-5 h-5 rounded-full border flex items-center justify-center ${
@@ -804,11 +836,7 @@ function PaymentForm({
               <span className="text-gray-600 text-sm">
                 Pay the full amount:{" "}
                 <span className="font-medium">
-                  {formatPrice(
-                    amountPaid > 0
-                      ? Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid)
-                      : totalCost * (1 + getActiveVatRate() / 100)
-                  )}
+                  {formatPrice(Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid))}
                 </span>
               </span>
             </label>

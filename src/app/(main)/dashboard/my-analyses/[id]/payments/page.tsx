@@ -499,12 +499,13 @@ export default function AnalysisPaymentsPage() {
         isAddOn: false,
       }];
 
-  const searchAmount = searchParams?.get("amount") ? Number(searchParams.get("amount")) : 0;
   const searchInvoiceId = searchParams?.get("invoiceId") || undefined;
   const searchInvoiceNumber = searchParams?.get("invoiceNumber") || undefined;
   const searchMessageId = searchParams?.get("messageId") || undefined;
   const searchDescription = searchParams?.get("description") || undefined;
-  const targetCost = searchAmount > 0 ? searchAmount : pendingBalance;
+  const targetCost = amountPaid === 0
+    ? totalProjectCost
+    : (activeVat > 0 ? Math.round((pendingBalance / (1 + activeVat / 100)) * 100) / 100 : pendingBalance);
 
   return (
     <div className="w-full font-sans space-y-8">

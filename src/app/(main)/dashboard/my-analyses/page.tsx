@@ -72,11 +72,11 @@ export default function MyAnalysesPage() {
               displayTarget: cleanTarget,
               submittedDate: item.createdAt
                 ? new Date(item.createdAt).toLocaleString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })
                 : "Recently",
               status: normalizedStatus,
             };
@@ -177,11 +177,10 @@ export default function MyAnalysesPage() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`pb-3 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 rounded-none cursor-pointer ${
-                      isActive
+                    className={`pb-3 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 rounded-none cursor-pointer ${isActive
                         ? "text-primary-300 border-b-2 border-primary-300"
                         : "text-gray-500 hover:text-gray-700"
-                    }`}
+                      }`}
                   >
                     {tab.label} ({tab.count})
                   </button>
@@ -228,12 +227,6 @@ export default function MyAnalysesPage() {
                 You do not have any{" "}
                 {activeTab !== "all" ? activeTab.replace(/_/g, " ") : ""} analysis projects in this status yet.
               </p>
-              <button
-                onClick={() => router.push("/dashboard/new-project/packages?categorycode=ANALYSIS&sortBy=order_asc")}
-                className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-sm font-bold py-2.5 px-6 rounded-[4px] transition-colors whitespace-nowrap cursor-pointer mt-3"
-              >
-                Request a New Analysis
-              </button>
             </div>
           ) : (
             filteredAnalyses.map((a) => (

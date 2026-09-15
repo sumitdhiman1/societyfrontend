@@ -266,6 +266,11 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
         refreshCountFromServer();
         window.dispatchEvent(new CustomEvent("quote_updated", { detail: data }));
       });
+
+      sock.on("support_ticket_message", (data: any) => {
+        refreshCountFromServer();
+        window.dispatchEvent(new CustomEvent("support_ticket_message", { detail: data }));
+      });
     };
 
     connectSocket();
