@@ -1054,7 +1054,7 @@ export default function AnalysisDetailsPage() {
                       {/* Recommended Solutions */}
                       {items.length > 0 && (
                         <div className="pl-0 md:pl-[64px] mb-6">
-                          <h5 className="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">
+                          <h5 className="text-xs sm:text-sm font-bold text-gray-700 capitalize tracking-wider mb-3">
                             Recommended Solutions
                           </h5>
                           <div className="border-t border-gray-200 mb-4" />
