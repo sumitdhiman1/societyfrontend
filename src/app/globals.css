@@ -420,6 +420,7 @@ select:-webkit-autofill:focus {
   -webkit-box-shadow: inset 0 0 0 1000px #f9fafb !important;
 }
 
+
 @media screen and (max-width: 768px) {
 
   input,
@@ -468,13 +469,17 @@ main .support-section {
   padding-bottom: 0 !important;
 }
 
+.rounder-border-cs {
+  border-radius: 16px !important;
+}
+
 /* Global Button Border Radius & Colors */
 button:not(.rounded-full):not([class*="rounded-full"]):not(.rounded-none),
 input[type="button"]:not(.rounded-full):not([class*="rounded-full"]):not(.rounded-none),
 input[type="submit"]:not(.rounded-full):not([class*="rounded-full"]):not(.rounded-none),
 a[class*="bg-"][class*="rounded-"]:not(.rounded-full):not([class*="rounded-full"]):not(.rounded-none),
 button[class*="rounded-"]:not(.rounded-full):not([class*="rounded-full"]):not(.rounded-none) {
-  border-radius: 6px !important;
+  border-radius: 6px;
 }
 
 button[class*="bg-[#0d1939]"],

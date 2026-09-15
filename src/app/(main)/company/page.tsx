@@ -67,7 +67,7 @@ export default function CompanyPage() {
               </div>
               <div className="w-full lg:w-[66%] bg-white rounded-[20px] shadow-sm flex flex-col md:flex-row overflow-hidden">
                 <div className="relative w-full md:w-[40%] lg:w-[395px] min-h-[220px] md:min-h-0 shrink-0">
-                  <img src="/images/program.webp" className="object-cover company-set" />
+                  <img src="/images/Office.webp" className="object-cover company-set" />
                 </div>
                 <div className="flex-1 min-w-0 flex flex-col justify-center px-6 py-8 md:pl-[44px] md:pr-6 gap-[18px]">
                   <h3 className="text-xl sm:text-[22px] font-bold text-[#363636] leading-snug sm:leading-[27px]">As a strong foundational principal</h3>

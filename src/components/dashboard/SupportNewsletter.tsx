@@ -85,11 +85,10 @@ export default function SupportNewsletter({
 
   return (
     <div
-      className={`${
-        noPadding
-          ? "w-full"
-          : "max-w-[1536px] w-full mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px]"
-      } ${className}`}
+      className={`${noPadding
+        ? "w-full"
+        : "max-w-[1536px] w-full mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px]"
+        } ${className}`}
     >
       <StatusPopup
         isOpen={popup.isOpen}
@@ -104,7 +103,7 @@ export default function SupportNewsletter({
         style={{ fontFamily: "var(--font-inter), sans-serif" }}
       >
         {/* Support Card */}
-        <div className="bg-white rounded-lg shadow-[0px_10px_35px_rgba(0,0,0,0.06)] md:shadow-[0px_5px_25px_#0000000D] flex flex-col md:flex-row items-center justify-between relative overflow-hidden h-auto min-h-[251px] flex-1 px-6 md:px-8 py-8 xl:py-0">
+        <div className="bg-white rounded-[12px] shadow-[0px_10px_35px_rgba(0,0,0,0.06)] md:shadow-[0px_5px_25px_#0000000D] flex flex-col md:flex-row items-center justify-between relative overflow-hidden h-auto min-h-[251px] flex-1 px-6 md:px-8 py-8 xl:py-0">
           <Image
             src="/images/Group 2878.svg"
             alt="Decoration"
@@ -137,7 +136,7 @@ export default function SupportNewsletter({
         </div>
 
         {/* Newsletter Card */}
-        <div className="bg-white rounded-lg shadow-[0px_10px_35px_rgba(0,0,0,0.06)] md:shadow-[0px_5px_25px_#0000000D] flex flex-col md:flex-row items-center justify-between relative overflow-hidden h-auto min-h-[251px] flex-1 px-6 md:px-8 py-8 xl:py-0">
+        <div className="bg-white rounded-[12px] shadow-[0px_10px_35px_rgba(0,0,0,0.06)] md:shadow-[0px_5px_25px_#0000000D] flex flex-col md:flex-row items-center justify-between relative overflow-hidden h-auto min-h-[251px] flex-1 px-6 md:px-8 py-8 xl:py-0">
           <Image
             src="/images/Group 2878.svg"
             alt="Decoration"

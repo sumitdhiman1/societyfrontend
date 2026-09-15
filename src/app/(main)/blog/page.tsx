@@ -145,7 +145,7 @@ export default function BlogPage() {
                   <Link
                     key={blog._id}
                     href={`/blog/${blog.slug}`}
-                    className="bg-white rounded-xl shadow-xl overflow-hidden flex flex-col h-full transition-transform hover:-translate-y-1 duration-300"
+                    className="bg-white rounded-[16px] rounder-border-cs shadow-xl overflow-hidden flex flex-col h-full transition-transform hover:-translate-y-1 duration-300"
                   >
                     {/* Thumbnail */}
                     <div className="relative h-[240px] w-full bg-gray-100">
