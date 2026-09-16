@@ -575,22 +575,49 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
 
   const calculatorBreakdownIncludesTimeline =
     isCalculatorEstimatePdf &&
+    Array.isArray(data.breakdownItems) &&
     data.breakdownItems.some((b: any) => /timeline/i.test(b.question || ""));
 
-  const isMonthlySeoCalculatorPdf =
-    isCalculatorEstimatePdf &&
-    categoryKey === "seo" &&
-    seoServiceMode === "monthly";
+  const isMonthlyCategory =
+    categoryKey === "marketing" ||
+    isMarketing ||
+    (categoryKey === "seo" &&
+      (seoServiceMode === "monthly" ||
+        data.billingType === "monthly" ||
+        data.calculatorSpecs?.billingType === "monthly" ||
+        data.requirements?.billingType === "monthly" ||
+        /monthly/i.test(String(data.duration || "")) ||
+        /monthly/i.test(String(duration || "")) ||
+        (Array.isArray(rawSelections) &&
+          rawSelections.some(
+            (s: any) =>
+              /monthly/i.test(String(s.questionKey || "")) ||
+              s?.answerKeys?.some((k: string) => /monthly/i.test(k)) ||
+              s?.answerTexts?.some((t: string) => /monthly/i.test(t))
+          )) ||
+        (Array.isArray(data.breakdownItems) &&
+          data.breakdownItems.some(
+            (b: any) =>
+              /monthly/i.test(b.question || "") ||
+              (Array.isArray(b.answers) && b.answers.some((a: string) => /monthly/i.test(a)))
+          ))
+      )) ||
+    data.billingType === "monthly";
 
-  if (isMonthlySeoCalculatorPdf) {
-    const withoutTimeline = selectedOptions.filter((opt) => !/timeline/i.test(opt.question));
+  if (isMonthlyCategory) {
+    const withoutTimeline = selectedOptions.filter(
+      (opt) => !/timeline|deadline|turnaround|desired.*timeline|how fast/i.test(opt.question)
+    );
     selectedOptions.length = 0;
     selectedOptions.push(...withoutTimeline);
+    if (!duration || duration === "2 weeks") {
+      duration = "Monthly Service";
+    }
   }
 
-  // Ensure timeline question is consistently displayed at the end of Selected Options
+  // Ensure timeline question is displayed at the end of Selected Options ONLY for one-time/timeline-based categories
   if (
-    !isMonthlySeoCalculatorPdf &&
+    !isMonthlyCategory &&
     (finalTimelineAnswer || duration) &&
     (!isCalculatorEstimatePdf || calculatorBreakdownIncludesTimeline)
   ) {
@@ -910,7 +937,7 @@ interface PDFPageItem {
 
 function paginateCalculatorPDF(
   options: Array<{ question: string; answers: string[] }>,
-  _hasVat: boolean
+  hasVat: boolean
 ): PDFPageItem[] {
   if (!options || options.length === 0) {
     return [{ pageOptions: [], hasSummaryCard: true }];
@@ -919,18 +946,36 @@ function paginateCalculatorPDF(
   const heights = options.map(estimateOptionHeight);
   const totalOptionsHeight = heights.reduce((sum, h) => sum + h, 0);
 
-  const page1MaxWithOptionsAndSummary = 430;
-  const page1MaxOptionsOnly = 730;
-  const subsequentMaxWithOptionsAndSummary = 640;
-  const subsequentMaxOptionsOnly = 920;
+  // Summary card height: timeline + subtotal(if vat) + vat(if vat) + investment total + margins
+  const summaryCardHeight = hasVat ? 194 : 150;
+  const footerHeight = 120;
+  const page1MaxContent = 730;
+  const subsequentMaxContent = 920;
 
-  // Case 1: Everything fits on Page 1 (options + summary + footer)
-  if (totalOptionsHeight <= page1MaxWithOptionsAndSummary) {
+  const page1MaxWithSummaryAndFooter = page1MaxContent - summaryCardHeight - footerHeight; // ~420 - 460px
+  const page1MaxWithSummaryOnly = page1MaxContent - summaryCardHeight; // ~536 - 580px
+  const page1MaxOptionsOnly = page1MaxContent; // ~730px
+
+  const subsequentMaxWithSummaryAndFooter = subsequentMaxContent - summaryCardHeight - footerHeight; // ~606 - 650px
+  const subsequentMaxWithSummaryOnly = subsequentMaxContent - summaryCardHeight; // ~726 - 770px
+  const subsequentMaxOptionsOnly = subsequentMaxContent; // ~920px
+
+  // Case 1: Everything fits on Page 1 (options + price box + footer) -> 1 Page PDF
+  if (totalOptionsHeight <= page1MaxWithSummaryAndFooter) {
     return [{ pageOptions: options, hasSummaryCard: true }];
   }
 
-  // Case 2: All options fit on Page 1, but adding Summary Card + Footer overflows Page 1.
-  // Push payment total (summary card) + footer to next page!
+  // Case 2: Options + Price Box fit on Page 1, but footer does NOT fit on Page 1.
+  // Keep Options + Price Box on Page 1, and Page 2 contains ONLY the footer!
+  if (totalOptionsHeight <= page1MaxWithSummaryOnly) {
+    return [
+      { pageOptions: options, hasSummaryCard: true },
+      { pageOptions: [], hasSummaryCard: false },
+    ];
+  }
+
+  // Case 3: Options fit on Page 1, but adding Price Box overflows Page 1.
+  // Page 1 has Options only, Page 2 has Price Box + Footer.
   if (totalOptionsHeight <= page1MaxOptionsOnly) {
     return [
       { pageOptions: options, hasSummaryCard: false },
@@ -938,8 +983,8 @@ function paginateCalculatorPDF(
     ];
   }
 
-  // Case 3: Options themselves exceed Page 1 capacity.
-  // Distribute options across pages, then check if summary card fits on the last options page or needs its own page.
+  // Case 4: Options exceed Page 1 capacity.
+  // Distribute options across pages.
   const pages: PDFPageItem[] = [];
   let currentOptions: Array<{ question: string; answers: string[] }> = [];
   let currentHeight = 0;
@@ -961,16 +1006,24 @@ function paginateCalculatorPDF(
     }
   }
 
-  // Check the last page of options: can summary card + footer fit on it?
-  const lastPageCapacityWithSummary =
-    pages.length === 0
-      ? page1MaxWithOptionsAndSummary
-      : subsequentMaxWithOptionsAndSummary;
+  // Check the last page of options:
+  const isSinglePageOfOptions = pages.length === 0;
+  const maxWithSummaryAndFooter = isSinglePageOfOptions
+    ? page1MaxWithSummaryAndFooter
+    : subsequentMaxWithSummaryAndFooter;
+  const maxWithSummaryOnly = isSinglePageOfOptions
+    ? page1MaxWithSummaryOnly
+    : subsequentMaxWithSummaryOnly;
 
-  if (currentHeight <= lastPageCapacityWithSummary) {
+  if (currentHeight <= maxWithSummaryAndFooter) {
+    // Options + Price Box + Footer fit on this page
     pages.push({ pageOptions: currentOptions, hasSummaryCard: true });
+  } else if (currentHeight <= maxWithSummaryOnly) {
+    // Options + Price Box fit on this page, but footer needs its own page
+    pages.push({ pageOptions: currentOptions, hasSummaryCard: true });
+    pages.push({ pageOptions: [], hasSummaryCard: false });
   } else {
-    // Doesn't fit on this page, push summary card + footer to next page!
+    // Price box doesn't fit on this page, push Price Box + Footer to next page
     pages.push({ pageOptions: currentOptions, hasSummaryCard: false });
     pages.push({ pageOptions: [], hasSummaryCard: true });
   }
@@ -1257,8 +1310,11 @@ export async function downloadCalculatorProjectPDF(data: any): Promise<void> {
 
     document.body.appendChild(container);
 
-    // Wait 150ms for layout and font rendering
-    await new Promise((r) => setTimeout(r, 150));
+    // Wait for fonts and layout rendering
+    if ((document as any).fonts?.ready) {
+      await (document as any).fonts.ready;
+    }
+    await new Promise((r) => setTimeout(r, 200));
 
     try {
       const pageElements = container.querySelectorAll(".pdf-page");

@@ -106,6 +106,14 @@ const Notification = ({
     let redirectUrl = notification.redirectUrl || "/dashboard/notifications";
 
     if (redirectUrl) {
+      if (redirectUrl.startsWith("http://") || redirectUrl.startsWith("https://")) {
+        try {
+          const parsed = new URL(redirectUrl);
+          redirectUrl = parsed.pathname + parsed.search + parsed.hash;
+        } catch {
+          // keep redirectUrl
+        }
+      }
       router.push(redirectUrl);
     }
     setNotificationsOpen(false);

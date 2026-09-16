@@ -927,7 +927,7 @@ export default function AnalysisDetailsPage() {
                   {Boolean(content.lineItems && content.lineItems.length > 0) && (
                     <div className="text-center py-6 px-4 my-2">
                       <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
-                        You Received an Offer
+                        You received an offer
                       </h3>
                       <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
                         We’ve prepared a custom proposal for your project.

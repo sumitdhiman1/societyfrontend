@@ -1136,7 +1136,7 @@ export default function QuoteDetailsPage() {
             <div className="relative py-6 flex items-center justify-center w-full my-2">
               <div className="flex-grow border-t border-gray-300"></div>
               <span className="px-4 text-xs sm:text-sm font-medium text-gray-500 text-center whitespace-normal sm:whitespace-nowrap">
-                Quote Request Submitted
+                Quote request submitted
               </span>
               <div className="flex-grow border-t border-gray-300"></div>
             </div>
@@ -1162,6 +1162,7 @@ export default function QuoteDetailsPage() {
                     return null;
                   }
 
+<<<<<<< HEAD
                   // Standalone Project Created notification banner
                   if (
                     title.toLowerCase().includes("project created") ||
@@ -1171,6 +1172,294 @@ export default function QuoteDetailsPage() {
                     return (
                       <div key={msgId} className="text-center py-6 px-4 my-2" ref={isLast ? messagesEndRef : null}>
                         <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
+=======
+                // Standalone Project Created notification banner
+                if (
+                  title.toLowerCase().includes("project created") ||
+                  text.toLowerCase().includes("converted into an active project") ||
+                  text.toLowerCase().includes("active project")
+                ) {
+                  return (
+                    <div key={msgId} className="text-center py-6 px-4 my-2" ref={isLast ? messagesEndRef : null}>
+                      <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
+                        Project created
+                      </h3>
+                      <p className="text-sm font-medium text-gray-500 mb-5 max-w-xl mx-auto leading-relaxed">
+                        Great news! Your quote has been converted into an active project.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => goToCreatedProject(msg, msg.content)}
+                        disabled={isOpeningProject}
+                        className="inline-flex items-center justify-center gap-1.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold py-2.5 px-6 rounded-[6px] shadow-sm transition-all active:scale-95 cursor-pointer mx-auto disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {isOpeningProject ? (
+                          <LoadingDots text="Opening" />
+                        ) : (
+                          <>
+                            View Project
+                            <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                            </svg>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div key={msgId} className="text-center py-6 px-4 my-2" ref={isLast ? messagesEndRef : null}>
+                    <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
+                      {capitalizeCurrencyInText(title)}
+                    </h3>
+                    <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
+                      {capitalizeCurrencyInText(text)}
+                    </p>
+                  </div>
+                );
+              }
+
+              // Quote Proposal / Offer Message
+              if (msg.type === "quote_proposal") {
+                const content = msg.content || {};
+                const propItems =
+                  content.lineItems && content.lineItems.length > 0
+                    ? content.lineItems
+                    : content.deliverableItems && content.deliverableItems.length > 0
+                      ? content.deliverableItems
+                      : [];
+                const senderName = msg.username || msg.senderName || managerName;
+                const proposalDesc = content.projectDescription || content.text || msg.message || "";
+                const proposalCurrency = (content.currency || quote.currency || "USD").toUpperCase();
+                const calculatedDurationDays = propItems.reduce((sum: number, it: any) => {
+                  const dur = String(it.duration || "").toLowerCase();
+                  const match = dur.match(/(\d+(\.\d+)?)/);
+                  const val = match ? parseFloat(match[0]) : 0;
+                  if (dur.includes("week")) return sum + val * 7;
+                  if (dur.includes("month")) return sum + val * 30;
+                  return sum + val;
+                }, 0);
+                const totalDuration =
+                  calculatedDurationDays > 0
+                    ? `${calculatedDurationDays} Day${calculatedDurationDays > 1 ? "s" : ""}`
+                    : content.totalDuration || quote.totalDuration || "-";
+                const calculatedTotalCost = propItems.reduce((sum: number, it: any) => sum + (Number(it.amount ?? it.cost) || 0), 0);
+                const totalCost = content.totalCost ?? (calculatedTotalCost > 0 ? calculatedTotalCost : (quote.totalCost ?? 0));
+
+                // Check subsequent messages to track actions on this proposal
+                const subsequentMessages = allMessages.slice(i + 1);
+                const hasLaterProposal = subsequentMessages.some((m: any) => m.type === "quote_proposal");
+
+                // Messages between this proposal and the next proposal (or end of feed)
+                const messagesUntilNextProposal: any[] = [];
+                for (const nextMsg of subsequentMessages) {
+                  if (nextMsg.type === "quote_proposal") break;
+                  messagesUntilNextProposal.push(nextMsg);
+                }
+
+                const wasDeclinedAfterThis = messagesUntilNextProposal.some(
+                  (m: any) =>
+                    m.type === "quote_action" &&
+                    (m.content?.action === "denied" || m.content?.action === "declined" || m.action === "denied" || m.action === "declined")
+                );
+
+                const wasAcceptedAfterThis = messagesUntilNextProposal.some(
+                  (m: any) =>
+                    m.type === "quote_action" &&
+                    (m.content?.action === "accepted" || m.action === "accepted")
+                );
+
+                const isAccepted =
+                  hasAcceptedLocally ||
+                  content.status === "accepted" ||
+                  wasAcceptedAfterThis ||
+                  (!hasLaterProposal && quote.status?.toLowerCase() === "approved");
+
+                const isDeclined =
+                  content.status === "declined" ||
+                  content.status === "rejected" ||
+                  wasDeclinedAfterThis ||
+                  (!hasLaterProposal &&
+                    quote.status?.toLowerCase() === "rejected" &&
+                    !content.isNewProposal &&
+                    (!content.actionsAvailable || content.actionsAvailable.length === 0));
+
+                const isSuperseded =
+                  !isDeclined && !isAccepted && (hasLaterProposal || content.status === "superseded");
+
+                const canAct = !hasLaterProposal && !isAccepted && !isDeclined;
+
+                return (
+                  <div key={msgId} ref={isLast ? messagesEndRef : null} className="w-full">
+                    {/* Header above offer card */}
+                    <div className="text-center py-6 px-4 my-2">
+                      <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
+                        You received an offer
+                      </h3>
+                      <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
+                        We’ve prepared a custom proposal for your project.
+                      </p>
+                    </div>
+
+                    {/* Proposal Card */}
+                    <div className="flex flex-col gap-4">
+                      <div className="bg-white rounded-xl shadow-sm border border-gray-300 overflow-hidden transition-all duration-300 hover:shadow-md">
+                        <div className="p-4 sm:p-6 md:p-8">
+                          {/* Card Header: SUBMITTED - Date & Status Badge */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                            <div className="flex flex-wrap items-center gap-3">
+                              <span className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-tight">
+                                Submitted - {formatQuoteDate(msgDate)}
+                              </span>
+                              {isSuperseded ? (
+                                <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-gray-300 text-gray-500 bg-gray-50">
+                                  Superseded
+                                </span>
+                              ) : isDeclined ? (
+                                <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-red-300 text-red-600 bg-red-50">
+                                  Declined
+                                </span>
+                              ) : isAccepted ? (
+                                <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-emerald-300 text-emerald-600 bg-emerald-50">
+                                  Accepted
+                                </span>
+                              ) : canAct ? (
+                                <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-blue-400 text-blue-600 bg-blue-50">
+                                  Offer Sent
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className="border-t border-gray-200 mb-6 sm:mb-8"></div>
+
+                          {/* Card Title Row: Title on Left, From on Right */}
+                          <div className="pb-4 sm:pb-6 flex flex-col sm:flex-row justify-between items-start gap-2">
+                            <h2 className="text-xl sm:text-2xl font-bold text-gray-600">Project Proposal</h2>
+                            {senderName && (
+                              <span className="text-[10px] sm:text-xs text-gray-400 font-medium">
+                                From: {senderName}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Proposal Description */}
+                          {proposalDesc && (
+                            <div className="mb-10 text-sm text-gray-500 leading-relaxed font-medium whitespace-pre-wrap">
+                              {proposalDesc}
+                            </div>
+                          )}
+
+                          {/* Line Items Table */}
+                          {propItems.length > 0 && (
+                            <div className="border border-gray-400 rounded-lg overflow-x-auto mb-6">
+                              <table className="w-full min-w-[500px] sm:min-w-0">
+                                <thead>
+                                  <tr className="border-b border-gray-400">
+                                    <th className="px-3 sm:px-6 py-4 text-left text-xs sm:text-sm font-bold text-gray-600 bg-white w-1/2">
+                                      Item
+                                    </th>
+                                    <th className="px-3 sm:px-6 py-4 text-center text-xs sm:text-sm font-bold text-gray-600 bg-white">
+                                      Duration
+                                    </th>
+                                    <th className="px-3 sm:px-6 py-4 text-right text-xs sm:text-sm font-bold text-gray-600 bg-white">
+                                      Amount
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {propItems.map((item: any, idx: number) => (
+                                    <tr key={idx} className="border-b border-gray-400 last:border-0">
+                                      <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
+                                        <div className="font-medium text-gray-700 mb-1">
+                                          {item.description || item.name || item.title}
+                                        </div>
+                                        {item.details && (
+                                          <div className="text-[11px] text-gray-400 font-normal">
+                                            {item.details}
+                                          </div>
+                                        )}
+                                      </td>
+                                      <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
+                                        {formatDuration(item.duration)}
+                                      </td>
+                                      <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top">
+                                        {formatCurrency(item.amount ?? item.cost ?? 0, proposalCurrency)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+
+                          {/* Total Duration & Cost */}
+                          <div className="flex flex-row justify-end gap-6 sm:gap-16 text-xs sm:text-sm mb-6">
+                            <div className="text-center">
+                              <div className="text-gray-500 font-bold mb-1 sm:mb-2 flex items-center justify-center gap-1">
+                                Total Duration
+                              </div>
+                              <div className="font-medium text-gray-600">{formatDuration(totalDuration)}</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-gray-500 font-bold mb-1 sm:mb-2">Total Cost</div>
+                              <div className="font-medium text-gray-600">
+                                {formatCurrency(totalCost, proposalCurrency)}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons (Accept, Request Modifications, Decline) */}
+                          {canAct && (
+                            <div className="flex flex-col sm:flex-row gap-4 justify-between w-full pt-6 mt-6 border-t border-gray-100">
+                              <button
+                                type="button"
+                                onClick={handleAcceptQuote}
+                                disabled={isAccepting || isDeclining || hasAcceptedLocally}
+                                className="flex-1 bg-[#327334] hover:bg-[#285c29] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
+                              >
+                                {isAccepting ? <LoadingDots text="Accepting" /> : "Accept Proposal"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleRequestModification}
+                                disabled={isAccepting || isDeclining || hasAcceptedLocally}
+                                className="flex-1 bg-[#1C446F] hover:bg-[#153455] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all cursor-pointer text-center"
+                              >
+                                Request Modifications
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleDeclineQuote}
+                                disabled={isAccepting || isDeclining || hasAcceptedLocally}
+                                className="flex-1 bg-[#7D1A1A] hover:bg-[#651515] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
+                              >
+                                {isDeclining ? <LoadingDots text="Declining" /> : "Decline Proposal"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Fallback Quote Declined section only if no quote_action message exists in the feed */}
+                    {isDeclined && !allMessages.some((m: any) => (m.type === "quote_action" || m.type === "action") && (m.content?.action === "denied" || m.content?.action === "declined" || m.action === "denied" || m.action === "declined")) && (
+                      <div className="text-center my-12 py-2 w-full">
+                        <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
+                          Quote declined
+                        </h2>
+                        <p className="text-xs sm:text-sm font-normal text-gray-500 max-w-lg mx-auto leading-relaxed">
+                          The offered quote has been declined.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Fallback Project Created section only if no accept message exists in the feed */}
+                    {isAccepted && !allMessages.some((m: any) => (m.type === "quote_action" && m.content?.action === "accepted") || (m.type === "system_notification" && (m.content?.systemText?.toLowerCase().includes("project created") || m.text?.toLowerCase().includes("project created")))) && (
+                      <div className="text-center my-12 py-2 w-full">
+                        <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
+>>>>>>> origin/production
                           Project created
                         </h3>
                         <p className="text-sm font-medium text-gray-500 mb-5 max-w-xl mx-auto leading-relaxed">

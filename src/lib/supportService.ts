@@ -11,6 +11,10 @@ class SupportService {
     return this.client.get("/pages/faq");
   }
 
+  async getContactUsPage() {
+    return this.client.get("/pages/getpagebyslug/contact-us");
+  }
+
   async createTicket(data: any) {
     return this.client.post("/support/addticket", data);
   }
