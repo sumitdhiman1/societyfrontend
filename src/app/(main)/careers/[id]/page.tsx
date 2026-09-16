@@ -244,12 +244,16 @@ export default function CareerSinglePage() {
             });
 
             if (found) {
+              const fallbackJob = resolveDefaultJob(
+                found.id || jobId || `${found.title || ""}-${found.location || ""}`
+              );
+
               let parsedReqs: string[] = [];
               if (Array.isArray(found.requirements)) {
                 parsedReqs = found.requirements
                   .map((r: any) => String(r).replace(/^[-•*]\s*/, "").trim())
                   .filter(Boolean);
-              } else if (typeof found.requirements === "string") {
+              } else if (typeof found.requirements === "string" && found.requirements.trim()) {
                 const cleaned = found.requirements
                   .replace(/<br\s*\/?>/gi, "\n")
                   .replace(/<\/p>\s*<p>/gi, "\n")
@@ -279,14 +283,25 @@ export default function CareerSinglePage() {
                 }
               }
 
+              const finalDescription =
+                found.description && typeof found.description === "string" && found.description.trim()
+                  ? found.description
+                  : fallbackJob.description;
+
+              const finalRequirements =
+                parsedReqs.length > 0 ? parsedReqs : fallbackJob.requirements;
+
+              const finalPublishedDate =
+                found.publishedDate || fallbackJob.publishedDate || "Published August 2026";
+
               setCurrentJob({
-                id: found.id || jobId,
-                title: found.title || "Career Opportunity",
-                location: found.location || "Remote",
-                type: found.type || "Full-time",
-                publishedDate: found.publishedDate || "Published August 2026",
-                description: found.description || "",
-                requirements: parsedReqs,
+                id: found.id || fallbackJob.id || jobId,
+                title: found.title || fallbackJob.title || "Career Opportunity",
+                location: found.location || fallbackJob.location || "Remote",
+                type: found.type || fallbackJob.type || "Full-time",
+                publishedDate: finalPublishedDate,
+                description: finalDescription,
+                requirements: finalRequirements,
               });
               return;
             }
