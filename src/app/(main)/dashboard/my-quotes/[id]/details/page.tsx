@@ -14,6 +14,7 @@ import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
 import { capitalizeCurrencyInText } from "@/lib/currencyUtils";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
+import RecommendedSolutions, { PackageCard } from "@/components/common/RecommendedSolutions";
 import { io, Socket } from "socket.io-client";
 
 // Helper components
@@ -104,83 +105,7 @@ const formatCategoryName = (cat: any, title?: string): string => {
   return raw;
 };
 
-const PackageCard = ({
-  packageId,
-  title,
-  price,
-  imageUrl,
-  category,
-  description,
-  link,
-}: any) => {
-  const safeImg = imageUrl ? getSafeUrl(imageUrl) : null;
-  const isSvg = safeImg ? safeImg.toLowerCase().includes(".svg") : false;
 
-  const displayPrice =
-    typeof price === "number"
-      ? `$${price.toLocaleString("en-US")}`
-      : price
-        ? String(price).startsWith("$") || String(price).startsWith("€")
-          ? String(price)
-          : `$ ${price}`
-        : "";
-
-  const resolvedCat = formatCategoryName(category, title);
-
-  return (
-    <a
-      href={link || `/dashboard/new-project/packages/${packageId}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex flex-col bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition-all group w-full sm:w-[260px] md:w-[280px] shrink-0 no-underline text-left"
-    >
-      <div className="h-36 sm:h-40 bg-gray-100 relative overflow-hidden flex items-center justify-center">
-        {safeImg ? (
-          <img
-            src={safeImg}
-            alt={title}
-            className={`w-full h-full transition-transform duration-300 group-hover:scale-105 ${isSvg ? "object-contain p-2.5" : "object-cover"
-              }`}
-            onError={(e) => {
-              const target = e.currentTarget;
-              if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
-                target.src = target.src.replace("http:", "https:");
-              }
-            }}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-300">
-            <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-        )}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
-      </div>
-
-      <div className="p-4 flex flex-col flex-1 bg-white">
-        {resolvedCat && (
-          <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2.5 py-0.5 rounded-full uppercase tracking-wider w-fit mb-2">
-            {resolvedCat}
-          </span>
-        )}
-        <h4 className="font-bold text-gray-800 text-sm leading-snug mb-1.5 group-hover:text-blue-600 transition-colors line-clamp-2">
-          {title}
-        </h4>
-        {description && (
-          <p className="text-xs text-gray-500 leading-relaxed mb-3 line-clamp-2">
-            {description}
-          </p>
-        )}
-        <div className="mt-auto pt-2 flex items-center justify-between border-t border-gray-100">
-          <span className="font-bold text-gray-800 text-xs sm:text-sm">
-            {displayPrice}
-          </span>
-        </div>
-      </div>
-    </a>
-  );
-};
 
 const renderFileThumbnail = (safeUrl: string, fileName: string, isSvg = false) => {
   const clean = (fileName || safeUrl || "").toLowerCase();
@@ -1610,23 +1535,9 @@ export default function QuoteDetailsPage() {
                   {((msg.recommendedSolutions && msg.recommendedSolutions.length > 0) ||
                     (msg.content?.recommendedSolutions && msg.content.recommendedSolutions.length > 0)) && (
                       <div className="mt-5 pt-4 border-t border-gray-100">
-                        <h5 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-3">
-                          Recommended Solutions
-                        </h5>
-                        <div className="flex flex-wrap sm:flex-nowrap sm:overflow-x-auto pb-2 gap-4 scrollbar-hide">
-                          {(msg.recommendedSolutions || msg.content?.recommendedSolutions).map((sol: any, j: number) => (
-                            <PackageCard
-                              key={(sol.packageId || sol._id || j) + "-" + j}
-                              packageId={sol.packageId || sol._id || sol.id}
-                              title={sol.title || sol.name}
-                              price={sol.price || sol.amount}
-                              imageUrl={sol.imageUrl || sol.mediumUrl || sol.thumbnailUrl}
-                              category={sol.category || sol.categorycode}
-                              description={sol.description}
-                              link={sol.link || `/dashboard/new-project/packages/${sol.packageId || sol._id || sol.id}`}
-                            />
-                          ))}
-                        </div>
+                        <RecommendedSolutions
+                          solutions={msg.recommendedSolutions || msg.content?.recommendedSolutions}
+                        />
                       </div>
                     )}
                 </div>

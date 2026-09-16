@@ -9,6 +9,8 @@ import { authService } from "@/lib/authService";
 import { downloadFile } from "@/lib/utils";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
+import { downloadInvoicePDF } from "@/lib/generateInvoicePDF";
+import { useCurrency } from "@/context/CurrencyContext";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 
 function ReceiptModal({
@@ -16,18 +18,20 @@ function ReceiptModal({
   onClose,
   analysis,
   payment,
+  deliverableItems = [],
 }: {
   isOpen: boolean;
   onClose: () => void;
   analysis: any;
   payment?: any;
+  deliverableItems?: any[];
 }) {
   if (!isOpen || !analysis) return null;
 
   const projectNumber =
     analysis.projectNumber ||
     (analysis.quoteNumber || (analysis._id ? `INV-2026-${analysis._id.slice(-3).toUpperCase()}` : "INV-2026-150"));
-  const isFree = (analysis.isFree !== false || Number(analysis.price || 0) === 0) && !payment;
+  const isFree = (analysis.isFree !== false && (!analysis.price || Number(analysis.price) === 0)) && !payment && deliverableItems.length === 0;
   const totalPrice = isFree ? 0 : Number(payment?.amount ?? analysis.amountPaid ?? analysis.price ?? analysis.totalCost ?? 0);
   const currency = (payment?.currency || analysis.currency || "USD").toUpperCase();
 
@@ -122,17 +126,38 @@ function ReceiptModal({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                <tr>
-                  <td className="px-5 py-3.5 text-gray-800 font-semibold">
-                    {analysis.title || "Website Analysis"}
-                  </td>
-                  <td className="px-5 py-3.5 text-gray-600 text-center">
-                    {analysis.timelineInDays ? `${analysis.timelineInDays} Days` : "7 Days"}
-                  </td>
-                  <td className="px-5 py-3.5 text-right text-gray-900 font-bold">
-                    {formatCurrency(totalPrice)}
-                  </td>
-                </tr>
+                {deliverableItems.length > 0 ? (
+                  deliverableItems.map((item: any, idx: number) => (
+                    <tr key={idx}>
+                      <td className="px-5 py-3.5 text-gray-800 font-semibold">
+                        {item.description}
+                        {item.isAddOn && (
+                          <span className="ml-2 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200">
+                            Add-on
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5 text-gray-600 text-center">
+                        {item.duration}
+                      </td>
+                      <td className="px-5 py-3.5 text-right text-gray-900 font-bold">
+                        {formatCurrency(Number(item.amount || 0))}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td className="px-5 py-3.5 text-gray-800 font-semibold">
+                      {analysis.title || "Website Analysis"}
+                    </td>
+                    <td className="px-5 py-3.5 text-gray-600 text-center">
+                      {analysis.timelineInDays ? `${analysis.timelineInDays} Days` : "7 Days"}
+                    </td>
+                    <td className="px-5 py-3.5 text-right text-gray-900 font-bold">
+                      {formatCurrency(totalPrice)}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -197,6 +222,8 @@ export default function AnalysisPaymentsPage() {
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null);
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
+  const { currency, setCurrency } = useCurrency();
   const hasRefreshedRef = useRef(false);
 
   const fetchPayments = useCallback(async () => {
@@ -250,15 +277,70 @@ export default function AnalysisPaymentsPage() {
     .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
 
   const amountPaid = Math.max(Number(activeAnalysis.amountPaid || 0), totalPaidFromTransactions);
-  const baseCost = Number(activeAnalysis.price ?? activeAnalysis.totalCost ?? 0);
-  const totalProjectCost = baseCost;
+
+  // 1. Regular items
+  const regularItems = (activeAnalysis.deliverableItems && activeAnalysis.deliverableItems.length > 0)
+    ? activeAnalysis.deliverableItems.map((item: any) => ({
+        description: item.description || item.title || item.name || "Analysis Deliverable",
+        details: item.details || "",
+        duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : (activeAnalysis.timelineInDays ? `${activeAnalysis.timelineInDays} Days` : "7 Days"),
+        amount: Number(item.amount ?? (activeAnalysis.addons?.length ? 0 : (activeAnalysis.price ?? activeAnalysis.totalCost ?? 0))),
+        isAddOn: false,
+      }))
+    : [{
+        description: activeAnalysis.title || "Free website analysis",
+        details: "Comprehensive Website Review, Detailed PDF Report, Key Performance Issues Identified, Actionable Recommendations",
+        duration: activeAnalysis.timelineInDays ? `${activeAnalysis.timelineInDays} Days` : "5 Days",
+        amount: Number(activeAnalysis.basePrice ?? (activeAnalysis.addons?.length ? 0 : (activeAnalysis.price ?? activeAnalysis.totalCost ?? 0))),
+        isAddOn: false,
+      }];
+
+  // 2. Addon items from activeAnalysis.addons
+  const addonItemsFromAddons = (activeAnalysis.addons || []).flatMap((addon: any) =>
+    (addon.deliverableItems || []).map((item: any) => ({
+      description: item.description || item.title || item.name || "Add-On Deliverable",
+      details: item.details || "",
+      duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
+      amount: Number(item.amount ?? addon.totalCost ?? 0),
+      isAddOn: true,
+    }))
+  );
+
+  // 3. Addon items from activeAnalysis.messages
+  const addonItemsFromMessages = (activeAnalysis.messages || [])
+    .filter((m: any) => m.type === "quote_proposal" || m.content?.status === "accepted" || m.content?.proposalStatus === "accepted" || m.proposalStatus === "accepted")
+    .flatMap((m: any) => {
+      const items = m.deliverableItems || m.content?.deliverableItems || m.content?.items || [];
+      return items.map((item: any) => ({
+        description: item.description || item.title || item.name || "Add-On Deliverable",
+        details: item.details || "",
+        duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
+        amount: Number(item.amount ?? item.cost ?? 0),
+        isAddOn: true,
+      }));
+    });
+
+  const allAddonItems = addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages;
+  const deliverableItems = allAddonItems.length > 0 ? [...regularItems, ...allAddonItems] : regularItems;
+
+  const addonsTotal = allAddonItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
+  const currentPrice = Number(activeAnalysis.price ?? activeAnalysis.totalCost ?? 0);
+  const baseCost = activeAnalysis.basePrice != null
+    ? Number(activeAnalysis.basePrice)
+    : (activeAnalysis.isFree ? 0 : Math.max(0, currentPrice - addonsTotal));
+
   const rawVat = activeAnalysis.vatRate ?? activeAnalysis.vatPercentage ?? activeAnalysis.taxPercentage;
-  const activeVat = rawVat !== undefined && rawVat !== null && Number(rawVat) > 0 ? Number(rawVat) : 18;
-  const totalWithVat = totalProjectCost * (1 + activeVat / 100);
-  const pendingBalance = Math.max(0, totalWithVat - amountPaid);
+  const vatRate = rawVat !== undefined && rawVat !== null && Number(rawVat) > 0 ? Number(rawVat) : 0;
+  const totalSubtotal = baseCost + addonsTotal;
+  const effectiveVatAmount = Number(
+    activeAnalysis.vatAmount ??
+    (vatRate > 0 ? Math.round((totalSubtotal * (vatRate / 100)) * 100) / 100 : 0)
+  );
+  const totalProjectCost = totalSubtotal + effectiveVatAmount;
+  const pendingBalance = Math.max(0, totalProjectCost - amountPaid);
   const isFullyPaid = pendingBalance <= 0.009 && amountPaid > 0 && activeAnalysis.paymentStatus !== "pending";
 
-  const isFree = (activeAnalysis.isFree === true || (!activeAnalysis.price && !activeAnalysis.totalCost)) && amountPaid === 0;
+  const isFree = totalProjectCost === 0 && amountPaid === 0 && allAddonItems.length === 0;
 
   const handleDownloadProject = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -311,62 +393,198 @@ export default function AnalysisPaymentsPage() {
     }
   };
 
-  // 1. FREE ANALYSIS: Display simple Free Website Analysis card
+  // 1. FREE ANALYSIS: Display Payment Overview + Free Website Analysis cards matching project design
   if (isFree) {
-    const paymentDate = activeAnalysis.createdAt
-      ? new Date(activeAnalysis.createdAt).toLocaleDateString("en-GB", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })
-      : "13 Sept 2026";
-    const statusText = (activeAnalysis.paymentStatus || activeAnalysis.status || "succeeded").toLowerCase();
+    const startDate = activeAnalysis.startDate || activeAnalysis.createdAt || new Date();
+    const timelineDays = parseInt(String(activeAnalysis.timelineInDays || activeAnalysis.totalDuration || "5"), 10) || 5;
+    const deadlineDate = activeAnalysis.deadline || activeAnalysis.expectedDeadline || new Date(new Date(startDate).getTime() + timelineDays * 24 * 60 * 60 * 1000);
+
+    const formatDateTime = (dateVal: any) => {
+      if (!dateVal) return "Aug 28, 7:46 PM";
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return String(dateVal);
+      return (
+        d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
+        ", " +
+        d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+      );
+    };
+
+    const formatDateOnly = (dateVal: any) => {
+      if (!dateVal) return "Aug 28, 2026";
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return String(dateVal);
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    };
+
+    const startDateStr = formatDateTime(startDate);
+    const deadlineStr = formatDateTime(deadlineDate);
+    const paymentDateStr = formatDateOnly(activeAnalysis.createdAt || startDate);
+
+    const getDomainSubtitle = () => {
+      if (activeAnalysis.targetUrl) {
+        try {
+          const u = activeAnalysis.targetUrl.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+          return `Analysis for ${u}.`;
+        } catch {
+          return `Analysis for ${activeAnalysis.targetUrl}.`;
+        }
+      }
+      const title = activeAnalysis.title || "";
+      if (title.includes(" - ")) {
+        const part = title.split(" - ").pop()?.trim();
+        return `Analysis for ${part}.`;
+      }
+      return "Analysis for test.com.";
+    };
+
+    const formatPriceDisplay = (amt: number) => {
+      return currency === "eur" ? `€${amt.toFixed(2)}` : `$${amt.toFixed(2)}`;
+    };
+
+    const freeItemTitle = "Free Website Analysis";
+    const freeItemDesc =
+      "Our standard free analysis offer covering brand, UI/UX, functionalities, AI potentiality, tech stack, speed, and SEO.";
+    const freeItemDuration = `${timelineDays} Days`;
+
+    const handleViewInvoice = async (e?: React.MouseEvent) => {
+      if (e) e.preventDefault();
+      setIsDownloadingInvoice(true);
+      try {
+        await downloadInvoicePDF({
+          invoiceNumber: projectNumber,
+          projectTitle: activeAnalysis.title || "Free website analysis",
+          clientName: activeAnalysis.clientName || currentUser?.fullName || "Client",
+          amount: 0,
+          date: activeAnalysis.createdAt,
+          startDate: activeAnalysis.startDate || activeAnalysis.createdAt,
+          deadline: activeAnalysis.deadline || activeAnalysis.expectedDeadline,
+          deliverableItems: [
+            {
+              description: freeItemTitle,
+              details: freeItemDesc,
+              duration: freeItemDuration,
+              amount: 0,
+            },
+          ],
+          vatRate: 0,
+          vatAmount: 0,
+          totalCost: 0,
+          amountPaid: 0,
+          pendingBalance: 0,
+          currency: currency.toUpperCase(),
+          clientEmail: currentUser?.email || activeAnalysis.clientEmail || "",
+        });
+      } catch (err) {
+        console.error("Failed to download invoice PDF:", err);
+      } finally {
+        setIsDownloadingInvoice(false);
+      }
+    };
 
     return (
       <>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 font-sans">
           <div className="lg:col-span-2 space-y-6 sm:space-y-8">
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <div className="px-6 pt-6 pb-4 border-b border-gray-100">
-                <div className="flex items-start justify-between gap-4 mb-1">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <h3 className="text-lg font-bold text-[#0d1939]">
-                      {activeAnalysis.title || "Free website analysis"}
-                    </h3>
-                    <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200">
-                      {statusText}
-                    </span>
+            {/* 1. Payment Overview Card */}
+            <div className="bg-white border border-gray-300 rounded-lg p-4 sm:p-6 md:p-8">
+              <div className="mb-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start mb-6 sm:mb-4 gap-4 sm:gap-6">
+                  <div className="w-full sm:max-w-[70%] order-2 sm:order-1">
+                    <div className="flex items-center gap-4 mb-4">
+                      <h2 className="text-lg font-bold text-gray-800 font-sans">
+                        Payment Overview
+                      </h2>
+                      <div className="flex bg-gray-100 rounded-lg p-1">
+                        <button
+                          type="button"
+                          onClick={() => setCurrency("usd")}
+                          className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
+                            currency === "usd"
+                              ? "bg-white shadow text-gray-800"
+                              : "text-gray-500 hover:text-gray-700"
+                          }`}
+                        >
+                          USD
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCurrency("eur")}
+                          className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
+                            currency === "eur"
+                              ? "bg-white shadow text-gray-800"
+                              : "text-gray-500 hover:text-gray-700"
+                          }`}
+                        >
+                          EUR
+                        </button>
+                      </div>
+                    </div>
+                    <p
+                      className="text-sm sm:text-gray-600 mb-4 leading-relaxed line-clamp-3 sm:line-clamp-2 font-sans"
+                      title={getDomainSubtitle()}
+                    >
+                      {getDomainSubtitle()}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] sm:text-xs text-gray-500 font-sans">
+                      <span className="whitespace-nowrap">
+                        Project No: <span className="text-gray-700 font-medium">#{projectNumber}</span>
+                      </span>
+                      <span className="hidden sm:inline text-gray-300">|</span>
+                      <span className="whitespace-nowrap">
+                        Start Date: <span className="text-gray-700 font-medium">{startDateStr}</span>
+                      </span>
+                      <span className="hidden sm:inline text-gray-300">|</span>
+                      <span className="whitespace-nowrap">
+                        Expected Deadline: <span className="text-gray-700 font-medium">{deadlineStr}</span>
+                      </span>
+                      <span className="hidden sm:inline text-gray-300">|</span>
+                      <button
+                        type="button"
+                        disabled={isDownloadingInvoice}
+                        onClick={handleViewInvoice}
+                        className="text-gray-500 underline decoration-gray-400 underline-offset-2 hover:text-gray-700 whitespace-nowrap cursor-pointer hover:font-bold transition-all disabled:opacity-50 inline-flex items-center gap-1.5"
+                      >
+                        {isDownloadingInvoice ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+                            <span>Downloading...</span>
+                          </>
+                        ) : (
+                          "View invoice"
+                        )}
+                      </button>
+                    </div>
                   </div>
-                  <span className="text-sm text-indigo-500 font-semibold whitespace-nowrap">
-                    Analysis #{projectNumber}
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 font-medium mt-2">
-                  <span>
-                    Payment Date: <span className="text-gray-600 font-semibold">{paymentDate}</span>
-                  </span>
-                  <span className="text-gray-200">|</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedPayment(null);
-                      setShowReceipt(true);
-                    }}
-                    className="text-indigo-600 underline decoration-indigo-300 underline-offset-2 hover:text-indigo-800 font-semibold transition-colors disabled:opacity-50 cursor-pointer"
-                  >
-                    View Receipt
-                  </button>
+                  <div className="w-full sm:w-auto order-1 sm:order-2 bg-gray-50 sm:bg-transparent p-4 sm:p-0 rounded-lg space-y-2">
+                    <div className="flex justify-between items-center sm:justify-end gap-4">
+                      <span className="text-xs sm:text-sm text-gray-500 font-medium font-sans w-32 text-right">
+                        Total Cost:
+                      </span>
+                      <span className="text-sm sm:text-base font-bold text-gray-800 font-sans w-32 text-left">
+                        {formatPriceDisplay(0)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center sm:justify-end gap-4">
+                      <span className="text-xs sm:text-sm text-gray-700 font-bold font-sans w-32 text-right">
+                        Total Payable:
+                      </span>
+                      <span className="text-base sm:text-lg font-extrabold text-[#4343F0] font-sans w-32 text-left">
+                        {formatPriceDisplay(0)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[480px]">
+              <div className="border border-gray-200 rounded-lg overflow-x-auto mb-2" style={{ cursor: "grab" }}>
+                <table className="w-full min-w-[500px] sm:min-w-0">
                   <thead>
-                    <tr className="border-b border-gray-200 bg-gray-50/60">
+                    <tr className="border-b border-gray-200 bg-white">
                       <th className="text-left py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">
                         Item
                       </th>
-                      <th className="text-center py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      <th className="text-left py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">
                         Duration
                       </th>
                       <th className="text-right py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">
@@ -374,30 +592,123 @@ export default function AnalysisPaymentsPage() {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    <tr>
-                      <td className="py-4 px-6 text-sm">
-                        <div className="font-semibold text-[#0d1939]">
-                          {activeAnalysis.title || "Free website analysis"}
+                  <tbody>
+                    <tr className="border-b border-gray-100 last:sm:border-b-0">
+                      <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm text-gray-600">
+                        <div className="font-medium mb-1">{freeItemTitle}</div>
+                        <div className="text-gray-400 text-[10px] sm:text-xs">
+                          {freeItemDesc}
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-sm text-gray-500 text-center whitespace-nowrap">
-                        {activeAnalysis.timelineInDays ? `${activeAnalysis.timelineInDays} Days` : "5 Days"}
+                      <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm text-gray-500 whitespace-nowrap">
+                        {freeItemDuration}
+                      </td>
+                      <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm text-gray-600 font-bold sm:font-medium text-right">
+                        {formatPriceDisplay(0)}
+                      </td>
+                    </tr>
+                    <tr className="border-t-2 border-gray-200 bg-gray-50/70">
+                      <td colSpan={2} className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-500">
+                        Base Amount:
+                      </td>
+                      <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
+                        {formatPriceDisplay(0)}
+                      </td>
+                    </tr>
+                    <tr className="bg-gray-50/70">
+                      <td colSpan={2} className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-500">
+                        VAT (0%):
+                      </td>
+                      <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
+                        {formatPriceDisplay(0)}
+                      </td>
+                    </tr>
+                    <tr className="bg-blue-50/50 border-t border-gray-200">
+                      <td colSpan={2} className="py-3 px-3 sm:px-6 text-right text-xs sm:text-sm font-bold text-gray-800 uppercase font-sans">
+                        Total Payable:
+                      </td>
+                      <td className="py-3 px-3 sm:px-6 text-right text-sm sm:text-base font-extrabold text-[#4343F0] font-sans">
+                        {formatPriceDisplay(0)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 2. Free Website Analysis Succeeded Card */}
+            <div className="bg-white border border-gray-300 rounded-lg p-4 sm:p-6 md:p-8">
+              <div className="pb-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h3 className="text-lg sm:text-xl font-bold text-[#0D1939]">
+                    {activeAnalysis.title || "Free website analysis - test.com"}
+                  </h3>
+                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-[#E6F9EE] text-[#00A854] border border-[#00A854]/20">
+                    SUCCEEDED
+                  </span>
+                </div>
+                <span className="text-sm sm:text-base font-semibold text-[#4343F0] whitespace-nowrap">
+                  Project #{projectNumber}
+                </span>
+              </div>
+
+              <div className="px-6 py-3 flex items-center gap-2 text-xs sm:text-sm text-gray-500 font-medium">
+                <span>
+                  Payment Date: <span className="font-semibold text-gray-700">{paymentDateStr}</span>
+                </span>
+                <span className="text-gray-300">|</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedPayment(null);
+                    setShowReceipt(true);
+                  }}
+                  className="text-[#4343F0] hover:text-[#3232b7] underline decoration-[#4343F0]/40 hover:decoration-[#4343F0] underline-offset-2 font-semibold transition-colors cursor-pointer"
+                >
+                  View Receipt
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[480px]">
+                  <thead>
+                    <tr className="border-t border-b border-gray-200 bg-white">
+                      <th className="text-left py-3.5 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        ITEM
+                      </th>
+                      <th className="text-center py-3.5 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        DURATION
+                      </th>
+                      <th className="text-right py-3.5 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        AMOUNT
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 bg-white">
+                    <tr>
+                      <td className="py-4 px-6 text-sm">
+                        <div className="font-bold text-gray-800">{freeItemTitle}</div>
+                        <div className="text-xs text-gray-400 mt-0.5 leading-relaxed">
+                          {freeItemDesc}
+                        </div>
+                      </td>
+                      <td className="py-4 px-6 text-sm text-gray-600 font-medium text-center whitespace-nowrap">
+                        {freeItemDuration}
                       </td>
                       <td className="py-4 px-6 text-sm font-bold text-gray-800 text-right whitespace-nowrap">
-                        $0.00
+                        {formatPriceDisplay(0)}
                       </td>
                     </tr>
                   </tbody>
                   <tfoot>
-                    <tr className="border-t border-gray-200 bg-gray-50/30">
-                      <td className="py-3 px-6" colSpan={2}></td>
-                      <td className="py-3 px-6 text-right">
+                    <tr className="border-t border-gray-200">
+                      <td colSpan={2}></td>
+                      <td className="py-4 px-6 text-right">
                         <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                          Total Paid
+                          TOTAL PAID
                         </div>
-                        <div className="text-sm font-bold text-gray-800 mt-0.5">
-                          $0.00
+                        <div className="text-sm font-bold text-gray-900 mt-0.5">
+                          {formatPriceDisplay(0)}
                         </div>
                       </td>
                     </tr>
@@ -405,39 +716,48 @@ export default function AnalysisPaymentsPage() {
                 </table>
               </div>
 
-              <div className="px-6 py-4 flex flex-wrap justify-end gap-3 border-t border-gray-100">
+              <div className="px-6 py-4 flex flex-wrap justify-end gap-3 border-t border-gray-100 bg-white">
                 <button
                   type="button"
                   disabled={isDownloadingPdf}
                   onClick={handleDownloadProject}
-                  className="flex items-center gap-2 px-5 py-2 bg-[#3535b8] hover:bg-[#2a2a9a] text-white text-sm font-bold rounded transition-all shadow-sm disabled:opacity-60 cursor-pointer"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-[#2E30B2] hover:bg-[#252796] text-white text-xs sm:text-sm font-bold rounded-lg transition-colors shadow-xs disabled:opacity-60 cursor-pointer"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="15"
-                    height="15"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="7 10 12 15 17 10"></polyline>
-                    <line x1="12" x2="12" y1="15" y2="3"></line>
-                  </svg>
-                  Download Analysis (.PDF)
+                  {isDownloadingPdf ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Downloading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" x2="12" y1="15" y2="3"></line>
+                      </svg>
+                      <span>Download Project (.PDF)</span>
+                    </>
+                  )}
                 </button>
                 <button
                   type="button"
                   onClick={handlePrintDetails}
-                  className="flex items-center gap-2 px-5 py-2 bg-[#3535b8] hover:bg-[#2a2a9a] text-white text-sm font-bold rounded transition-all shadow-sm cursor-pointer"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-[#1F217A] hover:bg-[#181961] text-white text-xs sm:text-sm font-bold rounded-lg transition-colors shadow-xs cursor-pointer"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="15"
-                    height="15"
+                    width="16"
+                    height="16"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -449,7 +769,7 @@ export default function AnalysisPaymentsPage() {
                     <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                     <rect width="12" height="8" x="6" y="14"></rect>
                   </svg>
-                  Print Details
+                  <span>Print Details</span>
                 </button>
               </div>
             </div>
@@ -477,35 +797,20 @@ export default function AnalysisPaymentsPage() {
           onClose={() => setShowReceipt(false)}
           analysis={activeAnalysis}
           payment={selectedPayment}
+          deliverableItems={deliverableItems}
         />
       </>
     );
   }
 
   // 2. PAID ANALYSIS: Display full UnifiedPaymentForm with Subtotal, VAT, Total Cost, Paid, Pending Balance + All Transaction Records
-  const deliverableItems = (activeAnalysis.deliverableItems && activeAnalysis.deliverableItems.length > 0)
-    ? activeAnalysis.deliverableItems.map((item: any) => ({
-        description: item.description || item.title || item.name || "Analysis Deliverable",
-        details: item.details || "",
-        duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : (activeAnalysis.timelineInDays ? `${activeAnalysis.timelineInDays} Days` : "7 Days"),
-        amount: Number(item.amount ?? activeAnalysis.price ?? activeAnalysis.totalCost ?? 0),
-        isAddOn: false,
-      }))
-    : [{
-        description: activeAnalysis.title || "Initial Analysis Setup & Implementation",
-        details: "Comprehensive Website Review, Detailed PDF Report, Key Performance Issues Identified, Actionable Recommendations",
-        duration: activeAnalysis.timelineInDays ? `${activeAnalysis.timelineInDays} Days` : "7 Days",
-        amount: totalProjectCost,
-        isAddOn: false,
-      }];
-
   const searchInvoiceId = searchParams?.get("invoiceId") || undefined;
   const searchInvoiceNumber = searchParams?.get("invoiceNumber") || undefined;
   const searchMessageId = searchParams?.get("messageId") || undefined;
   const searchDescription = searchParams?.get("description") || undefined;
   const targetCost = amountPaid === 0
     ? totalProjectCost
-    : (activeVat > 0 ? Math.round((pendingBalance / (1 + activeVat / 100)) * 100) / 100 : pendingBalance);
+    : (vatRate > 0 ? Math.round((pendingBalance / (1 + vatRate / 100)) * 100) / 100 : pendingBalance);
 
   return (
     <div className="w-full font-sans space-y-8">
@@ -677,6 +982,7 @@ export default function AnalysisPaymentsPage() {
         onClose={() => setShowReceipt(false)}
         analysis={activeAnalysis}
         payment={selectedPayment}
+        deliverableItems={deliverableItems}
       />
     </div>
   );
