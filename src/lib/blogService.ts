@@ -7,8 +7,10 @@ class BlogService {
     this.client = new HttpClient();
   }
 
-  async getBlogs(page: number = 1, limit: number = 5) {
-    return this.client.get("/blogs", { page, limit });
+  async getBlogs(page: number = 1, limit: number = 10, category?: string) {
+    const params: any = { page, limit };
+    if (category) params.category = category;
+    return this.client.get("/blogs", params);
   }
 
   async getBlogBySlug(slug: string) {
