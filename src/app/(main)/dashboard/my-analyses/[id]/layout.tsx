@@ -4,6 +4,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AnalysisProvider, useAnalysis } from "@/context/AnalysisContext";
+import DeadlineTooltip from "@/components/common/DeadlineTooltip";
+import { getProjectEstimatedDeadline } from "@/lib/calculatorUtils";
 import { requestAnalysisService, savePendingAnalysisId, savePendingAnalysisInfo, claimPendingAnalyses } from "@/lib/requestAnalysisService";
 import { authService } from "@/lib/authService";
 
@@ -82,14 +84,27 @@ function AnalysisLayoutContent({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const startDateFormatted = analysis.startDate || analysis.createdAt
-    ? new Date(analysis.startDate || analysis.createdAt).toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      })
-    : "TBD";
+  const formatDate = (date: any) => {
+    if (!date) return "";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "";
+    const month = d.toLocaleString("en-US", { month: "short" });
+    const day = d.getDate();
+    const time = d.toLocaleString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    return `${month} ${day}, ${time}`;
+  };
+
+  const estimatedDeadlineDate =
+    getProjectEstimatedDeadline(analysis) ||
+    (analysis.deadline ? new Date(analysis.deadline) : null) ||
+    (analysis.expectedDeadline ? new Date(analysis.expectedDeadline) : null) ||
+    (analysis.timelineInDays && (analysis.startDate || analysis.createdAt)
+      ? (() => {
+          const d = new Date(analysis.startDate || analysis.createdAt);
+          d.setDate(d.getDate() + Number(analysis.timelineInDays));
+          return d;
+        })()
+      : null);
 
   return (
     <div
@@ -178,9 +193,22 @@ function AnalysisLayoutContent({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-8 mb-4 sm:mb-3 text-[11px] sm:text-sm font-medium text-[#363636] mt-4 md:mt-0">
-              <div>
+              <div className="flex items-center">
                 <span className="text-[#88909D] mr-2">Start date:</span>
-                {startDateFormatted}
+                <span className="font-bold">
+                  {analysis.startDate || analysis.createdAt
+                    ? formatDate(analysis.startDate || analysis.createdAt)
+                    : "TBD"}
+                </span>
+              </div>
+              <div className="flex items-center">
+                <span className="text-[#88909D] mr-2">Estimated Deadline:</span>
+                <span className="font-bold">
+                  {estimatedDeadlineDate
+                    ? formatDate(estimatedDeadlineDate)
+                    : "Ongoing"}
+                </span>
+                <DeadlineTooltip position="left" />
               </div>
             </div>
           </div>

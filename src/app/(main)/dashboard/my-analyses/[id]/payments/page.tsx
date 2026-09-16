@@ -16,18 +16,20 @@ function ReceiptModal({
   onClose,
   analysis,
   payment,
+  deliverableItems = [],
 }: {
   isOpen: boolean;
   onClose: () => void;
   analysis: any;
   payment?: any;
+  deliverableItems?: any[];
 }) {
   if (!isOpen || !analysis) return null;
 
   const projectNumber =
     analysis.projectNumber ||
     (analysis.quoteNumber || (analysis._id ? `INV-2026-${analysis._id.slice(-3).toUpperCase()}` : "INV-2026-150"));
-  const isFree = (analysis.isFree !== false || Number(analysis.price || 0) === 0) && !payment;
+  const isFree = (analysis.isFree !== false && (!analysis.price || Number(analysis.price) === 0)) && !payment && deliverableItems.length === 0;
   const totalPrice = isFree ? 0 : Number(payment?.amount ?? analysis.amountPaid ?? analysis.price ?? analysis.totalCost ?? 0);
   const currency = (payment?.currency || analysis.currency || "USD").toUpperCase();
 
@@ -122,17 +124,38 @@ function ReceiptModal({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                <tr>
-                  <td className="px-5 py-3.5 text-gray-800 font-semibold">
-                    {analysis.title || "Website Analysis"}
-                  </td>
-                  <td className="px-5 py-3.5 text-gray-600 text-center">
-                    {analysis.timelineInDays ? `${analysis.timelineInDays} Days` : "7 Days"}
-                  </td>
-                  <td className="px-5 py-3.5 text-right text-gray-900 font-bold">
-                    {formatCurrency(totalPrice)}
-                  </td>
-                </tr>
+                {deliverableItems.length > 0 ? (
+                  deliverableItems.map((item: any, idx: number) => (
+                    <tr key={idx}>
+                      <td className="px-5 py-3.5 text-gray-800 font-semibold">
+                        {item.description}
+                        {item.isAddOn && (
+                          <span className="ml-2 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200">
+                            Add-on
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5 text-gray-600 text-center">
+                        {item.duration}
+                      </td>
+                      <td className="px-5 py-3.5 text-right text-gray-900 font-bold">
+                        {formatCurrency(Number(item.amount || 0))}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td className="px-5 py-3.5 text-gray-800 font-semibold">
+                      {analysis.title || "Website Analysis"}
+                    </td>
+                    <td className="px-5 py-3.5 text-gray-600 text-center">
+                      {analysis.timelineInDays ? `${analysis.timelineInDays} Days` : "7 Days"}
+                    </td>
+                    <td className="px-5 py-3.5 text-right text-gray-900 font-bold">
+                      {formatCurrency(totalPrice)}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -250,15 +273,70 @@ export default function AnalysisPaymentsPage() {
     .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
 
   const amountPaid = Math.max(Number(activeAnalysis.amountPaid || 0), totalPaidFromTransactions);
-  const baseCost = Number(activeAnalysis.price ?? activeAnalysis.totalCost ?? 0);
-  const totalProjectCost = baseCost;
+
+  // 1. Regular items
+  const regularItems = (activeAnalysis.deliverableItems && activeAnalysis.deliverableItems.length > 0)
+    ? activeAnalysis.deliverableItems.map((item: any) => ({
+        description: item.description || item.title || item.name || "Analysis Deliverable",
+        details: item.details || "",
+        duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : (activeAnalysis.timelineInDays ? `${activeAnalysis.timelineInDays} Days` : "7 Days"),
+        amount: Number(item.amount ?? (activeAnalysis.addons?.length ? 0 : (activeAnalysis.price ?? activeAnalysis.totalCost ?? 0))),
+        isAddOn: false,
+      }))
+    : [{
+        description: activeAnalysis.title || "Free website analysis",
+        details: "Comprehensive Website Review, Detailed PDF Report, Key Performance Issues Identified, Actionable Recommendations",
+        duration: activeAnalysis.timelineInDays ? `${activeAnalysis.timelineInDays} Days` : "5 Days",
+        amount: Number(activeAnalysis.basePrice ?? (activeAnalysis.addons?.length ? 0 : (activeAnalysis.price ?? activeAnalysis.totalCost ?? 0))),
+        isAddOn: false,
+      }];
+
+  // 2. Addon items from activeAnalysis.addons
+  const addonItemsFromAddons = (activeAnalysis.addons || []).flatMap((addon: any) =>
+    (addon.deliverableItems || []).map((item: any) => ({
+      description: item.description || item.title || item.name || "Add-On Deliverable",
+      details: item.details || "",
+      duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
+      amount: Number(item.amount ?? addon.totalCost ?? 0),
+      isAddOn: true,
+    }))
+  );
+
+  // 3. Addon items from activeAnalysis.messages
+  const addonItemsFromMessages = (activeAnalysis.messages || [])
+    .filter((m: any) => m.type === "quote_proposal" || m.content?.status === "accepted" || m.content?.proposalStatus === "accepted" || m.proposalStatus === "accepted")
+    .flatMap((m: any) => {
+      const items = m.deliverableItems || m.content?.deliverableItems || m.content?.items || [];
+      return items.map((item: any) => ({
+        description: item.description || item.title || item.name || "Add-On Deliverable",
+        details: item.details || "",
+        duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
+        amount: Number(item.amount ?? item.cost ?? 0),
+        isAddOn: true,
+      }));
+    });
+
+  const allAddonItems = addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages;
+  const deliverableItems = allAddonItems.length > 0 ? [...regularItems, ...allAddonItems] : regularItems;
+
+  const addonsTotal = allAddonItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
+  const currentPrice = Number(activeAnalysis.price ?? activeAnalysis.totalCost ?? 0);
+  const baseCost = activeAnalysis.basePrice != null
+    ? Number(activeAnalysis.basePrice)
+    : (activeAnalysis.isFree ? 0 : Math.max(0, currentPrice - addonsTotal));
+
   const rawVat = activeAnalysis.vatRate ?? activeAnalysis.vatPercentage ?? activeAnalysis.taxPercentage;
-  const activeVat = rawVat !== undefined && rawVat !== null && Number(rawVat) > 0 ? Number(rawVat) : 18;
-  const totalWithVat = totalProjectCost * (1 + activeVat / 100);
-  const pendingBalance = Math.max(0, totalWithVat - amountPaid);
+  const vatRate = rawVat !== undefined && rawVat !== null && Number(rawVat) > 0 ? Number(rawVat) : 0;
+  const totalSubtotal = baseCost + addonsTotal;
+  const effectiveVatAmount = Number(
+    activeAnalysis.vatAmount ??
+    (vatRate > 0 ? Math.round((totalSubtotal * (vatRate / 100)) * 100) / 100 : 0)
+  );
+  const totalProjectCost = totalSubtotal + effectiveVatAmount;
+  const pendingBalance = Math.max(0, totalProjectCost - amountPaid);
   const isFullyPaid = pendingBalance <= 0.009 && amountPaid > 0 && activeAnalysis.paymentStatus !== "pending";
 
-  const isFree = (activeAnalysis.isFree === true || (!activeAnalysis.price && !activeAnalysis.totalCost)) && amountPaid === 0;
+  const isFree = totalProjectCost === 0 && amountPaid === 0 && allAddonItems.length === 0;
 
   const handleDownloadProject = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -477,35 +555,20 @@ export default function AnalysisPaymentsPage() {
           onClose={() => setShowReceipt(false)}
           analysis={activeAnalysis}
           payment={selectedPayment}
+          deliverableItems={deliverableItems}
         />
       </>
     );
   }
 
   // 2. PAID ANALYSIS: Display full UnifiedPaymentForm with Subtotal, VAT, Total Cost, Paid, Pending Balance + All Transaction Records
-  const deliverableItems = (activeAnalysis.deliverableItems && activeAnalysis.deliverableItems.length > 0)
-    ? activeAnalysis.deliverableItems.map((item: any) => ({
-        description: item.description || item.title || item.name || "Analysis Deliverable",
-        details: item.details || "",
-        duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : (activeAnalysis.timelineInDays ? `${activeAnalysis.timelineInDays} Days` : "7 Days"),
-        amount: Number(item.amount ?? activeAnalysis.price ?? activeAnalysis.totalCost ?? 0),
-        isAddOn: false,
-      }))
-    : [{
-        description: activeAnalysis.title || "Initial Analysis Setup & Implementation",
-        details: "Comprehensive Website Review, Detailed PDF Report, Key Performance Issues Identified, Actionable Recommendations",
-        duration: activeAnalysis.timelineInDays ? `${activeAnalysis.timelineInDays} Days` : "7 Days",
-        amount: totalProjectCost,
-        isAddOn: false,
-      }];
-
   const searchInvoiceId = searchParams?.get("invoiceId") || undefined;
   const searchInvoiceNumber = searchParams?.get("invoiceNumber") || undefined;
   const searchMessageId = searchParams?.get("messageId") || undefined;
   const searchDescription = searchParams?.get("description") || undefined;
   const targetCost = amountPaid === 0
     ? totalProjectCost
-    : (activeVat > 0 ? Math.round((pendingBalance / (1 + activeVat / 100)) * 100) / 100 : pendingBalance);
+    : (vatRate > 0 ? Math.round((pendingBalance / (1 + vatRate / 100)) * 100) / 100 : pendingBalance);
 
   return (
     <div className="w-full font-sans space-y-8">
@@ -677,6 +740,7 @@ export default function AnalysisPaymentsPage() {
         onClose={() => setShowReceipt(false)}
         analysis={activeAnalysis}
         payment={selectedPayment}
+        deliverableItems={deliverableItems}
       />
     </div>
   );

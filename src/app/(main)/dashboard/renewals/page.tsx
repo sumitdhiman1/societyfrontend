@@ -424,7 +424,14 @@ export default function RenewalsPage() {
     try {
       const res = await projectService.getRenewals();
       if (res?.data && Array.isArray(res.data)) {
-        setRenewals(res.data);
+        const nonAnalysisRenewals = res.data.filter(
+          (p: any) =>
+            p.type !== "analysis" &&
+            !p.isAnalysis &&
+            !p.title?.toLowerCase().includes("website analysis") &&
+            !p.title?.toLowerCase().includes("checking of work")
+        );
+        setRenewals(nonAnalysisRenewals);
       }
     } catch (e) {
       console.error("Failed to fetch renewals:", e);
