@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useAnalysis } from "@/context/AnalysisContext";
 import { analysesService } from "@/lib/analysesService";
 import { mediaService } from "@/lib/mediaService";
@@ -11,6 +12,7 @@ import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
 import LoadingDots from "@/components/common/LoadingDots";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
+import RecommendedSolutions, { PackageCard } from "@/components/common/RecommendedSolutions";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
 
@@ -31,7 +33,16 @@ const formatStatusTitle = (rawTitle: string): string => {
     return "Analysis completed!";
   }
   if (lower === "project manager assigned" || lower === "analysis manager assigned" || lower === "manager assigned" || lower.includes("manager assigned")) {
-    return "Manager assigned";
+    return "Analysis manager assigned";
+  }
+  if (lower.startsWith("add-on proposal accepted") || lower.includes("proposal accepted") || lower.includes("offer was accepted")) {
+    return "Add-on proposal accepted";
+  }
+  if (lower.startsWith("proposal declined") || lower.startsWith("add-on proposal declined") || lower.includes("offer was declined")) {
+    return "Proposal declined";
+  }
+  if (lower.startsWith("modification requested") || lower.includes("requested modification")) {
+    return "Modification requested";
   }
   if (lower.includes("project")) {
     clean = clean.replace(/projects/gi, "analyses").replace(/project/gi, "analysis");
@@ -45,9 +56,14 @@ const formatStatusTitle = (rawTitle: string): string => {
 const sanitizeAnalysisText = (text: string): string => {
   if (!text) return "";
   return text
+    .replace(/Great! The add-on services have been successfully added to your project\. Your project timeline and cost have been updated accordingly\. You can view the updated details anytime\./gi, "Great! The add-on services have been successfully added to your analysis. Your analysis timeline and cost have been updated accordingly. You can view the updated details anytime.")
+    .replace(/Great! The add-on services have been successfully added to your analysis project\. Timeline and cost have been updated accordingly\./gi, "Great! The add-on services have been successfully added to your analysis. Your analysis timeline and cost have been updated accordingly. You can view the updated details anytime.")
+    .replace(/added to your analysis project/gi, "added to your analysis")
+    .replace(/added to your project/gi, "added to your analysis")
+    .replace(/your project timeline/gi, "your analysis timeline")
     .replace(/for this project moving forward/gi, "for this analysis moving forward")
-    .replace(/as project manager/gi, "as manager")
-    .replace(/project manager/gi, "manager")
+    .replace(/as project manager/gi, "as analysis manager")
+    .replace(/project manager/gi, "analysis manager")
     .replace(/We've received your payment of ([\d.]+)\s+([A-Z]{3})\.?\s+for\s+"[^"]*"\.?/gi, "We've received your payment of $1 $2.")
     .replace(/Your project financials have been updated/gi, "Your analysis financials have been updated")
     .replace(/This project has been temporarily paused/gi, "This analysis has been temporarily paused")
@@ -260,85 +276,10 @@ const formatCategoryName = (cat: any, title?: string): string => {
   return raw;
 };
 
-const PackageCard = ({
-  packageId,
-  title,
-  price,
-  imageUrl,
-  category,
-  description,
-  link,
-}: any) => {
-  const safeImg = imageUrl ? getSafeUrl(imageUrl) : null;
-  const isSvg = safeImg ? safeImg.toLowerCase().includes(".svg") : false;
 
-  const displayPrice =
-    typeof price === "number"
-      ? `$${price.toLocaleString("en-US")}`
-      : price
-        ? String(price).startsWith("$") || String(price).startsWith("€")
-          ? String(price)
-          : `$ ${price}`
-        : "";
-
-  const resolvedCat = formatCategoryName(category, title);
-
-  return (
-    <a
-      href={link || `/dashboard/new-project/packages/${packageId}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex flex-col bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition-all group w-full sm:w-[260px] md:w-[280px] shrink-0 no-underline text-left"
-    >
-      <div className="h-36 sm:h-40 bg-gray-100 relative overflow-hidden flex items-center justify-center">
-        {safeImg ? (
-          <img
-            src={safeImg}
-            alt={title}
-            className={`w-full h-full transition-transform duration-300 group-hover:scale-105 ${isSvg ? "object-contain p-2.5" : "object-cover"
-              }`}
-            onError={(e) => {
-              const target = e.currentTarget;
-              if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
-                target.src = target.src.replace("http:", "https:");
-              }
-            }}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-300">
-            <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-        )}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
-      </div>
-
-      <div className="p-4 flex flex-col flex-1 bg-white">
-        {resolvedCat && (
-          <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2.5 py-0.5 rounded-full uppercase tracking-wider w-fit mb-2">
-            {resolvedCat}
-          </span>
-        )}
-        <h4 className="font-bold text-gray-800 text-sm leading-snug mb-1.5 group-hover:text-blue-600 transition-colors line-clamp-2">
-          {title}
-        </h4>
-        {description && (
-          <p className="text-xs text-gray-500 leading-relaxed mb-3 line-clamp-2">
-            {description}
-          </p>
-        )}
-        <div className="mt-auto pt-2 flex items-center justify-between border-t border-gray-100">
-          <span className="font-bold text-gray-800 text-xs sm:text-sm">
-            {displayPrice}
-          </span>
-        </div>
-      </div>
-    </a>
-  );
-};
 
 export default function AnalysisDetailsPage() {
+  const params = useParams();
   const { analysis, refreshAnalysis } = useAnalysis();
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -348,6 +289,7 @@ export default function AnalysisDetailsPage() {
   const [availablePackages, setAvailablePackages] = useState<any[]>([]);
   const [availableCategories, setAvailableCategories] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const actionLoadingRef = useRef(false);
 
   const [actionModal, setActionModal] = useState<{
     isOpen: boolean;
@@ -563,6 +505,25 @@ export default function AnalysisDetailsPage() {
     });
   };
 
+  const formatCurrency = (amt: any, customCurrency?: string) => {
+    const val = Number(amt);
+    if (isNaN(val)) return "$0.00";
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: customCurrency || analysis?.currency || "USD",
+    }).format(val);
+  };
+
+  const formatSubmittedDate = (date: any) => {
+    if (!date) return "";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "";
+    const month = d.toLocaleString("en-US", { month: "short" });
+    const day = d.getDate();
+    const time = d.toLocaleString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    return `${month} ${day}, ${time}`;
+  };
+
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
   const formatFileSize = (bytes?: number): string => {
@@ -697,49 +658,63 @@ export default function AnalysisDetailsPage() {
   };
 
   const handleAcceptProposal = async (proposalId: string) => {
-    const actingUser = requireAuth();
-    if (!actingUser) return;
+    if (actionLoadingRef.current || isActionLoading) return;
+    actionLoadingRef.current = true;
     setIsActionLoading(true);
     try {
-      const username = actingUser?.fullName || actingUser?.username || currentUser?.fullName || "User";
-      const avatar = actingUser?.avatar || currentUser?.avatar;
-      const aId = analysis._id || analysis.id;
-      const res = await analysesService.acceptProposal(aId, proposalId, username, avatar);
-      if (res && (res.isSuccessful || res.success || res.statusCode === 200 || res.statusCode === 201 || res.data)) {
+      const user = currentUser || authService.getUser() || {};
+      const username = user?.fullName || user?.username || "User";
+      const avatar = user?.avatar;
+      const resolvedId = Array.isArray(params?.id) ? params.id[0] : params?.id;
+      const aId = resolvedId || analysis?._id || analysis?.id;
+      const res: any = await analysesService.acceptProposal(String(aId), String(proposalId), username, avatar);
+      if (res && (res.statusCode === 200 || res.statusCode === 201 || res.isSuccessful || res.data || res.success)) {
+        toast.success("Offer accepted successfully!");
         refreshAnalysis();
+      } else {
+        toast.error(res?.message || "Failed to accept offer");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to accept proposal:", error);
+      toast.error(error?.message || "Failed to accept offer");
     } finally {
+      actionLoadingRef.current = false;
       setIsActionLoading(false);
     }
   };
 
   const handleActionSubmit = async () => {
-    const actingUser = requireAuth();
-    if (!actingUser) return;
+    if (actionLoadingRef.current || isActionLoading) return;
     if (actionModal.proposalId && actionModal.action && (!actionModal.required || actionComment.trim())) {
+      actionLoadingRef.current = true;
       setIsActionLoading(true);
       try {
-        let res;
-        const username = currentUser?.fullName || currentUser?.username || "User";
-        const avatar = currentUser?.avatar;
-        const aId = analysis._id || analysis.id;
+        let res: any;
+        const user = currentUser || authService.getUser() || {};
+        const username = user?.fullName || user?.username || "User";
+        const avatar = user?.avatar;
+        const resolvedId = Array.isArray(params?.id) ? params.id[0] : params?.id;
+        const aId = resolvedId || analysis?._id || analysis?.id;
 
         if (actionModal.action === "decline") {
-          res = await analysesService.declineProposal(aId, actionModal.proposalId, actionComment || "", username, avatar);
+          res = await analysesService.declineProposal(String(aId), String(actionModal.proposalId), actionComment || "", username, avatar);
         } else if (actionModal.action === "request_modification") {
-          res = await analysesService.requestProposalModification(aId, actionModal.proposalId, actionComment, username, avatar);
+          res = await analysesService.requestProposalModification(String(aId), String(actionModal.proposalId), actionComment, username, avatar);
         }
 
-        if (res && (res.isSuccessful || res.success || res.statusCode === 200 || res.statusCode === 201 || res.data)) {
-          setActionModal({ ...actionModal, isOpen: false });
+        if (res && (res.statusCode === 200 || res.statusCode === 201 || res.isSuccessful || res.data || res.success)) {
+          toast.success(actionModal.action === "decline" ? "Offer declined successfully" : "Modification request sent");
+          setActionModal({ ...actionModal, isOpen: false, proposalId: null });
           setActionComment("");
           refreshAnalysis();
+        } else {
+          toast.error(res?.message || `Failed to ${actionModal.action === "decline" ? "decline" : "modify"} offer`);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Failed to handle ${actionModal.action}:`, error);
+        toast.error(error?.message || `Failed to ${actionModal.action === "decline" ? "decline" : "modify"} offer`);
       } finally {
+        actionLoadingRef.current = false;
         setIsActionLoading(false);
       }
     }
@@ -757,6 +732,88 @@ export default function AnalysisDetailsPage() {
     : analysis.projectManager;
   const managerName = manager?.fullName || "Not assigned yet";
   const managerAvatar = manager?.avatar;
+
+  const addonItemsFromAddons = (analysis?.addons || []).flatMap((addon: any) =>
+    (addon.deliverableItems || []).map((d: any) => ({
+      description: d.description || d.title || d.name || 'Add-on deliverable',
+      amount: Number(d.amount ?? d.cost ?? 0),
+      duration: d.duration ? `${d.duration}` : '-',
+      unit: d.unit || 'Days',
+      details: d.details || '',
+    }))
+  );
+
+  const addonItemsFromMessages = (analysis?.messages || [])
+    .filter((m: any) => {
+      const isQuote = m.type === 'quote_proposal' || m.content?.type === 'quote_proposal';
+      const isAccepted = m.content?.status === 'accepted' || m.status === 'accepted';
+      return isQuote && isAccepted;
+    })
+    .flatMap((m: any) => {
+      const deliverables = m.content?.deliverableItems || m.deliverableItems || [];
+      return deliverables.map((d: any) => ({
+        description: d.description || d.title || d.name || 'Add-on deliverable',
+        amount: Number(d.amount ?? d.cost ?? 0),
+        duration: d.duration ? `${d.duration}` : '-',
+        unit: 'Days',
+        details: '',
+      }));
+    });
+
+  const allAddonDeliverables = addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages;
+  const addonsTotal = allAddonDeliverables.reduce((sum: number, it: any) => sum + (Number(it.amount) || 0), 0);
+
+  const rawTitle = analysis.title || "Free Website Analysis";
+  const cleanItemTitle = rawTitle.includes(" - ") ? rawTitle.split(" - ")[0] : rawTitle;
+  const cleanItemDescription =
+    analysis.deliverableItems?.[0]?.details ||
+    "Our standard free analysis offer covering brand, UI/UX, functionalities, AI potentiality, tech stack, speed, and SEO.";
+
+  const rawUrls = (analysis.targetWebsiteUrl || analysis.websiteUrl || "").trim();
+  const submittedUrls = rawUrls
+    ? rawUrls
+      .split(/[\n,]+/)
+      .map((u: string) => u.trim())
+      .filter(Boolean)
+    : [];
+
+  let submittedAdditionalComments = (analysis.additionalComments || analysis.metadata?.additionalComments || "").trim();
+  if (!submittedAdditionalComments && analysis.description) {
+    const match = analysis.description.match(/^Analysis for [^.]*\.\s*([\s\S]*)$/);
+    if (match && match[1]?.trim()) {
+      submittedAdditionalComments = match[1].trim();
+    }
+  }
+
+  const submittedScopeOfWork = (analysis.scopeOfWork || analysis.metadata?.scopeOfWork || "").trim();
+  const submittedWhoCompletedWork = (analysis.whoCompletedWork || analysis.metadata?.whoCompletedWork || "").trim();
+  const submittedAgreementDetails = (analysis.agreementDetails || analysis.metadata?.agreementDetails || "").trim();
+  const submittedLoginsDetails = (analysis.loginsDetails || analysis.metadata?.loginsDetails || "").trim();
+
+  const knownMetaKeys = new Set([
+    "additionalComments",
+    "scopeOfWork",
+    "whoCompletedWork",
+    "agreementDetails",
+    "loginsDetails",
+    "targetWebsiteUrl",
+    "websiteUrl",
+  ]);
+  const extraMetadata =
+    analysis.metadata && typeof analysis.metadata === "object"
+      ? Object.entries(analysis.metadata).filter(
+        ([k, v]) => !knownMetaKeys.has(k) && v && typeof v !== "object"
+      )
+      : [];
+
+  const hasSubmittedRequirements =
+    submittedUrls.length > 0 ||
+    !!submittedAdditionalComments ||
+    !!submittedScopeOfWork ||
+    !!submittedWhoCompletedWork ||
+    !!submittedAgreementDetails ||
+    !!submittedLoginsDetails ||
+    extraMetadata.length > 0;
 
   return (
     <div className="flex flex-col gap-8 w-full font-sans">
@@ -804,11 +861,10 @@ export default function AnalysisDetailsPage() {
                   <tr>
                     <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
                       <div className="font-medium text-gray-700 mb-1">
-                        {analysis.title || "Free Website Analysis"}
+                        {cleanItemTitle}
                       </div>
                       <div className="text-[10px] sm:text-xs text-gray-400">
-                        {analysis.description ||
-                          "Our standard free analysis offer covering brand, UI/UX, functionalities, AI potentiality, tech stack, speed, and SEO."}
+                        {cleanItemDescription}
                       </div>
                     </td>
                     <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
@@ -826,9 +882,160 @@ export default function AnalysisDetailsPage() {
                       )}
                     </td>
                   </tr>
+
+                  {/* Add-ons section if exists */}
+                  {allAddonDeliverables.length > 0 && (
+                    <React.Fragment>
+                      <tr className="bg-gray-800">
+                        <td colSpan={3} className="px-6 py-2.5 text-xs font-bold text-white tracking-wider">
+                          Add-On Tasks
+                        </td>
+                      </tr>
+                      {allAddonDeliverables.map((item: any, iIdx: number) => (
+                        <tr
+                          key={`addon-task-${iIdx}`}
+                          className={iIdx === allAddonDeliverables.length - 1 ? "" : "border-b border-gray-400"}
+                        >
+                          <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
+                            <div className="font-medium text-gray-700 mb-1">{item.description}</div>
+                            {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
+                          </td>
+                          <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
+                            {item.duration} {item.unit || "Days"}
+                          </td>
+                          <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
+                            {formatCurrency(item.amount ?? 0)}
+                          </td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  )}
                 </tbody>
               </table>
             </div>
+
+            {/* Totals Summary */}
+            {allAddonDeliverables.length > 0 && (
+              <div className="flex flex-row justify-end gap-6 sm:gap-12 text-xs sm:text-sm mb-4">
+                <div className="text-center">
+                  <div className="text-gray-500 font-bold mb-1 sm:mb-2">Base Amount</div>
+                  <div className="font-semibold text-gray-800">
+                    {analysis.isFree || !analysis.price ? "Free" : formatCurrency(analysis.price)}
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-gray-500 font-bold mb-1 sm:mb-2">Add-Ons</div>
+                  <div className="font-semibold text-gray-800">{formatCurrency(addonsTotal)}</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-bold mb-1 sm:mb-2 text-gray-800">Total Amount</div>
+                  <div className="font-bold text-gray-900">
+                    {formatCurrency(addonsTotal + (Number(analysis.price) || 0))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Submitted Information & Requirements */}
+            {hasSubmittedRequirements && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">
+                  Submitted Information &amp; Requirements
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
+                  {submittedUrls.length > 0 && (
+                    <div className="bg-gray-50 p-3 rounded border border-gray-200">
+                      <span className="block font-bold text-gray-700 text-xs uppercase mb-1">
+                        URL(s) to check
+                      </span>
+                      <div className="flex flex-col gap-1.5">
+                        {submittedUrls.map((u: string, idx: number) => {
+                          const href = u.startsWith("http://") || u.startsWith("https://") ? u : `https://${u}`;
+                          const text = u.replace(/^https?:\/\//, "").replace(/\/$/, "");
+                          return (
+                            <a
+                              key={idx}
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 font-semibold hover:underline break-all text-xs sm:text-sm block"
+                            >
+                              {text}
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {submittedAdditionalComments && (
+                    <div className="bg-gray-50 p-3 rounded border border-gray-200 sm:col-span-2">
+                      <span className="block font-bold text-gray-700 text-xs uppercase mb-1">
+                        Provide any additional required information
+                      </span>
+                      <p className="text-gray-800 font-medium whitespace-pre-wrap">
+                        {submittedAdditionalComments}
+                      </p>
+                    </div>
+                  )}
+
+                  {submittedScopeOfWork && (
+                    <div className="bg-gray-50 p-3 rounded border border-gray-200 sm:col-span-2">
+                      <span className="block font-bold text-gray-700 text-xs uppercase mb-1">
+                        What specifically do you want us to look at?
+                      </span>
+                      <p className="text-gray-800 font-medium whitespace-pre-wrap">
+                        {submittedScopeOfWork}
+                      </p>
+                    </div>
+                  )}
+
+                  {submittedWhoCompletedWork && (
+                    <div className="bg-gray-50 p-3 rounded border border-gray-200">
+                      <span className="block font-bold text-gray-700 text-xs uppercase mb-1">
+                        Who was the work completed by?
+                      </span>
+                      <p className="text-gray-800 font-medium whitespace-pre-wrap">
+                        {submittedWhoCompletedWork}
+                      </p>
+                    </div>
+                  )}
+
+                  {submittedAgreementDetails && (
+                    <div className="bg-gray-50 p-3 rounded border border-gray-200 sm:col-span-2">
+                      <span className="block font-bold text-gray-700 text-xs uppercase mb-1">
+                        What was the agreement for this work?
+                      </span>
+                      <p className="text-gray-800 font-medium whitespace-pre-wrap">
+                        {submittedAgreementDetails}
+                      </p>
+                    </div>
+                  )}
+
+                  {submittedLoginsDetails && (
+                    <div className="bg-gray-50 p-3 rounded border border-gray-200 sm:col-span-2">
+                      <span className="block font-bold text-gray-700 text-xs uppercase mb-1">
+                        Please share required access with our email
+                      </span>
+                      <p className="text-gray-800 font-medium whitespace-pre-wrap font-mono">
+                        {submittedLoginsDetails}
+                      </p>
+                    </div>
+                  )}
+
+                  {extraMetadata.map(([k, v]: [string, any], idx: number) => (
+                    <div key={idx} className="bg-gray-50 p-3 rounded border border-gray-200">
+                      <span className="block font-bold text-gray-700 text-xs uppercase mb-1">
+                        {k.replace(/([A-Z])/g, " $1").replace(/_/g, " ").trim()}
+                      </span>
+                      <p className="text-gray-800 font-medium whitespace-pre-wrap">
+                        {String(v)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -872,6 +1079,10 @@ export default function AnalysisDetailsPage() {
         <div className="flex flex-col gap-6 w-full mb-4">
           {analysis.messages.map((msg: any, idx: number) => {
             const msgId = msg.id || msg._id || `msg-${idx}`;
+            const textContent = `${msg.message || ""} ${msg.content?.text || ""} ${msg.text || ""}`.toLowerCase();
+            if (textContent.includes("declined the add-on proposal")) {
+              return null;
+            }
 
             if (msg.type === "system_notification" || msg.isSystemMessage) {
               const rawTitle = msg.content?.systemText || msg.systemText || msg.message || "System Notification";
@@ -879,62 +1090,596 @@ export default function AnalysisDetailsPage() {
               const text = msg.content?.text || msg.text || "";
               const attachments = msg.attachments || [];
 
+              const lowerTitle = title.toLowerCase();
+              const lowerText = text.toLowerCase();
+
               if (
-                title.toLowerCase().includes("offer") ||
-                title.toLowerCase().includes("proposal") ||
-                text.toLowerCase().includes("sent you a new offer") ||
-                text.toLowerCase().includes("prepared a custom proposal")
+                lowerTitle === "you received an offer" ||
+                lowerTitle.includes("sent you a new offer") ||
+                lowerTitle.includes("prepared a custom proposal") ||
+                lowerText.includes("sent you a new offer") ||
+                lowerText.includes("prepared a custom proposal")
               ) {
                 return null;
               }
+
+              const isDuplicate =
+                text.trim().toLowerCase() === title.trim().toLowerCase() ||
+                text.trim().toLowerCase().startsWith("analysis status updated to active") ||
+                text.trim().toLowerCase().startsWith("project status updated to active");
+              const displayText = isDuplicate ? "" : text;
 
               return (
                 <div key={msgId} className="text-center py-6 px-4 my-2">
                   <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
                     {title}
                   </h3>
-                  <div className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
-                    {renderStatusMessageText(text, attachments)}
+                  {displayText ? (
+                    <div className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
+                      {renderStatusMessageText(displayText, attachments)}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            }
+
+            // Check for Payment Request in this message
+            const isPaymentRequest =
+              msg.type === "payment_request" ||
+              msg.content?.type === "payment_request" ||
+              (msg.content?.systemText?.toLowerCase().includes("payment request") ||
+                msg.message?.toLowerCase().includes("payment request"));
+
+            if (isPaymentRequest) {
+              const content = typeof msg.content === 'object' && msg.content !== null ? msg.content : {};
+              let rawAmount =
+                content.amount ??
+                msg.amount ??
+                content.total ??
+                content.price ??
+                content.invoice?.amount ??
+                content.invoice?.totalAmount;
+
+              if (rawAmount === undefined || rawAmount === null || rawAmount === "" || Number(rawAmount) === 0) {
+                const textSearch = `${content.text || ''} ${content.systemText || ''} ${msg.message || ''} ${msg.text || ''}`;
+                const match =
+                  textSearch.match(/(?:due:\s*\$|request:\s*|\$|amount:\s*|payment:\s*)(\d+(?:\.\d+)?)/i) ||
+                  textSearch.match(/\$(\d+(?:\.\d+)?)/) ||
+                  textSearch.match(/(\d+(?:\.\d+)?)\s*(?:USD|EUR|GBP|\$)/i) ||
+                  textSearch.match(/(\d+(?:\.\d+)?)/);
+                if (match && match[1]) {
+                  rawAmount = Number(match[1]);
+                } else if (analysis?.amountDue) {
+                  rawAmount = analysis.amountDue;
+                }
+              }
+
+              const amount = Number(rawAmount || 0);
+              const currency = (content.currency || msg.currency || analysis?.currency || "USD").toUpperCase();
+
+              let description =
+                content.description ||
+                msg.description ||
+                content.note ||
+                content.message;
+
+              if (!description && content.text) {
+                const t = content.text;
+                if (
+                  !t.toLowerCase().includes("payment is requested") &&
+                  !t.toLowerCase().includes("remaining amount due") &&
+                  !t.toLowerCase().includes("payment request:")
+                ) {
+                  description = t;
+                }
+              }
+
+              const aId = analysis._id || analysis.id;
+              const invId = content.invoiceId || msg.invoiceId;
+              const invNum = content.invoiceNumber || msg.invoiceNumber;
+              const currentMsgId = msg.id || msg._id || msgId;
+
+              const isPaid = Boolean(content.isPaid || msg.isPaid || content.status === 'paid' || msg.status === 'paid');
+
+              const payParams = new URLSearchParams();
+              if (amount > 0) payParams.set("amount", String(amount));
+              if (invId) payParams.set("invoiceId", String(invId));
+              if (invNum) payParams.set("invoiceNumber", String(invNum));
+              if (currentMsgId) payParams.set("messageId", String(currentMsgId));
+              if (description) payParams.set("description", String(description));
+              const payUrl = `/dashboard/my-analyses/${aId}/payments?${payParams.toString()}`;
+
+              return (
+                <div
+                  key={msgId}
+                  className="w-full bg-[#F4F8FF] border border-[#DCE8FE] rounded-2xl p-5 sm:p-6 my-3 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                  <div className="flex items-start sm:items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-[#DBEAFE] text-[#2563EB] flex items-center justify-center shrink-0">
+                      <svg className="w-6 h-6 text-[#2563EB]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <rect x="2" y="7" width="14" height="11" rx="2.5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <circle cx="6.5" cy="12.5" r="1.5" strokeWidth="2" />
+                        <path d="M7 4h11.5A2.5 2.5 0 0121 6.5V14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-[#1E3A8A] text-base mb-0.5">Payment Request</h4>
+                      {description ? (
+                        <p className="text-xs sm:text-sm text-[#3B82F6] font-medium mb-1.5">{description}</p>
+                      ) : null}
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xl sm:text-2xl font-black text-[#1E3A8A]">{currency === "EUR" ? "€" : "$"}{amount.toFixed(0)}</span>
+                        <span className="text-[11px] font-bold text-[#3B82F6] uppercase">{currency}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="shrink-0">
+                    {isPaid ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-8 py-2.5 bg-green-50 text-green-700 font-bold text-sm rounded-xl border border-green-200 cursor-not-allowed select-none"
+                      >
+                        <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Paid</span>
+                      </button>
+                    ) : (
+                      <Link
+                        href={payUrl}
+                        className="inline-block w-full sm:w-auto px-8 py-2.5 bg-[#4343F0] hover:bg-[#3232b7] text-white font-bold text-sm rounded-xl shadow-md shadow-[#4343F0]/20 transition-all text-center cursor-pointer"
+                      >
+                        Pay Now
+                      </Link>
+                    )}
                   </div>
                 </div>
               );
             }
 
-            if (msg.type === "quote_proposal") {
-              const content = msg.content || {};
-              const items =
-                (content.recommendedSolutions && content.recommendedSolutions.length > 0 ? content.recommendedSolutions : null) ||
-                (msg.recommendedSolutions && msg.recommendedSolutions.length > 0 ? msg.recommendedSolutions : null) ||
-                (content.deliverableItems && content.deliverableItems.length > 0 ? content.deliverableItems : null) ||
-                (content.lineItems && content.lineItems.length > 0 ? content.lineItems : null) ||
-                (Array.isArray(content.items) && content.items.length > 0 ? content.items : null) ||
-                [];
-              const isAccepted = content.status === "accepted";
-              const isClient = msg.sender === "client" || msg.role === "client";
+            const content = msg.content || {};
+            const deliverableItems = (content.deliverableItems && content.deliverableItems.length > 0 ? content.deliverableItems : null) ||
+              (content.lineItems && content.lineItems.length > 0 ? content.lineItems : null) ||
+              (Array.isArray(content.items) && content.items.length > 0 ? content.items : null);
+
+            const solutionItems = (content.recommendedSolutions && content.recommendedSolutions.length > 0 ? content.recommendedSolutions : null) ||
+              (msg.recommendedSolutions && msg.recommendedSolutions.length > 0 ? msg.recommendedSolutions : null);
+
+            const isDeliverablesProposal = Boolean(deliverableItems && deliverableItems.length > 0);
+            const hasProposalCost = Number(content.total || content.totalCost || 0) > 0;
+            const hasRecs = Boolean(solutionItems && solutionItems.length > 0);
+
+            if ((msg.type === "quote_proposal" || content.type === "quote_proposal") && (isDeliverablesProposal || hasProposalCost || !hasRecs)) {
+              const items = isDeliverablesProposal ? deliverableItems : (solutionItems || []);
+              const itemManager = analysis.assignedManagers?.[0] || analysis.projectManager || {};
+              const itemManagerName = itemManager.fullName || (itemManager.firstName ? `${itemManager.firstName} ${itemManager.lastName || ''}`.trim() : '') || "Ragnar (Rick) Ridamäe";
+              const itemManagerAvatar = itemManager.avatar || managerAvatar;
+
+              const isExplicitAdmin =
+                msg.sender === "admin" ||
+                msg.role === "admin" ||
+                msg.role === "ADMIN" ||
+                msg.role === "SUPER_ADMIN" ||
+                msg.role === "PM" ||
+                msg.role === "STAFF" ||
+                Boolean(msg.isFinalDelivery) ||
+                msg.type === "final_delivery" ||
+                msg.type === "quote_proposal" ||
+                Boolean(msg.content?.isFinalDelivery);
+
+              const isClient = !isExplicitAdmin && (msg.sender === "client" || msg.role === "client");
               const clientName =
                 currentUser?.fullName ||
                 (currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ""}`.trim() : "") ||
                 currentUser?.username;
-              const senderName = msg.username || (isClient ? (clientName || "You") : (analysis.projectManager?.fullName || "Staff"));
-              const senderAvatar = msg.userAvatar || (isClient ? currentUser?.avatar : (analysis.projectManager?.avatar || undefined));
+              const senderName = isClient
+                ? (msg.username && msg.username !== "Staff" && msg.username !== "Analysis Team" && msg.username !== "Client" ? msg.username : clientName || "You")
+                : (msg.username && msg.username !== "Staff" && msg.username !== "Client" && msg.username !== "Analysis Team" ? msg.username : itemManagerName);
+              const senderAvatar = isClient ? (msg.userAvatar || currentUser?.avatar) : (msg.userAvatar || itemManagerAvatar);
               const senderInitial = (senderName || "A").charAt(0).toUpperCase();
-              const messageBody = msg.message || content.text || content.projectDescription || "";
+              const messageBody = msg.message || content.text || content.projectDescription || content.description || "";
               const attachmentList = (msg.attachments && msg.attachments.length > 0) ? msg.attachments : (content?.attachedFiles || (msg as any).attachedFiles || []);
+
+              const actions = (content.actionsAvailable && content.actionsAvailable.length > 0)
+                ? content.actionsAvailable
+                : ["accept", "request_modification", "decline"];
+
+              const subsequentMessages = (analysis.messages || []).slice(idx + 1);
+              const nextProposalIdx = subsequentMessages.findIndex((m: any) => m.type === "quote_proposal" || m.content?.type === "quote_proposal");
+              const relevantSubsequent = nextProposalIdx !== -1 ? subsequentMessages.slice(0, nextProposalIdx) : subsequentMessages;
+
+              const wasAcceptedAfterThis = relevantSubsequent.some((m: any) => {
+                const text = `${m.message || ""} ${m.content?.systemText || ""} ${m.content?.text || ""}`.toLowerCase();
+                return (
+                  (m.type === "system_notification" || m.isSystem || m.type === "quote_action") &&
+                  (text.includes("accepted") || text.includes("add-on proposal accepted") || text.includes("offer was accepted"))
+                );
+              });
+
+              const wasDeclinedAfterThis = relevantSubsequent.some((m: any) => {
+                const text = `${m.message || ""} ${m.content?.systemText || ""} ${m.content?.text || ""}`.toLowerCase();
+                return (
+                  (m.type === "system_notification" || m.isSystem || m.type === "quote_action") &&
+                  (text.includes("declined") || text.includes("proposal declined") || text.includes("offer was declined"))
+                );
+              });
+
+              const wasModRequestedAfterThis = relevantSubsequent.some((m: any) => {
+                const text = `${m.message || ""} ${m.content?.systemText || ""} ${m.content?.text || ""}`.toLowerCase();
+                return (
+                  (m.type === "system_notification" || m.isSystem || m.type === "quote_action") &&
+                  (text.includes("modification") || text.includes("requested modification"))
+                );
+              });
+
+              const hasLaterProposal = subsequentMessages.some(
+                (m: any) => m.type === "quote_proposal" || m.content?.type === "quote_proposal"
+              );
+
+              const isAccepted = content.status === "accepted" || wasAcceptedAfterThis;
+              const isDeclined = content.status === "declined" || wasDeclinedAfterThis;
+              const isModRequested = content.status === "modification_requested" || wasModRequestedAfterThis;
+
+              const hasExplicitlyNoActions = Array.isArray(content.actionsAvailable) && content.actionsAvailable.length === 0;
+              const isPending = !isAccepted && !isDeclined && !isModRequested && !hasLaterProposal && !hasExplicitlyNoActions;
+              const canAct = isPending;
+
+              const targetProposalId = msg._id ? String(msg._id) : (msg.id ? String(msg.id) : (content?.id ? String(content.id) : String(msgId)));
+
+              const baseAmount = items.reduce((sum: number, it: any) => sum + (Number(it.amount ?? it.cost) || 0), 0) || Number(content.total || content.totalCost || 0);
+              const vatRate = content.vatRate ?? 0;
+              const vatAmount = content.vatAmount ?? ((baseAmount * vatRate) / 100);
+              const totalCost = Number(content.total ?? content.totalCost ?? (baseAmount + vatAmount));
+
+              const expiresStr = content.expires && content.expires !== "Not specified"
+                ? (isNaN(new Date(content.expires).getTime()) ? content.expires : formatSubmittedDate(content.expires))
+                : "N/A";
+
+              const isLast = idx === (analysis.messages?.length || 0) - 1;
+
+              if (isDeliverablesProposal) {
+                return (
+                  <div key={msgId} ref={isLast ? messagesEndRef : null} className="w-full my-4">
+                    <div className="bg-white border border-gray-200 rounded-2xl shadow-xs p-6 sm:p-8 md:p-10">
+                      {/* Top Meta: Submitted date & Add-On Offer badge */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="text-xs sm:text-sm text-gray-500 font-medium">
+                            Submitted - {formatSubmittedDate(msg.createdAt || msg.timestamp)}
+                          </span>
+                          <span className={`px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold border ${isAccepted ? "border-green-400 text-green-600 bg-green-50" :
+                              isDeclined ? "border-red-400 text-red-600 bg-red-50" :
+                                isModRequested ? "border-orange-400 text-orange-600 bg-orange-50" :
+                                  "border-blue-400 text-blue-600 bg-blue-50/60"
+                            }`}>
+                            {isAccepted ? "Accepted" :
+                              isDeclined ? "Declined" :
+                                isModRequested ? "Modification Requested" : "Add-On Offer"}
+                          </span>
+                        </div>
+                        {content.status && content.status !== "pending" && (
+                          <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">
+                            {isAccepted && content.acceptedAt ? `Accepted on ${formatSubmittedDate(content.acceptedAt)}` :
+                              isDeclined && content.declinedAt ? `Declined on ${formatSubmittedDate(content.declinedAt)}` :
+                                isModRequested && content.modificationRequestedAt ? `Requested on ${formatSubmittedDate(content.modificationRequestedAt)}` : ""}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="border-t border-gray-200 mb-6 sm:mb-8" />
+
+                      {/* Header: Title and From */}
+                      <div className="pb-4 sm:pb-6 flex flex-col sm:flex-row justify-between items-start gap-2">
+                        <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Add-on proposal</h2>
+                        <span className="text-xs sm:text-sm text-gray-400 font-medium">From: {senderName}</span>
+                      </div>
+
+                      {messageBody && (
+                        <div className="mb-6 text-sm text-gray-600 leading-relaxed font-medium">
+                          {messageBody}
+                        </div>
+                      )}
+
+                      {/* Attachments if any */}
+                      {attachmentList.length > 0 && (
+                        <div className="mb-6">
+                          <h5 className="text-sm font-bold text-gray-700 mb-3">Attached Files</h5>
+                          <div className="border-t border-gray-200 mb-4" />
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
+                            {attachmentList.map((att: any, aIdx: number) => {
+                              const url = typeof att === "string" ? att : att.url;
+                              const filename = (typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "Attachment") : att.filename || att.name || "Attachment");
+                              const safeUrl = getSafeUrl(url);
+                              const isImg = isImageUrl(url);
+                              const isSvg = url.toLowerCase().includes(".svg");
+                              const isPdf = url.toLowerCase().includes(".pdf");
+
+                              return (
+                                <a
+                                  key={aIdx}
+                                  href={safeUrl}
+                                  onClick={(e) => downloadFile(e, safeUrl, filename)}
+                                  download={filename}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
+                                >
+                                  <div className="flex-grow flex items-center justify-center bg-white relative overflow-hidden">
+                                    {isImg ? (
+                                      <img
+                                        src={safeUrl}
+                                        alt={filename}
+                                        className={
+                                          isSvg
+                                            ? "w-full h-full object-contain p-2.5 group-hover:scale-105 transition-transform duration-300"
+                                            : "w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        }
+                                        onError={(e) => {
+                                          const target = e.currentTarget;
+                                          if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
+                                            target.src = target.src.replace("http:", "https:");
+                                          }
+                                        }}
+                                      />
+                                    ) : isPdf ? (
+                                      <div className="flex flex-col items-center gap-1">
+                                        <svg className="w-12 h-12 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                                          <path d="M11.363 2c4.155 0 2.637 6 2.637 6s6-1.518 6 2.638c0 4.155-3.345 7.518-7.5 7.518s-7.5-3.363-7.5-7.518c0-4.155 3.345-7.518 7.5-7.518zm1.5 7h-3v1h3v-1zm0 2h-3v1h3v-1zm0 2h-3v1h3v-1z" />
+                                          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM6 4h7v5h5v11H6V4z" />
+                                        </svg>
+                                        <span className="text-[10px] font-bold text-red-600 uppercase">PDF</span>
+                                      </div>
+                                    ) : (
+                                      <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                    )}
+                                    <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
+                                      <div className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex items-center justify-center h-10 min-h-[40px]">
+                                    <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={filename}>{filename}</span>
+                                  </div>
+                                </a>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Deliverables Table */}
+                      <div className="border border-gray-300 rounded-xl overflow-hidden mb-6">
+                        <table className="w-full min-w-[500px] sm:min-w-0">
+                          <thead>
+                            <tr className="border-b border-gray-300 bg-white">
+                              <th className="px-6 py-4 text-left text-xs sm:text-sm font-bold text-gray-700 bg-white w-1/2">Item</th>
+                              <th className="px-6 py-4 text-center text-xs sm:text-sm font-bold text-gray-700 bg-white">Duration</th>
+                              <th className="px-6 py-4 text-right text-xs sm:text-sm font-bold text-gray-700 bg-white">Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {items.map((item: any, sIdx: number) => (
+                              <tr key={sIdx} className={sIdx < items.length - 1 ? "border-b border-gray-200" : ""}>
+                                <td className="px-6 py-5 text-xs sm:text-sm text-gray-700 align-middle">
+                                  <div className="font-semibold text-gray-800">{item.description || item.name || item.title || item.item}</div>
+                                  {item.details && <div className="text-[11px] text-gray-400 mt-0.5">{item.details}</div>}
+                                </td>
+                                <td className="px-6 py-5 text-xs sm:text-sm text-gray-600 font-medium text-center align-middle whitespace-nowrap">
+                                  {item.duration ? `${item.duration} Days` : "-"}
+                                </td>
+                                <td className="px-6 py-5 text-xs sm:text-sm text-gray-900 text-right font-bold align-middle">
+                                  {formatCurrency(item.amount ?? item.cost ?? 0)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Totals & Expiration Row */}
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 pt-2 pb-2">
+                        <div>
+                          <span className="text-xs sm:text-sm text-gray-600 font-bold">
+                            Expires {expiresStr}
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-end gap-2 text-xs sm:text-sm min-w-[220px]">
+                          <div className="flex justify-between w-full gap-8">
+                            <span className="text-gray-500 font-medium">Base Amount:</span>
+                            <span className="font-bold text-gray-700">{formatCurrency(baseAmount)}</span>
+                          </div>
+                          {vatRate > 0 && vatAmount > 0 && (
+                            <div className="flex justify-between w-full gap-8">
+                              <span className="text-gray-500 font-medium">VAT ({vatRate}%):</span>
+                              <span className="font-bold text-gray-700">{formatCurrency(vatAmount)}</span>
+                            </div>
+                          )}
+                          <div className="border-t border-gray-200 w-full my-1" />
+                          <div className="flex justify-between w-full gap-8">
+                            <span className="text-gray-800 font-bold text-sm">Total Cost:</span>
+                            <span className="font-extrabold text-gray-900 text-sm sm:text-base">{formatCurrency(totalCost)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons (Accept, Request Modifications, Decline) */}
+                      {canAct && !actionModal.isOpen && (
+                        <>
+                          <div className="border-t border-gray-200 mt-8 mb-6" />
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full">
+                            <div className="w-full sm:w-auto flex justify-start">
+                              {actions.includes("accept") && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (targetProposalId) handleAcceptProposal(targetProposalId);
+                                  }}
+                                  disabled={isActionLoading}
+                                  className="w-full sm:w-auto min-w-[160px] bg-[#317336] hover:bg-[#285d2c] text-white text-sm font-bold py-3 px-8 rounded-lg transition-colors shadow-sm disabled:opacity-50 cursor-pointer text-center"
+                                >
+                                  Accept Offer
+                                </button>
+                              )}
+                            </div>
+                            <div className="w-full sm:w-auto flex justify-center">
+                              {actions.includes("request_modification") && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setActionComment("");
+                                    setActionModal({
+                                      isOpen: true,
+                                      action: "request_modification",
+                                      proposalId: targetProposalId,
+                                      title: "Request Modifications",
+                                      description: "Please describe the modifications you would like for this offer.",
+                                      placeholder: "Describe your requested changes...",
+                                      required: true,
+                                    });
+                                  }}
+                                  disabled={isActionLoading}
+                                  className="w-full sm:w-auto min-w-[190px] bg-[#3B4BEF] hover:bg-[#2F3EC4] text-white text-sm font-bold py-3 px-8 rounded-lg transition-colors shadow-sm disabled:opacity-50 cursor-pointer text-center"
+                                >
+                                  Request Modifications
+                                </button>
+                              )}
+                            </div>
+                            <div className="w-full sm:w-auto flex justify-end">
+                              {actions.includes("decline") && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setActionComment("");
+                                    setActionModal({
+                                      isOpen: true,
+                                      action: "decline",
+                                      proposalId: targetProposalId,
+                                      title: "Decline Add-On Offer",
+                                      description: "Are you sure you want to decline this offer? You can provide a reason below.",
+                                      placeholder: "Reason for declining (optional)...",
+                                      required: false,
+                                    });
+                                  }}
+                                  disabled={isActionLoading}
+                                  className="w-full sm:w-auto min-w-[160px] bg-[#7A1C1C] hover:bg-[#631616] text-white text-sm font-bold py-3 px-8 rounded-lg transition-colors shadow-sm disabled:opacity-50 cursor-pointer text-center"
+                                >
+                                  Decline Offer
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Inline Action Modal for Proposal */}
+                      {actionModal.isOpen && (actionModal.proposalId === targetProposalId || actionModal.proposalId === String(msg._id) || actionModal.proposalId === String(msg.id)) && (
+                        <div className="w-full mt-6 animate-in fade-in slide-in-from-top-4 duration-300">
+                          <div className="bg-white rounded-2xl shadow-xs border border-gray-200 overflow-hidden">
+                            {/* Header: User avatar, Name, Subtitle, Date */}
+                            <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100 bg-white">
+                              <div className="flex items-center gap-3.5">
+                                {currentUser?.avatar ? (
+                                  <img
+                                    src={currentUser.avatar}
+                                    alt="User"
+                                    className="w-11 h-11 rounded-full object-cover shadow-xs ring-1 ring-gray-200"
+                                  />
+                                ) : (
+                                  <div className="w-11 h-11 rounded-full bg-[#183B7E] flex items-center justify-center text-white font-bold text-base shadow-xs">
+                                    {(currentUser?.fullName || currentUser?.username || "U").charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                <div>
+                                  <h3 className="font-bold text-gray-900 text-sm sm:text-base leading-tight">
+                                    {currentUser?.fullName || currentUser?.username || "User"}
+                                  </h3>
+                                  <p className="text-xs text-gray-500 mt-0.5 font-normal">
+                                    {actionModal.title}
+                                  </p>
+                                </div>
+                              </div>
+                              <span className="text-xs text-gray-400 font-medium">
+                                {formatSubmittedDate(new Date())}
+                              </span>
+                            </div>
+
+                            {/* Body: Description prompt & borderless textarea */}
+                            <div className="p-6">
+                              {actionModal.description && (
+                                <p className="text-gray-700 text-xs sm:text-sm mb-4 font-semibold">
+                                  {actionModal.description}
+                                </p>
+                              )}
+                              <textarea
+                                className="w-full min-h-[120px] text-gray-700 text-xs sm:text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent"
+                                placeholder={actionModal.placeholder}
+                                value={actionComment}
+                                onChange={(e) => setActionComment(e.target.value)}
+                                autoFocus
+                              />
+                            </div>
+
+                            {/* Footer Buttons: Cancel & Decline Offer / Send Request */}
+                            <div className="px-6 pb-6 pt-2 flex flex-col sm:flex-row items-center justify-end gap-3">
+                              <div className="flex gap-3 w-full sm:w-auto">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setActionModal({ ...actionModal, isOpen: false, proposalId: null });
+                                    setActionComment("");
+                                  }}
+                                  className="flex-1 sm:flex-none px-6 py-2.5 bg-[#7A1C1C] hover:bg-[#631616] text-white font-bold text-xs sm:text-sm rounded-lg transition-colors shadow-xs cursor-pointer text-center"
+                                  disabled={isActionLoading}
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleActionSubmit();
+                                  }}
+                                  disabled={isActionLoading || (actionModal.required && !actionComment.trim())}
+                                  className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-lg text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer text-center ${isActionLoading
+                                      ? "bg-gray-400 cursor-not-allowed"
+                                      : actionModal.action === "decline"
+                                        ? "bg-[#C5221F] hover:bg-[#A91D1A]"
+                                        : "bg-[#3B4BEF] hover:bg-[#2F3EC4]"
+                                    }`}
+                                >
+                                  {isActionLoading
+                                    ? "Processing..."
+                                    : actionModal.action === "decline"
+                                      ? "Decline Offer"
+                                      : "Send Request"}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
 
               return (
                 <div key={msgId} className="w-full">
-                  {/* Header above offer card */}
-                  {Boolean(content.lineItems && content.lineItems.length > 0) && (
-                    <div className="text-center py-6 px-4 my-2">
-                      <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
-                        You received an offer
-                      </h3>
-                      <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
-                        We’ve prepared a custom proposal for your project.
-                      </p>
-                    </div>
-                  )}
-
                   <div className="bg-white rounded-xl shadow-sm border border-gray-300 overflow-hidden w-full">
                     <div className="p-4 sm:p-6 md:p-8">
                       {/* Header: Avatar, Name, Timestamp */}
@@ -979,7 +1724,7 @@ export default function AnalysisDetailsPage() {
                         </div>
                       )}
 
-                      {/* Attachments if any (comes first before Recommended Solutions) */}
+                      {/* Attachments if any */}
                       {attachmentList.length > 0 && (
                         <div className="pl-0 md:pl-[64px] mb-6">
                           <h5 className="text-sm font-bold text-gray-700 mb-3">Attached Files</h5>
@@ -1052,54 +1797,90 @@ export default function AnalysisDetailsPage() {
                       )}
 
                       {/* Recommended Solutions */}
-                      {items.length > 0 && (
+                      {solutionItems && solutionItems.length > 0 && (
                         <div className="pl-0 md:pl-[64px] mb-6">
-                          <h5 className="text-xs sm:text-sm font-bold text-gray-700 capitalize tracking-wider mb-3">
-                            Recommended Solutions
-                          </h5>
-                          <div className="border-t border-gray-200 mb-4" />
-                          <div className="flex flex-wrap sm:flex-nowrap sm:overflow-x-auto pb-2 gap-4 scrollbar-hide">
-                            {items.map((sol: any, sIdx: number) => (
-                              <PackageCard
-                                key={(sol.packageId || sol._id || sol.id || sIdx) + "-" + sIdx}
-                                packageId={sol.packageId || sol._id || sol.id}
-                                title={sol.title || sol.name}
-                                price={sol.price || sol.cost || sol.amount || sol.priceText}
-                                imageUrl={sol.imageUrl || sol.mediumUrl || sol.thumbnailUrl || sol.image}
-                                category={sol.category || sol.categorycode}
-                                description={sol.description}
-                                link={sol.link || `/dashboard/new-project/packages/${sol.packageId || sol._id || sol.id}`}
-                              />
-                            ))}
-                          </div>
+                          <RecommendedSolutions solutions={solutionItems} availablePackages={availablePackages} />
                         </div>
                       )}
 
+                      {/* Inline Action Modal for Proposal */}
+                      {actionModal.isOpen && (actionModal.proposalId === msg.id || actionModal.proposalId === targetProposalId) && (
+                        <div className="w-full mt-6 animate-in fade-in slide-in-from-top-4 duration-300">
+                          <div className="bg-white rounded-2xl shadow-xs border border-gray-200 overflow-hidden">
+                            {/* Header: User avatar, Name, Subtitle, Date */}
+                            <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100 bg-white">
+                              <div className="flex items-center gap-3.5">
+                                {currentUser?.avatar ? (
+                                  <img
+                                    src={currentUser.avatar}
+                                    alt="User"
+                                    className="w-11 h-11 rounded-full object-cover shadow-xs ring-1 ring-gray-200"
+                                  />
+                                ) : (
+                                  <div className="w-11 h-11 rounded-full bg-[#183B7E] flex items-center justify-center text-white font-bold text-base shadow-xs">
+                                    {(currentUser?.fullName || currentUser?.username || "U").charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                <div>
+                                  <h3 className="font-bold text-gray-900 text-sm sm:text-base leading-tight">
+                                    {currentUser?.fullName || currentUser?.username || "User"}
+                                  </h3>
+                                  <p className="text-xs text-gray-500 mt-0.5 font-normal">
+                                    {actionModal.title}
+                                  </p>
+                                </div>
+                              </div>
+                              <span className="text-xs text-gray-400 font-medium">
+                                {formatSubmittedDate(new Date())}
+                              </span>
+                            </div>
 
+                            {/* Body: Description prompt & borderless textarea */}
+                            <div className="p-6">
+                              {actionModal.description && (
+                                <p className="text-gray-700 text-xs sm:text-sm mb-4 font-semibold">
+                                  {actionModal.description}
+                                </p>
+                              )}
+                              <textarea
+                                className="w-full min-h-[120px] text-gray-700 text-xs sm:text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent"
+                                placeholder={actionModal.placeholder}
+                                value={actionComment}
+                                onChange={(e) => setActionComment(e.target.value)}
+                                autoFocus
+                              />
+                            </div>
 
-                      {actionModal.isOpen && actionModal.proposalId === msg.id && (
-                        <div className="mt-6 p-6 bg-gray-50 rounded-xl border border-gray-300">
-                          <h4 className="font-bold text-gray-800 mb-2">{actionModal.title}</h4>
-                          <textarea
-                            className="w-full min-h-[100px] p-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:border-[#4343F0]"
-                            placeholder={actionModal.placeholder}
-                            value={actionComment}
-                            onChange={(e) => setActionComment(e.target.value)}
-                          />
-                          <div className="flex justify-end gap-3 mt-4">
-                            <button
-                              onClick={() => setActionModal({ ...actionModal, isOpen: false })}
-                              className="px-5 py-2 bg-gray-200 text-gray-700 text-xs font-bold rounded hover:bg-gray-300 cursor-pointer"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              onClick={handleActionSubmit}
-                              disabled={isActionLoading || (actionModal.required && !actionComment.trim())}
-                              className="px-6 py-2 bg-[#4343F0] text-white text-xs font-bold rounded hover:bg-[#3232b7] disabled:opacity-50 cursor-pointer"
-                            >
-                              Submit
-                            </button>
+                            {/* Footer Buttons: Cancel & Decline Offer / Send Request */}
+                            <div className="px-6 pb-6 pt-2 flex flex-col sm:flex-row items-center justify-end gap-3">
+                              <div className="flex gap-3 w-full sm:w-auto">
+                                <button
+                                  type="button"
+                                  onClick={() => setActionModal({ ...actionModal, isOpen: false })}
+                                  className="flex-1 sm:flex-none px-6 py-2.5 bg-[#7A1C1C] hover:bg-[#631616] text-white font-bold text-xs sm:text-sm rounded-lg transition-colors shadow-xs cursor-pointer text-center"
+                                  disabled={isActionLoading}
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={handleActionSubmit}
+                                  disabled={isActionLoading || (actionModal.required && !actionComment.trim())}
+                                  className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-lg text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer text-center ${isActionLoading
+                                      ? "bg-gray-400 cursor-not-allowed"
+                                      : actionModal.action === "decline"
+                                        ? "bg-[#C5221F] hover:bg-[#A91D1A]"
+                                        : "bg-[#3B4BEF] hover:bg-[#2F3EC4]"
+                                    }`}
+                                >
+                                  {isActionLoading
+                                    ? "Processing..."
+                                    : actionModal.action === "decline"
+                                      ? "Decline Offer"
+                                      : "Send Request"}
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -1109,10 +1890,31 @@ export default function AnalysisDetailsPage() {
               );
             }
 
-            const isClient = msg.sender === "client" || msg.role === "client" || (currentUser?._id && msg.userId === currentUser._id) || (currentUser?.id && msg.userId === currentUser.id);
-            const clientName = currentUser?.fullName || (currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim() : '') || currentUser?.username;
-            const senderName = msg.username || (isClient ? (clientName || "You") : "Analysis Team");
-            const senderAvatar = msg.userAvatar || (isClient ? currentUser?.avatar : undefined);
+            const fallbackManager = analysis.assignedManagers?.[0] || analysis.projectManager || {};
+            const fallbackManagerName = fallbackManager.fullName || (fallbackManager.firstName ? `${fallbackManager.firstName} ${fallbackManager.lastName || ''}`.trim() : '') || "Ragnar (Rick) Ridamäe";
+            const fallbackManagerAvatar = fallbackManager.avatar;
+
+            const isExplicitAdmin =
+              msg.sender === "admin" ||
+              msg.role === "admin" ||
+              msg.role === "ADMIN" ||
+              msg.role === "SUPER_ADMIN" ||
+              msg.role === "PM" ||
+              msg.role === "STAFF" ||
+              Boolean(msg.isFinalDelivery) ||
+              msg.type === "final_delivery" ||
+              msg.type === "quote_proposal" ||
+              Boolean(msg.content?.isFinalDelivery);
+
+            const isClient = !isExplicitAdmin && (msg.sender === "client" || msg.role === "client");
+            const clientName =
+              currentUser?.fullName ||
+              (currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim() : '') ||
+              currentUser?.username;
+            const senderName = isClient
+              ? (msg.username && msg.username !== "Staff" && msg.username !== "Analysis Team" && msg.username !== "Client" ? msg.username : clientName || "You")
+              : (msg.username && msg.username !== "Staff" && msg.username !== "Client" && msg.username !== "Analysis Team" ? msg.username : fallbackManagerName);
+            const senderAvatar = isClient ? (msg.userAvatar || currentUser?.avatar) : (msg.userAvatar || fallbackManagerAvatar);
             const rawAttachments = msg.attachments || msg.content?.attachedFiles || msg.attachedFiles || (msg.content as any)?.attachedFilesUrl || msg.attachedFilesUrl || [];
             const attachmentList = Array.isArray(rawAttachments) ? rawAttachments : [];
 
@@ -1165,7 +1967,7 @@ export default function AnalysisDetailsPage() {
                   {attachmentList.length > 0 && (
                     <div className="pl-0 sm:pl-16 mb-6">
                       <h5 className="text-sm font-bold text-gray-700 mb-3">
-                        {isClient ? "Attached Files" : "Delivery Attachments"}
+                        Attached Files
                       </h5>
                       <div className="border-t border-gray-200 mb-4" />
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
@@ -1246,24 +2048,7 @@ export default function AnalysisDetailsPage() {
                     if (recs.length === 0) return null;
                     return (
                       <div className="pl-0 sm:pl-16 mb-6">
-                        <h5 className="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">
-                          Recommended Solutions
-                        </h5>
-                        <div className="border-t border-gray-200 mb-4" />
-                        <div className="flex flex-wrap sm:flex-nowrap sm:overflow-x-auto pb-2 gap-4 scrollbar-hide">
-                          {recs.map((sol: any, j: number) => (
-                            <PackageCard
-                              key={(sol.packageId || sol._id || j) + "-" + j}
-                              packageId={sol.packageId || sol._id || sol.id}
-                              title={sol.title || sol.name}
-                              price={sol.price || sol.cost || sol.amount || sol.priceText}
-                              imageUrl={sol.imageUrl || sol.mediumUrl || sol.thumbnailUrl || sol.image}
-                              category={sol.category || sol.categorycode}
-                              description={sol.description}
-                              link={sol.link || `/dashboard/new-project/packages/${sol.packageId || sol._id || sol.id}`}
-                            />
-                          ))}
-                        </div>
+                        <RecommendedSolutions solutions={recs} availablePackages={availablePackages} />
                       </div>
                     );
                   })()}

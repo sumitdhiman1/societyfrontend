@@ -1781,7 +1781,7 @@ export default function ProjectDetailsPage() {
                     {hasAttachments && (
                       <div className="pl-0 md:pl-[64px]">
                         <h5 className="text-sm font-bold text-gray-700 mb-3">
-                          {isClient ? "Attached Files" : "Delivered Files"}
+                          Attached Files
                         </h5>
                         <div className="border-t border-gray-200 mb-4" />
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">

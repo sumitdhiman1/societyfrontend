@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { getSafeUrl } from "@/lib/utils";
+import { packagesService } from "@/lib/packagesService";
 
 const categoryMap: Record<string, string> = {
   // Short auto-generated codes
@@ -99,75 +100,159 @@ export const getFallbackPackageImage = (title?: string): string => {
   return "https://res.cloudinary.com/dgg6e3flf/image/upload/v1785191377/packages/paid-ads-audit-strategy-setup-packages.webp";
 };
 
-export const formatPriceDisplay = (sol: any): string => {
-  const normName = (sol.title || sol.name || sol.description || "").toLowerCase();
-  const isMonthly = Boolean(
-    sol.isMonthly === true ||
-    sol.paymentType?.toLowerCase() === "monthly" ||
-    sol.billingType?.toLowerCase() === "monthly" ||
-    String(sol.duration || "").toLowerCase().includes("month") ||
-    String(sol.priceText || "").toLowerCase().includes("month") ||
-    String(sol.price || "").toLowerCase().includes("month") ||
-    (normName.includes("management") && !normName.includes("audit")) ||
-    normName.includes("maintenance") ||
-    normName.includes("monthly") ||
-    normName.includes("retainer") ||
-    normName.includes("seo") ||
-    normName.includes("optimization")
+// Global in-memory dynamic cache for packages fetched from backend API
+let packagesCache: any[] = [];
+let fetchPromise: Promise<any[]> | null = null;
+
+export const fetchAllAvailablePackages = async (): Promise<any[]> => {
+  if (packagesCache.length > 0) return packagesCache;
+  if (fetchPromise) return fetchPromise;
+  fetchPromise = (async () => {
+    try {
+      const [res, bundlesRes] = await Promise.all([
+        packagesService.getAllPackages({ page: 1, limit: 100 }),
+        packagesService.getAllPackages({ categorycode: "BUNDLES", page: 1, limit: 100 }).catch(() => null),
+      ]);
+      const pkgs = Array.isArray(res?.data)
+        ? res.data
+        : (res?.data?.packages || res?.packages || []);
+      const bundles = Array.isArray(bundlesRes?.data)
+        ? bundlesRes.data
+        : (bundlesRes?.data?.packages || bundlesRes?.packages || []);
+      packagesCache = [...pkgs, ...bundles];
+      return packagesCache;
+    } catch (e) {
+      console.error("Failed to dynamically fetch packages for RecommendedSolutions:", e);
+      return [];
+    } finally {
+      fetchPromise = null;
+    }
+  })();
+  return fetchPromise;
+};
+
+// Find matching package dynamically from available packages list
+export const findMatchingPackage = (sol: any, availablePackages: any[] = packagesCache) => {
+  if (!sol || !availablePackages || availablePackages.length === 0) return null;
+  const solId = String(sol.packageId || sol._id || sol.id || "").trim();
+  const solName = (sol.title || sol.name || sol.description || "").trim().toLowerCase();
+
+  return (
+    availablePackages.find((p: any) => {
+      if (!p) return false;
+      const pId = String(p._id || p.id || "").trim();
+      if (solId && pId && pId === solId) return true;
+      const pName = (p.name || p.title || "").trim().toLowerCase();
+      if (solName && pName && (solName === pName || pName.includes(solName) || solName.includes(pName))) return true;
+      return false;
+    }) || null
   );
+};
+
+export const formatPriceDisplay = (sol: any, availablePackages: any[] = packagesCache): string => {
+  if (!sol) return "";
+
+  const match = findMatchingPackage(sol, availablePackages);
+
+  // Determine monthly recurrence dynamically from package or solution properties
+  const isMonthly = (() => {
+    if (sol.isMonthly === true || match?.isMonthly === true) return true;
+    if (sol.isMonthly === false || match?.isMonthly === false) return false;
+
+    // Check if amount or priceText already explicitly mentions month
+    const explicitStr = String(match?.amount || sol.amount || sol.priceText || "");
+    if (explicitStr.toLowerCase().includes("/month")) return true;
+
+    // Check active column billingType or period
+    const cols =
+      (Array.isArray(match?.columns) && match.columns.length > 0 ? match.columns : null) ||
+      (Array.isArray(sol.columns) && sol.columns.length > 0 ? sol.columns : null);
+    if (cols) {
+      const hasMonthlyCol = cols.some(
+        (c: any) =>
+          c.billingType?.toLowerCase() === "monthly" ||
+          c.period?.toLowerCase() === "month" ||
+          c.paymentType?.toLowerCase() === "monthly"
+      );
+      const hasFixedCol = cols.some((c: any) => c.billingType?.toLowerCase() === "fixed");
+      if (hasMonthlyCol) return true;
+      if (hasFixedCol) return false;
+    }
+
+    if (sol.billingType?.toLowerCase() === "monthly" || match?.billingType?.toLowerCase() === "monthly") return true;
+    if (sol.billingType?.toLowerCase() === "fixed" || match?.billingType?.toLowerCase() === "fixed") return false;
+
+    if (String(sol.duration || "").toLowerCase().includes("month")) return true;
+
+    return false;
+  })();
+
   const suffix = isMonthly ? "/month" : "";
 
-  if (sol.minPrice !== undefined && sol.maxPrice !== undefined && (sol.minPrice > 0 || sol.maxPrice > 0)) {
-    if (sol.minPrice === sol.maxPrice) {
-      return `$${sol.minPrice.toLocaleString("en-US")}${suffix}`;
-    }
-    return `$${sol.minPrice.toLocaleString("en-US")} - $${sol.maxPrice.toLocaleString("en-US")}${suffix}`;
-  }
+  // 1. Dynamic range check from pre-calculated amount / priceText
+  const candidateRange =
+    (match?.amount && String(match.amount).includes("-") ? String(match.amount) : null) ||
+    (sol.amount && String(sol.amount).includes("-") ? String(sol.amount) : null) ||
+    (sol.priceText && String(sol.priceText).includes("-") ? String(sol.priceText) : null);
 
-  if (sol.priceText) {
-    let clean = String(sol.priceText).trim();
+  if (candidateRange) {
+    let clean = candidateRange.replace(/\s*-\s*/, " - ").trim();
     if (isMonthly && !clean.toLowerCase().includes("month")) {
       clean = `${clean}/month`;
     }
     return clean;
   }
 
-  const priceVal = sol.price ?? sol.cost ?? sol.amount;
-  if (priceVal !== undefined && priceVal !== null && priceVal !== "" && Number(priceVal) > 0) {
-    if (typeof priceVal === "number") {
-      return `$${priceVal.toLocaleString("en-US")}${suffix}`;
+  // 2. Dynamic minPrice & maxPrice check
+  const min = match?.minPrice ?? sol.minPrice;
+  const max = match?.maxPrice ?? sol.maxPrice;
+  if (min !== undefined && max !== undefined && (Number(min) > 0 || Number(max) > 0)) {
+    const minNum = Number(min);
+    const maxNum = Number(max);
+    if (minNum === maxNum) {
+      return `$${minNum.toLocaleString("en-US")}${suffix}`;
     }
-    const str = String(priceVal).trim();
-    if (str.startsWith("$") || str.startsWith("€")) {
-      return isMonthly && !str.toLowerCase().includes("month") ? `${str}/month` : str;
-    }
-    return `$${str}${suffix}`;
+    return `$${minNum.toLocaleString("en-US")} - $${maxNum.toLocaleString("en-US")}${suffix}`;
   }
 
-  // Fallbacks for known package names
-  if (normName.includes("google ads") || normName.includes("paid ads management")) {
-    return `$750 - $3,000${suffix}`;
+  // 3. Dynamic columns check (calculate min/max across columns)
+  const cols =
+    (Array.isArray(match?.columns) && match.columns.length > 0 ? match.columns : null) ||
+    (Array.isArray(sol.columns) && sol.columns.length > 0 ? sol.columns : null);
+
+  if (cols && cols.length > 0) {
+    const numericPrices = cols
+      .map((c: any) => {
+        const p = Number(c.price ?? c.recurringPrice ?? c.amount);
+        return !isNaN(p) && p > 0 ? p : null;
+      })
+      .filter((p: any): p is number => p !== null);
+
+    if (numericPrices.length > 0) {
+      const colMin = Math.min(...numericPrices);
+      const colMax = Math.max(...numericPrices);
+      if (colMin === colMax) {
+        return `$${colMin.toLocaleString("en-US")}${suffix}`;
+      }
+      return `$${colMin.toLocaleString("en-US")} - $${colMax.toLocaleString("en-US")}${suffix}`;
+    }
   }
-  if (normName.includes("youtube")) {
-    return `$750 - $975${suffix}`;
-  }
-  if (normName.includes("seo") || normName.includes("search engine optimization") || normName.includes("search engine")) {
-    return `$100 - $150${suffix}`;
-  }
-  if (normName.includes("shopping") || normName.includes("ecommerce")) {
-    return `$499 - $1,499${suffix}`;
-  }
-  if (normName.includes("audit") || normName.includes("strategy")) {
-    return `$1,500 - $6,000${suffix}`;
-  }
-  if (normName.includes("graphic") || normName.includes("brand")) {
-    return `$499 - $1,499${suffix}`;
-  }
-  if (normName.includes("development") || normName.includes("website dev")) {
-    return `$1,499 - $4,999${suffix}`;
-  }
-  if (normName.includes("maintenance")) {
-    return `$199 - $499${suffix}`;
+
+  // 4. Single value fallback (derived dynamically from match or sol)
+  const singleVal = match?.amount ?? sol.priceText ?? sol.amount ?? sol.price ?? sol.cost;
+  if (singleVal !== undefined && singleVal !== null && singleVal !== "") {
+    if (typeof singleVal === "number") {
+      return `$${singleVal.toLocaleString("en-US")}${suffix}`;
+    }
+    const str = String(singleVal).trim();
+    if (str.startsWith("$") || str.startsWith("€") || str.startsWith("£")) {
+      return isMonthly && !str.toLowerCase().includes("month") ? `${str}/month` : str;
+    }
+    const num = Number(str);
+    if (!isNaN(num) && num > 0) {
+      return `$${num.toLocaleString("en-US")}${suffix}`;
+    }
+    return isMonthly && !str.toLowerCase().includes("month") ? `${str}/month` : str;
   }
 
   return "";
@@ -182,16 +267,20 @@ export const PackageCard = ({
   description,
   link,
   rawSol,
+  availablePackages,
 }: any) => {
-  const itemTitle = title || rawSol?.title || rawSol?.name || rawSol?.description || "Package Solution";
-  const itemDescription = description || rawSol?.description || rawSol?.details || "";
-  const rawImage = imageUrl || rawSol?.imageUrl || rawSol?.mediumUrl || rawSol?.thumbnailUrl || rawSol?.coverImage || rawSol?.image;
+  const match = findMatchingPackage(rawSol || { packageId, title, price }, availablePackages);
+
+  const itemTitle = title || rawSol?.title || rawSol?.name || match?.name || match?.title || rawSol?.description || "Package Solution";
+  const itemDescription = description || rawSol?.description || rawSol?.details || match?.description || "";
+  const rawImage = imageUrl || rawSol?.imageUrl || rawSol?.mediumUrl || rawSol?.thumbnailUrl || rawSol?.coverImage || rawSol?.image || match?.imageUrl || match?.mediumUrl;
   const safeImg = rawImage ? getSafeUrl(rawImage) : getFallbackPackageImage(itemTitle);
   const isSvg = safeImg ? safeImg.toLowerCase().includes(".svg") : false;
 
-  const displayPrice = rawSol ? formatPriceDisplay(rawSol) : formatPriceDisplay({ price, title: itemTitle });
-  const resolvedCat = formatCategoryName(category || rawSol?.category || rawSol?.categorycode, itemTitle);
-  const targetLink = link || (packageId ? `/dashboard/new-project/packages/${packageId}` : "#");
+  const displayPrice = formatPriceDisplay(rawSol || { price, title: itemTitle, packageId }, availablePackages);
+  const resolvedCat = formatCategoryName(category || rawSol?.category || rawSol?.categorycode || match?.categorycode || match?.category, itemTitle);
+  const targetId = packageId || rawSol?._id || rawSol?.id || match?._id;
+  const targetLink = link || (targetId ? `/dashboard/new-project/packages/${targetId}` : "#");
 
   return (
     <a
@@ -205,9 +294,8 @@ export const PackageCard = ({
           <img
             src={safeImg}
             alt={itemTitle}
-            className={`w-full h-full transition-transform duration-300 group-hover:scale-105 ${
-              isSvg ? "object-contain p-2.5" : "object-cover"
-            }`}
+            className={`w-full h-full transition-transform duration-300 group-hover:scale-105 ${isSvg ? "object-contain p-2.5" : "object-cover"
+              }`}
             onError={(e) => {
               const target = e.currentTarget;
               if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
@@ -254,14 +342,33 @@ export const PackageCard = ({
 interface RecommendedSolutionsProps {
   solutions: any[];
   className?: string;
+  availablePackages?: any[];
 }
 
-export default function RecommendedSolutions({ solutions, className = "" }: RecommendedSolutionsProps) {
+export default function RecommendedSolutions({ solutions, className = "", availablePackages }: RecommendedSolutionsProps) {
+  const [dynamicPkgs, setDynamicPkgs] = useState<any[]>(availablePackages || packagesCache);
+
+  useEffect(() => {
+    if (availablePackages && availablePackages.length > 0) {
+      setDynamicPkgs(availablePackages);
+      return;
+    }
+    if (packagesCache.length > 0) {
+      setDynamicPkgs(packagesCache);
+      return;
+    }
+    fetchAllAvailablePackages().then((pkgs) => {
+      if (pkgs && pkgs.length > 0) {
+        setDynamicPkgs(pkgs);
+      }
+    });
+  }, [availablePackages]);
+
   if (!solutions || solutions.length === 0) return null;
 
   return (
     <div className={`w-full ${className}`}>
-      <h5 className="text-xs sm:text-sm font-bold text-[#0D1939] mb-3">
+      <h5 className="text-sm font-bold text-gray-700 mb-3">
         Recommended Solutions
       </h5>
       <div className="border-t border-gray-200 mb-4" />
@@ -279,6 +386,7 @@ export default function RecommendedSolutions({ solutions, className = "" }: Reco
               description={sol.description || sol.details}
               link={sol.link || (packageId ? `/dashboard/new-project/packages/${packageId}` : undefined)}
               rawSol={sol}
+              availablePackages={dynamicPkgs}
             />
           );
         })}
