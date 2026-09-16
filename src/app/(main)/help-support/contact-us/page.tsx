@@ -27,6 +27,7 @@ interface ContactPageData {
   textBlock?: {
     title?: string;
     content?: string;
+    subtitle?: string;
   };
   form?: {
     heading?: string;
