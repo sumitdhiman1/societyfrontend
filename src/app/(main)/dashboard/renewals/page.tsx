@@ -40,20 +40,7 @@ const CARD_ELEMENT_OPTIONS = {
 };
 
 const GlobeIcon = () => (
-  <svg
-    width="22"
-    height="22"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="#4545F0"
-    strokeWidth="1.75"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <circle cx="12" cy="12" r="10" />
-    <line x1="2" y1="12" x2="22" y2="12" />
-    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z" />
-  </svg>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" className="text-primary-300"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
 );
 
 const formatExpiryDate = (dateString?: string) => {
@@ -121,8 +108,8 @@ function UnifiedRenewalDetailsBox({
     typeof project.price === "number"
       ? project.price
       : typeof project.renewalPrice === "number"
-      ? project.renewalPrice
-      : parseFloat(String(project.price || project.renewalPrice || 100).replace(/[^0-9.]/g, "")) || 100;
+        ? project.renewalPrice
+        : parseFloat(String(project.price || project.renewalPrice || 100).replace(/[^0-9.]/g, "")) || 100;
 
   const projectCurrency = (project.currency || "USD").toUpperCase();
   const formattedTotal = formatPrice(renewalPrice, projectCurrency);
@@ -395,9 +382,8 @@ function UnifiedRenewalDetailsBox({
             type="button"
             onClick={handleProcessPayment}
             disabled={processing || !termsAccepted}
-            className={`bg-[#4545F0] hover:bg-[#3737D8] text-white text-sm font-semibold px-10 py-3 rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 ${
-              processing || !termsAccepted ? "opacity-60 cursor-not-allowed" : ""
-            }`}
+            className={`bg-[#4545F0] hover:bg-[#3737D8] text-white text-sm font-semibold px-10 py-3 rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 ${processing || !termsAccepted ? "opacity-60 cursor-not-allowed" : ""
+              }`}
           >
             {processing ? (
               <>
@@ -469,9 +455,9 @@ export default function RenewalsPage() {
   return (
     <div className="bg-white min-h-screen flex flex-col font-sans">
       <DashboardSubNav />
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-10 pb-16">
+      <main className="flex-grow max-w-[1536px] mx-auto w-full px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
         {/* Page Title */}
-        <h1 className="text-[26px] md:text-[30px] font-bold text-gray-900 mb-8">
+        <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100 mb-8 md:mb-12">
           Renewals
         </h1>
 
@@ -498,15 +484,15 @@ export default function RenewalsPage() {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-4 mb-8">
+          <div className="flex flex-col gap-6">
             {renewals.map((project) => {
               const isSelected = selectedId === project._id;
               const priceNum =
                 typeof project.price === "number"
                   ? project.price
                   : typeof project.renewalPrice === "number"
-                  ? project.renewalPrice
-                  : parseFloat(String(project.price || project.renewalPrice || 100).replace(/[^0-9.]/g, "")) || 100;
+                    ? project.renewalPrice
+                    : parseFloat(String(project.price || project.renewalPrice || 100).replace(/[^0-9.]/g, "")) || 100;
 
               const isAutoRenewOn = project.autoRenewal !== false;
               const formattedItemPrice = formatPrice(priceNum, project.currency || "USD");
@@ -517,21 +503,20 @@ export default function RenewalsPage() {
                   onClick={() =>
                     setSelectedId((prev) => (prev === project._id ? null : project._id))
                   }
-                  className={`bg-white rounded-xl p-5 flex items-center justify-between cursor-pointer transition-all ${
-                    isSelected
-                      ? "border-2 border-[#4545F0] shadow-[0_4px_16px_rgba(69,69,240,0.08)]"
-                      : "border border-gray-200/90 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:border-gray-300"
-                  }`}
+                  className={`bg-white rounded-xl p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-0 cursor-pointer transition-all ${isSelected
+                    ? "border border-primary-300 bg-primary-400/20 rounded-[6px] hover:border-gray-300 shadow-sm"
+                    : "border border-gray-200 bg-white rounded-[6px] shadow-sm hover:border-gray-300"
+                    }`}
                 >
                   {/* Left Side: Checkbox + Globe + Info */}
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-start md:items-center gap-4 md:gap-6">
                     {/* Checkbox */}
                     <div
-                      className={`w-4 h-4 rounded flex items-center justify-center transition-colors flex-shrink-0 ${
-                        isSelected
-                          ? "bg-[#4545F0] border border-[#4545F0] text-white"
+                      className={`mt-1 md:mt-0 w-5 h-5 rounded-[4px] flex-shrink-0 
+                        flex items-center justify-center overflow-hidden transition-colors flex-shrink-0 ${isSelected
+                          ? "bg-[#4343f0] border-primary-300 border text-white"
                           : "border border-gray-300 bg-white"
-                      }`}
+                        }`}
                     >
                       {isSelected && (
                         <svg
@@ -550,19 +535,17 @@ export default function RenewalsPage() {
                     </div>
 
                     {/* Globe Icon */}
-                    <div className="flex-shrink-0">
+                    <div className="text-primary-300 flex-shrink-0">
                       <GlobeIcon />
                     </div>
 
                     {/* Title and Metadata */}
                     <div>
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <h3 className="text-sm md:text-base font-bold text-gray-900">
-                          {project.title}
-                        </h3>
+                      <div className="text-[15px] font-bold text-gray-900 leading-tight flex items-center gap-2">
+                        {project.title}
                         {/* Auto-renew badge */}
                         {isAutoRenewOn ? (
-                          <span className="bg-[#E8F8F0] text-[#10B981] border border-[#A7F3D0] text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase border bg-green-50 text-green-700 border-green-200">
                             AUTO-RENEW ON
                           </span>
                         ) : (
@@ -571,35 +554,38 @@ export default function RenewalsPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-400 font-medium">
-                        {project.packageName || project.package?.name || "Maintenance Service"}{" "}
-                        • Expires {formatExpiryDate(project.nextRenewalDate)}
-                      </p>
+                      <div className="text-[13px] text-gray-500 mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span>
+                          {project.packageName || project.package?.name || "Maintenance Service"}
+                        </span>
+                        <span className="hidden sm:inline text-gray-300">•</span>
+                        <span className="text-gray-400 font-medium">
+                          Expires {formatExpiryDate(project.nextRenewalDate)}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Right Side: Stop Auto-Renewal + Rate + Price */}
-                  <div className="flex items-center gap-6">
+                  <div className="flex items-center md:items-center gap-4 md:gap-6 justify-between md:justify-end md:text-right pr-0 md:pr-4 pl-9 md:pl-0 ">
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleToggleAutoRenew(project);
                       }}
-                      className="bg-[#FFF5F5] border border-[#FED7D7] text-[#E53E3E] hover:bg-red-100 text-xs font-semibold px-4 py-1.5 rounded-md transition-colors whitespace-nowrap shadow-none"
+                      className="text-xs font-bold px-3 py-1.5 rounded transition-colors border bg-red-50 text-red-700 hover:bg-red-100 border-red-200"
                     >
                       {isAutoRenewOn ? "Stop Auto-Renewal" : "Enable Auto-Renewal"}
                     </button>
 
-                    <span className="text-xs text-gray-500 font-medium whitespace-nowrap hidden sm:inline">
+                    <span className="text-[13px] text-gray-500 font-medium hidden lg:block">
                       1 month: {formattedItemPrice} / mo
                     </span>
 
-                    <div className="flex items-baseline whitespace-nowrap">
-                      <span className="text-base md:text-lg font-bold text-gray-900">
-                        {formattedItemPrice}
-                      </span>
-                      <span className="text-[9px] text-gray-400 font-bold uppercase ml-1.5">
+                    <div className="text-base font-bold text-gray-900 min-w-0 md:min-w-[120px]">
+                      {formattedItemPrice}
+                      <span className="text-[10px] font-normal text-gray-400 ml-2 uppercase">
                         EXCL. TAX
                       </span>
                     </div>
@@ -621,7 +607,7 @@ export default function RenewalsPage() {
           </Elements>
         )}
 
-        <div className="mt-16">
+        <div className="">
           <SupportNewsletter noPadding />
         </div>
       </main>

@@ -1068,25 +1068,36 @@ export default function QuoteDetailsPage() {
 
             {/* Messages feed */}
             <div className="flex flex-col gap-6 w-full">
-            {allMessages.map((msg: any, i: number) => {
-              const msgId = msg.id || msg._id || `msg-${i}`;
-              const isLast = i === allMessages.length - 1;
-              const msgDate = msg.timestamp || msg.createdAt || msg.sentAt;
+              {allMessages.map((msg: any, i: number) => {
+                const msgId = msg.id || msg._id || `msg-${i}`;
+                const isLast = i === allMessages.length - 1;
+                const msgDate = msg.timestamp || msg.createdAt || msg.sentAt;
 
-              // System Notification
-              if (msg.type === "system_notification" || msg.isSystemMessage) {
-                const title = msg.content?.systemText || msg.systemText || msg.message || "System Notification";
-                const text = msg.content?.text || msg.text || "";
+                // System Notification
+                if (msg.type === "system_notification" || msg.isSystemMessage) {
+                  const title = msg.content?.systemText || msg.systemText || msg.message || "System Notification";
+                  const text = msg.content?.text || msg.text || "";
 
-                if (
-                  title.toLowerCase().includes("offer") ||
-                  title.toLowerCase().includes("proposal") ||
-                  text.toLowerCase().includes("sent you a new offer") ||
-                  text.toLowerCase().includes("prepared a custom proposal")
-                ) {
-                  return null;
-                }
+                  if (
+                    title.toLowerCase().includes("offer") ||
+                    title.toLowerCase().includes("proposal") ||
+                    text.toLowerCase().includes("sent you a new offer") ||
+                    text.toLowerCase().includes("prepared a custom proposal")
+                  ) {
+                    return null;
+                  }
 
+<<<<<<< HEAD
+                  // Standalone Project Created notification banner
+                  if (
+                    title.toLowerCase().includes("project created") ||
+                    text.toLowerCase().includes("converted into an active project") ||
+                    text.toLowerCase().includes("active project")
+                  ) {
+                    return (
+                      <div key={msgId} className="text-center py-6 px-4 my-2" ref={isLast ? messagesEndRef : null}>
+                        <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
+=======
                 // Standalone Project Created notification banner
                 if (
                   title.toLowerCase().includes("project created") ||
@@ -1094,617 +1105,908 @@ export default function QuoteDetailsPage() {
                   text.toLowerCase().includes("active project")
                 ) {
                   return (
-                    <div key={msgId} className="text-center py-6 px-4 my-2" ref={isLast ? messagesEndRef : null}>
-                      <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
-                        Project created
-                      </h3>
-                      <p className="text-sm font-medium text-gray-500 mb-5 max-w-xl mx-auto leading-relaxed">
-                        Great news! Your quote has been converted into an active project.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => goToCreatedProject(msg, msg.content)}
-                        disabled={isOpeningProject}
-                        className="inline-flex items-center justify-center gap-1.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold py-2.5 px-6 rounded-[6px] shadow-sm transition-all active:scale-95 cursor-pointer mx-auto disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        {isOpeningProject ? (
-                          <LoadingDots text="Opening" />
-                        ) : (
-                          <>
-                            View Project
-                            <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
-                            </svg>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  );
+                          <div key={msgId} className="text-center py-6 px-4 my-2" ref={isLast ? messagesEndRef : null}>
+                            <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
+                              Project created
+                            </h3>
+                            <p className="text-sm font-medium text-gray-500 mb-5 max-w-xl mx-auto leading-relaxed">
+                              Great news! Your quote has been converted into an active project.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => goToCreatedProject(msg, msg.content)}
+                              disabled={isOpeningProject}
+                              className="inline-flex items-center justify-center gap-1.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold py-2.5 px-6 rounded-[6px] shadow-sm transition-all active:scale-95 cursor-pointer mx-auto disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                              {isOpeningProject ? (
+                                <LoadingDots text="Opening" />
+                              ) : (
+                                <>
+                                  View Project
+                                  <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                                  </svg>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                          );
                 }
 
-                return (
-                  <div key={msgId} className="text-center py-6 px-4 my-2" ref={isLast ? messagesEndRef : null}>
-                    <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
-                      {capitalizeCurrencyInText(title)}
-                    </h3>
-                    <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
-                      {capitalizeCurrencyInText(text)}
-                    </p>
-                  </div>
-                );
+                          return (
+                          <div key={msgId} className="text-center py-6 px-4 my-2" ref={isLast ? messagesEndRef : null}>
+                            <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
+                              {capitalizeCurrencyInText(title)}
+                            </h3>
+                            <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
+                              {capitalizeCurrencyInText(text)}
+                            </p>
+                          </div>
+                          );
               }
 
-              // Quote Proposal / Offer Message
-              if (msg.type === "quote_proposal") {
-                const content = msg.content || {};
-                const propItems =
+                          // Quote Proposal / Offer Message
+                          if (msg.type === "quote_proposal") {
+                const content = msg.content || { };
+                          const propItems =
                   content.lineItems && content.lineItems.length > 0
-                    ? content.lineItems
+                          ? content.lineItems
                     : content.deliverableItems && content.deliverableItems.length > 0
-                      ? content.deliverableItems
-                      : [];
-                const senderName = msg.username || msg.senderName || managerName;
-                const proposalDesc = content.projectDescription || content.text || msg.message || "";
-                const proposalCurrency = (content.currency || quote.currency || "USD").toUpperCase();
+                          ? content.deliverableItems
+                          : [];
+                          const senderName = msg.username || msg.senderName || managerName;
+                          const proposalDesc = content.projectDescription || content.text || msg.message || "";
+                          const proposalCurrency = (content.currency || quote.currency || "USD").toUpperCase();
                 const calculatedDurationDays = propItems.reduce((sum: number, it: any) => {
                   const dur = String(it.duration || "").toLowerCase();
-                  const match = dur.match(/(\d+(\.\d+)?)/);
-                  const val = match ? parseFloat(match[0]) : 0;
-                  if (dur.includes("week")) return sum + val * 7;
-                  if (dur.includes("month")) return sum + val * 30;
-                  return sum + val;
+                          const match = dur.match(/(\d+(\.\d+)?)/);
+                          const val = match ? parseFloat(match[0]) : 0;
+                          if (dur.includes("week")) return sum + val * 7;
+                          if (dur.includes("month")) return sum + val * 30;
+                          return sum + val;
                 }, 0);
-                const totalDuration =
+                          const totalDuration =
                   calculatedDurationDays > 0
-                    ? `${calculatedDurationDays} Day${calculatedDurationDays > 1 ? "s" : ""}`
-                    : content.totalDuration || quote.totalDuration || "-";
+                          ? `${calculatedDurationDays} Day${calculatedDurationDays > 1 ? "s" : ""}`
+                          : content.totalDuration || quote.totalDuration || "-";
                 const calculatedTotalCost = propItems.reduce((sum: number, it: any) => sum + (Number(it.amount ?? it.cost) || 0), 0);
                 const totalCost = content.totalCost ?? (calculatedTotalCost > 0 ? calculatedTotalCost : (quote.totalCost ?? 0));
 
-                // Check subsequent messages to track actions on this proposal
-                const subsequentMessages = allMessages.slice(i + 1);
+                          // Check subsequent messages to track actions on this proposal
+                          const subsequentMessages = allMessages.slice(i + 1);
                 const hasLaterProposal = subsequentMessages.some((m: any) => m.type === "quote_proposal");
 
-                // Messages between this proposal and the next proposal (or end of feed)
-                const messagesUntilNextProposal: any[] = [];
-                for (const nextMsg of subsequentMessages) {
+                          // Messages between this proposal and the next proposal (or end of feed)
+                          const messagesUntilNextProposal: any[] = [];
+                          for (const nextMsg of subsequentMessages) {
                   if (nextMsg.type === "quote_proposal") break;
-                  messagesUntilNextProposal.push(nextMsg);
+                          messagesUntilNextProposal.push(nextMsg);
                 }
 
-                const wasDeclinedAfterThis = messagesUntilNextProposal.some(
+                          const wasDeclinedAfterThis = messagesUntilNextProposal.some(
                   (m: any) =>
-                    m.type === "quote_action" &&
-                    (m.content?.action === "denied" || m.content?.action === "declined" || m.action === "denied" || m.action === "declined")
-                );
+                          m.type === "quote_action" &&
+                          (m.content?.action === "denied" || m.content?.action === "declined" || m.action === "denied" || m.action === "declined")
+                          );
 
-                const wasAcceptedAfterThis = messagesUntilNextProposal.some(
+                          const wasAcceptedAfterThis = messagesUntilNextProposal.some(
                   (m: any) =>
-                    m.type === "quote_action" &&
-                    (m.content?.action === "accepted" || m.action === "accepted")
-                );
+                          m.type === "quote_action" &&
+                          (m.content?.action === "accepted" || m.action === "accepted")
+                          );
 
-                const isAccepted =
-                  hasAcceptedLocally ||
-                  content.status === "accepted" ||
-                  wasAcceptedAfterThis ||
-                  (!hasLaterProposal && quote.status?.toLowerCase() === "approved");
+                          const isAccepted =
+                          hasAcceptedLocally ||
+                          content.status === "accepted" ||
+                          wasAcceptedAfterThis ||
+                          (!hasLaterProposal && quote.status?.toLowerCase() === "approved");
 
-                const isDeclined =
-                  content.status === "declined" ||
-                  content.status === "rejected" ||
-                  wasDeclinedAfterThis ||
-                  (!hasLaterProposal &&
-                    quote.status?.toLowerCase() === "rejected" &&
-                    !content.isNewProposal &&
-                    (!content.actionsAvailable || content.actionsAvailable.length === 0));
+                          const isDeclined =
+                          content.status === "declined" ||
+                          content.status === "rejected" ||
+                          wasDeclinedAfterThis ||
+                          (!hasLaterProposal &&
+                          quote.status?.toLowerCase() === "rejected" &&
+                          !content.isNewProposal &&
+                          (!content.actionsAvailable || content.actionsAvailable.length === 0));
 
-                const isSuperseded =
-                  !isDeclined && !isAccepted && (hasLaterProposal || content.status === "superseded");
+                          const isSuperseded =
+                          !isDeclined && !isAccepted && (hasLaterProposal || content.status === "superseded");
 
-                const canAct = !hasLaterProposal && !isAccepted && !isDeclined;
-
-                return (
-                  <div key={msgId} ref={isLast ? messagesEndRef : null} className="w-full">
-                    {/* Header above offer card */}
-                    <div className="text-center py-6 px-4 my-2">
-                      <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
-                        You received an offer
-                      </h3>
-                      <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
-                        We’ve prepared a custom proposal for your project.
-                      </p>
-                    </div>
-
-                    {/* Proposal Card */}
-                    <div className="flex flex-col gap-4">
-                      <div className="bg-white rounded-xl shadow-sm border border-gray-300 overflow-hidden transition-all duration-300 hover:shadow-md">
-                        <div className="p-4 sm:p-6 md:p-8">
-                          {/* Card Header: SUBMITTED - Date & Status Badge */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-                            <div className="flex flex-wrap items-center gap-3">
-                              <span className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-tight">
-                                Submitted - {formatQuoteDate(msgDate)}
-                              </span>
-                              {isSuperseded ? (
-                                <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-gray-300 text-gray-500 bg-gray-50">
-                                  Superseded
-                                </span>
-                              ) : isDeclined ? (
-                                <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-red-300 text-red-600 bg-red-50">
-                                  Declined
-                                </span>
-                              ) : isAccepted ? (
-                                <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-emerald-300 text-emerald-600 bg-emerald-50">
-                                  Accepted
-                                </span>
-                              ) : canAct ? (
-                                <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-blue-400 text-blue-600 bg-blue-50">
-                                  Offer Sent
-                                </span>
-                              ) : null}
-                            </div>
-                          </div>
-
-                          <div className="border-t border-gray-200 mb-6 sm:mb-8"></div>
-
-                          {/* Card Title Row: Title on Left, From on Right */}
-                          <div className="pb-4 sm:pb-6 flex flex-col sm:flex-row justify-between items-start gap-2">
-                            <h2 className="text-xl sm:text-2xl font-bold text-gray-600">Project Proposal</h2>
-                            {senderName && (
-                              <span className="text-[10px] sm:text-xs text-gray-400 font-medium">
-                                From: {senderName}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Proposal Description */}
-                          {proposalDesc && (
-                            <div className="mb-10 text-sm text-gray-500 leading-relaxed font-medium whitespace-pre-wrap">
-                              {proposalDesc}
-                            </div>
-                          )}
-
-                          {/* Line Items Table */}
-                          {propItems.length > 0 && (
-                            <div className="border border-gray-400 rounded-lg overflow-x-auto mb-6">
-                              <table className="w-full min-w-[500px] sm:min-w-0">
-                                <thead>
-                                  <tr className="border-b border-gray-400">
-                                    <th className="px-3 sm:px-6 py-4 text-left text-xs sm:text-sm font-bold text-gray-600 bg-white w-1/2">
-                                      Item
-                                    </th>
-                                    <th className="px-3 sm:px-6 py-4 text-center text-xs sm:text-sm font-bold text-gray-600 bg-white">
-                                      Duration
-                                    </th>
-                                    <th className="px-3 sm:px-6 py-4 text-right text-xs sm:text-sm font-bold text-gray-600 bg-white">
-                                      Amount
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {propItems.map((item: any, idx: number) => (
-                                    <tr key={idx} className="border-b border-gray-400 last:border-0">
-                                      <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
-                                        <div className="font-medium text-gray-700 mb-1">
-                                          {item.description || item.name || item.title}
-                                        </div>
-                                        {item.details && (
-                                          <div className="text-[11px] text-gray-400 font-normal">
-                                            {item.details}
-                                          </div>
-                                        )}
-                                      </td>
-                                      <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
-                                        {formatDuration(item.duration)}
-                                      </td>
-                                      <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top">
-                                        {formatCurrency(item.amount ?? item.cost ?? 0, proposalCurrency)}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-
-                          {/* Total Duration & Cost */}
-                          <div className="flex flex-row justify-end gap-6 sm:gap-16 text-xs sm:text-sm mb-6">
-                            <div className="text-center">
-                              <div className="text-gray-500 font-bold mb-1 sm:mb-2 flex items-center justify-center gap-1">
-                                Total Duration
-                              </div>
-                              <div className="font-medium text-gray-600">{formatDuration(totalDuration)}</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-gray-500 font-bold mb-1 sm:mb-2">Total Cost</div>
-                              <div className="font-medium text-gray-600">
-                                {formatCurrency(totalCost, proposalCurrency)}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Action Buttons (Accept, Request Modifications, Decline) */}
-                          {canAct && (
-                            <div className="flex flex-col sm:flex-row gap-4 justify-between w-full pt-6 mt-6 border-t border-gray-100">
-                              <button
-                                type="button"
-                                onClick={handleAcceptQuote}
-                                disabled={isAccepting || isDeclining || hasAcceptedLocally}
-                                className="flex-1 bg-[#327334] hover:bg-[#285c29] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
-                              >
-                                {isAccepting ? <LoadingDots text="Accepting" /> : "Accept Proposal"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={handleRequestModification}
-                                disabled={isAccepting || isDeclining || hasAcceptedLocally}
-                                className="flex-1 bg-[#1C446F] hover:bg-[#153455] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all cursor-pointer text-center"
-                              >
-                                Request Modifications
-                              </button>
-                              <button
-                                type="button"
-                                onClick={handleDeclineQuote}
-                                disabled={isAccepting || isDeclining || hasAcceptedLocally}
-                                className="flex-1 bg-[#7D1A1A] hover:bg-[#651515] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
-                              >
-                                {isDeclining ? <LoadingDots text="Declining" /> : "Decline Proposal"}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Fallback Quote Declined section only if no quote_action message exists in the feed */}
-                    {isDeclined && !allMessages.some((m: any) => (m.type === "quote_action" || m.type === "action") && (m.content?.action === "denied" || m.content?.action === "declined" || m.action === "denied" || m.action === "declined")) && (
-                      <div className="text-center my-12 py-2 w-full">
-                        <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
-                          Quote declined
-                        </h2>
-                        <p className="text-xs sm:text-sm font-normal text-gray-500 max-w-lg mx-auto leading-relaxed">
-                          The offered quote has been declined.
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Fallback Project Created section only if no accept message exists in the feed */}
-                    {isAccepted && !allMessages.some((m: any) => (m.type === "quote_action" && m.content?.action === "accepted") || (m.type === "system_notification" && (m.content?.systemText?.toLowerCase().includes("project created") || m.text?.toLowerCase().includes("project created")))) && (
-                      <div className="text-center my-12 py-2 w-full">
-                        <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
-                          Project created
-                        </h2>
-                        <p className="text-xs sm:text-sm font-normal text-gray-500 mb-6 max-w-lg mx-auto leading-relaxed">
-                          Great news! Your quote has been converted into an active project.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => goToCreatedProject(msg, content)}
-                          disabled={isOpeningProject}
-                          className="inline-flex items-center justify-center gap-1.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold py-2.5 px-6 rounded-[6px] shadow-sm transition-all active:scale-95 cursor-pointer mx-auto disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                          {isOpeningProject ? (
-                            <LoadingDots text="Opening" />
-                          ) : (
-                            <>
-                              View Project
-                              <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
-                              </svg>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-              // Quote Action (Chronological Decline or Acceptance Event)
-              if (msg.type === "quote_action" || msg.type === "action") {
-                const action = msg.content?.action || msg.action;
-                if (action === "denied" || action === "declined") {
-                  return (
-                    <div key={msgId} ref={isLast ? messagesEndRef : null} className="text-center py-6 px-4 my-2">
-                      <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
-                        Quote declined
-                      </h3>
-                      <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
-                        The offered quote has been declined.
-                      </p>
-                    </div>
-                  );
-                }
-
-                if (action === "accepted") {
-                  return (
-                    <div key={msgId} ref={isLast ? messagesEndRef : null} className="text-center py-6 px-4 my-2">
-                      <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
-                        Project created
-                      </h3>
-                      <p className="text-sm font-medium text-gray-500 mb-6 leading-relaxed max-w-xl mx-auto">
-                        Great news! Your quote has been converted into an active project.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => goToCreatedProject(msg, msg.content)}
-                        disabled={isOpeningProject}
-                        className="inline-flex items-center justify-center gap-1.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold py-2.5 px-6 rounded-[6px] shadow-sm transition-all active:scale-95 cursor-pointer mx-auto disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        {isOpeningProject ? (
-                          <LoadingDots text="Opening" />
-                        ) : (
-                          <>
-                            View Project
-                            <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
-                            </svg>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  );
-                }
-
-                return null;
-              }
-
-              // Regular User / Staff Message
-              const isMe = msg.userId === user?._id || msg.senderId === user?._id || msg.role === "client" || msg.senderRole === "client" || msg.sender === "client";
-              const senderName = isMe ? (user?.fullName || "You") : (msg.username || msg.senderName || managerName);
-              const senderAvatar = isMe ? user?.avatar : (msg.userAvatar || msg.senderAvatar || manager?.avatar);
-              const senderInitial = (senderName || "U").charAt(0).toUpperCase();
-              const msgText = msg.content?.text || msg.content?.projectDescription || msg.text || msg.message || "";
-              const rawAttachments = msg.content?.attachedFiles || msg.attachments || msg.attachedFiles || msg.content?.attachedFilesUrl || msg.attachedFilesUrl || [];
-              const attachmentList = (Array.isArray(rawAttachments) ? rawAttachments : []).map((file: any) =>
-                typeof file === "string"
-                  ? { url: file, filename: file.split("/").pop()?.split("?")[0] || "File", size: 0 }
-                  : { url: file.url, filename: file.filename || file.name || (file.url ? file.url.split("/").pop()?.split("?")[0] : "File"), size: file.size || 0 }
-              ).filter((f: any) => Boolean(f.url));
-
-              return (
-                <div key={msgId} ref={isLast ? messagesEndRef : null} className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      {senderAvatar ? (
-                        <img src={senderAvatar} alt={senderName} className="w-10 h-10 rounded-full object-cover shadow-sm" />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-[#18233A] text-white font-bold flex items-center justify-center text-sm shadow-sm">
-                          {senderInitial}
-                        </div>
-                      )}
-                      <h4 className="font-bold text-gray-900 text-sm sm:text-base">{senderName}</h4>
-                    </div>
-                    <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wide">
-                      {formatMessageTime(msgDate)}
-                    </span>
-                  </div>
-
-                  {msgText && (
-                    <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
-                      {msgText}
-                    </p>
-                  )}
-
-                  {/* Attachments if any */}
-                  {attachmentList.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                      <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Attached Files</h5>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
-                        {attachmentList.map((file: any, j: number) => {
-                          const url = file.url;
-                          const filename = file.filename || "file";
-                          const safeUrl = getSafeUrl(url);
-                          const isSvg = url.toLowerCase().includes(".svg");
+                          const canAct = !hasLaterProposal && !isAccepted && !isDeclined;
 
                           return (
-                            <a
-                              key={j}
-                              href={safeUrl}
-                              onClick={(e) => downloadFile(e as any, safeUrl, filename)}
-                              download={filename}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
-                            >
-                              <div className="flex-grow flex items-center justify-center bg-gray-50 relative overflow-hidden">
-                                {renderFileThumbnail(safeUrl, filename, isSvg)}
-                                <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
-                                  <div className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center">
-                                    <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                    </svg>
+                          <div key={msgId} ref={isLast ? messagesEndRef : null} className="w-full">
+                            {/* Header above offer card */}
+                            <div className="text-center py-6 px-4 my-2">
+                              <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
+                                You received an offer
+                              </h3>
+                              <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
+                                We’ve prepared a custom proposal for your project.
+                              </p>
+                            </div>
+
+                            {/* Proposal Card */}
+                            <div className="flex flex-col gap-4">
+                              <div className="bg-white rounded-xl shadow-sm border border-gray-300 overflow-hidden transition-all duration-300 hover:shadow-md">
+                                <div className="p-4 sm:p-6 md:p-8">
+                                  {/* Card Header: SUBMITTED - Date & Status Badge */}
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                                    <div className="flex flex-wrap items-center gap-3">
+                                      <span className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-tight">
+                                        Submitted - {formatQuoteDate(msgDate)}
+                                      </span>
+                                      {isSuperseded ? (
+                                        <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-gray-300 text-gray-500 bg-gray-50">
+                                          Superseded
+                                        </span>
+                                      ) : isDeclined ? (
+                                        <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-red-300 text-red-600 bg-red-50">
+                                          Declined
+                                        </span>
+                                      ) : isAccepted ? (
+                                        <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-emerald-300 text-emerald-600 bg-emerald-50">
+                                          Accepted
+                                        </span>
+                                      ) : canAct ? (
+                                        <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-blue-400 text-blue-600 bg-blue-50">
+                                          Offer Sent
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </div>
+
+                                  <div className="border-t border-gray-200 mb-6 sm:mb-8"></div>
+
+                                  {/* Card Title Row: Title on Left, From on Right */}
+                                  <div className="pb-4 sm:pb-6 flex flex-col sm:flex-row justify-between items-start gap-2">
+                                    <h2 className="text-xl sm:text-2xl font-bold text-gray-600">Project Proposal</h2>
+                                    {senderName && (
+                                      <span className="text-[10px] sm:text-xs text-gray-400 font-medium">
+                                        From: {senderName}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Proposal Description */}
+                                  {proposalDesc && (
+                                    <div className="mb-10 text-sm text-gray-500 leading-relaxed font-medium whitespace-pre-wrap">
+                                      {proposalDesc}
+                                    </div>
+                                  )}
+
+                                  {/* Line Items Table */}
+                                  {propItems.length > 0 && (
+                                    <div className="border border-gray-400 rounded-lg overflow-x-auto mb-6">
+                                      <table className="w-full min-w-[500px] sm:min-w-0">
+                                        <thead>
+                                          <tr className="border-b border-gray-400">
+                                            <th className="px-3 sm:px-6 py-4 text-left text-xs sm:text-sm font-bold text-gray-600 bg-white w-1/2">
+                                              Item
+                                            </th>
+                                            <th className="px-3 sm:px-6 py-4 text-center text-xs sm:text-sm font-bold text-gray-600 bg-white">
+                                              Duration
+                                            </th>
+                                            <th className="px-3 sm:px-6 py-4 text-right text-xs sm:text-sm font-bold text-gray-600 bg-white">
+                                              Amount
+                                            </th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {propItems.map((item: any, idx: number) => (
+                                            <tr key={idx} className="border-b border-gray-400 last:border-0">
+                                              <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
+                                                <div className="font-medium text-gray-700 mb-1">
+                                                  {item.description || item.name || item.title}
+                                                </div>
+                                                {item.details && (
+                                                  <div className="text-[11px] text-gray-400 font-normal">
+                                                    {item.details}
+                                                  </div>
+                                                )}
+                                              </td>
+                                              <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
+                                                {formatDuration(item.duration)}
+                                              </td>
+                                              <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top">
+                                                {formatCurrency(item.amount ?? item.cost ?? 0, proposalCurrency)}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+
+                                  {/* Total Duration & Cost */}
+                                  <div className="flex flex-row justify-end gap-6 sm:gap-16 text-xs sm:text-sm mb-6">
+                                    <div className="text-center">
+                                      <div className="text-gray-500 font-bold mb-1 sm:mb-2 flex items-center justify-center gap-1">
+                                        Total Duration
+                                      </div>
+                                      <div className="font-medium text-gray-600">{formatDuration(totalDuration)}</div>
+                                    </div>
+                                    <div className="text-center">
+                                      <div className="text-gray-500 font-bold mb-1 sm:mb-2">Total Cost</div>
+                                      <div className="font-medium text-gray-600">
+                                        {formatCurrency(totalCost, proposalCurrency)}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Action Buttons (Accept, Request Modifications, Decline) */}
+                                  {canAct && (
+                                    <div className="flex flex-col sm:flex-row gap-4 justify-between w-full pt-6 mt-6 border-t border-gray-100">
+                                      <button
+                                        type="button"
+                                        onClick={handleAcceptQuote}
+                                        disabled={isAccepting || isDeclining || hasAcceptedLocally}
+                                        className="flex-1 bg-[#327334] hover:bg-[#285c29] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
+                                      >
+                                        {isAccepting ? <LoadingDots text="Accepting" /> : "Accept Proposal"}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={handleRequestModification}
+                                        disabled={isAccepting || isDeclining || hasAcceptedLocally}
+                                        className="flex-1 bg-[#1C446F] hover:bg-[#153455] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all cursor-pointer text-center"
+                                      >
+                                        Request Modifications
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={handleDeclineQuote}
+                                        disabled={isAccepting || isDeclining || hasAcceptedLocally}
+                                        className="flex-1 bg-[#7D1A1A] hover:bg-[#651515] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
+                                      >
+                                        {isDeclining ? <LoadingDots text="Declining" /> : "Decline Proposal"}
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Fallback Quote Declined section only if no quote_action message exists in the feed */}
+                            {isDeclined && !allMessages.some((m: any) => (m.type === "quote_action" || m.type === "action") && (m.content?.action === "denied" || m.content?.action === "declined" || m.action === "denied" || m.action === "declined")) && (
+                              <div className="text-center my-12 py-2 w-full">
+                                <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
+                                  Quote declined
+                                </h2>
+                                <p className="text-xs sm:text-sm font-normal text-gray-500 max-w-lg mx-auto leading-relaxed">
+                                  The offered quote has been declined.
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Fallback Project Created section only if no accept message exists in the feed */}
+                            {isAccepted && !allMessages.some((m: any) => (m.type === "quote_action" && m.content?.action === "accepted") || (m.type === "system_notification" && (m.content?.systemText?.toLowerCase().includes("project created") || m.text?.toLowerCase().includes("project created")))) && (
+                              <div className="text-center my-12 py-2 w-full">
+                                <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
+>>>>>>> origin/production
+                                  Project created
+                                </h3>
+                                <p className="text-sm font-medium text-gray-500 mb-5 max-w-xl mx-auto leading-relaxed">
+                                  Great news! Your quote has been converted into an active project.
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => goToCreatedProject(msg, msg.content)}
+                                  disabled={isOpeningProject}
+                                  className="inline-flex items-center justify-center gap-1.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold py-2.5 px-6 rounded-[6px] shadow-sm transition-all active:scale-95 cursor-pointer mx-auto disabled:opacity-60 disabled:cursor-not-allowed"
+                                >
+                                  {isOpeningProject ? (
+                                    <LoadingDots text="Opening" />
+                                  ) : (
+                                    <>
+                                      View Project
+                                      <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                                      </svg>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            );
+                  }
+
+                            return (
+                            <div key={msgId} className="text-center py-6 px-4 my-2" ref={isLast ? messagesEndRef : null}>
+                              <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
+                                {capitalizeCurrencyInText(title)}
+                              </h3>
+                              <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
+                                {capitalizeCurrencyInText(text)}
+                              </p>
+                            </div>
+                            );
+                }
+
+                            // Quote Proposal / Offer Message
+                            if (msg.type === "quote_proposal") {
+                  const content = msg.content || { };
+                            const propItems =
+                    content.lineItems && content.lineItems.length > 0
+                            ? content.lineItems
+                      : content.deliverableItems && content.deliverableItems.length > 0
+                            ? content.deliverableItems
+                            : [];
+                            const senderName = msg.username || msg.senderName || managerName;
+                            const proposalDesc = content.projectDescription || content.text || msg.message || "";
+                            const proposalCurrency = (content.currency || quote.currency || "USD").toUpperCase();
+                  const calculatedDurationDays = propItems.reduce((sum: number, it: any) => {
+                    const dur = String(it.duration || "").toLowerCase();
+                            const match = dur.match(/(\d+(\.\d+)?)/);
+                            const val = match ? parseFloat(match[0]) : 0;
+                            if (dur.includes("week")) return sum + val * 7;
+                            if (dur.includes("month")) return sum + val * 30;
+                            return sum + val;
+                  }, 0);
+                            const totalDuration =
+                    calculatedDurationDays > 0
+                            ? `${calculatedDurationDays} Day${calculatedDurationDays > 1 ? "s" : ""}`
+                            : content.totalDuration || quote.totalDuration || "-";
+                  const calculatedTotalCost = propItems.reduce((sum: number, it: any) => sum + (Number(it.amount ?? it.cost) || 0), 0);
+                  const totalCost = content.totalCost ?? (calculatedTotalCost > 0 ? calculatedTotalCost : (quote.totalCost ?? 0));
+
+                            // Check subsequent messages to track actions on this proposal
+                            const subsequentMessages = allMessages.slice(i + 1);
+                  const hasLaterProposal = subsequentMessages.some((m: any) => m.type === "quote_proposal");
+
+                            // Messages between this proposal and the next proposal (or end of feed)
+                            const messagesUntilNextProposal: any[] = [];
+                            for (const nextMsg of subsequentMessages) {
+                    if (nextMsg.type === "quote_proposal") break;
+                            messagesUntilNextProposal.push(nextMsg);
+                  }
+
+                            const wasDeclinedAfterThis = messagesUntilNextProposal.some(
+                    (m: any) =>
+                            m.type === "quote_action" &&
+                            (m.content?.action === "denied" || m.content?.action === "declined" || m.action === "denied" || m.action === "declined")
+                            );
+
+                            const wasAcceptedAfterThis = messagesUntilNextProposal.some(
+                    (m: any) =>
+                            m.type === "quote_action" &&
+                            (m.content?.action === "accepted" || m.action === "accepted")
+                            );
+
+                            const isAccepted =
+                            hasAcceptedLocally ||
+                            content.status === "accepted" ||
+                            wasAcceptedAfterThis ||
+                            (!hasLaterProposal && quote.status?.toLowerCase() === "approved");
+
+                            const isDeclined =
+                            content.status === "declined" ||
+                            content.status === "rejected" ||
+                            wasDeclinedAfterThis ||
+                            (!hasLaterProposal &&
+                            quote.status?.toLowerCase() === "rejected" &&
+                            !content.isNewProposal &&
+                            (!content.actionsAvailable || content.actionsAvailable.length === 0));
+
+                            const isSuperseded =
+                            !isDeclined && !isAccepted && (hasLaterProposal || content.status === "superseded");
+
+                            const canAct = !hasLaterProposal && !isAccepted && !isDeclined;
+
+                            return (
+                            <div key={msgId} ref={isLast ? messagesEndRef : null} className="w-full">
+                              {/* Header above offer card */}
+                              <div className="text-center py-6 px-4 my-2">
+                                <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
+                                  You Received an Offer
+                                </h3>
+                                <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
+                                  We’ve prepared a custom proposal for your project.
+                                </p>
+                              </div>
+
+                              {/* Proposal Card */}
+                              <div className="flex flex-col gap-4">
+                                <div className="bg-white rounded-xl shadow-sm border border-gray-300 overflow-hidden transition-all duration-300 hover:shadow-md">
+                                  <div className="p-4 sm:p-6 md:p-8">
+                                    {/* Card Header: SUBMITTED - Date & Status Badge */}
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                                      <div className="flex flex-wrap items-center gap-3">
+                                        <span className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-tight">
+                                          Submitted - {formatQuoteDate(msgDate)}
+                                        </span>
+                                        {isSuperseded ? (
+                                          <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-gray-300 text-gray-500 bg-gray-50">
+                                            Superseded
+                                          </span>
+                                        ) : isDeclined ? (
+                                          <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-red-300 text-red-600 bg-red-50">
+                                            Declined
+                                          </span>
+                                        ) : isAccepted ? (
+                                          <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-emerald-300 text-emerald-600 bg-emerald-50">
+                                            Accepted
+                                          </span>
+                                        ) : canAct ? (
+                                          <span className="px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border border-blue-400 text-blue-600 bg-blue-50">
+                                            Offer Sent
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                    </div>
+
+                                    <div className="border-t border-gray-200 mb-6 sm:mb-8"></div>
+
+                                    {/* Card Title Row: Title on Left, From on Right */}
+                                    <div className="pb-4 sm:pb-6 flex flex-col sm:flex-row justify-between items-start gap-2">
+                                      <h2 className="text-xl sm:text-2xl font-bold text-gray-600">Project Proposal</h2>
+                                      {senderName && (
+                                        <span className="text-[10px] sm:text-xs text-gray-400 font-medium">
+                                          From: {senderName}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {/* Proposal Description */}
+                                    {proposalDesc && (
+                                      <div className="mb-10 text-sm text-gray-500 leading-relaxed font-medium whitespace-pre-wrap">
+                                        {proposalDesc}
+                                      </div>
+                                    )}
+
+                                    {/* Line Items Table */}
+                                    {propItems.length > 0 && (
+                                      <div className="border border-gray-400 rounded-lg overflow-x-auto mb-6">
+                                        <table className="w-full min-w-[500px] sm:min-w-0">
+                                          <thead>
+                                            <tr className="border-b border-gray-400">
+                                              <th className="px-3 sm:px-6 py-4 text-left text-xs sm:text-sm font-bold text-gray-600 bg-white w-1/2">
+                                                Item
+                                              </th>
+                                              <th className="px-3 sm:px-6 py-4 text-center text-xs sm:text-sm font-bold text-gray-600 bg-white">
+                                                Duration
+                                              </th>
+                                              <th className="px-3 sm:px-6 py-4 text-right text-xs sm:text-sm font-bold text-gray-600 bg-white">
+                                                Amount
+                                              </th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {propItems.map((item: any, idx: number) => (
+                                              <tr key={idx} className="border-b border-gray-400 last:border-0">
+                                                <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
+                                                  <div className="font-medium text-gray-700 mb-1">
+                                                    {item.description || item.name || item.title}
+                                                  </div>
+                                                  {item.details && (
+                                                    <div className="text-[11px] text-gray-400 font-normal">
+                                                      {item.details}
+                                                    </div>
+                                                  )}
+                                                </td>
+                                                <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
+                                                  {formatDuration(item.duration)}
+                                                </td>
+                                                <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top">
+                                                  {formatCurrency(item.amount ?? item.cost ?? 0, proposalCurrency)}
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    )}
+
+                                    {/* Total Duration & Cost */}
+                                    <div className="flex flex-row justify-end gap-6 sm:gap-16 text-xs sm:text-sm mb-6">
+                                      <div className="text-center">
+                                        <div className="text-gray-500 font-bold mb-1 sm:mb-2 flex items-center justify-center gap-1">
+                                          Total Duration
+                                        </div>
+                                        <div className="font-medium text-gray-600">{formatDuration(totalDuration)}</div>
+                                      </div>
+                                      <div className="text-center">
+                                        <div className="text-gray-500 font-bold mb-1 sm:mb-2">Total Cost</div>
+                                        <div className="font-medium text-gray-600">
+                                          {formatCurrency(totalCost, proposalCurrency)}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Action Buttons (Accept, Request Modifications, Decline) */}
+                                    {canAct && (
+                                      <div className="flex flex-col sm:flex-row gap-4 justify-between w-full pt-6 mt-6 border-t border-gray-100">
+                                        <button
+                                          type="button"
+                                          onClick={handleAcceptQuote}
+                                          disabled={isAccepting || isDeclining || hasAcceptedLocally}
+                                          className="flex-1 bg-[#327334] hover:bg-[#285c29] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
+                                        >
+                                          {isAccepting ? <LoadingDots text="Accepting" /> : "Accept Proposal"}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={handleRequestModification}
+                                          disabled={isAccepting || isDeclining || hasAcceptedLocally}
+                                          className="flex-1 bg-[#1C446F] hover:bg-[#153455] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all cursor-pointer text-center"
+                                        >
+                                          Request Modifications
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={handleDeclineQuote}
+                                          disabled={isAccepting || isDeclining || hasAcceptedLocally}
+                                          className="flex-1 bg-[#7D1A1A] hover:bg-[#651515] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
+                                        >
+                                          {isDeclining ? <LoadingDots text="Declining" /> : "Decline Proposal"}
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               </div>
-                              <div className="bg-gray-50 px-2 py-1.5 border-t border-gray-200 flex flex-col items-center justify-center min-h-[40px]">
-                                <span className="text-[10px] font-medium text-gray-700 truncate w-full px-1" title={filename}>{filename}</span>
-                                {file.size > 0 && (
-                                  <span className="text-[9px] text-gray-400 font-normal">{formatFileSize(file.size)}</span>
-                                )}
-                              </div>
-                            </a>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
 
-                  {/* Recommended Solutions if any */}
-                  {((msg.recommendedSolutions && msg.recommendedSolutions.length > 0) ||
-                    (msg.content?.recommendedSolutions && msg.content.recommendedSolutions.length > 0)) && (
-                      <div className="mt-5 pt-4 border-t border-gray-100">
-                        <RecommendedSolutions
-                          solutions={msg.recommendedSolutions || msg.content?.recommendedSolutions}
+                              {/* Fallback Quote Declined section only if no quote_action message exists in the feed */}
+                              {isDeclined && !allMessages.some((m: any) => (m.type === "quote_action" || m.type === "action") && (m.content?.action === "denied" || m.content?.action === "declined" || m.action === "denied" || m.action === "declined")) && (
+                                <div className="text-center my-12 py-2 w-full">
+                                  <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
+                                    Quote declined
+                                  </h2>
+                                  <p className="text-xs sm:text-sm font-normal text-gray-500 max-w-lg mx-auto leading-relaxed">
+                                    The offered quote has been declined.
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Fallback Project Created section only if no accept message exists in the feed */}
+                              {isAccepted && !allMessages.some((m: any) => (m.type === "quote_action" && m.content?.action === "accepted") || (m.type === "system_notification" && (m.content?.systemText?.toLowerCase().includes("project created") || m.text?.toLowerCase().includes("project created")))) && (
+                                <div className="text-center my-12 py-2 w-full">
+                                  <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
+                                    Project created
+                                  </h2>
+                                  <p className="text-xs sm:text-sm font-normal text-gray-500 mb-6 max-w-lg mx-auto leading-relaxed">
+                                    Great news! Your quote has been converted into an active project.
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => goToCreatedProject(msg, content)}
+                                    disabled={isOpeningProject}
+                                    className="inline-flex items-center justify-center gap-1.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold py-2.5 px-6 rounded-[6px] shadow-sm transition-all active:scale-95 cursor-pointer mx-auto disabled:opacity-60 disabled:cursor-not-allowed"
+                                  >
+                                    {isOpeningProject ? (
+                                      <LoadingDots text="Opening" />
+                                    ) : (
+                                      <>
+                                        View Project
+                                        <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                                        </svg>
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            );
+                }
+
+                            // Quote Action (Chronological Decline or Acceptance Event)
+                            if (msg.type === "quote_action" || msg.type === "action") {
+                  const action = msg.content?.action || msg.action;
+                            if (action === "denied" || action === "declined") {
+                    return (
+                            <div key={msgId} ref={isLast ? messagesEndRef : null} className="text-center py-6 px-4 my-2">
+                              <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
+                                Quote declined
+                              </h3>
+                              <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
+                                The offered quote has been declined.
+                              </p>
+                            </div>
+                            );
+                  }
+
+                            if (action === "accepted") {
+                    return (
+                            <div key={msgId} ref={isLast ? messagesEndRef : null} className="text-center py-6 px-4 my-2">
+                              <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
+                                Project created
+                              </h3>
+                              <p className="text-sm font-medium text-gray-500 mb-6 leading-relaxed max-w-xl mx-auto">
+                                Great news! Your quote has been converted into an active project.
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => goToCreatedProject(msg, msg.content)}
+                                disabled={isOpeningProject}
+                                className="inline-flex items-center justify-center gap-1.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold py-2.5 px-6 rounded-[6px] shadow-sm transition-all active:scale-95 cursor-pointer mx-auto disabled:opacity-60 disabled:cursor-not-allowed"
+                              >
+                                {isOpeningProject ? (
+                                  <LoadingDots text="Opening" />
+                                ) : (
+                                  <>
+                                    View Project
+                                    <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                            );
+                  }
+
+                            return null;
+                }
+
+                            // Regular User / Staff Message
+                            const isMe = msg.userId === user?._id || msg.senderId === user?._id || msg.role === "client" || msg.senderRole === "client" || msg.sender === "client";
+                            const senderName = isMe ? (user?.fullName || "You") : (msg.username || msg.senderName || managerName);
+                            const senderAvatar = isMe ? user?.avatar : (msg.userAvatar || msg.senderAvatar || manager?.avatar);
+                            const senderInitial = (senderName || "U").charAt(0).toUpperCase();
+                            const msgText = msg.content?.text || msg.content?.projectDescription || msg.text || msg.message || "";
+                            const rawAttachments = msg.content?.attachedFiles || msg.attachments || msg.attachedFiles || msg.content?.attachedFilesUrl || msg.attachedFilesUrl || [];
+                const attachmentList = (Array.isArray(rawAttachments) ? rawAttachments : []).map((file: any) =>
+                            typeof file === "string"
+                            ? {url: file, filename: file.split("/").pop()?.split("?")[0] || "File", size: 0 }
+                            : {url: file.url, filename: file.filename || file.name || (file.url ? file.url.split("/").pop()?.split("?")[0] : "File"), size: file.size || 0 }
+                ).filter((f: any) => Boolean(f.url));
+
+                            return (
+                            <div key={msgId} ref={isLast ? messagesEndRef : null} className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+                              <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                  {senderAvatar ? (
+                                    <img src={senderAvatar} alt={senderName} className="w-10 h-10 rounded-full object-cover shadow-sm" />
+                                  ) : (
+                                    <div className="w-10 h-10 rounded-full bg-[#18233A] text-white font-bold flex items-center justify-center text-sm shadow-sm">
+                                      {senderInitial}
+                                    </div>
+                                  )}
+                                  <h4 className="font-bold text-gray-900 text-sm sm:text-base">{senderName}</h4>
+                                </div>
+                                <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wide">
+                                  {formatMessageTime(msgDate)}
+                                </span>
+                              </div>
+
+                              {msgText && (
+                                <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
+                                  {msgText}
+                                </p>
+                              )}
+
+                              {/* Attachments if any */}
+                              {attachmentList.length > 0 && (
+                                <div className="mt-4 pt-4 border-t border-gray-100">
+                                  <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Attached Files</h5>
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
+                                    {attachmentList.map((file: any, j: number) => {
+                                      const url = file.url;
+                                      const filename = file.filename || "file";
+                                      const safeUrl = getSafeUrl(url);
+                                      const isSvg = url.toLowerCase().includes(".svg");
+
+                                      return (
+                                        <a
+                                          key={j}
+                                          href={safeUrl}
+                                          onClick={(e) => downloadFile(e as any, safeUrl, filename)}
+                                          download={filename}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
+                                        >
+                                          <div className="flex-grow flex items-center justify-center bg-gray-50 relative overflow-hidden">
+                                            {renderFileThumbnail(safeUrl, filename, isSvg)}
+                                            <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
+                                              <div className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center">
+                                                <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                </svg>
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div className="bg-gray-50 px-2 py-1.5 border-t border-gray-200 flex flex-col items-center justify-center min-h-[40px]">
+                                            <span className="text-[10px] font-medium text-gray-700 truncate w-full px-1" title={filename}>{filename}</span>
+                                            {file.size > 0 && (
+                                              <span className="text-[9px] text-gray-400 font-normal">{formatFileSize(file.size)}</span>
+                                            )}
+                                          </div>
+                                        </a>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Recommended Solutions if any */}
+                              {((msg.recommendedSolutions && msg.recommendedSolutions.length > 0) ||
+                                (msg.content?.recommendedSolutions && msg.content.recommendedSolutions.length > 0)) && (
+                                  <div className="mt-5 pt-4 border-t border-gray-100">
+                                    <h5 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-3">
+                                      Recommended Solutions
+                                    </h5>
+                                    <div className="flex flex-wrap sm:flex-nowrap sm:overflow-x-auto pb-2 gap-4 scrollbar-hide">
+                                      {(msg.recommendedSolutions || msg.content?.recommendedSolutions).map((sol: any, j: number) => (
+                                        <PackageCard
+                                          key={(sol.packageId || sol._id || j) + "-" + j}
+                                          packageId={sol.packageId || sol._id || sol.id}
+                                          title={sol.title || sol.name}
+                                          price={sol.price || sol.amount}
+                                          imageUrl={sol.imageUrl || sol.mediumUrl || sol.thumbnailUrl}
+                                          category={sol.category || sol.categorycode}
+                                          description={sol.description}
+                                          link={sol.link || `/dashboard/new-project/packages/${sol.packageId || sol._id || sol.id}`}
+                                        />
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                            </div>
+                            );
+            })}
+                          </div>
+                      </div>
+
+          {/* New Message / Reply Box */ }
+                    <div ref={messageInputRef} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6">
+                      {/* Box Top Header */}
+                      <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100 bg-gray-50/50">
+                        <div className="flex items-center gap-4">
+                          {user?.avatar ? (
+                            <img src={user.avatar} alt="You" className="w-12 h-12 rounded-full object-cover shadow-sm ring-2 ring-white" />
+                          ) : (
+                            <div className="w-12 h-12 rounded-full bg-blue-900 flex items-center justify-center text-white font-bold text-base shadow-sm ring-2 ring-white">
+                              {userInitial}
+                            </div>
+                          )}
+                          <div>
+                            <h3 className="font-bold text-gray-800 text-base">{user?.fullName || clientName}</h3>
+                            <p className="text-xs text-gray-500">New Message</p>
+                          </div>
+                        </div>
+                        <span className="text-xs text-gray-400 font-medium">{nowFormatted}</span>
+                      </div>
+
+                      {/* Textarea */}
+                      <div className="p-6 pb-2">
+                        <textarea
+                          className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent"
+                          placeholder={isLoggedIn ? "Type a message..." : "Please log in or register to message our team..."}
+                          value={messageText}
+                          onChange={(e) => {
+                            if (!requireAuth()) return;
+                            setMessageText(e.target.value);
+                          }}
+                          onClick={() => {
+                            requireAuth();
+                          }}
                         />
                       </div>
-                    )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
 
-        {/* New Message / Reply Box */}
-        <div ref={messageInputRef} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6">
-          {/* Box Top Header */}
-          <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100 bg-gray-50/50">
-            <div className="flex items-center gap-4">
-              {user?.avatar ? (
-                <img src={user.avatar} alt="You" className="w-12 h-12 rounded-full object-cover shadow-sm ring-2 ring-white" />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-blue-900 flex items-center justify-center text-white font-bold text-base shadow-sm ring-2 ring-white">
-                  {userInitial}
-                </div>
-              )}
-              <div>
-                <h3 className="font-bold text-gray-800 text-base">{user?.fullName || clientName}</h3>
-                <p className="text-xs text-gray-500">New Message</p>
-              </div>
-            </div>
-            <span className="text-xs text-gray-400 font-medium">{nowFormatted}</span>
-          </div>
+                      {/* Attachments Preview Grid */}
+                      {attachments.length > 0 && (
+                        <div className="px-6 pb-3 pt-1 flex flex-wrap gap-3">
+                          {attachments.map((att) => {
+                            const displayUrl = getSafeUrl(att.url || (att.file ? URL.createObjectURL(att.file) : ""));
+                            return (
+                              <div
+                                key={att.id}
+                                className="w-24 h-24 sm:w-28 sm:h-28 border border-gray-200 rounded-xl p-2 flex flex-col items-center justify-between bg-white relative group shadow-sm hover:border-gray-300 transition-all"
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => removeAttachment(att.id)}
+                                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow cursor-pointer hover:bg-red-600"
+                                  title="Remove file"
+                                >
+                                  ×
+                                </button>
+                                <div className="w-full flex-1 flex items-center justify-center overflow-hidden">
+                                  {renderFileThumbnail(displayUrl, att.name)}
+                                </div>
+                                <div className="w-full text-center mt-1">
+                                  <p className="text-[11px] font-medium text-gray-700 truncate w-full" title={att.name}>
+                                    {att.name}
+                                  </p>
+                                  <p className="text-[10px] text-gray-400 font-medium truncate">
+                                    {(att.size || att.file?.size) ? `${formatFileSize(att.size || att.file?.size)} · ` : ""}
+                                    {att.status === "done" ? "Ready" : att.status === "uploading" ? "Uploading..." : "Failed"}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
 
-          {/* Textarea */}
-          <div className="p-6 pb-2">
-            <textarea
-              className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent"
-              placeholder={isLoggedIn ? "Type a message..." : "Please log in or register to message our team..."}
-              value={messageText}
-              onChange={(e) => {
-                if (!requireAuth()) return;
-                setMessageText(e.target.value);
-              }}
-              onClick={() => {
-                requireAuth();
-              }}
-            />
-          </div>
+                      <div className="px-6 pb-6 pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-100">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          multiple
+                          className="hidden"
+                          accept="*/*"
+                          onChange={handleFileChange}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!requireAuth()) return;
+                            fileInputRef.current?.click();
+                          }}
+                          className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2.5 rounded-md border-2 border-blue-600 hover:bg-blue-50 shadow-sm cursor-pointer"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                            />
+                          </svg>
+                          Attach Files
+                          {attachments.length > 0 && (
+                            <span className="inline-flex items-center justify-center w-5 h-5 bg-[#4343F0] text-white text-[11px] font-bold rounded-full ml-1">
+                              {attachments.length}
+                            </span>
+                          )}
+                        </button>
 
-          {/* Attachments Preview Grid */}
-          {attachments.length > 0 && (
-            <div className="px-6 pb-3 pt-1 flex flex-wrap gap-3">
-              {attachments.map((att) => {
-                const displayUrl = getSafeUrl(att.url || (att.file ? URL.createObjectURL(att.file) : ""));
-                return (
-                  <div
-                    key={att.id}
-                    className="w-24 h-24 sm:w-28 sm:h-28 border border-gray-200 rounded-xl p-2 flex flex-col items-center justify-between bg-white relative group shadow-sm hover:border-gray-300 transition-all"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => removeAttachment(att.id)}
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow cursor-pointer hover:bg-red-600"
-                      title="Remove file"
-                    >
-                      ×
-                    </button>
-                    <div className="w-full flex-1 flex items-center justify-center overflow-hidden">
-                      {renderFileThumbnail(displayUrl, att.name)}
+                        <div className="flex gap-3 w-full sm:w-auto">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMessageText("");
+                              setAttachments([]);
+                            }}
+                            className="flex-1 sm:flex-none px-6 py-2.5 bg-[#800020] hover:bg-[#600018] text-white font-bold text-sm rounded-md transition-colors shadow-sm cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              if (!requireAuth()) {
+                                e.preventDefault();
+                                return;
+                              }
+                              handleSendMessage();
+                            }}
+                            disabled={
+                              isLoggedIn &&
+                              (isSending ||
+                                (!messageText.trim() && attachments.length === 0) ||
+                                attachments.some((a) => a.status === "uploading"))
+                            }
+                            className={`flex-1 sm:flex-none px-8 py-2.5 rounded-[8px] text-sm font-bold transition-all ${isLoggedIn &&
+                              (isSending ||
+                                (!messageText.trim() && attachments.length === 0) ||
+                                attachments.some((a) => a.status === "uploading"))
+                              ? "bg-gray-200 text-gray-400 cursor-not-allowed opacity-50"
+                              : "bg-[#4343F0] hover:bg-[#3333D0] text-white cursor-pointer active:scale-95"
+                              }`}
+                          >
+                            {isSending ? <LoadingDots text="Sending" /> : "Send Message"}
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <div className="w-full text-center mt-1">
-                      <p className="text-[11px] font-medium text-gray-700 truncate w-full" title={att.name}>
-                        {att.name}
-                      </p>
-                      <p className="text-[10px] text-gray-400 font-medium truncate">
-                        {(att.size || att.file?.size) ? `${formatFileSize(att.size || att.file?.size)} · ` : ""}
-                        {att.status === "done" ? "Ready" : att.status === "uploading" ? "Uploading..." : "Failed"}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
 
-          <div className="px-6 pb-6 pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-100">
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              className="hidden"
-              accept="*/*"
-              onChange={handleFileChange}
-            />
-            <button
-              type="button"
-              onClick={() => {
-                if (!requireAuth()) return;
-                fileInputRef.current?.click();
-              }}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors px-4 py-2.5 rounded-md border-2 border-blue-600 hover:bg-blue-50 shadow-sm cursor-pointer"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                />
-              </svg>
-              Attach Files
-              {attachments.length > 0 && (
-                <span className="inline-flex items-center justify-center w-5 h-5 bg-[#4343F0] text-white text-[11px] font-bold rounded-full ml-1">
-                  {attachments.length}
-                </span>
-              )}
-            </button>
-
-            <div className="flex gap-3 w-full sm:w-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  setMessageText("");
-                  setAttachments([]);
-                }}
-                className="flex-1 sm:flex-none px-6 py-2.5 bg-[#800020] hover:bg-[#600018] text-white font-bold text-sm rounded-md transition-colors shadow-sm cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  if (!requireAuth()) {
-                    e.preventDefault();
-                    return;
-                  }
-                  handleSendMessage();
-                }}
-                disabled={
-                  isLoggedIn &&
-                  (isSending ||
-                    (!messageText.trim() && attachments.length === 0) ||
-                    attachments.some((a) => a.status === "uploading"))
-                }
-                className={`flex-1 sm:flex-none px-8 py-2.5 rounded-[8px] text-sm font-bold transition-all ${
-                  isLoggedIn &&
-                  (isSending ||
-                    (!messageText.trim() && attachments.length === 0) ||
-                    attachments.some((a) => a.status === "uploading"))
-                    ? "bg-gray-200 text-gray-400 cursor-not-allowed opacity-50"
-                    : "bg-[#4343F0] hover:bg-[#3333D0] text-white cursor-pointer active:scale-95"
-                }`}
-              >
-                {isSending ? <LoadingDots text="Sending" /> : "Send Message"}
-              </button>
-            </div>
-          </div>
+                    {/* Support Newsletter Section */ }
+                    <SupportNewsletter noPadding />
         </div>
+          </div>
 
-        {/* Support Newsletter Section */}
-        <SupportNewsletter noPadding />
-      </div>
-    </div>
-
-    {/* Auth Prompt Modal */}
-    <AuthPromptModal
-      isOpen={showAuthModal}
-      onClose={() => setShowAuthModal(false)}
-      title="Join the Conversation"
-      description="Please log in or register to message our team and collaborate on this quote."
-      redirectUrl={quote?._id ? `/dashboard/my-quotes/${quote._id}/details` : undefined}
-    />
-  </div>
-);
+          {/* Auth Prompt Modal */}
+          <AuthPromptModal
+            isOpen={showAuthModal}
+            onClose={() => setShowAuthModal(false)}
+            title="Join the Conversation"
+            description="Please log in or register to message our team and collaborate on this quote."
+            redirectUrl={quote?._id ? `/dashboard/my-quotes/${quote._id}/details` : undefined}
+          />
+        </div>
+        );
 }

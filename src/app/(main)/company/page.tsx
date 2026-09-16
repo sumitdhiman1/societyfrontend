@@ -9,9 +9,9 @@ export default function CompanyPage() {
     <div className="flex flex-col min-h-screen font-sans bg-[#050A15] text-white selection:bg-[#5356ff] selection:text-white">
       {/* ── Hero Section ────────────────────────────────────────────── */}
       <main className="flex-grow overflow-hidden">
-        <section className="relative h-[420px] sm:h-[506px] bg-[#00102E] flex items-center overflow-hidden">
-          <img src="/images/image.png" className="company-bg absolute right-0 top-0 h-full w-auto object-cover object-right opacity-90 z-0 scale-[1.3] origin-right translate-y-[5%]" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#00102E] via-[#00102E]/60 to-transparent z-0"></div>
+        <section className="relative h-[420px] sm:h-[436px] bg-[#00102E] flex items-center overflow-hidden">
+          <img src="/images/image.png" className="company-bg absolute right-0 top-[33%] h-full w-auto object-cover object-right opacity-90 z-0 scale-[2] origin-right translate-y-[5%]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#00102E] to-[#0E2549]/0 to-transparent z-0"></div>
           <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] relative z-10 text-left w-full flex flex-col items-start gap-[16px]">
             <span className="text-[#A3A3A3] text-lg sm:text-[22px] font-bold leading-normal sm:leading-[30px]">About us</span>
             <h1 className="text-3xl sm:text-4xl md:text-[56px] font-bold text-white leading-tight sm:leading-[48px] md:leading-[64px]">
@@ -25,7 +25,7 @@ export default function CompanyPage() {
           </div>
         </section>
         <section className="bg-white text-gray-800 py-12 md:py-[70px]">
-          <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] w-full flex flex-col gap-10 md:gap-[60px]">
+          <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] w-full flex flex-col gap-10 md:gap-[30px]">
             <div className="flex flex-col lg:flex-row w-full justify-between">
               <div className="flex flex-col gap-[21px] lg:w-[40%] shrink-0">
                 <span className="text-[#4343F0] font-normal text-[16px] uppercase leading-[27px]">Our Company</span>
@@ -56,18 +56,18 @@ export default function CompanyPage() {
         <section className="bg-[#EBE9FA] text-gray-800 py-12 md:py-[70px]">
           <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] w-full">
             <div className="flex flex-col lg:flex-row items-start w-full justify-between gap-8 lg:gap-0">
-              <div className="w-full lg:w-[31%] flex flex-col gap-[13px] shrink-0">
+              <div className="w-full lg:w-[33%] flex flex-col gap-[13px] shrink-0">
                 <h2 className="text-2xl sm:text-3xl md:text-[48px] font-semibold text-[#363636] leading-tight sm:leading-[40px] md:leading-[58px] tracking-[-0.03em]">
                   Leading the new generation of web companies.
                 </h2>
-                <p className="font-semibold text-[#363636] text-base sm:text-[18px] leading-relaxed sm:leading-[27px]">font-semibold text-[#363636] text-base sm:text-[18px] leading-relaxed sm:leading-[27px]</p>
+                <p className="font-semibold text-[#363636] text-base sm:text-[18px] leading-relaxed sm:leading-[27px]">We’re not your average web company. We’re your trusted partner for mutual long-term online success.</p>
                 <p className="text-[#363636] text-[16px] font-normal leading-[27px]">
                   Society Web Solutions provides a completely client-focused service built on trust and a long-term vision. We'll always be dedicated to your business goals as if they were our own. We're here to adapt to your situation and provide the most efficient solutions possible.
                 </p>
               </div>
               <div className="w-full lg:w-[66%] bg-white rounded-[20px] shadow-sm flex flex-col md:flex-row overflow-hidden">
-                <div className="relative w-full md:w-[40%] lg:w-[395px] min-h-[220px] md:min-h-0 shrink-0">
-                  <img src="/images/program.webp" className="object-cover company-set" />
+                <div className="relative w-full md:w-[40%] lg:w-[394px] min-h-[220px] md:min-h-0 shrink-0">
+                  <img src="/images/Office.webp" className="object-cover company-set" />
                 </div>
                 <div className="flex-1 min-w-0 flex flex-col justify-center px-6 py-8 md:pl-[44px] md:pr-6 gap-[18px]">
                   <h3 className="text-xl sm:text-[22px] font-bold text-[#363636] leading-snug sm:leading-[27px]">As a strong foundational principal</h3>
@@ -98,7 +98,7 @@ export default function CompanyPage() {
                         <svg className="w-[16.66px] h-[16.66px] fill-current shrink-0" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
                         <svg className="w-[16.66px] h-[16.66px] fill-current shrink-0" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
                       </div>
-                      <p className="text-[#363636] text-[16px] leading-[24px] font-normal mt-5 md:mt-[25px] m-0 whitespace-pre-line text-left">
+                      <p className="text-[#363636] text-[16px] leading-[24px] font-normal mt-5 md:mt-[24px] m-0 whitespace-pre-line text-left">
                         "Rick and his team did great job, There were many challenges along the way, but they rose to get the job done!"
                       </p>
                     </div>
@@ -117,7 +117,7 @@ export default function CompanyPage() {
                         <svg className="w-[16.66px] h-[16.66px] fill-current shrink-0" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
                         <svg className="w-[16.66px] h-[16.66px] fill-current shrink-0" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
                       </div>
-                      <p className="text-[#363636] text-[16px] leading-[24px] font-normal mt-5 md:mt-[25px] m-0 whitespace-pre-line text-left">
+                      <p className="text-[#363636] text-[16px] leading-[24px] font-normal mt-5 md:mt-[24px] m-0 whitespace-pre-line text-left">
                         Society Web Solutions team is incredible! So honest, direct & result-oriented. The way they communicate and work is just next level! They don't only bring you results, but actually educate you and show how to make your business thrive. Though their pricing might be higher than the average, then the investment already has returned itself. We were doing different tasks with different people, but they just united it all into one, making our life super easy. Their design & development team make stunning miracles plus their marketing team is absolutely great. Highly-highly recommended!</p>
                     </div>
                   </div>
@@ -135,7 +135,7 @@ export default function CompanyPage() {
                         <svg className="w-[16.66px] h-[16.66px] fill-current shrink-0" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
                         <svg className="w-[16.66px] h-[16.66px] fill-current shrink-0" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
                       </div>
-                      <p className="text-[#363636] text-[16px] leading-[24px] font-normal mt-5 md:mt-[25px] m-0 whitespace-pre-line text-left">
+                      <p className="text-[#363636] text-[16px] leading-[24px] font-normal mt-5 md:mt-[24px] m-0 whitespace-pre-line text-left">
                         We have worked with Rick on numerous occasions. He always comes they with high quality work. I highly suggest if you want your website game to go up.. give them a call. You won’t be disappointed
                       </p>
                     </div>

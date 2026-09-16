@@ -772,9 +772,9 @@ export default function AnalysisDetailsPage() {
   const rawUrls = (analysis.targetWebsiteUrl || analysis.websiteUrl || "").trim();
   const submittedUrls = rawUrls
     ? rawUrls
-        .split(/[\n,]+/)
-        .map((u: string) => u.trim())
-        .filter(Boolean)
+      .split(/[\n,]+/)
+      .map((u: string) => u.trim())
+      .filter(Boolean)
     : [];
 
   let submittedAdditionalComments = (analysis.additionalComments || analysis.metadata?.additionalComments || "").trim();
@@ -802,8 +802,8 @@ export default function AnalysisDetailsPage() {
   const extraMetadata =
     analysis.metadata && typeof analysis.metadata === "object"
       ? Object.entries(analysis.metadata).filter(
-          ([k, v]) => !knownMetaKeys.has(k) && v && typeof v !== "object"
-        )
+        ([k, v]) => !knownMetaKeys.has(k) && v && typeof v !== "object"
+      )
       : [];
 
   const hasSubmittedRequirements =
@@ -1348,22 +1348,21 @@ export default function AnalysisDetailsPage() {
                           <span className="text-xs sm:text-sm text-gray-500 font-medium">
                             Submitted - {formatSubmittedDate(msg.createdAt || msg.timestamp)}
                           </span>
-                          <span className={`px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold border ${
-                            isAccepted ? "border-green-400 text-green-600 bg-green-50" :
-                            isDeclined ? "border-red-400 text-red-600 bg-red-50" :
-                            isModRequested ? "border-orange-400 text-orange-600 bg-orange-50" :
-                            "border-blue-400 text-blue-600 bg-blue-50/60"
-                          }`}>
+                          <span className={`px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold border ${isAccepted ? "border-green-400 text-green-600 bg-green-50" :
+                              isDeclined ? "border-red-400 text-red-600 bg-red-50" :
+                                isModRequested ? "border-orange-400 text-orange-600 bg-orange-50" :
+                                  "border-blue-400 text-blue-600 bg-blue-50/60"
+                            }`}>
                             {isAccepted ? "Accepted" :
-                             isDeclined ? "Declined" :
-                             isModRequested ? "Modification Requested" : "Add-On Offer"}
+                              isDeclined ? "Declined" :
+                                isModRequested ? "Modification Requested" : "Add-On Offer"}
                           </span>
                         </div>
                         {content.status && content.status !== "pending" && (
                           <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">
                             {isAccepted && content.acceptedAt ? `Accepted on ${formatSubmittedDate(content.acceptedAt)}` :
-                             isDeclined && content.declinedAt ? `Declined on ${formatSubmittedDate(content.declinedAt)}` :
-                             isModRequested && content.modificationRequestedAt ? `Requested on ${formatSubmittedDate(content.modificationRequestedAt)}` : ""}
+                              isDeclined && content.declinedAt ? `Declined on ${formatSubmittedDate(content.declinedAt)}` :
+                                isModRequested && content.modificationRequestedAt ? `Requested on ${formatSubmittedDate(content.modificationRequestedAt)}` : ""}
                           </span>
                         )}
                       </div>
@@ -1656,13 +1655,12 @@ export default function AnalysisDetailsPage() {
                                     handleActionSubmit();
                                   }}
                                   disabled={isActionLoading || (actionModal.required && !actionComment.trim())}
-                                  className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-lg text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer text-center ${
-                                    isActionLoading
+                                  className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-lg text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer text-center ${isActionLoading
                                       ? "bg-gray-400 cursor-not-allowed"
                                       : actionModal.action === "decline"
                                         ? "bg-[#C5221F] hover:bg-[#A91D1A]"
                                         : "bg-[#3B4BEF] hover:bg-[#2F3EC4]"
-                                  }`}
+                                    }`}
                                 >
                                   {isActionLoading
                                     ? "Processing..."
@@ -1868,13 +1866,12 @@ export default function AnalysisDetailsPage() {
                                   type="button"
                                   onClick={handleActionSubmit}
                                   disabled={isActionLoading || (actionModal.required && !actionComment.trim())}
-                                  className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-lg text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer text-center ${
-                                    isActionLoading
+                                  className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-lg text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer text-center ${isActionLoading
                                       ? "bg-gray-400 cursor-not-allowed"
                                       : actionModal.action === "decline"
                                         ? "bg-[#C5221F] hover:bg-[#A91D1A]"
                                         : "bg-[#3B4BEF] hover:bg-[#2F3EC4]"
-                                  }`}
+                                    }`}
                                 >
                                   {isActionLoading
                                     ? "Processing..."

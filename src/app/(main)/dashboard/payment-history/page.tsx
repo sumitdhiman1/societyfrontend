@@ -49,11 +49,10 @@ function DatePicker({
         key={d}
         type="button"
         onClick={() => setCurrent(new Date(view.getFullYear(), view.getMonth(), d))}
-        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
-          selected
-            ? "bg-[#4545F0] text-white shadow-sm"
-            : "text-gray-700 hover:bg-gray-100"
-        }`}
+        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${selected
+          ? "bg-[#4545F0] text-white shadow-sm"
+          : "text-gray-700 hover:bg-gray-100"
+          }`}
       >
         {d}
       </button>
@@ -62,38 +61,24 @@ function DatePicker({
 
   return (
     <div className="relative">
-      <label className="block text-[10px] font-bold text-gray-800 uppercase tracking-wider mb-1.5">
+      <label className="block text-[11px] font-bold text-gray-800 uppercase tracking-wider mb-1">
         {label}
       </label>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2.5 bg-[#E5E7EB]/80 hover:bg-[#E5E7EB] rounded-md px-3.5 py-2 w-[160px] md:w-[170px] cursor-pointer transition-colors h-[38px] text-left"
+        className="flex items-center gap-3 bg-[#EBEBEB] rounded-[4px] px-3 h-[42px] w-full cursor-pointer"
       >
-        <div className="text-gray-600 flex-shrink-0">
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-            <line x1="16" y1="2" x2="16" y2="6" />
-            <line x1="8" y1="2" x2="8" y2="6" />
-            <line x1="3" y1="10" x2="21" y2="10" />
-          </svg>
+        <div className="text-gray-800">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-7 5h5v5h-5z"></path></svg>
         </div>
-        <span className="text-xs text-gray-700 font-semibold truncate">
+        <span className="text-xs text-gray-600 font-bold">
           {value
             ? value.toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
             : "Select date"}
         </span>
       </button>
@@ -321,40 +306,41 @@ export default function PaymentHistoryPage() {
   return (
     <div className="bg-white min-h-screen flex flex-col font-sans">
       <DashboardSubNav />
-      <main className="flex-grow max-w-[1536px] mx-auto w-full px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-10 pb-16">
+      <main className="flex-grow max-w-[1536px] mx-auto w-full px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
         {/* Page Title */}
-        <h1 className="text-[26px] md:text-[30px] font-bold text-gray-900 mb-8">
+        <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100 mb-8 md:mb-12">
           Payment History
         </h1>
 
         {/* Filter Toolbar */}
-        <div className="flex flex-wrap items-end gap-4 mb-8">
-          {/* FROM Date */}
-          <div>
-            <DatePicker label="FROM" value={fromDate} onChange={setFromDate} />
-          </div>
+        <div className="flex flex-wrap items-end gap-4 md:gap-5 mb-8 md:mb-10">
+          <div className="w-full md:w-auto flex gap-4">
+            {/* FROM Date */}
+            <div className="flex-1 md:w-[200px]">
+              <DatePicker label="FROM" value={fromDate} onChange={setFromDate} />
+            </div>
 
-          {/* TO Date */}
-          <div>
-            <DatePicker label="TO" value={toDate} onChange={setToDate} />
+            {/* TO Date */}
+            <div className="flex-1 md:w-[200px]">
+              <DatePicker label="TO" value={toDate} onChange={setToDate} />
+            </div>
           </div>
-
           {/* Buttons */}
-          <div className="flex items-center gap-3">
+          <div className="flex gap-4 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => {
                 setFromDate(null);
                 setToDate(null);
               }}
-              className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 text-xs font-semibold px-6 py-2.5 rounded-md transition-colors h-[38px] flex items-center justify-center"
+              className="flex-1 sm:flex-none bg-white border border-gray-300 text-gray-600 text-xs font-bold px-6 md:px-8 py-3 rounded-[4px] transition-colors h-[42px] hover:bg-gray-50"
             >
               Reset
             </button>
             <button
               type="button"
               onClick={handleExportCSV}
-              className="bg-[#4545F0] hover:bg-[#3737D8] text-white text-xs font-semibold px-6 py-2.5 rounded-md shadow-sm transition-colors h-[38px] flex items-center justify-center"
+              className="flex-1 sm:flex-none bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs font-bold px-6 md:px-8 py-3 rounded-[4px] transition-colors h-[42px]"
             >
               Export (.CSV)
             </button>
@@ -362,8 +348,8 @@ export default function PaymentHistoryPage() {
         </div>
 
         {/* Table Container */}
-        <div className="border border-gray-200 rounded-lg overflow-x-auto bg-white shadow-none">
-          <div className="min-w-[760px] md:min-w-full">
+        <div className="border border-gray-300 rounded-[4px] overflow-x-auto min-h-[350px] hide-scrollbar cursor-grab">
+          <div className="min-w-[800px] md:min-w-full">
             {loading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4545F0]" />
@@ -380,17 +366,17 @@ export default function PaymentHistoryPage() {
             ) : (
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-white border-b border-gray-200">
-                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider w-[18%] border-r border-gray-200">
+                  <tr className="bg-white border-b border-gray-300">
+                    <th className="px-4 md:px-8 py-5 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider w-[20%] md:w-[15%] border-r border-gray-300">
                       DATE
                     </th>
-                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider w-[52%] border-r border-gray-200">
+                    <th className="px-4 md:px-8 py-5 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider w-[40%] md:w-[55%] border-r border-gray-300">
                       TRANSACTION
                     </th>
-                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider w-[16%] border-r border-gray-200">
+                    <th className="px-4 md:px-8 py-5 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider w-[20%] md:w-[15%] border-r border-gray-300">
                       AMOUNT
                     </th>
-                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider w-[14%]">
+                    <th className="px-4 md:px-8 py-5 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider w-[20%] md:w-[15%]">
                       DOCUMENTS
                     </th>
                   </tr>
@@ -399,31 +385,30 @@ export default function PaymentHistoryPage() {
                   {payments.map((p, i) => (
                     <tr
                       key={p._id || i}
-                      className={`border-b border-gray-200 hover:bg-gray-50/50 transition-colors ${
-                        i === payments.length - 1 ? "border-b-0" : ""
-                      }`}
+                      className={`border-b border-gray-300 text-sm hover:bg-gray-50 transition-colors ${i === payments.length - 1 ? "border-b-0" : ""
+                        }`}
                     >
                       {/* DATE */}
-                      <td className="px-6 py-3.5 text-xs text-gray-600 font-medium whitespace-nowrap border-r border-gray-200">
+                      <td className="px-4 md:px-8 py-6 text-gray-600 font-medium whitespace-nowrap border-r border-gray-300">
                         {formatRowDate(p.createdAt)}
                       </td>
 
                       {/* TRANSACTION */}
-                      <td className="px-6 py-3.5 text-sm font-bold text-gray-900 border-r border-gray-200">
+                      <td className="px-4 md:px-8 py-6 text-gray-600 font-bold leading-relaxed max-w-lg border-r border-gray-300">
                         {getTransactionDesc(p)}
                       </td>
 
                       {/* AMOUNT */}
-                      <td className="px-6 py-3.5 text-sm font-bold text-gray-900 border-r border-gray-200">
+                      <td className="px-4 md:px-8 py-6 text-gray-800 font-bold border-r border-gray-300">
                         {formatAmount(p.amount, p.currency)}
                       </td>
 
                       {/* DOCUMENTS */}
-                      <td className="px-6 py-3.5">
+                      <td className="px-4 md:px-8 py-6">
                         <button
                           type="button"
                           onClick={() => handleDownloadReceipt(p)}
-                          className="bg-[#4545F0] hover:bg-[#3737D8] text-white text-xs font-semibold px-6 py-2 rounded-md shadow-sm transition-all w-full max-w-[96px] text-center"
+                          className="text-xs font-bold px-4 md:px-6 py-2 rounded-[4px] transition-colors w-full text-center bg-[#4343F0] hover:bg-[#3232b7] text-white cursor-pointer"
                         >
                           Receipt
                         </button>
@@ -436,7 +421,7 @@ export default function PaymentHistoryPage() {
           </div>
         </div>
 
-        <div className="mt-16">
+        <div className="">
           <SupportNewsletter noPadding />
         </div>
       </main>

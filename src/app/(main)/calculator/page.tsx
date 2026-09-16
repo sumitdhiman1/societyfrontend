@@ -561,16 +561,16 @@ const ProposalPreview = ({
               baselineDays:
                 category.categoryKey === "graphics"
                   ? calculateGraphicsRawTimelineDays(
-                      sortedQuestions.find((sq: any) => isGraphicsItemsQuestion(sq)),
+                    sortedQuestions.find((sq: any) => isGraphicsItemsQuestion(sq)),
+                    selections,
+                    tier
+                  )
+                  : category.categoryKey === "seo"
+                    ? calculateSeoRawTimelineDays(
+                      sortedQuestions.find((sq: any) => sq.key === "SEO_ITEMS" || sq.key === "2"),
                       selections,
                       tier
                     )
-                  : category.categoryKey === "seo"
-                    ? calculateSeoRawTimelineDays(
-                        sortedQuestions.find((sq: any) => sq.key === "SEO_ITEMS" || sq.key === "2"),
-                        selections,
-                        tier
-                      )
                     : undefined,
             })
           );
@@ -1040,7 +1040,7 @@ const CalculatorPaymentForm = ({
       try {
         const u = authService.getUser();
         return resolveUserName(u);
-      } catch {}
+      } catch { }
     }
     return "";
   });
@@ -1120,7 +1120,7 @@ const CalculatorPaymentForm = ({
               setUserCountry(freshUser.country || freshUser.billingCountry);
             }
           }
-        } catch {}
+        } catch { }
       } else {
         setCardholderName("");
       }
@@ -1241,7 +1241,7 @@ const CalculatorPaymentForm = ({
           "pending_calculator_state",
           JSON.stringify({ categoryKey, selections })
         );
-      } catch {}
+      } catch { }
       router.push("/login?redirect=/calculator");
       return;
     }
@@ -1548,7 +1548,7 @@ const CalculatorPaymentForm = ({
                 value={cardholderName}
                 onChange={(e) => { setCardholderName(e.target.value); if (errors.cardHolderName) setErrors((p: any) => ({ ...p, cardHolderName: "" })); }}
                 placeholder="Name on the card"
-                className={`w-full border-b ${errors.cardHolderName ? "border-red-500" : "border-[#e5e7eb]"} py-2.5 bg-transparent outline-none placeholder-gray-400 focus:border-[#4F46E5] text-[15px] text-[#111827] font-medium transition-all`}
+                className={`w-full border-b ${errors.cardHolderName ? "border-red-500" : "border-[#e5e7eb]"} py-2.5 bg-transparent outline-none placeholder-gray-400 focus:border-[#4F46E5] text-[16px] text-[#111827] font-normal transition-all`}
               />
               {errors.cardHolderName && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.cardHolderName}</span>}
             </div>
@@ -1654,7 +1654,7 @@ export default function CalculatorPage() {
           if (profileUser?.country || profileUser?.billingCountry) {
             setUserCountry(profileUser.country || profileUser.billingCountry);
           }
-        } catch {}
+        } catch { }
       } else {
         setUserCountry("");
       }
@@ -1712,7 +1712,7 @@ export default function CalculatorPage() {
             if (parsed.selections) setSelections(parsed.selections);
             sessionStorage.removeItem("pending_calculator_state");
           }
-        } catch {}
+        } catch { }
       } catch (err) {
         console.error("Failed to load calculator config", err);
       } finally {
