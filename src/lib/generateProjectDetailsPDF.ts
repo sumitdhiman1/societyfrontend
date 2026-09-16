@@ -322,7 +322,7 @@ export function extractProjectDetails(data: any): ProjectPDFData {
   } else {
     deliverables = [
       {
-        name: title.startsWith("Free website analysis") ? "Free website analysis" : title,
+        name: title.toLowerCase().startsWith("free website analysis") ? "Free Website Analysis" : title,
         duration: data.duration || (data.timelineInDays ? `${data.timelineInDays} Days` : "-"),
         amount: rawTotalPrice,
       },
