@@ -16,6 +16,7 @@ import MastercardIcon from "@/components/icons/mastercard";
 import AmexIcon from "@/components/icons/amex";
 import DiscoverIcon from "@/components/icons/discover";
 import { LinkedIn } from "@/components/icons/linkedin";
+import MapPinIcon from "@/components/icons/map-pin";
 
 const httpClient = new HttpClient();
 
@@ -223,30 +224,59 @@ export default function Footer() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 md:gap-4 text-xs text-gray-600 py-4">
           <div className="flex flex-col gap-4 md:gap-9">
             <div className="flex items-center gap-2">
-              <Link href="/legal" className="hover:text-[#5356ff] transition-colors font-semibold">Legal</Link>
+              <Link href="/privacy-policy" className="hover:text-[#5356ff] transition-colors font-semibold">Legal</Link>
               <span className="text-[#5356ff] font-extrabold">|</span>
               <Link href="/privacy-policy" className="hover:text-[#5356ff] transition-colors font-semibold">Privacy</Link>
             </div>
-            <span className="font-bold text-[#363636]">© 2024 - Society | All rights reserved</span>
+            <span className="font-bold text-custom-4">© 2026 Society Web Solutions OÜ | All rights reserved</span>
           </div>
 
           <div className="flex items-center gap-5 text-[#4343f0]">
-            <Link href="/" className="hover:opacity-80 transition-opacity">
+            <a
+              href="https://www.facebook.com/societywebsolutions"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:opacity-80 transition-opacity"
+              aria-label="Facebook"
+            >
               <FacebookIcon className="text-primary-300 h-[34px] w-[34px]" />
-            </Link>
-            <Link href="/" className="hover:opacity-80 transition-opacity">
+            </a>
+            <a
+              href="https://www.instagram.com/societywebsolutions/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:opacity-80 transition-opacity"
+              aria-label="Instagram"
+            >
               <InstagramIcon className="text-primary-300 h-[34px] w-[34px]" />
-            </Link>
-            <Link href="/" className="hover:opacity-80 transition-opacity">
+            </a>
+            <a
+              href="https://www.linkedin.com/company/society-web-solutions/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:opacity-80 transition-opacity"
+              aria-label="LinkedIn"
+            >
               <LinkedIn className="text-primary-300 h-[34px] w-[34px]" />
-            </Link>
-            <Link href="/" className="hover:opacity-80 transition-opacity">
+            </a>
+            <a
+              href="https://x.com/societywebsol"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:opacity-80 transition-opacity"
+              aria-label="Twitter / X"
+            >
               <TwitterIcon className="text-primary-300 h-[34px] w-[34px]" />
-            </Link>
-
-            <Link href="/" className="hover:opacity-80 transition-opacity">
-              <YoutubeIcon className="text-primary-300 h-[34px] w-[34px]" />
-            </Link>
+            </a>
+            <a
+              href="https://www.google.com/maps/place/Society+Web+Solutions/@26.7513228,-80.1987192,67566m/data=!3m1!1e3!4m6!3m5!1s0x88d8d74a90ba8643:0x37ee39f019691890!8m2!3d26.7254856!4d-80.0817129!16s%2Fg%2F11fs35xtwp?entry=ttu&g_ep=EgoyMDI2MDgxMi4wIKXMDSoASAFQAw%3D%3D"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:opacity-80 transition-opacity"
+              aria-label="Google Maps"
+            >
+              <MapPinIcon className="text-primary-300 h-[34px] w-[34px]" />
+            </a>
           </div>
         </div>
       </div>
