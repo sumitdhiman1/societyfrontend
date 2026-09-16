@@ -1310,8 +1310,11 @@ export async function downloadCalculatorProjectPDF(data: any): Promise<void> {
 
     document.body.appendChild(container);
 
-    // Wait 150ms for layout and font rendering
-    await new Promise((r) => setTimeout(r, 150));
+    // Wait for fonts and layout rendering
+    if ((document as any).fonts?.ready) {
+      await (document as any).fonts.ready;
+    }
+    await new Promise((r) => setTimeout(r, 200));
 
     try {
       const pageElements = container.querySelectorAll(".pdf-page");
