@@ -66,7 +66,7 @@ export default function MyAnalysesPage() {
 
             return {
               id: aid,
-              title: item.title || `Free website analysis - ${cleanTarget}`,
+              title: item.title || "Free Website Analysis",
               analysisNumber: item.projectNumber || item.invoiceNumber || (aid ? `INV-2026-${aid.slice(-3).toUpperCase()}` : "INV-2026-150"),
               targetUrl: fullTargetUrl,
               displayTarget: cleanTarget,

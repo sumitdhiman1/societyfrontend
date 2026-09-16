@@ -690,12 +690,12 @@ function PaymentForm({
 
       {deliverableItems && deliverableItems.length > 0 && (
         <div className="border border-gray-200 rounded-lg overflow-x-auto mb-10">
-          <table className="w-full min-w-[500px] sm:min-w-0">
+          <table className="w-full min-w-[500px] sm:min-w-0 table-fixed">
             <thead>
               <tr className="border-b border-gray-200 bg-white">
-                <th className="text-left py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Item</th>
-                <th className="text-center py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Duration</th>
-                <th className="text-right py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Amount</th>
+                <th className="text-left py-3 px-3 sm:px-6 text-xs font-bold text-gray-500 uppercase tracking-wider w-[55%] sm:w-[58%]">Item</th>
+                <th className="text-left py-3 px-3 sm:px-6 text-xs font-bold text-gray-500 uppercase tracking-wider w-[25%] sm:w-[22%] whitespace-nowrap">Duration</th>
+                <th className="text-right py-3 px-3 sm:px-6 text-xs font-bold text-gray-500 uppercase tracking-wider w-[20%] whitespace-nowrap">Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -705,7 +705,7 @@ function PaymentForm({
                     <div className="font-medium mb-1">{item.description}</div>
                     {item.details && <div className="text-gray-400 text-[10px] sm:text-xs line-clamp-2">{item.details}</div>}
                   </td>
-                  <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm text-gray-500 whitespace-nowrap text-center">
+                  <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm text-gray-500 whitespace-nowrap text-left">
                     {item.duration} {item.unit || ""}
                   </td>
                   <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm text-gray-600 font-bold sm:font-medium text-right">
@@ -714,7 +714,7 @@ function PaymentForm({
                 </tr>
               ))}
 
-              {type !== "BUNDLE" && type !== "ANALYSIS" && addonItems.length > 0 && (
+              {type !== "BUNDLE" && addonItems.length > 0 && (
                 <>
                   <tr className="bg-gray-800">
                     <td colSpan={3} className="py-3 px-6 text-xs font-bold text-white tracking-wider">
@@ -727,7 +727,7 @@ function PaymentForm({
                         <div className="font-medium mb-1">{item.description}</div>
                         {item.details && <div className="text-gray-400 text-[10px] sm:text-xs line-clamp-2">{item.details}</div>}
                       </td>
-                      <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm text-gray-500 whitespace-nowrap text-center">
+                      <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm text-gray-500 whitespace-nowrap text-left">
                         {item.duration} {item.unit || ""}
                       </td>
                       <td className="py-4 px-3 sm:px-6 text-xs sm:text-sm text-gray-600 font-bold sm:font-medium text-right">
@@ -739,26 +739,27 @@ function PaymentForm({
               )}
 
               <tr className="border-t-2 border-gray-200 bg-gray-50/70">
-                <td colSpan={2} className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-500">
+                <td className="py-2.5 px-3 sm:px-6"></td>
+                <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
                   Base Amount:
                 </td>
                 <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
                   {formatPrice(projectSubtotal)}
                 </td>
               </tr>
-              {getActiveVatRate() > 0 && getVatAmount(projectSubtotal) > 0 && (
-                <tr className="bg-gray-50/70">
-                  <td colSpan={2} className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-500">
-                    VAT ({getActiveVatRate()}%):
-                  </td>
-                  <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
-                    {formatPrice(getVatAmount(projectSubtotal))}
-                  </td>
-                </tr>
-              )}
+              <tr className="bg-gray-50/70">
+                <td className="py-2.5 px-3 sm:px-6"></td>
+                <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
+                  VAT ({getActiveVatRate()}%):
+                </td>
+                <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
+                  {formatPrice(getVatAmount(projectSubtotal))}
+                </td>
+              </tr>
               <tr className="bg-blue-50/50 border-t border-gray-200">
-                <td colSpan={2} className="py-3 px-3 sm:px-6 text-right text-xs sm:text-sm font-bold text-gray-800 uppercase font-sans">
-                  Total Payable:
+                <td className="py-3 px-3 sm:px-6"></td>
+                <td className="py-3 px-3 sm:px-6 text-left text-xs sm:text-sm font-bold text-gray-800 uppercase font-sans whitespace-nowrap">
+                  TOTAL PAYABLE:
                 </td>
                 <td className="py-3 px-3 sm:px-6 text-right text-sm sm:text-base font-extrabold text-[#4343F0] font-sans">
                   {formatPrice(projectSubtotal + getVatAmount(projectSubtotal))}

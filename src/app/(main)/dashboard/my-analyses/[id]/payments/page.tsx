@@ -288,7 +288,7 @@ export default function AnalysisPaymentsPage() {
         isAddOn: false,
       }))
     : [{
-        description: activeAnalysis.title || "Free website analysis",
+        description: activeAnalysis.title || "Free Website Analysis",
         details: "Comprehensive Website Review, Detailed PDF Report, Key Performance Issues Identified, Actionable Recommendations",
         duration: activeAnalysis.timelineInDays ? `${activeAnalysis.timelineInDays} Days` : "5 Days",
         amount: Number(activeAnalysis.basePrice ?? (activeAnalysis.addons?.length ? 0 : (activeAnalysis.price ?? activeAnalysis.totalCost ?? 0))),
@@ -301,24 +301,49 @@ export default function AnalysisPaymentsPage() {
       description: item.description || item.title || item.name || "Add-On Deliverable",
       details: item.details || "",
       duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
-      amount: Number(item.amount ?? addon.totalCost ?? 0),
+      amount: Number(item.amount ?? addon.totalCost ?? addon.cost ?? 0),
       isAddOn: true,
     }))
   );
 
   // 3. Addon items from activeAnalysis.messages
-  const addonItemsFromMessages = (activeAnalysis.messages || [])
-    .filter((m: any) => m.type === "quote_proposal" || m.content?.status === "accepted" || m.content?.proposalStatus === "accepted" || m.proposalStatus === "accepted")
-    .flatMap((m: any) => {
-      const items = m.deliverableItems || m.content?.deliverableItems || m.content?.items || [];
-      return items.map((item: any) => ({
-        description: item.description || item.title || item.name || "Add-On Deliverable",
-        details: item.details || "",
-        duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
-        amount: Number(item.amount ?? item.cost ?? 0),
-        isAddOn: true,
-      }));
+  const addonItemsFromMessages = (activeAnalysis.messages || []).flatMap((msg: any, idx: number) => {
+    const isQuote = msg.type === "quote_proposal" || msg.content?.type === "quote_proposal";
+    if (!isQuote) return [];
+
+    const content = msg.content || {};
+    const subsequentMessages = (activeAnalysis.messages || []).slice(idx + 1);
+    const nextProposalIdx = subsequentMessages.findIndex(
+      (m: any) => m.type === "quote_proposal" || m.content?.type === "quote_proposal"
+    );
+    const relevantSubsequent = nextProposalIdx !== -1 ? subsequentMessages.slice(0, nextProposalIdx) : subsequentMessages;
+
+    const wasAcceptedAfterThis = relevantSubsequent.some((m: any) => {
+      const text = `${m.message || ""} ${m.content?.systemText || ""} ${m.content?.text || ""}`.toLowerCase();
+      return (
+        (m.type === "system_notification" || m.isSystem || m.type === "quote_action") &&
+        (text.includes("accepted") || text.includes("add-on proposal accepted") || text.includes("offer was accepted"))
+      );
     });
+
+    const isAccepted =
+      content.status === "accepted" ||
+      content.proposalStatus === "accepted" ||
+      msg.status === "accepted" ||
+      msg.proposalStatus === "accepted" ||
+      wasAcceptedAfterThis;
+
+    if (!isAccepted) return [];
+
+    const items = content.deliverableItems || content.items || msg.deliverableItems || [];
+    return items.map((item: any) => ({
+      description: item.description || item.title || item.name || "Add-On Deliverable",
+      details: item.details || "",
+      duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
+      amount: Number(item.amount ?? item.cost ?? 0),
+      isAddOn: true,
+    }));
+  });
 
   const allAddonItems = addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages;
   const deliverableItems = allAddonItems.length > 0 ? [...regularItems, ...allAddonItems] : regularItems;
@@ -453,7 +478,7 @@ export default function AnalysisPaymentsPage() {
       try {
         await downloadInvoicePDF({
           invoiceNumber: projectNumber,
-          projectTitle: activeAnalysis.title || "Free website analysis",
+          projectTitle: activeAnalysis.title || "Free Website Analysis",
           clientName: activeAnalysis.clientName || currentUser?.fullName || "Client",
           amount: 0,
           date: activeAnalysis.createdAt,
@@ -556,20 +581,20 @@ export default function AnalysisPaymentsPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="w-full sm:w-auto order-1 sm:order-2 bg-gray-50 sm:bg-transparent p-4 sm:p-0 rounded-lg space-y-2">
-                    <div className="flex justify-between items-center sm:justify-end gap-4">
-                      <span className="text-xs sm:text-sm text-gray-500 font-medium font-sans w-32 text-right">
+                  <div className="w-full sm:w-auto order-1 sm:order-2 bg-gray-50 sm:bg-transparent p-4 sm:p-0 rounded-lg space-y-2 flex flex-col sm:items-end">
+                    <div className="flex justify-between items-center sm:justify-end gap-3 w-full">
+                      <span className="text-xs sm:text-sm text-gray-500 font-medium font-sans">
                         Total Cost:
                       </span>
-                      <span className="text-sm sm:text-base font-bold text-gray-800 font-sans w-32 text-left">
+                      <span className="text-sm sm:text-base font-bold text-gray-800 font-sans min-w-[60px] text-right">
                         {formatPriceDisplay(0)}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center sm:justify-end gap-4">
-                      <span className="text-xs sm:text-sm text-gray-700 font-bold font-sans w-32 text-right">
+                    <div className="flex justify-between items-center sm:justify-end gap-3 w-full">
+                      <span className="text-xs sm:text-sm text-gray-700 font-bold font-sans">
                         Total Payable:
                       </span>
-                      <span className="text-base sm:text-lg font-extrabold text-[#4343F0] font-sans w-32 text-left">
+                      <span className="text-base sm:text-lg font-extrabold text-[#4343F0] font-sans min-w-[60px] text-right">
                         {formatPriceDisplay(0)}
                       </span>
                     </div>
@@ -578,16 +603,16 @@ export default function AnalysisPaymentsPage() {
               </div>
 
               <div className="border border-gray-200 rounded-lg overflow-x-auto mb-2" style={{ cursor: "grab" }}>
-                <table className="w-full min-w-[500px] sm:min-w-0">
+                <table className="w-full min-w-[500px] sm:min-w-0 table-fixed">
                   <thead>
                     <tr className="border-b border-gray-200 bg-white">
-                      <th className="text-left py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      <th className="text-left py-3 px-3 sm:px-6 text-xs font-bold text-gray-500 uppercase tracking-wider w-[55%] sm:w-[58%]">
                         Item
                       </th>
-                      <th className="text-left py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      <th className="text-left py-3 px-3 sm:px-6 text-xs font-bold text-gray-500 uppercase tracking-wider w-[25%] sm:w-[22%] whitespace-nowrap">
                         Duration
                       </th>
-                      <th className="text-right py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      <th className="text-right py-3 px-3 sm:px-6 text-xs font-bold text-gray-500 uppercase tracking-wider w-[20%] whitespace-nowrap">
                         Amount
                       </th>
                     </tr>
@@ -608,7 +633,8 @@ export default function AnalysisPaymentsPage() {
                       </td>
                     </tr>
                     <tr className="border-t-2 border-gray-200 bg-gray-50/70">
-                      <td colSpan={2} className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-500">
+                      <td className="py-2.5 px-3 sm:px-6"></td>
+                      <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
                         Base Amount:
                       </td>
                       <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
@@ -616,7 +642,8 @@ export default function AnalysisPaymentsPage() {
                       </td>
                     </tr>
                     <tr className="bg-gray-50/70">
-                      <td colSpan={2} className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-500">
+                      <td className="py-2.5 px-3 sm:px-6"></td>
+                      <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
                         VAT (0%):
                       </td>
                       <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
@@ -624,8 +651,9 @@ export default function AnalysisPaymentsPage() {
                       </td>
                     </tr>
                     <tr className="bg-blue-50/50 border-t border-gray-200">
-                      <td colSpan={2} className="py-3 px-3 sm:px-6 text-right text-xs sm:text-sm font-bold text-gray-800 uppercase font-sans">
-                        Total Payable:
+                      <td className="py-3 px-3 sm:px-6"></td>
+                      <td className="py-3 px-3 sm:px-6 text-left text-xs sm:text-sm font-bold text-gray-800 uppercase font-sans whitespace-nowrap">
+                        TOTAL PAYABLE:
                       </td>
                       <td className="py-3 px-3 sm:px-6 text-right text-sm sm:text-base font-extrabold text-[#4343F0] font-sans">
                         {formatPriceDisplay(0)}
@@ -641,7 +669,7 @@ export default function AnalysisPaymentsPage() {
               <div className="pb-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-3 flex-wrap">
                   <h3 className="text-lg sm:text-xl font-bold text-[#0D1939]">
-                    {activeAnalysis.title || "Free website analysis - test.com"}
+                    {activeAnalysis.title || "Free Website Analysis"}
                   </h3>
                   <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-[#E6F9EE] text-[#00A854] border border-[#00A854]/20">
                     SUCCEEDED
