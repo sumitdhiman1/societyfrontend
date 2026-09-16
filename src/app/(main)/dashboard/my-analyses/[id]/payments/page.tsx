@@ -603,16 +603,16 @@ export default function AnalysisPaymentsPage() {
               </div>
 
               <div className="border border-gray-200 rounded-lg overflow-x-auto mb-2" style={{ cursor: "grab" }}>
-                <table className="w-full min-w-[500px] sm:min-w-0">
+                <table className="w-full min-w-[500px] sm:min-w-0 table-fixed">
                   <thead>
                     <tr className="border-b border-gray-200 bg-white">
-                      <th className="text-left py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      <th className="text-left py-3 px-3 sm:px-6 text-xs font-bold text-gray-500 uppercase tracking-wider w-[55%] sm:w-[58%]">
                         Item
                       </th>
-                      <th className="text-left py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      <th className="text-left py-3 px-3 sm:px-6 text-xs font-bold text-gray-500 uppercase tracking-wider w-[25%] sm:w-[22%] whitespace-nowrap">
                         Duration
                       </th>
-                      <th className="text-right py-3 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      <th className="text-right py-3 px-3 sm:px-6 text-xs font-bold text-gray-500 uppercase tracking-wider w-[20%] whitespace-nowrap">
                         Amount
                       </th>
                     </tr>
