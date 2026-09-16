@@ -5,6 +5,7 @@ import Link from "next/link";
 import HttpClient from "@/lib/HttpClient";
 import StatusPopup from "@/components/common/StatusPopup";
 import { supportService } from "@/lib/supportService";
+import { useChatWidget } from "@/context/ChatWidgetContext";
 
 const httpClient = new HttpClient();
 
@@ -42,6 +43,7 @@ interface ContactPageData {
 }
 
 export default function ContactUsPage() {
+  const { openChat } = useChatWidget();
   const [pageData, setPageData] = useState<ContactPageData | null>(null);
   const [formData, setFormData] = useState({
     fullName: "",
@@ -210,37 +212,42 @@ export default function ContactUsPage() {
             <h2 className="text-2xl font-bold text-gray-500 mb-8">{formHeadingText}</h2>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="fullName" className="font-bold text-gray-500 text-sm">Full name</label>
+                <div className="flex flex-col">
+                  <label htmlFor="fullName" className="text-sm font-bold text-gray-600 mb-2 block">
+                    Full name <span className="text-red-500">*</span>
+                  </label>
                   <input
                     id="fullName"
                     required
                     placeholder={pageData?.form?.fields?.find((f) => f.name === "fullName")?.placeholder || "Enter your full name"}
-                    className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none focus:border-gray-600"
+                    className="w-full border border-gray-400 rounded-[4px] px-3 py-2 text-sm placeholder:text-sm placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-400 h-[42px]"
                     type="text"
                     value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                   />
                 </div>
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="email" className="font-bold text-gray-500 text-sm">Email</label>
+                <div className="flex flex-col">
+                  <label htmlFor="email" className="text-sm font-bold text-gray-600 mb-2 block">
+                    Email <span className="text-red-500">*</span>
+                  </label>
                   <input
                     id="email"
                     required
                     placeholder={pageData?.form?.fields?.find((f) => f.name === "email")?.placeholder || "Enter your email"}
-                    className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none focus:border-gray-600"
+                    className="w-full border border-gray-400 rounded-[4px] px-3 py-2 text-sm placeholder:text-sm placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-400 h-[42px]"
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
                 </div>
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="phone" className="font-bold text-gray-500 text-sm">Phone number</label>
+                <div className="flex flex-col">
+                  <label htmlFor="phone" className="text-sm font-bold text-gray-600 mb-2 block">
+                    Phone number
+                  </label>
                   <input
                     id="phone"
-                    required
                     placeholder={pageData?.form?.fields?.find((f) => f.name === "phone")?.placeholder || "Enter your phone number"}
-                    className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none focus:border-gray-600"
+                    className="w-full border border-gray-400 rounded-[4px] px-3 py-2 text-sm placeholder:text-sm placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-400 h-[42px]"
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -248,27 +255,31 @@ export default function ContactUsPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2">
-                <label htmlFor="subject" className="font-bold text-gray-500 text-sm">Subject</label>
+              <div className="flex flex-col">
+                <label htmlFor="subject" className="text-sm font-bold text-gray-600 mb-2 block">
+                  Subject <span className="text-red-500">*</span>
+                </label>
                 <input
                   id="subject"
                   required
                   placeholder={pageData?.form?.fields?.find((f) => f.name === "subject")?.placeholder || "Enter subject"}
-                  className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none focus:border-gray-600"
+                  className="w-full border border-gray-400 rounded-[4px] px-3 py-2 text-sm placeholder:text-sm placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-400 h-[42px]"
                   type="text"
                   value={formData.subject}
                   onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                 />
               </div>
 
-              <div className="flex flex-col gap-2">
-                <label htmlFor="message" className="font-bold text-gray-500 text-sm">Message</label>
+              <div className="flex flex-col">
+                <label htmlFor="message" className="text-sm font-bold text-gray-600 mb-2 block">
+                  Message <span className="text-red-500">*</span>
+                </label>
                 <textarea
                   id="message"
                   rows={8}
                   required
                   placeholder={pageData?.form?.fields?.find((f) => f.name === "message")?.placeholder || "Enter your message"}
-                  className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none focus:border-gray-600 resize-none"
+                  className="w-full border border-gray-400 rounded-[4px] px-3 py-2 text-sm placeholder:text-sm placeholder:text-gray-400 text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-400 resize-none"
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                 />
@@ -321,9 +332,10 @@ export default function ContactUsPage() {
                 <p className="text-xs text-gray-500 mb-3 font-semibold">{region3.availability}</p>
               )}
               <div className="flex flex-col gap-3">
-                <Link
-                  className="flex items-center gap-4 w-full bg-primary-300 hover:bg-primary-100 text-white px-4 py-3 rounded-md border-[3px] border-gray-300 transition-colors cursor-pointer shadow-xs"
-                  href="/help-support/live-chat"
+                <button
+                  type="button"
+                  onClick={openChat}
+                  className="flex items-center gap-4 w-full bg-primary-300 hover:bg-primary-100 text-white px-4 py-3 rounded-md border-[3px] border-gray-300 transition-colors cursor-pointer shadow-xs text-left"
                 >
                   <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path
@@ -333,7 +345,7 @@ export default function ContactUsPage() {
                     />
                   </svg>
                   <span className="text-sm font-semibold">Live chat</span>
-                </Link>
+                </button>
                 <Link
                   className="flex items-center gap-4 w-full bg-primary-300 hover:bg-primary-100 text-white px-4 py-3 rounded-md border-[3px] border-gray-300 transition-colors cursor-pointer shadow-xs"
                   href="/help-support/submit-ticket"

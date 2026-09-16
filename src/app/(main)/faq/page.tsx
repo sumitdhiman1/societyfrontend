@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
-import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import { supportService } from "@/lib/supportService";
 
 interface FAQItem {
@@ -159,40 +157,12 @@ export default function FAQPage() {
         )}
 
         {/* FAQ Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 items-start gap-6 mb-12 md:mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 items-start gap-6">
           {pageData.faqItems.map((item) => (
             <Accordion key={item.id} title={item.question}>
               {item.answer}
             </Accordion>
           ))}
-        </div>
-
-        {/* CTA Grid Section (if provided) */}
-        {pageData.ctaCards && pageData.ctaCards.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12 md:mb-16">
-            {pageData.ctaCards.map((card, idx) => (
-              <div
-                key={idx}
-                className="bg-white border border-gray-200 rounded-xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm hover:shadow-md transition-all"
-              >
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-1">{card.title}</h3>
-                  <p className="text-xs sm:text-sm text-gray-500">Quick link & support assistance</p>
-                </div>
-                <Link
-                  href={card.link || "#"}
-                  className="bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold py-2.5 px-6 rounded-lg transition-all shadow-sm active:scale-95 shrink-0"
-                >
-                  {card.buttonText || "Learn More"}
-                </Link>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Newsletter / Support Section */}
-        <div>
-          <SupportNewsletter noPadding />
         </div>
       </main>
     </div>

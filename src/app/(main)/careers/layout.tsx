@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import HomeClient from "./HomeClient";
 
 export async function generateMetadata(): Promise<Metadata> {
   try {
@@ -8,12 +7,12 @@ export async function generateMetadata(): Promise<Metadata> {
       process.env.NEXT_PUBLIC_API_URL ||
       "http://localhost:5001";
 
-    const res = await fetch(`${apiUrl}/pages/getpagebyslug/home`, {
+    const res = await fetch(`${apiUrl}/pages/getpagebyslug/careers`, {
       next: { revalidate: 60 },
     });
 
     if (!res.ok) {
-      throw new Error(`Failed to fetch Home SEO data: ${res.status}`);
+      throw new Error(`Failed to fetch Careers SEO data: ${res.status}`);
     }
 
     const json = await res.json();
@@ -21,11 +20,10 @@ export async function generateMetadata(): Promise<Metadata> {
     const seo = page?.seo || {};
 
     const title =
-      seo.title ||
-      "Society Web Solutions | Digital Design, Development & Branding";
+      seo.title || "Careers at Society Web Solutions | Join Our Remote Team";
     const description =
       seo.description ||
-      "Society Web Solutions builds high-performance custom websites, mobile apps, web design, branding, and digital marketing tailored to elevate your business.";
+      "Join our international team and help us build the future of Society Web Solutions. Explore open remote and on-site positions.";
     const keywords = Array.isArray(seo.keywords)
       ? seo.keywords
       : typeof seo.keywords === "string"
@@ -51,15 +49,19 @@ export async function generateMetadata(): Promise<Metadata> {
       },
     };
   } catch (error) {
-    console.error("Error generating dynamic Home metadata:", error);
+    console.error("Error generating dynamic Careers metadata:", error);
     return {
-      title: "Society Web Solutions | Digital Design, Development & Branding",
+      title: "Careers at Society Web Solutions | Join Our Remote Team",
       description:
-        "Society Web Solutions builds high-performance custom websites, mobile apps, web design, branding, and digital marketing tailored to elevate your business.",
+        "Join our international team and help us build the future of Society Web Solutions. Explore open remote and on-site positions.",
     };
   }
 }
 
-export default function Home() {
-  return <HomeClient />;
+export default function CareersLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <>{children}</>;
 }

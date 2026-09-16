@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import HomeClient from "./HomeClient";
 
 export async function generateMetadata(): Promise<Metadata> {
   try {
@@ -8,24 +7,22 @@ export async function generateMetadata(): Promise<Metadata> {
       process.env.NEXT_PUBLIC_API_URL ||
       "http://localhost:5001";
 
-    const res = await fetch(`${apiUrl}/pages/getpagebyslug/home`, {
+    const res = await fetch(`${apiUrl}/pages/getpagebyslug/about-us`, {
       next: { revalidate: 60 },
     });
 
     if (!res.ok) {
-      throw new Error(`Failed to fetch Home SEO data: ${res.status}`);
+      throw new Error(`Failed to fetch About Us SEO data: ${res.status}`);
     }
 
     const json = await res.json();
     const page = json?.data?.data || json?.data;
     const seo = page?.seo || {};
 
-    const title =
-      seo.title ||
-      "Society Web Solutions | Digital Design, Development & Branding";
+    const title = seo.title || "About Us | Society Web Solutions";
     const description =
       seo.description ||
-      "Society Web Solutions builds high-performance custom websites, mobile apps, web design, branding, and digital marketing tailored to elevate your business.";
+      "Learn more about Society Web Solutions, our mission, our team, and our dedication to crafting high-performance digital experiences.";
     const keywords = Array.isArray(seo.keywords)
       ? seo.keywords
       : typeof seo.keywords === "string"
@@ -51,15 +48,19 @@ export async function generateMetadata(): Promise<Metadata> {
       },
     };
   } catch (error) {
-    console.error("Error generating dynamic Home metadata:", error);
+    console.error("Error generating dynamic About Us metadata:", error);
     return {
-      title: "Society Web Solutions | Digital Design, Development & Branding",
+      title: "About Us | Society Web Solutions",
       description:
-        "Society Web Solutions builds high-performance custom websites, mobile apps, web design, branding, and digital marketing tailored to elevate your business.",
+        "Learn more about Society Web Solutions, our mission, our team, and our dedication to crafting high-performance digital experiences.",
     };
   }
 }
 
-export default function Home() {
-  return <HomeClient />;
+export default function AboutUsLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <>{children}</>;
 }

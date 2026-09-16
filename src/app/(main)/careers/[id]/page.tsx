@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import HttpClient from "@/lib/HttpClient";
 import StatusPopup from "@/components/common/StatusPopup";
-import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 const httpClient = new HttpClient();
 
@@ -120,29 +119,13 @@ export default function CareerSinglePage() {
     message: "",
   });
 
-  // Find fallback matching id or key
-  const getInitialJob = (): JobDetail => {
-    if (jobId && defaultJobs[jobId]) {
-      return defaultJobs[jobId];
-    }
-    // Search in defaultJobs by partial match or index
-    const keys = Object.keys(defaultJobs);
-    for (const key of keys) {
-      if (key.includes(jobId) || jobId.includes(key)) {
-        return defaultJobs[key];
-      }
-    }
-    return defaultJobs["job-1786961518485"];
-  };
-
-  const [currentJob, setCurrentJob] = useState<JobDetail>(getInitialJob);
+  const [currentJob, setCurrentJob] = useState<JobDetail | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // When jobId changes, re-evaluate local match
-    setCurrentJob(getInitialJob());
-
-    const fetchFromApi = async () => {
+    const fetchJob = async () => {
       try {
+        setIsLoading(true);
         const res = await httpClient.get<any>("/pages/getpagebyslug/careers");
         if (res?.isSuccessful && res?.data) {
           const p = res.data?.data || res.data;
@@ -169,53 +152,77 @@ export default function CareerSinglePage() {
             const found = rawJobs.find(
               (j: any, idx: number) =>
                 j.id === jobId ||
+                j.slug === jobId ||
                 `job-${idx + 1}` === jobId ||
-                (j.title && j.title.toLowerCase().replace(/\s+/g, "-") === jobId.toLowerCase())
+                j.applyUrl?.endsWith(`/${jobId}`) ||
+                (j.title &&
+                  j.title
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, "-")
+                    .replace(/(^-|-$)+/g, "") ===
+                    jobId.toLowerCase().replace(/(^-|-$)+/g, ""))
             );
 
             if (found) {
-              const reqs = Array.isArray(found.requirements)
-                ? found.requirements
-                : typeof found.requirements === "string"
-                ? found.requirements.split("\n").map((r: string) => r.trim()).filter(Boolean)
-                : [
-                    "Project Management",
-                    "Client Communication",
-                    "Task Coordination",
-                    "Attention to Detail",
-                    "Fluency in Estonian",
-                  ];
+              let parsedReqs: string[] = [];
+              if (Array.isArray(found.requirements)) {
+                parsedReqs = found.requirements.map((r: any) => String(r).trim()).filter(Boolean);
+              } else if (typeof found.requirements === "string") {
+                const cleaned = found.requirements
+                  .replace(/<br\s*\/?>/gi, "\n")
+                  .replace(/<\/p>\s*<p>/gi, "\n")
+                  .replace(/<[^>]*>/g, "");
+                if (cleaned.includes("\n")) {
+                  parsedReqs = cleaned
+                    .split("\n")
+                    .map((r: string) => r.replace(/^[-•*]\s*/, "").trim())
+                    .filter(Boolean);
+                } else if (cleaned.includes(",")) {
+                  parsedReqs = cleaned
+                    .split(",")
+                    .map((r: string) => r.replace(/^[-•*]\s*/, "").trim())
+                    .filter(Boolean);
+                } else if (cleaned.trim()) {
+                  parsedReqs = [cleaned.trim()];
+                }
+              }
 
               setCurrentJob({
                 id: found.id || jobId,
-                title: found.title || "Project Manager",
-                location: found.location || "Estonia",
+                title: found.title || "Career Opportunity",
+                location: found.location || "Remote",
                 type: found.type || "Full-time",
                 publishedDate: found.publishedDate || "Published August 2026",
-                description:
-                  found.description ||
-                  `We are looking for a Project Manager to oversee client projects across web design, website development, and digital marketing. In this role, you will manage project timelines, coordinate communication between clients and internal teams, track deliverables, and ensure work is completed to a high standard.
-
-You will be responsible for keeping projects organized, handling client feedback, monitoring progress, and making sure deadlines and expectations are managed clearly throughout the process. This position requires strong organizational skills, clear communication, and the ability to manage multiple projects at the same time.
-
-Details such as salary and working hours will be discussed privately with shortlisted candidates.`,
-                requirements: reqs.length > 0 ? reqs : [
-                  "Project Management",
-                  "Client Communication",
-                  "Task Coordination",
-                  "Attention to Detail",
-                  "Fluency in Estonian",
-                ],
+                description: found.description || "",
+                requirements: parsedReqs,
               });
+              return;
             }
           }
         }
+
+        // Fallback to local default if API didn't have match
+        if (defaultJobs[jobId]) {
+          setCurrentJob(defaultJobs[jobId]);
+        } else {
+          const match = Object.values(defaultJobs).find(
+            (dj) => dj.id === jobId || dj.title.toLowerCase().includes(jobId.toLowerCase())
+          );
+          setCurrentJob(match || defaultJobs["job-1786961518485"]);
+        }
       } catch (err) {
         console.error("API fetch error on careers single page:", err);
+        if (defaultJobs[jobId]) {
+          setCurrentJob(defaultJobs[jobId]);
+        } else {
+          setCurrentJob(defaultJobs["job-1786961518485"]);
+        }
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    fetchFromApi();
+    fetchJob();
   }, [jobId]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -243,7 +250,7 @@ Details such as salary and working hours will be discussed privately with shortl
         isOpen: true,
         type: "success",
         title: "Application Received",
-        message: `Thank you for applying for the ${currentJob.title} position! Our recruitment team will review your application and be in touch soon.`,
+        message: `Thank you for applying for the ${currentJob?.title || "selected"} position! Our recruitment team will review your application and be in touch soon.`,
       });
 
       setFormData({
@@ -265,6 +272,22 @@ Details such as salary and working hours will be discussed privately with shortl
     }
   };
 
+  if (isLoading || !currentJob) {
+    return (
+      <div className="bg-white min-h-screen flex flex-col font-sans">
+        <div className="bg-primary-100 border-[3px] border-gray-600">
+          <div className="container mx-auto px-4 md:px-8 lg:px-[54px] py-10 md:py-16 max-w-[1536px]">
+            <div className="h-9 md:h-10 bg-white/20 rounded-md w-1/3 animate-pulse" />
+          </div>
+        </div>
+        <div className="flex-grow flex flex-col items-center justify-center py-32 gap-3">
+          <div className="w-9 h-9 border-4 border-[#4343f0]/20 border-t-[#4343f0] rounded-full animate-spin" />
+          <p className="text-gray-400 text-sm">Loading career details...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white min-h-screen flex flex-col font-sans">
       <StatusPopup
@@ -279,7 +302,7 @@ Details such as salary and working hours will be discussed privately with shortl
       <div className="bg-primary-100 border-[3px] border-gray-600">
         <div className="container mx-auto px-4 md:px-8 lg:px-[54px] py-10 md:py-16 max-w-[1536px]">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">
-            {currentJob.title}
+            {currentJob.title || "Career Opportunity"}
           </h1>
         </div>
       </div>
@@ -289,9 +312,16 @@ Details such as salary and working hours will be discussed privately with shortl
         {/* Description */}
         <div className="mb-10 md:mb-14">
           <h2 className="text-lg font-bold text-gray-600 mb-4">Description</h2>
-          <p className="text-gray-500 text-sm leading-relaxed whitespace-pre-line max-w-[1600px]">
-            {currentJob.description}
-          </p>
+          {currentJob.description && (currentJob.description.includes('<') || currentJob.description.includes('&')) ? (
+            <div
+              className="text-gray-500 text-sm leading-relaxed max-w-[1600px] [&_p]:mb-3 [&_p:last-child]:mb-0 [&_a]:underline [&_a]:text-[#4343F0]"
+              dangerouslySetInnerHTML={{ __html: currentJob.description }}
+            />
+          ) : (
+            <p className="text-gray-500 text-sm leading-relaxed whitespace-pre-line max-w-[1600px]">
+              {currentJob.description || "No description provided."}
+            </p>
+          )}
         </div>
 
         {/* 2-Column: Requirements & Apply */}
@@ -300,7 +330,7 @@ Details such as salary and working hours will be discussed privately with shortl
           <div className="lg:w-1/2 w-full">
             <h2 className="text-lg font-bold text-gray-600 mb-6">Requirements</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6">
-              {currentJob.requirements.map((req, idx) => (
+              {(currentJob.requirements || []).map((req, idx) => (
                 <span key={idx} className="text-gray-500 font-bold text-sm">
                   {req}
                 </span>
@@ -401,11 +431,6 @@ Details such as salary and working hours will be discussed privately with shortl
               </div>
             </form>
           </div>
-        </div>
-
-        {/* Support Newsletter */}
-        <div className="mt-20 md:mt-28">
-          <SupportNewsletter />
         </div>
       </main>
     </div>

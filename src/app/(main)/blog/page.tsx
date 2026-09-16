@@ -117,9 +117,9 @@ function BlogContent() {
   };
 
   return (
-    <div className="bg-[#041235] min-h-screen flex flex-col font-sans text-gray-600">
+    <div className="bg-[#041235] min-h-screen flex flex-col font-sans text-gray-600 w-full max-w-full overflow-x-hidden">
       {/* Hero Section */}
-      <div className="bg-[#041235] text-white pt-28 pb-0 shadow-sm">
+      <div className="bg-[#041235] text-white pt-28 pb-0 shadow-sm w-full">
         <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] flex flex-col items-center">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-24 text-center text-white">
             Our Blog
@@ -151,7 +151,7 @@ function BlogContent() {
         </div>
       </div>
 
-      <main className="bg-[#041235] flex-grow w-full max-w-[1600px] mx-auto pt-16 pb-20">
+      <main className="bg-[#041235] flex-grow w-full max-w-[1536px] mx-auto pt-16 pb-20 min-w-0">
         {isLoading ? (
           <div className="flex justify-center items-center py-24">
             <div className="text-center">
@@ -189,7 +189,7 @@ function BlogContent() {
           </div>
         ) : (
           <>
-            <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px]">
+            <div className="w-full mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px]">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 xl:gap-10">
                 {blogs.map((blog) => {
                   const imageSrc = blog.coverImage || blog.featuredImage || blog.thumbnail;
@@ -273,7 +273,9 @@ function BlogContent() {
         )}
 
         {/* Support & Newsletter Section */}
-        <SupportNewsletter />
+        <div className="w-full mt-12">
+          <SupportNewsletter noPadding={false} />
+        </div>
       </main>
     </div>
   );

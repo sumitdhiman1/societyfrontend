@@ -97,10 +97,10 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
   const bgImage = post.coverImage || post.featuredImage || post.thumbnail;
 
   return (
-    <div className="bg-[#041235] min-h-screen flex flex-col font-sans text-gray-300">
+    <div className="bg-[#041235] min-h-screen flex flex-col font-sans text-gray-300 w-full max-w-full overflow-x-hidden">
       {/* Hero Banner with Background Image and Dark Overlay */}
       <div
-        className="relative h-[45vh] min-h-[360px] w-full bg-cover bg-center flex items-center justify-center"
+        className="relative h-[45vh] min-h-[360px] w-full bg-cover bg-center flex items-center justify-center overflow-hidden"
         style={{
           backgroundImage: bgImage ? `url("${bgImage}")` : undefined,
         }}
@@ -117,9 +117,9 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
       </div>
 
       {/* Main Content Area */}
-      <main className="flex-grow w-full py-6 md:py-10">
-        <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px]">
-          <div className="max-w-5xl mx-auto w-full">
+      <main className="flex-grow w-full py-6 md:py-10 min-w-0">
+        <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] w-full min-w-0">
+          <div className="max-w-5xl mx-auto w-full min-w-0 overflow-hidden">
             {/* Breadcrumb Navigation */}
             <div className="mb-6 w-full text-sm text-gray-400">
               <Link className="hover:text-blue-400 transition-colors" href="/">
@@ -138,7 +138,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
             {/* Article Content */}
             {post.content ? (
               <article
-                className="blog-content prose prose-lg prose-invert w-full max-w-none text-gray-300
+                className="blog-content prose prose-lg prose-invert w-full max-w-none text-gray-300 break-normal
                         prose-headings:text-white prose-headings:font-bold
                         prose-h2:text-2xl md:prose-h2:text-3xl prose-h2:mt-8 prose-h2:mb-4
                         prose-h3:text-xl md:prose-h3:text-2xl prose-h3:mt-6 prose-h3:mb-3
@@ -151,7 +151,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
                         prose-img:rounded-xl prose-img:max-w-full prose-img:mx-auto prose-img:block prose-img:shadow-lg
                         prose-pre:overflow-x-auto prose-pre:max-w-full prose-pre:rounded-xl
                         prose-table:w-full prose-table:overflow-x-auto
-                        [&_*]:max-w-full [&_img]:h-auto [&_pre]:whitespace-pre-wrap"
+                        [&_img]:max-w-full [&_table]:max-w-full [&_pre]:max-w-full [&_iframe]:max-w-full [&_img]:h-auto [&_pre]:whitespace-pre-wrap"
                 dangerouslySetInnerHTML={{ __html: post.content }}
               />
             ) : (

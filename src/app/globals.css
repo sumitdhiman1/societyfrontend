@@ -90,24 +90,60 @@ select:-webkit-autofill {
   line-height: 1.65 !important;
 }
 
-.blog-content p>strong:only-child,
-.blog-content p>b:only-child,
-.blog-content p>strong:first-child:last-child,
-.blog-content p>b:first-child:last-child {
-  color: #fff !important;
-  margin-top: 1.25rem !important;
-  margin-bottom: .35rem !important;
-  font-size: 1.15rem !important;
-  font-weight: 800 !important;
-  display: block !important;
+.blog-content,
+.blog-content-cs,
+.rich-text-content {
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  word-wrap: normal !important;
+  line-break: auto !important;
+  text-wrap: wrap !important;
+  white-space: normal !important;
+  -webkit-hyphens: none !important;
+  hyphens: none !important;
 }
 
-.blog-content-cs p em {
+.blog-content p,
+.blog-content li,
+.blog-content h1,
+.blog-content h2,
+.blog-content h3,
+.blog-content h4,
+.blog-content h5,
+.blog-content h6,
+.blog-content blockquote,
+.blog-content dt,
+.blog-content dd,
+.blog-content article,
+.blog-content div {
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  word-wrap: normal !important;
+  line-break: auto !important;
+  text-wrap: wrap !important;
+  white-space: normal !important;
+  -webkit-hyphens: none !important;
+  hyphens: none !important;
+}
+
+.blog-content span,
+.blog-content strong,
+.blog-content b,
+.blog-content em,
+.blog-content i,
+.blog-content u {
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  word-wrap: normal !important;
+  white-space: normal !important;
+  display: inline;
+  -webkit-hyphens: none !important;
+  hyphens: none !important;
+}
+
+.blog-content a {
+  word-break: break-word;
   overflow-wrap: break-word;
-  word-break: normal;
-  -webkit-hyphens: none;
-  hyphens: none;
-  color: #d1d5db !important;
 }
 
 .blog-content-cs h2 {
@@ -144,39 +180,10 @@ select:-webkit-autofill {
   color: #d1d5db !important;
 }
 
-.blog-content span,
-.blog-content strong,
-.blog-content em {
-  overflow-wrap: break-word;
-  word-break: normal;
-  -webkit-hyphens: none;
-  hyphens: none;
-}
-
 .blog-content strong,
 .blog-content b {
   color: #fff !important;
   font-weight: 700 !important;
-}
-
-.blog-content p,
-.blog-content li,
-.blog-content td,
-.blog-content th,
-.blog-content h1,
-.blog-content h2,
-.blog-content h3,
-.blog-content h4,
-.blog-content h5,
-.blog-content h6,
-.blog-content blockquote,
-.blog-content span,
-.blog-content strong,
-.blog-content em {
-  overflow-wrap: break-word;
-  word-break: normal;
-  -webkit-hyphens: none;
-  hyphens: none;
 }
 
 .blog-content img,
@@ -237,36 +244,6 @@ select:-webkit-autofill {
   line-height: 1.65 !important;
 }
 
-.blog-content strong,
-.blog-content b {
-  color: #fff !important;
-  font-weight: 700 !important;
-}
-
-.blog-content p,
-.blog-content li,
-.blog-content td,
-.blog-content th,
-.blog-content h1,
-.blog-content h2,
-.blog-content h3,
-.blog-content h4,
-.blog-content h5,
-.blog-content h6,
-.blog-content blockquote,
-.blog-content span,
-.blog-content strong,
-.blog-content em {
-  overflow-wrap: break-word;
-  word-break: normal;
-  -webkit-hyphens: none;
-  hyphens: none;
-}
-
-.blog-content p br {
-  display: none;
-}
-
 .blog-content ol,
 .ql-editor-preview ol,
 .rich-text-content ol,
@@ -275,22 +252,6 @@ select:-webkit-autofill {
   margin-bottom: .75rem !important;
   padding-left: 1.5rem !important;
   list-style-type: decimal !important;
-}
-
-.blog-content p,
-.blog-content span,
-.blog-content em,
-.blog-content u,
-.blog-content i,
-.blog-content li,
-.blog-content ul,
-.blog-content ol,
-.blog-content blockquote,
-.blog-content td,
-.blog-content th,
-.blog-content dt,
-.blog-content dd {
-  color: #d1d5db !important;
 }
 
 .blog-content a,
@@ -310,16 +271,23 @@ select:-webkit-autofill {
   line-height: 1.35 !important;
 }
 
-.blog-content p>strong:only-child,
-.blog-content p>b:only-child,
-.blog-content p>strong:first-child:last-child,
-.blog-content p>b:first-child:last-child {
-  color: #fff !important;
-  margin-top: 1.25rem !important;
-  margin-bottom: .35rem !important;
-  font-size: 1.15rem !important;
-  font-weight: 800 !important;
+.blog-content table {
   display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+}
+
+.blog-content pre {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
+
+.blog-content iframe,
+.blog-content video {
+  max-width: 100% !important;
 }
 
 .company-bg {

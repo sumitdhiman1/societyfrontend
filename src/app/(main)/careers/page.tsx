@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import HttpClient from "@/lib/HttpClient";
-import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 const httpClient = new HttpClient();
 
@@ -176,9 +175,16 @@ export default function CareersPage() {
           <h2 className="text-xl font-bold text-gray-600 mb-4">
             {data.descTitle || "Join Our Team"}
           </h2>
-          <div className="text-gray-500 text-sm leading-relaxed max-w-[1600px] [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-[#4343F0] [&_a]:underline">
-            <p>{data.descContent}</p>
-          </div>
+          {data.descContent && (data.descContent.includes('<') || data.descContent.includes('&')) ? (
+            <div
+              className="text-gray-500 text-sm leading-relaxed max-w-[1600px] [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-[#4343F0] [&_a]:underline"
+              dangerouslySetInnerHTML={{ __html: data.descContent }}
+            />
+          ) : (
+            <div className="text-gray-500 text-sm leading-relaxed max-w-[1600px] whitespace-pre-line [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-[#4343F0] [&_a]:underline">
+              <p>{data.descContent}</p>
+            </div>
+          )}
         </div>
 
         {/* Openings Grid */}
@@ -229,11 +235,6 @@ export default function CareersPage() {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Support Newsletter */}
-        <div className="mt-16 md:mt-24">
-          <SupportNewsletter />
         </div>
       </main>
     </div>
