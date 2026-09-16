@@ -485,20 +485,35 @@ function paginateCalculatorInvoice(
   if (d.duration) summaryCardHeight += 44;
   if (hasVat) summaryCardHeight += 44;
   if (hasPartialPayment) summaryCardHeight += 88;
-  const summaryFooterHeight = summaryCardHeight + 80 + 30; // summary + footer + margins
 
-  const page1MaxWithSummary = Math.max(180, 680 - summaryFooterHeight);
-  const page1MaxItemsOnly = 660;
-  const subsequentMaxWithSummary = Math.max(260, 920 - summaryFooterHeight);
-  const subsequentMaxItemsOnly = 880;
+  const footerHeight = 100;
+  const page1MaxContent = 680;
+  const subsequentMaxContent = 880;
 
-  // Case 1: Everything fits on Page 1 (items + summary + footer)
-  if (totalItemsHeight <= page1MaxWithSummary) {
+  const page1MaxWithSummaryAndFooter = Math.max(180, page1MaxContent - summaryCardHeight - footerHeight);
+  const page1MaxWithSummaryOnly = Math.max(180, page1MaxContent - summaryCardHeight);
+  const page1MaxItemsOnly = page1MaxContent;
+
+  const subsequentMaxWithSummaryAndFooter = Math.max(260, subsequentMaxContent - summaryCardHeight - footerHeight);
+  const subsequentMaxWithSummaryOnly = Math.max(260, subsequentMaxContent - summaryCardHeight);
+  const subsequentMaxItemsOnly = subsequentMaxContent;
+
+  // Case 1: Everything fits on Page 1 (items + summary + footer) -> 1 Page PDF
+  if (totalItemsHeight <= page1MaxWithSummaryAndFooter) {
     return [{ pageItems: items, hasSummaryCard: true }];
   }
 
-  // Case 2: All line items fit on Page 1, but adding Summary Card + Footer overflows Page 1.
-  // Push payment total (summary card) + footer to next page!
+  // Case 2: Items + Summary Card fit on Page 1, but footer does NOT fit on Page 1.
+  // Keep Items + Summary Card on Page 1, and Page 2 contains ONLY the footer!
+  if (totalItemsHeight <= page1MaxWithSummaryOnly) {
+    return [
+      { pageItems: items, hasSummaryCard: true },
+      { pageItems: [], hasSummaryCard: false },
+    ];
+  }
+
+  // Case 3: Items fit on Page 1, but adding Summary Card overflows Page 1.
+  // Page 1 has Items only, Page 2 has Summary Card + Footer.
   if (totalItemsHeight <= page1MaxItemsOnly) {
     return [
       { pageItems: items, hasSummaryCard: false },
@@ -506,8 +521,8 @@ function paginateCalculatorInvoice(
     ];
   }
 
-  // Case 3: Items exceed Page 1 capacity.
-  // Distribute items across pages, then check if summary card fits on the last items page or needs its own page.
+  // Case 4: Items exceed Page 1 capacity.
+  // Distribute items across pages.
   const pages: InvoicePageItem[] = [];
   let currentItems: CalcInvoiceLineItem[] = [];
   let currentHeight = 0;
@@ -529,13 +544,22 @@ function paginateCalculatorInvoice(
     }
   }
 
-  const lastPageCapacityWithSummary =
-    pages.length === 0 ? page1MaxWithSummary : subsequentMaxWithSummary;
+  const isSinglePageOfItems = pages.length === 0;
+  const maxWithSummaryAndFooter = isSinglePageOfItems
+    ? page1MaxWithSummaryAndFooter
+    : subsequentMaxWithSummaryAndFooter;
+  const maxWithSummaryOnly = isSinglePageOfItems
+    ? page1MaxWithSummaryOnly
+    : subsequentMaxWithSummaryOnly;
 
-  if (currentHeight <= lastPageCapacityWithSummary) {
+  if (currentHeight <= maxWithSummaryAndFooter) {
     pages.push({ pageItems: currentItems, hasSummaryCard: true });
+  } else if (currentHeight <= maxWithSummaryOnly) {
+    // Items + Summary fit on this page, but footer needs its own page
+    pages.push({ pageItems: currentItems, hasSummaryCard: true });
+    pages.push({ pageItems: [], hasSummaryCard: false });
   } else {
-    // Doesn't fit on this page, push summary card + footer to next page!
+    // Summary doesn't fit on this page, push Summary + Footer to next page
     pages.push({ pageItems: currentItems, hasSummaryCard: false });
     pages.push({ pageItems: [], hasSummaryCard: true });
   }

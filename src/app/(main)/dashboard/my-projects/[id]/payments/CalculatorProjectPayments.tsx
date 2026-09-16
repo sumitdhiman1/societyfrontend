@@ -721,9 +721,9 @@ export default function CalculatorProjectPayments({
         {/* Left Column: Calculator Payment Card (col-span-2) */}
         <div className="lg:col-span-2">
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            <div className="px-6 pt-6 pb-4 border-b border-gray-100">
-              <div className="flex items-start justify-between gap-4 mb-1">
-                <div className="flex items-center gap-3 flex-wrap">
+            <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start gap-4">
+              <div>
+                <div className="flex items-center gap-3 flex-wrap mb-3">
                   <h3 className="text-lg font-bold text-[#0d1939]">
                     {(activeProject.title || `Website Price Calculator - ${activeProject.clientName || activeProject.client?.fullName || "Client"}`)
                       .replace(/<br\s*\/?>/gi, " ")
@@ -734,30 +734,49 @@ export default function CalculatorProjectPayments({
                     {paymentStatus.replace(/_/g, " ")}
                   </span>
                 </div>
-                <span className="text-sm text-indigo-500 font-semibold whitespace-nowrap">
-                  {formattedProjectNumber}
-                </span>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] sm:text-xs text-gray-500">
+                  <span className="whitespace-nowrap">
+                    Project No: <span className="text-gray-700 font-medium">#{cleanNumber}</span>
+                  </span>
+                  <span className="hidden sm:inline text-gray-300">|</span>
+                  <button
+                    type="button"
+                    disabled={isDownloadingInvoice || isDownloadingPdf}
+                    onClick={handleViewInvoice}
+                    className="text-xs sm:text-sm font-semibold text-[#4343F0] hover:text-[#3232b7] underline decoration-[#4343F0]/40 hover:decoration-[#4343F0] underline-offset-2 whitespace-nowrap cursor-pointer transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+                  >
+                    {isDownloadingInvoice ? (
+                      <>
+                        <div className="w-3 h-3 border-2 border-[#4343F0] border-t-transparent rounded-full animate-spin" />
+                        <span>Downloading Invoice...</span>
+                      </>
+                    ) : (
+                      "View invoice"
+                    )}
+                  </button>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 font-medium mt-2">
-                <span>
-                  Payment Date: <span className="text-gray-600 font-semibold">{paymentDateFormatted}</span>
-                </span>
-                <span className="text-gray-200">|</span>
-                <button
-                  type="button"
-                  disabled={isDownloadingInvoice || isDownloadingPdf}
-                  onClick={handleViewInvoice}
-                  className="text-[#4343F0] underline decoration-[#4343F0]/40 underline-offset-2 hover:text-[#3232b7] font-semibold transition-colors disabled:opacity-50 cursor-pointer text-xs sm:text-sm inline-flex items-center gap-1.5"
-                >
-                  {isDownloadingInvoice ? (
-                    <>
-                      <div className="w-3 h-3 border-2 border-[#4343F0] border-t-transparent rounded-full animate-spin" />
-                      <span>Downloading Invoice...</span>
-                    </>
-                  ) : (
-                    "View Invoice"
-                  )}
-                </button>
+
+              {/* Right Side: Total Cost / Paid to Date / Pending Balance */}
+              <div className="w-full sm:w-60 shrink-0 space-y-1.5 text-xs sm:text-sm self-start">
+                <div className="flex justify-between items-center font-semibold">
+                  <span className="text-gray-900">Total Cost</span>
+                  <span className="text-gray-900 font-bold">
+                    {formatCurrency(totalProjectCost)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-green-600">
+                  <span className="font-medium">Paid to Date</span>
+                  <span className="font-semibold">
+                    {formatCurrency(amountPaid)}
+                  </span>
+                </div>
+                <div className={`flex justify-between items-center pt-1 border-t border-gray-100 font-semibold ${pendingBalance > 0.009 ? "text-red-600" : "text-gray-600"}`}>
+                  <span>Pending Balance</span>
+                  <span className="font-bold">
+                    {formatCurrency(pendingBalance)}
+                  </span>
+                </div>
               </div>
             </div>
 
