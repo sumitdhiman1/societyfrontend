@@ -1061,7 +1061,7 @@ export default function QuoteDetailsPage() {
             <div className="relative py-6 flex items-center justify-center w-full my-2">
               <div className="flex-grow border-t border-gray-300"></div>
               <span className="px-4 text-xs sm:text-sm font-medium text-gray-500 text-center whitespace-normal sm:whitespace-nowrap">
-                Quote Request Submitted
+                Quote request submitted
               </span>
               <div className="flex-grow border-t border-gray-300"></div>
             </div>
@@ -1209,7 +1209,7 @@ export default function QuoteDetailsPage() {
                     {/* Header above offer card */}
                     <div className="text-center py-6 px-4 my-2">
                       <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
-                        You Received an Offer
+                        You received an offer
                       </h3>
                       <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
                         We’ve prepared a custom proposal for your project.

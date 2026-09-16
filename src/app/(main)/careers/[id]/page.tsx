@@ -1,0 +1,413 @@
+"use client";
+
+import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import HttpClient from "@/lib/HttpClient";
+import StatusPopup from "@/components/common/StatusPopup";
+import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
+
+const httpClient = new HttpClient();
+
+interface JobDetail {
+  id: string;
+  title: string;
+  location: string;
+  type?: string;
+  publishedDate?: string;
+  description: string;
+  requirements: string[];
+}
+
+const defaultJobs: { [key: string]: JobDetail } = {
+  "job-1786961518485": {
+    id: "job-1786961518485",
+    title: "Project Manager",
+    location: "Estonia",
+    type: "Full-time",
+    publishedDate: "Published August 2026",
+    description: `We are looking for a Project Manager to oversee client projects across web design, website development, and digital marketing. In this role, you will manage project timelines, coordinate communication between clients and internal teams, track deliverables, and ensure work is completed to a high standard.
+
+You will be responsible for keeping projects organized, handling client feedback, monitoring progress, and making sure deadlines and expectations are managed clearly throughout the process. This position requires strong organizational skills, clear communication, and the ability to manage multiple projects at the same time.
+
+Details such as salary and working hours will be discussed privately with shortlisted candidates.`,
+    requirements: [
+      "Project Management",
+      "Client Communication",
+      "Task Coordination",
+      "Attention to Detail",
+      "Fluency in Estonian",
+    ],
+  },
+  "job-1786961835020": {
+    id: "job-1786961835020",
+    title: "Web Designer",
+    location: "Remote",
+    type: "Full-time",
+    publishedDate: "Published August 2026",
+    description: `We are looking for a Web Designer to craft clean, responsive websites, landing pages, and interactive brand experiences. In this role, you will translate project requirements into beautiful, intuitive UI/UX designs.
+
+You will collaborate closely with clients and development teams to ensure high visual quality, seamless usability, and consistent branding across all digital deliverables.
+
+Details such as salary and working hours will be discussed privately with shortlisted candidates.`,
+    requirements: [
+      "UI/UX Design",
+      "Figma / Prototyping",
+      "Responsive Layouts",
+      "Design Systems",
+      "Attention to Detail",
+    ],
+  },
+  "job-1786964435776": {
+    id: "job-1786964435776",
+    title: "Sales Representative",
+    location: "Estonia",
+    type: "Full-time",
+    publishedDate: "Published August 2026",
+    description: `We are looking for a Sales Representative in Estonia to develop new client relationships, understand customer digital needs, and present tailored web and branding packages.
+
+You will manage outreach, conduct consultative discovery conversations, and guide prospective clients through our packages and quote proposals.
+
+Details such as salary and working hours will be discussed privately with shortlisted candidates.`,
+    requirements: [
+      "B2B Sales",
+      "Client Communication",
+      "Prospecting",
+      "Negotiation Skills",
+      "Fluency in Estonian",
+    ],
+  },
+  "job-1786964436617": {
+    id: "job-1786964436617",
+    title: "Sales Representative",
+    location: "Remote",
+    type: "Full-time",
+    publishedDate: "Published August 2026",
+    description: `We are looking for a Remote Sales Representative to connect with international clients, explain our digital packages and services, and drive new business growth across multiple regions.
+
+This position requires self-motivation, strong communication abilities, and a customer-first approach to project consultation.
+
+Details such as salary and working hours will be discussed privately with shortlisted candidates.`,
+    requirements: [
+      "Remote Sales",
+      "Client Communication",
+      "Outreach & Pipeline",
+      "Self-Management",
+      "Fluency in English",
+    ],
+  },
+};
+
+export default function CareerSinglePage() {
+  const routeParams = useParams();
+  const rawId = Array.isArray(routeParams?.id) ? routeParams.id[0] : (routeParams?.id as string) || "";
+  const jobId = decodeURIComponent(rawId);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const [formData, setFormData] = useState({
+    fullName: "",
+    email: "",
+    linkedin: "",
+  });
+
+  const [submitting, setSubmitting] = useState(false);
+  const [popup, setPopup] = useState({
+    isOpen: false,
+    type: "success" as "success" | "error",
+    title: "",
+    message: "",
+  });
+
+  // Find fallback matching id or key
+  const getInitialJob = (): JobDetail => {
+    if (jobId && defaultJobs[jobId]) {
+      return defaultJobs[jobId];
+    }
+    // Search in defaultJobs by partial match or index
+    const keys = Object.keys(defaultJobs);
+    for (const key of keys) {
+      if (key.includes(jobId) || jobId.includes(key)) {
+        return defaultJobs[key];
+      }
+    }
+    return defaultJobs["job-1786961518485"];
+  };
+
+  const [currentJob, setCurrentJob] = useState<JobDetail>(getInitialJob);
+
+  useEffect(() => {
+    // When jobId changes, re-evaluate local match
+    setCurrentJob(getInitialJob());
+
+    const fetchFromApi = async () => {
+      try {
+        const res = await httpClient.get<any>("/pages/getpagebyslug/careers");
+        if (res?.isSuccessful && res?.data) {
+          const p = res.data?.data || res.data;
+          const sections = Array.isArray(p.sections) ? p.sections : [];
+          const jobsSec = sections.find(
+            (s: any) =>
+              s.id === "job-listings" ||
+              s.id === "jobs" ||
+              s.id === "openings" ||
+              s.type === "job_listings" ||
+              s.type === "jobs" ||
+              s.type === "careers"
+          );
+
+          const rawJobs =
+            jobsSec?.data?.jobs ||
+            jobsSec?.data?.items ||
+            jobsSec?.data?.openings ||
+            jobsSec?.jobs ||
+            jobsSec?.items ||
+            jobsSec?.openings;
+
+          if (Array.isArray(rawJobs) && rawJobs.length > 0) {
+            const found = rawJobs.find(
+              (j: any, idx: number) =>
+                j.id === jobId ||
+                `job-${idx + 1}` === jobId ||
+                (j.title && j.title.toLowerCase().replace(/\s+/g, "-") === jobId.toLowerCase())
+            );
+
+            if (found) {
+              const reqs = Array.isArray(found.requirements)
+                ? found.requirements
+                : typeof found.requirements === "string"
+                ? found.requirements.split("\n").map((r: string) => r.trim()).filter(Boolean)
+                : [
+                    "Project Management",
+                    "Client Communication",
+                    "Task Coordination",
+                    "Attention to Detail",
+                    "Fluency in Estonian",
+                  ];
+
+              setCurrentJob({
+                id: found.id || jobId,
+                title: found.title || "Project Manager",
+                location: found.location || "Estonia",
+                type: found.type || "Full-time",
+                publishedDate: found.publishedDate || "Published August 2026",
+                description:
+                  found.description ||
+                  `We are looking for a Project Manager to oversee client projects across web design, website development, and digital marketing. In this role, you will manage project timelines, coordinate communication between clients and internal teams, track deliverables, and ensure work is completed to a high standard.
+
+You will be responsible for keeping projects organized, handling client feedback, monitoring progress, and making sure deadlines and expectations are managed clearly throughout the process. This position requires strong organizational skills, clear communication, and the ability to manage multiple projects at the same time.
+
+Details such as salary and working hours will be discussed privately with shortlisted candidates.`,
+                requirements: reqs.length > 0 ? reqs : [
+                  "Project Management",
+                  "Client Communication",
+                  "Task Coordination",
+                  "Attention to Detail",
+                  "Fluency in Estonian",
+                ],
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error("API fetch error on careers single page:", err);
+      }
+    };
+
+    fetchFromApi();
+  }, [jobId]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.fullName || !formData.email) {
+      setPopup({
+        isOpen: true,
+        type: "error",
+        title: "Incomplete Application",
+        message: "Please provide your full name and email address.",
+      });
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setPopup({
+        isOpen: true,
+        type: "success",
+        title: "Application Received",
+        message: `Thank you for applying for the ${currentJob.title} position! Our recruitment team will review your application and be in touch soon.`,
+      });
+
+      setFormData({
+        fullName: "",
+        email: "",
+        linkedin: "",
+      });
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (err: any) {
+      setPopup({
+        isOpen: true,
+        type: "error",
+        title: "Submission Error",
+        message: err?.message || "Failed to submit application. Please try again.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="bg-white min-h-screen flex flex-col font-sans">
+      <StatusPopup
+        isOpen={popup.isOpen}
+        onClose={() => setPopup({ ...popup, isOpen: false })}
+        type={popup.type}
+        title={popup.title}
+        message={popup.message}
+      />
+
+      {/* Hero Header */}
+      <div className="bg-primary-100 border-[3px] border-gray-600">
+        <div className="container mx-auto px-4 md:px-8 lg:px-[54px] py-10 md:py-16 max-w-[1536px]">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">
+            {currentJob.title}
+          </h1>
+        </div>
+      </div>
+
+      {/* Main Single Job Content */}
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-10 md:pt-14 pb-28 md:pb-40 lg:pb-52">
+        {/* Description */}
+        <div className="mb-10 md:mb-14">
+          <h2 className="text-lg font-bold text-gray-600 mb-4">Description</h2>
+          <p className="text-gray-500 text-sm leading-relaxed whitespace-pre-line max-w-[1600px]">
+            {currentJob.description}
+          </p>
+        </div>
+
+        {/* 2-Column: Requirements & Apply */}
+        <div className="flex flex-col lg:flex-row gap-10 lg:gap-16 items-start">
+          {/* Requirements (Left) */}
+          <div className="lg:w-1/2 w-full">
+            <h2 className="text-lg font-bold text-gray-600 mb-6">Requirements</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6">
+              {currentJob.requirements.map((req, idx) => (
+                <span key={idx} className="text-gray-500 font-bold text-sm">
+                  {req}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Apply Form (Right) */}
+          <div className="lg:w-1/2 w-full">
+            <h2 className="text-lg font-bold text-gray-600 mb-6">Apply</h2>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="full-name" className="font-bold text-gray-500 text-sm">
+                    Full name
+                  </label>
+                  <input
+                    id="full-name"
+                    required
+                    value={formData.fullName}
+                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-400 rounded focus:outline-none focus:border-gray-600 bg-white text-gray-800 text-sm"
+                    type="text"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="email" className="font-bold text-gray-500 text-sm">
+                    Email
+                  </label>
+                  <input
+                    id="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-400 rounded focus:outline-none focus:border-gray-600 bg-white text-gray-800 text-sm"
+                    type="email"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex flex-col gap-2 relative">
+                  <label htmlFor="resume-upload" className="font-bold text-gray-500 text-sm flex items-center justify-between">
+                    <span>Resume</span>
+                    {selectedFile && (
+                      <span className="text-xs text-[#4343F0] font-normal truncate max-w-[150px]">
+                        {selectedFile.name}
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    ref={fileInputRef}
+                    id="resume-upload"
+                    className="hidden"
+                    accept=".pdf,.doc,.docx"
+                    type="file"
+                    onChange={handleFileChange}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full bg-[#4343F0] hover:bg-[#4346DD] text-white font-bold py-2.5 px-4 rounded flex items-center justify-center gap-2 transition-colors text-sm cursor-pointer"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                      ></path>
+                    </svg>
+                    {selectedFile ? "Replace" : "Attach"}
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="linkedin" className="font-bold text-gray-500 text-sm">
+                    LinkedIn profile
+                  </label>
+                  <input
+                    id="linkedin"
+                    value={formData.linkedin}
+                    onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-400 rounded focus:outline-none focus:border-gray-600 bg-white text-gray-800 text-sm"
+                    type="text"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full bg-[#4343F0] hover:bg-[#4346DD] text-white font-bold py-3 rounded transition-colors text-sm cursor-pointer disabled:opacity-60"
+                >
+                  {submitting ? "Submitting Application..." : "Submit"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        {/* Support Newsletter */}
+        <div className="mt-20 md:mt-28">
+          <SupportNewsletter />
+        </div>
+      </main>
+    </div>
+  );
+}

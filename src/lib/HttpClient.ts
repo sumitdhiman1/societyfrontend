@@ -143,7 +143,7 @@ export default class HttpClient {
     return fetchPromise;
   }
 
-  async get(path: string, params?: Record<string, any>, cacheTTL?: number): Promise<any> {
+  async get<T = any>(path: string, params?: Record<string, any>, cacheTTL?: number): Promise<T> {
     let authToken: string | undefined;
     const execute = async () => {
       const url = this.buildFullPath(path, params);
@@ -165,8 +165,8 @@ export default class HttpClient {
     }
   }
 
-  async post(path: string, data: any): Promise<any> {
-    return this.sendRequest("POST", path, data);
+  async post<T = any>(path: string, data: any): Promise<T> {
+    return this.sendRequest<T>("POST", path, data);
   }
 
   private static refreshPromise: Promise<string | null> | null = null;
@@ -225,19 +225,19 @@ export default class HttpClient {
     return HttpClient.refreshPromise;
   }
 
-  async patch(path: string, data: any): Promise<any> {
-    return this.sendRequest("PATCH", path, data);
+  async patch<T = any>(path: string, data: any): Promise<T> {
+    return this.sendRequest<T>("PATCH", path, data);
   }
 
-  async put(path: string, data: any): Promise<any> {
-    return this.sendRequest("PUT", path, data);
+  async put<T = any>(path: string, data: any): Promise<T> {
+    return this.sendRequest<T>("PUT", path, data);
   }
 
-  async delete(path: string, data?: any): Promise<any> {
-    return this.sendRequest("DELETE", path, data ?? null);
+  async delete<T = any>(path: string, data?: any): Promise<T> {
+    return this.sendRequest<T>("DELETE", path, data ?? null);
   }
 
-  private async sendRequest(method: string, path: string, data: any): Promise<any> {
+  private async sendRequest<T = any>(method: string, path: string, data: any): Promise<T> {
     let authToken: string | undefined;
     const execute = async () => {
       const url = this.baseUrl + path;
