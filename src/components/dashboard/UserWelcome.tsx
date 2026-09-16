@@ -53,15 +53,18 @@ export default function UserWelcome({ title }: UserWelcomeProps) {
   }, [title]);
 
   return (
-    <div className="bg-white rounded-[8px]  md:px-8 p-6   
-    shadow-[0px_5px_25px_#0000000D] flex flex-col justify-center items-start md:h-[209px]
-     w-full font-sans">
+    <div
+      className="bg-white rounded-[8px] px-8 pt-10 pb-6 shadow-[0px_5px_25px_#0000000D] flex flex-col items-start h-[209px] w-full font-sans"
+      style={{ fontFamily: "var(--font-inter), sans-serif" }}
+    >
       {loading ? (
-        <>
-          <div className="h-8 bg-gray-200 rounded w-32 mb-2 animate-pulse" />
-          <div className="h-4 bg-gray-200 rounded w-48 mb-6 animate-pulse" />
-          <div className="h-10 bg-gray-200 rounded w-40 animate-pulse" />
-        </>
+        <div className="w-full h-full flex flex-col justify-between">
+          <div>
+            <div className="h-7 bg-gray-200 rounded w-36 mb-2 animate-pulse" />
+            <div className="h-4 bg-gray-100 rounded w-52 animate-pulse" />
+          </div>
+          <div className="h-11 bg-gray-200 rounded-[6px] w-[247px] max-w-full animate-pulse" />
+        </div>
       ) : (
         <>
           <div>
@@ -73,9 +76,9 @@ export default function UserWelcome({ title }: UserWelcomeProps) {
             </p>
           </div>
           <button
+            type="button"
             onClick={() => router.push("/dashboard/new-project")}
-
-            className="md:w-[247px] w-[200px] bg-[#4343F0] hover:bg-[#5c5cf2] text-white font-bold py-3 rounded-[6px] transition-colors shadow-sm text-[14px] mt-6"
+            className="w-[247px] bg-[#4343F0] hover:bg-[#2828c0] text-white font-bold py-3 rounded-[6px] transition-colors shadow-sm text-[14px] mt-6 cursor-pointer"
           >
             Start A New Project
           </button>

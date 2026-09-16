@@ -20,27 +20,35 @@ export default function PromoCarousel() {
 
   const defaultSlides = [
     {
-      title: "Bring Your Ideas To Life",
+      title: "New Project Tracking and Support Tools Are Here!",
       subtitle:
-        "Connect with top creators and developers to build your next big project.",
-      badge: "NEW",
-      image: "/images/crousal1.webp",
-      link: "/dashboard/new-project",
+        "Follow updates, share feedback, and get support directly inside your project workspace. Sign up to gain access!",
+      badge: "",
+      image: "https://res.cloudinary.com/dgg6e3flf/image/upload/v1786970418/cms-assets/Frame_2920.webp",
+      link: "/register",
     },
     {
-      title: "Professional Quality, Faster Delivery",
+      title: "Already Have a Project Idea in Mind? Try Building Your Own Quote!",
       subtitle:
-        "Get high-end results with our streamlined project management tools.",
-      badge: "PRO",
-      image: "/images/crousal2.webp",
-      link: "/dashboard/new-project",
+        "Jump into the price calculator and create a custom package in minutes. Click here!",
+      badge: "",
+      image: "https://res.cloudinary.com/dgg6e3flf/image/upload/v1786970167/cms-assets/Frame_2918_1.webp",
+      link: "/calculator",
+    },
+    {
+      title: "Our Web Experts Are Here for You. Get a Free Second Opinion!",
+      subtitle:
+        "We’ll check your current website or another agency’s work — no cost, no commitment. Click here to begin.",
+      badge: "",
+      image: "https://res.cloudinary.com/dgg6e3flf/image/upload/v1786970169/cms-assets/Frame_2919_1.webp",
+      link: "/dashboard/new-project/packages?categorycode=ANALYSIS&sortBy=order_asc",
     },
   ];
 
   const bgImages = [
-    "/images/crousal1.webp",
-    "/images/crousal2.webp",
-    "/images/crousal3.webp",
+    "https://res.cloudinary.com/dgg6e3flf/image/upload/v1786970418/cms-assets/Frame_2920.webp",
+    "https://res.cloudinary.com/dgg6e3flf/image/upload/v1786970167/cms-assets/Frame_2918_1.webp",
+    "https://res.cloudinary.com/dgg6e3flf/image/upload/v1786970169/cms-assets/Frame_2919_1.webp",
   ];
 
   useEffect(() => {
@@ -73,11 +81,11 @@ export default function PromoCarousel() {
         if (Array.isArray(rawSlides) && rawSlides.length > 0) {
           const parsedSlides = rawSlides.map((s: any, idx: number) => ({
             id: s.id || `slide-${idx}`,
-            title: s.title || "",
-            subtitle: s.subtitle || s.description || "",
+            title: s.title || defaultSlides[idx % defaultSlides.length]?.title || "",
+            subtitle: s.subtitle || s.description || defaultSlides[idx % defaultSlides.length]?.subtitle || "",
             badge: s.badge || s.tag || "",
             image: s.image || s.imageUrl || bgImages[idx % bgImages.length],
-            link: s.link || s.btnUrl || s.url || "",
+            link: s.link || s.btnUrl || s.url || defaultSlides[idx % defaultSlides.length]?.link || "",
           }));
           setSlides(parsedSlides);
         } else {
@@ -180,8 +188,8 @@ export default function PromoCarousel() {
   if (loading) {
     return (
       <div
-        className="relative w-full h-[209px] rounded-[8px] overflow-hidden
-       flex items-center shadow-[0px_5px_25px_#0000000D] bg-[#0D1939] animate-pulse"
+        className="relative w-full rounded-[8px] overflow-hidden shadow-[0px_5px_25px_#0000000D] bg-[#0D1939] animate-pulse"
+        style={{ minHeight: "209px", borderRadius: "8px" }}
       >
         <div className="h-full w-full bg-gray-700/20" />
       </div>
@@ -201,12 +209,20 @@ export default function PromoCarousel() {
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      className="relative w-full h-[209px] rounded-[8px] overflow-hidden shadow-[0px_5px_25px_#0000000D] bg-[#0D1939] select-none"
+      className="relative w-full rounded-[8px] overflow-hidden shadow-[0px_5px_25px_#0000000D] bg-[#0D1939] transition-colors select-none"
+      style={{
+        minHeight: "209px",
+        maskImage: "-webkit-radial-gradient(center, white, black)",
+        isolation: "isolate",
+        transform: "translateZ(0px)",
+        borderRadius: "8px",
+      }}
     >
-      {/* Track container with GPU-accelerated transform */}
+      {/* Slide Track */}
       <div
-        className="flex h-full w-full transition-transform duration-500 ease-out will-change-transform"
+        className="flex w-full h-full relative z-10 transition-transform duration-500 ease-out will-change-transform"
         style={{
+          minHeight: "209px",
           transform: `translateX(-${activeIndex * 100}%)`,
         }}
       >
@@ -222,38 +238,25 @@ export default function PromoCarousel() {
             <div
               key={slide.id || `slide-${i}`}
               onClick={() => handleSlideClick(slide)}
-              className={`relative w-full h-full flex-shrink-0 flex flex-col justify-center px-8 md:px-10 pb-12 pt-4 ${
+              className={`w-full shrink-0 flex flex-col justify-start px-8 md:px-10 snap-center pt-10 pb-16 relative rounded-[8px] ${
                 hasLink ? "cursor-pointer" : ""
               }`}
+              style={{
+                minHeight: "209px",
+                borderRadius: "8px",
+                backgroundImage: `url("${slideBg}")`,
+                backgroundSize: "cover",
+                backgroundPosition: "center center",
+              }}
             >
-              {/* Slide Background */}
-              <Image
-                src={slideBg}
-                alt={slide.title || "Slide Background"}
-                fill
-                unoptimized
-                sizes="(max-width: 1536px) 100vw, 1200px"
-                className="object-cover absolute inset-0 z-0 select-none pointer-events-none"
-                priority={i === 0}
-              />
-
-              {/* Gradient overlay for readability */}
-              <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/35 to-transparent z-[1] pointer-events-none" />
-
-              {/* Text Content */}
               <div
-                className="relative z-10 w-full max-w-[680px]"
+                className="w-full relative z-[2]"
                 style={{ fontFamily: "var(--font-inter), sans-serif" }}
               >
-                {slide.badge && (
-                  <div className="inline-block bg-white/20 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full mb-2">
-                    {slide.badge}
-                  </div>
-                )}
-                <h2 className="text-left font-bold text-lg md:text-[22px] leading-tight md:leading-[28px] tracking-[0px] text-[#FFFFFF] line-clamp-2">
+                <h2 className="text-left font-bold text-lg md:text-[24px] leading-tight md:leading-[30px] lg:leading-[28px] tracking-[0px] text-[#FFFFFF]">
                   {slide.title}
                 </h2>
-                <p className="text-white text-[13px] md:text-[14px] leading-[20px] md:leading-[22px] opacity-90 mt-1.5 md:mt-2 line-clamp-2">
+                <p className="text-white text-[14px] leading-[22px] font-semibold opacity-90 mt-2 lg:mt-2">
                   {slide.subtitle}
                 </p>
               </div>
@@ -262,9 +265,9 @@ export default function PromoCarousel() {
         })}
       </div>
 
-      {/* Slide Navigation Radio/Dot Buttons */}
+      {/* Slide Navigation Dots */}
       {totalSlides > 1 && (
-        <div className="absolute bottom-[47px] left-8 md:left-10 flex gap-3 z-20">
+        <div className="absolute bottom-8 md:bottom-9 lg:bottom-12 left-8 md:left-10 flex gap-3 z-20">
           {activeSlides.map((_, i) => (
             <button
               key={`promo-dot-${i}`}
@@ -273,7 +276,7 @@ export default function PromoCarousel() {
                 e.stopPropagation();
                 setActiveIndex(i);
               }}
-              className={`md:w-4 md:h-4 h-2.5 w-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+              className={`w-4 h-4 rounded-full transition-all duration-300 cursor-pointer ${
                 i === activeIndex
                   ? "bg-white"
                   : "border border-white/50 hover:bg-white/20"
