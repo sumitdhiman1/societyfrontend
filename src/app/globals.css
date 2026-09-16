@@ -132,7 +132,7 @@ select:-webkit-autofill {
 .blog-content em,
 .blog-content i,
 .blog-content u {
-  word-break: normal !important;
+  word-break: keep-all !important;
   overflow-wrap: normal !important;
   word-wrap: normal !important;
   white-space: normal !important;
@@ -242,6 +242,8 @@ select:-webkit-autofill {
   margin-bottom: 1rem !important;
   font-size: 1rem !important;
   line-height: 1.65 !important;
+  word-break: keep-all !important;
+  overflow-wrap: break-word !important;
 }
 
 .blog-content ol,

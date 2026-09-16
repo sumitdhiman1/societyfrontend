@@ -54,6 +54,12 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
     fetchPost();
   }, [slug]);
 
+  // Replace &nbsp; with normal spaces so the browser can wrap at word
+  // boundaries instead of only at hyphens (which is what happens when all
+  // spaces are non-breaking, as many rich-text editors produce).
+  const sanitizeContent = (html: string) =>
+    html.replace(/&nbsp;/g, " ").replace(/\u00A0/g, " ");
+
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "August 26, 2026";
     return new Date(dateStr).toLocaleDateString("en-US", {
@@ -152,7 +158,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ slug: strin
                         prose-pre:overflow-x-auto prose-pre:max-w-full prose-pre:rounded-xl
                         prose-table:w-full prose-table:overflow-x-auto
                         [&_img]:max-w-full [&_table]:max-w-full [&_pre]:max-w-full [&_iframe]:max-w-full [&_img]:h-auto [&_pre]:whitespace-pre-wrap"
-                dangerouslySetInnerHTML={{ __html: post.content }}
+                dangerouslySetInnerHTML={{ __html: sanitizeContent(post.content) }}
               />
             ) : (
               <p className="text-gray-400 italic text-sm py-8">No content available for this post.</p>
