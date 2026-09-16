@@ -554,12 +554,12 @@ export default function RenewalsPage() {
                           </span>
                         )}
                       </div>
-                      <div className="text-[13px] text-[#6b7280] mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <div className="text-[13px] text-gray-500 mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                         <span>
                           {project.packageName || project.package?.name || "Maintenance Service"}
                         </span>
-                        <span className="hidden sm:inline text-[#d1d5db]">•</span>
-                        <span className="text-[#9ca3af] font-medium">
+                        <span className="hidden sm:inline text-gray-300">•</span>
+                        <span className="text-gray-400 font-medium">
                           Expires {formatExpiryDate(project.nextRenewalDate)}
                         </span>
                       </div>
