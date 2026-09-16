@@ -53,13 +53,15 @@ export default function PromoCarousel() {
 
   useEffect(() => {
     let isMounted = true;
-    const fetchSlides = async () => {
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const fetchSlides = async (attempt = 0) => {
       try {
         const client = new HttpClient();
         const res = await CacheManager.getInstance().getOrFetch(
           "page_home",
           () => client.get("/pages/getpagebyslug/home"),
-          30000,
+          5 * 60 * 1000, // 5 minutes — CMS data is mostly static
         );
 
         if (!isMounted) return;
@@ -87,21 +89,31 @@ export default function PromoCarousel() {
             image: s.image || s.imageUrl || bgImages[idx % bgImages.length],
             link: s.link || s.btnUrl || s.url || defaultSlides[idx % defaultSlides.length]?.link || "",
           }));
-          setSlides(parsedSlides);
+          if (isMounted) setSlides(parsedSlides);
         } else {
-          setSlides(defaultSlides);
+          if (isMounted) setSlides(defaultSlides);
         }
       } catch (error) {
-        console.error("Failed to fetch slides:", error);
-        if (isMounted) setSlides(defaultSlides);
+        console.error(`Failed to fetch slides (attempt ${attempt + 1}):`, error);
+        if (isMounted) {
+          if (attempt < 2) {
+            // Auto-retry up to 2 more times with backoff (1s, 2s)
+            retryTimeout = setTimeout(() => fetchSlides(attempt + 1), (attempt + 1) * 1000);
+          } else {
+            // After 3 total attempts, fall back to default slides
+            setSlides(defaultSlides);
+          }
+        }
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted && retryTimeout === null) setLoading(false);
       }
     };
+
     fetchSlides();
 
     return () => {
       isMounted = false;
+      if (retryTimeout) clearTimeout(retryTimeout);
     };
   }, []);
 

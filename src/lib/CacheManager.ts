@@ -35,6 +35,11 @@ export default class CacheManager {
         }
         return result;
       })
+      .catch((err) => {
+        // On failure, remove inflight so next call retries fresh
+        this.inflight.delete(key);
+        throw err;
+      })
       .finally(() => {
         this.inflight.delete(key);
       });

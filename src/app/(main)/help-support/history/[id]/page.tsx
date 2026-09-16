@@ -417,8 +417,6 @@ export default function TicketDetailPage() {
                     className={`px-3 sm:px-4 py-1 border rounded-md text-xs font-bold uppercase tracking-wider shrink-0 ${
                       ticket.status === "open"
                         ? "border-green-500 text-green-500"
-                        : ticket.status === "in_progress"
-                        ? "border-amber-500 text-amber-500"
                         : "border-gray-400 text-gray-500"
                     }`}
                   >
@@ -552,27 +550,27 @@ export default function TicketDetailPage() {
             {/* Right Column (35%) */}
             <div className="w-full lg:w-[35%] flex flex-col gap-6">
               {/* Agent card */}
-              <div className="border border-[#B0B0B0] rounded-[12px] p-4 sm:p-6 md:p-8 flex flex-col items-center text-center">
-                <div className="w-24 h-24 rounded-full bg-gray-200 mb-4 overflow-hidden">
-                  {ticket.assignedAgent?.avatar ? (
+              <div className="bg-white border border-gray-300 rounded-[12px] shadow-sm p-6 sm:p-8 text-center">
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gradient-to-br from-[#BAC2D0] to-[#9AA5B8] border border-gray-200">
+                  {(ticket.assignedAgent?.avatar || ticket.assignedAgent?.profileImage) ? (
                     <img
-                      src={ticket.assignedAgent.avatar}
-                      alt={ticket.assignedAgent.fullName || "Support Agent"}
+                      src={ticket.assignedAgent.avatar || ticket.assignedAgent.profileImage}
+                      alt={ticket.assignedAgent.fullName || "Support Specialist"}
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-300 text-gray-500">
-                      <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"></path>
-                      </svg>
+                    <div className="w-full h-full flex items-center justify-center text-white text-3xl font-bold">
+                      {ticket.assignedAgent?.fullName
+                        ? ticket.assignedAgent.fullName[0].toUpperCase()
+                        : "?"}
                     </div>
                   )}
                 </div>
-                <h3 className="text-xl font-bold text-[#404040]">
+                <h3 className="text-lg font-bold text-gray-800 mb-1">
                   {ticket.assignedAgent?.fullName || "Pending Assignment"}
                 </h3>
-                <p className="text-sm text-[#808080] mb-4">
-                  {ticket.assignedAgent?.role || "Customer Experience Specialist"}
+                <p className="text-sm text-gray-500 font-medium uppercase tracking-wider text-[10px]">
+                  Support Specialist
                 </p>
               </div>
 

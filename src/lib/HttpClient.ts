@@ -109,11 +109,15 @@ export default class HttpClient {
     if (inflight) return inflight;
 
     const fetchPromise = (async () => {
+      // 15-second timeout — prevents infinite hangs on cold starts / slow backends
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       try {
         console.log(`[HttpClient] Fetching: ${url}`);
         const response = await fetch(url, {
           headers: config.headers,
           credentials: "include",
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -134,7 +138,14 @@ export default class HttpClient {
         }
 
         return data;
+      } catch (err: any) {
+        // On abort (timeout), surface a clear error
+        if (err?.name === "AbortError") {
+          throw new Error("Request timed out. Please check your connection and try again.");
+        }
+        throw err;
       } finally {
+        clearTimeout(timeoutId);
         HttpClient.inflight.delete(url);
       }
     })();

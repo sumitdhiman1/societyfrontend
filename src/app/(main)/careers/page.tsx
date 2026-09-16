@@ -127,18 +127,31 @@ export default function CareersPage() {
           if (Array.isArray(rawJobs) && rawJobs.length > 0) {
             parsedJobs = rawJobs
               .filter((j: any) => j.status !== "closed")
-              .map((j: any, idx: number) => ({
-                id: j.id || `job-${idx + 1}`,
-                title: j.title || "Open Position",
-                location: j.location || "Remote",
-                type: j.type || "Full-time",
-                status: j.status || "active",
-                department: j.department || "",
-                description: j.description || "",
-                requirements: j.requirements || "",
-                applyUrl: j.applyUrl || `mailto:careers@society-web-solutions.com?subject=Application:%20${encodeURIComponent(j.title || "Job")}`,
-                publishedDate: j.publishedDate || "Published August 2026",
-              }));
+              .map((j: any, idx: number) => {
+                const defaultId =
+                  idx === 0
+                    ? "job-1786961518485"
+                    : idx === 1
+                    ? "job-1786961835020"
+                    : idx === 2
+                    ? "job-1786964435776"
+                    : idx === 3
+                    ? "job-1786964436617"
+                    : `job-${idx + 1}`;
+                const jId = j.id || defaultId;
+                return {
+                  id: jId,
+                  title: j.title || "Open Position",
+                  location: j.location || "Remote",
+                  type: j.type || "Full-time",
+                  status: j.status || "active",
+                  department: j.department || "",
+                  description: j.description || "",
+                  requirements: j.requirements || "",
+                  applyUrl: j.applyUrl || `mailto:careers@society-web-solutions.com?subject=Application:%20${encodeURIComponent(j.title || "Job")}`,
+                  publishedDate: j.publishedDate || "Published August 2026",
+                };
+              });
           }
 
           setData({

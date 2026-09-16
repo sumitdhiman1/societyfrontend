@@ -101,9 +101,7 @@ export default function SupportHistoryPage() {
                         <span
                           className={`border px-4 py-1 rounded-md text-[11px] md:text-[13px] font-bold uppercase tracking-wider w-fit ${ticket.status === "open"
                               ? "bg-blue-100 text-blue-600 border-blue-200"
-                              : ticket.status === "in_progress"
-                                ? "bg-amber-100 text-amber-600 border-amber-200"
-                                : "bg-gray-100 text-gray-600 border-gray-200"
+                              : "bg-gray-100 text-gray-600 border-gray-200"
                             }`}
                         >
                           {ticket.status || "open"}

@@ -1,8 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import HttpClient from "@/lib/HttpClient";
 
-const testimonials = [
+const httpClient = new HttpClient();
+
+const defaultTestimonials = [
+  {
+    name: "Jim | GreenPro Sanitizing",
+    stars: 5,
+    text: "Rick and his team did great job, There were many challenges along the way, but they rose to get the job done!",
+  },
   {
     name: "THE EASTERN BLOCK DESIGNS",
     stars: 5,
@@ -38,15 +46,36 @@ const testimonials = [
 const VISIBLE_COUNT = 3;
 
 export default function TestimonialsSlider() {
+  const [items, setItems] = useState(defaultTestimonials);
   const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const loadTestimonials = async () => {
+      try {
+        const res = await httpClient.get<any>("/testimonials");
+        if (res && res.isSuccessful && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped = res.data.map((t: any) => ({
+            name: t.name || "Client Review",
+            stars: Number(t.rating) || 5,
+            text: (t.content || "").replace(/^"|"$/g, ""),
+          }));
+          setItems(mapped);
+        }
+      } catch (err) {
+        // Fallback to default
+      }
+    };
+
+    loadTestimonials();
+  }, []);
 
   const prev = () => setIndex((i) => Math.max(0, i - 1));
   const next = () =>
-    setIndex((i) => Math.min(testimonials.length - VISIBLE_COUNT, i + 1));
+    setIndex((i) => Math.min(items.length - VISIBLE_COUNT, i + 1));
 
-  const visibleCards = testimonials.slice(index, index + VISIBLE_COUNT);
+  const visibleCards = items.slice(index, index + VISIBLE_COUNT);
   const canPrev = index > 0;
-  const canNext = index < testimonials.length - VISIBLE_COUNT;
+  const canNext = index < items.length - VISIBLE_COUNT;
 
   return (
     <section className="w-full py-[70px] px-4 sm:px-8 lg:px-[55px] flex flex-col gap-[25px]" style={{ backgroundColor: '#F4F5FA' }}>

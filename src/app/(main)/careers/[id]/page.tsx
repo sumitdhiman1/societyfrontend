@@ -97,6 +97,52 @@ Details such as salary and working hours will be discussed privately with shortl
   },
 };
 
+const defaultList = [
+  defaultJobs["job-1786961518485"],
+  defaultJobs["job-1786961835020"],
+  defaultJobs["job-1786964435776"],
+  defaultJobs["job-1786964436617"],
+];
+
+function resolveDefaultJob(jobId: string): JobDetail {
+  if (!jobId) return defaultList[0];
+  if (defaultJobs[jobId]) return defaultJobs[jobId];
+
+  // 1. Check numeric index (e.g. "job-1", "job-2", "1", "2")
+  const numMatch = jobId.match(/^(?:job-)?([1-9]\d*)$/i);
+  if (numMatch) {
+    const idx = parseInt(numMatch[1], 10) - 1;
+    if (idx >= 0 && idx < defaultList.length) {
+      return defaultList[idx];
+    }
+  }
+
+  const cleanId = jobId.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
+
+  // 2. Specific compound keyword matches
+  if (cleanId.includes("estonia") && (cleanId.includes("sales") || cleanId.includes("rep"))) {
+    return defaultJobs["job-1786964435776"];
+  }
+  if (cleanId.includes("remote") && (cleanId.includes("sales") || cleanId.includes("rep"))) {
+    return defaultJobs["job-1786964436617"];
+  }
+  if (cleanId.includes("designer") || cleanId.includes("design") || cleanId.includes("web-designer")) {
+    return defaultJobs["job-1786961835020"];
+  }
+  if (cleanId.includes("manager") || cleanId.includes("project")) {
+    return defaultJobs["job-1786961518485"];
+  }
+
+  // 3. Match by slug
+  const found = defaultList.find((dj) => {
+    const titleSlug = dj.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
+    const compoundSlug = `${dj.title}-${dj.location}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
+    return dj.id === jobId || titleSlug === cleanId || compoundSlug === cleanId || cleanId.includes(titleSlug);
+  });
+
+  return found || defaultList[0];
+}
+
 export default function CareerSinglePage() {
   const routeParams = useParams();
   const rawId = Array.isArray(routeParams?.id) ? routeParams.id[0] : (routeParams?.id as string) || "";
@@ -129,49 +175,95 @@ export default function CareerSinglePage() {
         const res = await httpClient.get<any>("/pages/getpagebyslug/careers");
         if (res?.isSuccessful && res?.data) {
           const p = res.data?.data || res.data;
-          const sections = Array.isArray(p.sections) ? p.sections : [];
+          const sections = Array.isArray(p?.sections) ? p.sections : (Array.isArray(res?.data) ? res.data : []);
           const jobsSec = sections.find(
             (s: any) =>
-              s.id === "job-listings" ||
-              s.id === "jobs" ||
-              s.id === "openings" ||
-              s.type === "job_listings" ||
-              s.type === "jobs" ||
-              s.type === "careers"
+              s?.id === "job-listings" ||
+              s?.id === "jobs" ||
+              s?.id === "openings" ||
+              s?.id === "careers" ||
+              s?.type === "job_listings" ||
+              s?.type === "jobs" ||
+              s?.type === "careers" ||
+              s?.type === "openings"
           );
 
           const rawJobs =
-            jobsSec?.data?.jobs ||
-            jobsSec?.data?.items ||
-            jobsSec?.data?.openings ||
-            jobsSec?.jobs ||
-            jobsSec?.items ||
-            jobsSec?.openings;
+            (Array.isArray(jobsSec?.data?.jobs) && jobsSec.data.jobs) ||
+            (Array.isArray(jobsSec?.data?.items) && jobsSec.data.items) ||
+            (Array.isArray(jobsSec?.data?.openings) && jobsSec.data.openings) ||
+            (Array.isArray(jobsSec?.data) && jobsSec.data) ||
+            (Array.isArray(jobsSec?.jobs) && jobsSec.jobs) ||
+            (Array.isArray(jobsSec?.items) && jobsSec.items) ||
+            (Array.isArray(jobsSec?.openings) && jobsSec.openings) ||
+            (Array.isArray(p?.jobs) && p.jobs) ||
+            (Array.isArray(p?.openings) && p.openings) ||
+            (Array.isArray(p?.items) && p.items) ||
+            [];
 
           if (Array.isArray(rawJobs) && rawJobs.length > 0) {
-            const found = rawJobs.find(
-              (j: any, idx: number) =>
+            const numMatch = jobId.match(/^(?:job-)?([1-9]\d*)$/i);
+            const targetIdx = numMatch ? parseInt(numMatch[1], 10) - 1 : -1;
+            const cleanJobId = jobId.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
+
+            const found = rawJobs.find((j: any, idx: number) => {
+              if (!j) return false;
+              const defaultIdForIdx =
+                idx === 0
+                  ? "job-1786961518485"
+                  : idx === 1
+                  ? "job-1786961835020"
+                  : idx === 2
+                  ? "job-1786964435776"
+                  : idx === 3
+                  ? "job-1786964436617"
+                  : `job-${idx + 1}`;
+
+              const titleSlug = (j.title || "")
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, "-")
+                .replace(/(^-|-$)+/g, "");
+              const compoundSlug = `${j.title || ""}-${j.location || ""}`
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, "-")
+                .replace(/(^-|-$)+/g, "");
+
+              return (
                 j.id === jobId ||
                 j.slug === jobId ||
+                j._id === jobId ||
+                defaultIdForIdx === jobId ||
                 `job-${idx + 1}` === jobId ||
+                String(idx + 1) === jobId ||
+                (targetIdx !== -1 && idx === targetIdx) ||
                 j.applyUrl?.endsWith(`/${jobId}`) ||
-                (j.title &&
-                  j.title
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]+/g, "-")
-                    .replace(/(^-|-$)+/g, "") ===
-                    jobId.toLowerCase().replace(/(^-|-$)+/g, ""))
-            );
+                j.applyUrl === jobId ||
+                titleSlug === cleanJobId ||
+                compoundSlug === cleanJobId
+              );
+            });
 
             if (found) {
               let parsedReqs: string[] = [];
               if (Array.isArray(found.requirements)) {
-                parsedReqs = found.requirements.map((r: any) => String(r).trim()).filter(Boolean);
+                parsedReqs = found.requirements
+                  .map((r: any) => String(r).replace(/^[-•*]\s*/, "").trim())
+                  .filter(Boolean);
               } else if (typeof found.requirements === "string") {
                 const cleaned = found.requirements
                   .replace(/<br\s*\/?>/gi, "\n")
                   .replace(/<\/p>\s*<p>/gi, "\n")
-                  .replace(/<[^>]*>/g, "");
+                  .replace(/<\/div>\s*<div>/gi, "\n")
+                  .replace(/<li[^>]*>/gi, "\n")
+                  .replace(/<\/li>/gi, "\n")
+                  .replace(/<[^>]*>/g, "")
+                  .replace(/&amp;/g, "&")
+                  .replace(/&lt;/g, "<")
+                  .replace(/&gt;/g, ">")
+                  .replace(/&quot;/g, '"')
+                  .replace(/&#39;/g, "'")
+                  .replace(/&nbsp;/g, " ");
+
                 if (cleaned.includes("\n")) {
                   parsedReqs = cleaned
                     .split("\n")
@@ -183,7 +275,7 @@ export default function CareerSinglePage() {
                     .map((r: string) => r.replace(/^[-•*]\s*/, "").trim())
                     .filter(Boolean);
                 } else if (cleaned.trim()) {
-                  parsedReqs = [cleaned.trim()];
+                  parsedReqs = [cleaned.trim().replace(/^[-•*]\s*/, "")];
                 }
               }
 
@@ -202,21 +294,10 @@ export default function CareerSinglePage() {
         }
 
         // Fallback to local default if API didn't have match
-        if (defaultJobs[jobId]) {
-          setCurrentJob(defaultJobs[jobId]);
-        } else {
-          const match = Object.values(defaultJobs).find(
-            (dj) => dj.id === jobId || dj.title.toLowerCase().includes(jobId.toLowerCase())
-          );
-          setCurrentJob(match || defaultJobs["job-1786961518485"]);
-        }
+        setCurrentJob(resolveDefaultJob(jobId));
       } catch (err) {
         console.error("API fetch error on careers single page:", err);
-        if (defaultJobs[jobId]) {
-          setCurrentJob(defaultJobs[jobId]);
-        } else {
-          setCurrentJob(defaultJobs["job-1786961518485"]);
-        }
+        setCurrentJob(resolveDefaultJob(jobId));
       } finally {
         setIsLoading(false);
       }
