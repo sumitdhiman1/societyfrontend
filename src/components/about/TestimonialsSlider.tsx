@@ -53,11 +53,14 @@ export default function TestimonialsSlider() {
     const loadTestimonials = async () => {
       try {
         const res = await httpClient.get<any>("/testimonials");
-        if (res && res.isSuccessful && Array.isArray(res.data) && res.data.length > 0) {
-          const mapped = res.data.map((t: any) => ({
-            name: t.name || "Client Review",
+        if (res && (res.isSuccessful || res.data) && Array.isArray(res.data || res) && (res.data || res).length > 0) {
+          const list = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+          const mapped = list.map((t: any) => ({
+            name: t.company && t.name && !t.name.toLowerCase().includes(t.company.toLowerCase())
+              ? `${t.name} | ${t.company}`
+              : (t.name || t.company || "Client Review"),
             stars: Number(t.rating) || 5,
-            text: (t.content || "").replace(/^"|"$/g, ""),
+            text: (t.content || "").replace(/^["“”]|["“”]$/g, ""),
           }));
           setItems(mapped);
         }
@@ -69,13 +72,13 @@ export default function TestimonialsSlider() {
     loadTestimonials();
   }, []);
 
+  const maxIndex = Math.max(0, items.length - 1);
   const prev = () => setIndex((i) => Math.max(0, i - 1));
-  const next = () =>
-    setIndex((i) => Math.min(items.length - VISIBLE_COUNT, i + 1));
+  const next = () => setIndex((i) => Math.min(maxIndex, i + 1));
 
   const visibleCards = items.slice(index, index + VISIBLE_COUNT);
   const canPrev = index > 0;
-  const canNext = index < items.length - VISIBLE_COUNT;
+  const canNext = index < maxIndex && items.length > VISIBLE_COUNT;
 
   return (
     <section className="w-full py-[70px] px-4 sm:px-8 lg:px-[55px] flex flex-col gap-[25px]" style={{ backgroundColor: '#F4F5FA' }}>
