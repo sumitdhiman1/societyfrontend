@@ -926,11 +926,6 @@ export default function QuoteDetailsPage() {
                 </>
               )}
             </div>
-            {quote.projectDescription && (
-              <p className="text-gray-500 text-sm md:text-base leading-relaxed mt-2 max-w-4xl whitespace-pre-wrap">
-                {quote.projectDescription}
-              </p>
-            )}
           </div>
         </div>
       </div>
@@ -968,16 +963,7 @@ export default function QuoteDetailsPage() {
                   </div>
 
                   <div className="pl-0 md:pl-[64px] mb-2 space-y-4">
-                    <div className="pb-3 border-b border-gray-100">
-                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
-                        Project Title
-                      </span>
-                      <h3 className="text-base sm:text-lg font-bold text-gray-800">
-                        {quote.projectTitle || "Custom Quote"}
-                      </h3>
-                    </div>
-
-                    <div className="pt-1">
+                    <div>
                       <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
                         Project Description
                       </span>
@@ -1039,9 +1025,15 @@ export default function QuoteDetailsPage() {
                   <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gray-100 border border-gray-200">
                     {manager?.avatar ? (
                       <img src={manager.avatar} alt={managerName} className="w-full h-full object-cover" />
-                    ) : (
+                    ) : manager ? (
                       <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white text-3xl font-bold">
-                        {manager ? managerInitial : ""}
+                        {managerInitial}
+                      </div>
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-b from-gray-100 to-gray-200 flex items-center justify-center text-gray-400">
+                        <svg className="w-12 h-12 sm:w-14 sm:h-14 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                          <path fillRule="evenodd" d="M12 4a4 4 0 100 8 4 4 0 000-8zm-2 9a6 6 0 00-6 6v1a1 1 0 001 1h14a1 1 0 001-1v-1a6 6 0 00-6-6h-4z" clipRule="evenodd" />
+                        </svg>
                       </div>
                     )}
                   </div>

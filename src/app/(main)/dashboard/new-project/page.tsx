@@ -138,50 +138,52 @@ export default function NewProjectPage() {
   };
 
   return (
-    <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12 bg-white min-h-screen">
-      <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100 mb-8 md:mb-12">
-        {pageTitle}
-      </h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {options.map((option, index) => (
-          <div
-            key={index}
-            className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col h-full shadow-sm hover:shadow-xl transition-all duration-300 group hover:-translate-y-1"
-          >
-            <div className="h-[220px] relative overflow-hidden bg-gray-50 flex items-center justify-center">
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={option.image}
-                alt={option.title}
-                className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500 ease-out"
-              />
+    <div className="bg-white min-h-screen flex flex-col font-sans">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
+        <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100 mb-8 md:mb-12">
+          {pageTitle}
+        </h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {options.map((option, index) => (
+            <div
+              key={index}
+              className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col h-full shadow-sm hover:shadow-xl transition-all duration-300 group hover:-translate-y-1"
+            >
+              <div className="h-[220px] relative overflow-hidden bg-gray-50 flex items-center justify-center">
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={option.image}
+                  alt={option.title}
+                  className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500 ease-out"
+                />
+              </div>
+              <div className="p-8 flex flex-col flex-grow bg-white">
+                <h2 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-[#5c5cf2] transition-colors capitalize">
+                  {option.title}
+                </h2>
+                <p className="text-gray-500 text-sm leading-relaxed mb-8 flex-grow">
+                  {option.description}
+                </p>
+                <button
+                  onClick={() => handleNavigation(option)}
+                  className="w-full py-3 px-6 rounded-lg bg-[#4343F0] hover:bg-[#5c5cf2] text-white font-semibold transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98] text-sm cursor-pointer"
+                >
+                  {option.buttonText}
+                </button>
+              </div>
             </div>
-            <div className="p-8 flex flex-col flex-grow bg-white">
-              <h2 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-[#5c5cf2] transition-colors capitalize">
-                {option.title}
-              </h2>
-              <p className="text-gray-500 text-sm leading-relaxed mb-8 flex-grow">
-                {option.description}
-              </p>
-              <button
-                onClick={() => handleNavigation(option)}
-                className="w-full py-3 px-6 rounded-lg bg-[#4343F0] hover:bg-[#5c5cf2] text-white font-semibold transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98] text-sm cursor-pointer"
-              >
-                {option.buttonText}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      <Toast
-        isOpen={showPopup}
-        onClose={() => setShowPopup(false)}
-        type="info"
-        title="Verification Required"
-        message="Please verify your email to request a custom quote."
-      />
-    </main>
+        <Toast
+          isOpen={showPopup}
+          onClose={() => setShowPopup(false)}
+          type="info"
+          title="Verification Required"
+          message="Please verify your email to request a custom quote."
+        />
+      </main>
+    </div>
   );
 }

@@ -200,7 +200,17 @@ export default function CustomQuotePage() {
 
         if (response.isSuccessful) {
           toast.success("Quote request submitted successfully!");
-          router.push("/dashboard/my-quotes");
+          const quoteId =
+            response.data?._id ||
+            response.data?.quoteId ||
+            response.data?.quoteNumber ||
+            response.data?.id;
+
+          if (quoteId) {
+            router.push(`/dashboard/my-quotes/${quoteId}/details`);
+          } else {
+            router.push("/dashboard/my-quotes");
+          }
         } else {
           const errorMessage = response.message || "Failed to submit quote request.";
           if (errorMessage.toLowerCase().includes("logged in") || errorMessage.toLowerCase().includes("unauthorized") || errorMessage.toLowerCase().includes("authentication")) {
@@ -230,8 +240,9 @@ export default function CustomQuotePage() {
   };
 
   return (
-    <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-6 lg:px-8 pt-8 md:pt-10 pb-12 bg-white min-h-screen">
-      <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100 mb-8 md:mb-12">New Quote</h1>
+    <div className="bg-white min-h-screen flex flex-col font-sans">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-10 pb-12">
+        <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100 mb-8 md:mb-12">New Quote</h1>
 
       {/* Tell us about your project box */}
       <div className="border border-gray-400 rounded-sm p-8 pb-12 mb-12 bg-white">
@@ -569,5 +580,6 @@ export default function CustomQuotePage() {
         </button>
       </div>
     </main>
+    </div>
   );
 }
