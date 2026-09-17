@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
       process.env.NEXT_PUBLIC_API_URL ||
       process.env.API_URL ||
       "http://localhost:5001",
+    NEXT_PUBLIC_DISABLE_SIGNUP:
+      process.env.NEXT_PUBLIC_DISABLE_SIGNUP ||
+      (process.env.NODE_ENV === "production" ? "true" : "false"),
   },
   async rewrites() {
 

@@ -89,8 +89,13 @@ const SubmitButton = ({ label, type = "button", disabled, onClick, className = "
   </button>
 );
 
-// Temporary development mode flag - set to false on Monday to re-enable registrations
-const IS_SIGNUP_DISABLED = true;
+// Disabled on production by default, or explicitly controlled via NEXT_PUBLIC_DISABLE_SIGNUP environment variable
+const isSignupDisabled = () => {
+  if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DISABLE_SIGNUP !== undefined) {
+    return process.env.NEXT_PUBLIC_DISABLE_SIGNUP === "true";
+  }
+  return process.env.NODE_ENV === "production";
+};
 
 function RegisterForm() {
   const router = useRouter();
@@ -172,7 +177,7 @@ function RegisterForm() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (IS_SIGNUP_DISABLED) {
+    if (isSignupDisabled()) {
       setStatusPopup({
         isOpen: true,
         type: "error",
@@ -217,7 +222,7 @@ function RegisterForm() {
   };
 
   const handleSocialLogin = (platform: string) => {
-    if (IS_SIGNUP_DISABLED) {
+    if (isSignupDisabled()) {
       setStatusPopup({
         isOpen: true,
         type: "error",
@@ -230,7 +235,7 @@ function RegisterForm() {
     else if (platform === "Facebook") authService.loginWithFacebook();
   };
 
-  if (IS_SIGNUP_DISABLED) {
+  if (isSignupDisabled()) {
     return (
       <div className="min-h-screen w-full flex bg-white">
         {/* Left Panel */}
