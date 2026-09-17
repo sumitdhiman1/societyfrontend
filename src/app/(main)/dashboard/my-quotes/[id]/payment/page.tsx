@@ -10,6 +10,7 @@ import { authService } from "@/lib/authService";
 import { paymentService } from "@/lib/paymentService";
 import { useCurrency } from "@/context/CurrencyContext";
 import { convertCurrencyAmount, formatPriceWithCurrency, formatActiveCurrency } from "@/lib/currencyUtils";
+import { downloadProjectDetailsPDF } from "@/lib/generateProjectDetailsPDF";
 type PaymentProcessStep = "idle" | "preparing" | "gateway" | "bank_auth" | "confirming" | "activating" | "success" | "error";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
@@ -71,12 +72,21 @@ const CustomPopup = ({ isOpen, onClose, type, title, message }: any) => {
   );
 };
 
-const InvoicePreview = ({ isOpen, onClose, quoteNumber, totalCost, deliverableItems, description }: any) => {
+const InvoicePreview = ({ isOpen, onClose, quoteNumber, totalCost, deliverableItems, description, vatRate = 0, vatAmount = 0, subtotal }: any) => {
   if (!isOpen) return null;
 
   const handlePrint = () => {
     window.print();
   };
+
+  const calculatedSubtotal = subtotal !== undefined && subtotal > 0
+    ? subtotal
+    : (vatRate > 0 && totalCost > 0
+      ? Math.round((totalCost / (1 + vatRate / 100)) * 100) / 100
+      : (totalCost - (vatAmount || 0)));
+  const calculatedVatAmount = vatAmount !== undefined && vatAmount > 0
+    ? vatAmount
+    : (vatRate > 0 ? Math.round(calculatedSubtotal * (vatRate / 100) * 100) / 100 : 0);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300">
@@ -143,15 +153,17 @@ const InvoicePreview = ({ isOpen, onClose, quoteNumber, totalCost, deliverableIt
             <div className="w-full max-w-xs space-y-4">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500 font-bold uppercase tracking-wider">Subtotal:</span>
-                <span className="text-gray-800 font-bold">${totalCost?.toFixed(2)}</span>
+                <span className="text-gray-800 font-bold">${calculatedSubtotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500 font-bold uppercase tracking-wider">Tax (0%):</span>
-                <span className="text-gray-800 font-bold">$0.00</span>
-              </div>
+              {vatRate > 0 ? (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500 font-bold uppercase tracking-wider">VAT ({vatRate}%):</span>
+                  <span className="text-gray-800 font-bold">${calculatedVatAmount.toFixed(2)}</span>
+                </div>
+              ) : null}
               <div className="h-px bg-gray-200 w-full pt-1" />
               <div className="flex justify-between items-center pt-2">
-                <span className="text-lg font-extrabold text-gray-800 uppercase tracking-tighter">Total Due:</span>
+                <span className="text-lg font-extrabold text-gray-800 uppercase tracking-tighter">{vatRate > 0 ? "Total Due (incl. VAT):" : "Total Due:"}</span>
                 <span className="text-2xl font-black text-gray-900 tracking-tight">${totalCost?.toFixed(2)}</span>
               </div>
             </div>
@@ -301,7 +313,16 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
               <div className="flex items-center gap-3 text-xs text-gray-400 mt-4">
                 <span>Project #{quoteDetails.quoteNumber}</span>
                 <span className="text-gray-300">|</span>
-                <button type="button" onClick={() => setShowInvoice(true)} className="text-gray-500 underline underline-offset-2 hover:text-gray-700">View invoice</button>
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    await downloadProjectDetailsPDF(quoteDetails);
+                  }}
+                  className="text-gray-500 underline underline-offset-2 hover:text-gray-700 cursor-pointer"
+                >
+                  View invoice
+                </button>
               </div>
             </div>
             <div className="text-2xl font-bold text-gray-600">{formatCurrency(totalCost)}</div>
@@ -426,7 +447,17 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
         </div>
       </div>
       
-      <InvoicePreview isOpen={showInvoice} onClose={() => setShowInvoice(false)} quoteNumber={`#${quoteDetails.quoteNumber}`} totalCost={totalCost} deliverableItems={quoteDetails.lineItems || quoteDetails.deliverableItems} description={quoteDetails.projectDescription || quoteDetails.projectTitle} />
+      <InvoicePreview
+        isOpen={showInvoice}
+        onClose={() => setShowInvoice(false)}
+        quoteNumber={`#${quoteDetails.quoteNumber}`}
+        totalCost={totalCost}
+        subtotal={quoteDetails.subtotal}
+        vatRate={quoteDetails.vatRate}
+        vatAmount={quoteDetails.vatAmount}
+        deliverableItems={quoteDetails.lineItems || quoteDetails.deliverableItems}
+        description={quoteDetails.projectDescription || quoteDetails.projectTitle}
+      />
     </div>
   );
 }

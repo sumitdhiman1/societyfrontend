@@ -703,6 +703,19 @@ export default function ProjectDetailsPage() {
       : 0;
   const totalCost = rawTotalCost > 0 ? rawTotalCost : baseAmount + vatAmount;
 
+  const totalPaidFromTransactions = (projectPayments || [])
+    .filter((p: any) => ["succeeded", "paid", "completed"].includes(String(p?.status || "").toLowerCase()))
+    .reduce((sum: number, p: any) => sum + (Number(p?.amount) || 0), 0);
+
+  const amountPaid = Math.max(Number(project.amountPaid || 0), totalPaidFromTransactions);
+  const explicitAmountDue = project.amountDue != null && !isNaN(Number(project.amountDue)) ? Number(project.amountDue) : null;
+  const isActuallyPaidInFull = totalCost > 0 && amountPaid >= totalCost - 0.009;
+  const pendingBalance = isActuallyPaidInFull
+    ? 0
+    : explicitAmountDue !== null && explicitAmountDue > 0
+    ? explicitAmountDue
+    : Math.max(0, totalCost - amountPaid);
+
   // Date for delivery due divider
   const deliveryDueStr = project.deadline ? formatSubmittedDate(project.deadline) : "";
 
@@ -771,23 +784,47 @@ export default function ProjectDetailsPage() {
         {/* Left Column: Project Details Card */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white border border-gray-300 rounded-[12px] shadow-sm p-4 sm:p-6 md:p-8">
-            {/* Header: Submitted Date and Status Badge */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
-              <span className="text-[10px] sm:text-xs text-gray-500 font-bold">
-                Submitted - {formatSubmittedDate(project.createdAt)}
-              </span>
-              <span className={`w-fit px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider border ${(project.status || "").toLowerCase() === "active" || (project.status || "").toLowerCase() === "in_progress"
-                ? "border-green-300 text-green-700 bg-green-50"
-                : (project.status || "").toLowerCase() === "completed"
-                  ? "border-blue-300 text-blue-700 bg-blue-50"
-                  : (project.status || "").toLowerCase() === "paused"
-                    ? "border-amber-300 text-amber-800 bg-amber-50"
-                    : (project.status || "").toLowerCase() === "canceled" || (project.status || "").toLowerCase() === "cancelled"
-                      ? "border-red-300 text-red-700 bg-red-50"
-                      : "border-gray-300 text-gray-700 bg-gray-50"
-                }`}>
-                {project.status || "ACTIVE"}
-              </span>
+            {/* Header: Submitted Date, Status Badge, and Right Side: Total Cost / Paid to Date / Pending Balance */}
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-[10px] sm:text-xs text-gray-500 font-bold">
+                  Submitted - {formatSubmittedDate(project.createdAt)}
+                </span>
+                <span className={`w-fit px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider border ${(project.status || "").toLowerCase() === "active" || (project.status || "").toLowerCase() === "in_progress"
+                  ? "border-green-300 text-green-700 bg-green-50"
+                  : (project.status || "").toLowerCase() === "completed"
+                    ? "border-blue-300 text-blue-700 bg-blue-50"
+                    : (project.status || "").toLowerCase() === "paused"
+                      ? "border-amber-300 text-amber-800 bg-amber-50"
+                      : (project.status || "").toLowerCase() === "canceled" || (project.status || "").toLowerCase() === "cancelled"
+                        ? "border-red-300 text-red-700 bg-red-50"
+                        : "border-gray-300 text-gray-700 bg-gray-50"
+                  }`}>
+                  {project.status || "ACTIVE"}
+                </span>
+              </div>
+
+              {/* Right Side: Total Cost / Paid to Date / Pending Balance */}
+              <div className="w-full sm:w-60 shrink-0 space-y-1.5 text-xs sm:text-sm self-start">
+                <div className="flex justify-between items-center font-semibold">
+                  <span className="text-gray-900">Total Cost</span>
+                  <span className="text-gray-900 font-bold">
+                    {formatCurrency(totalCost)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-green-600">
+                  <span className="font-medium">Paid to Date</span>
+                  <span className="font-semibold">
+                    {formatCurrency(amountPaid)}
+                  </span>
+                </div>
+                <div className={`flex justify-between items-center pt-1 border-t border-gray-100 font-semibold ${pendingBalance > 0.009 ? "text-red-600" : "text-gray-600"}`}>
+                  <span>Pending Balance</span>
+                  <span className="font-bold">
+                    {formatCurrency(pendingBalance)}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div className="border-t border-gray-200 mb-6 sm:mb-8" />

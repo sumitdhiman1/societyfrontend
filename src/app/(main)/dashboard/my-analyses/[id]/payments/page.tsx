@@ -9,7 +9,6 @@ import { authService } from "@/lib/authService";
 import { downloadFile } from "@/lib/utils";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
-import { downloadInvoicePDF } from "@/lib/generateInvoicePDF";
 import { useCurrency } from "@/context/CurrencyContext";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 
@@ -476,32 +475,9 @@ export default function AnalysisPaymentsPage() {
       if (e) e.preventDefault();
       setIsDownloadingInvoice(true);
       try {
-        await downloadInvoicePDF({
-          invoiceNumber: projectNumber,
-          projectTitle: activeAnalysis.title || "Free Website Analysis",
-          clientName: activeAnalysis.clientName || currentUser?.fullName || "Client",
-          amount: 0,
-          date: activeAnalysis.createdAt,
-          startDate: activeAnalysis.startDate || activeAnalysis.createdAt,
-          deadline: activeAnalysis.deadline || activeAnalysis.expectedDeadline,
-          deliverableItems: [
-            {
-              description: freeItemTitle,
-              details: freeItemDesc,
-              duration: freeItemDuration,
-              amount: 0,
-            },
-          ],
-          vatRate: 0,
-          vatAmount: 0,
-          totalCost: 0,
-          amountPaid: 0,
-          pendingBalance: 0,
-          currency: currency.toUpperCase(),
-          clientEmail: currentUser?.email || activeAnalysis.clientEmail || "",
-        });
+        await downloadProjectDetailsPDF(activeAnalysis);
       } catch (err) {
-        console.error("Failed to download invoice PDF:", err);
+        console.error("Failed to download project PDF for invoice view:", err);
       } finally {
         setIsDownloadingInvoice(false);
       }

@@ -19,7 +19,7 @@ import StatusPopup from "@/components/common/StatusPopup";
 type PaymentProcessStep = "idle" | "preparing" | "gateway" | "bank_auth" | "confirming" | "activating" | "success" | "error";
 import { countryService, Country } from "@/lib/countryService";
 import { convertCurrencyAmount, formatPriceWithCurrency, formatActiveCurrency } from "@/lib/currencyUtils";
-import { downloadInvoicePDF } from "@/lib/generateInvoicePDF";
+import { downloadProjectDetailsPDF } from "@/lib/generateProjectDetailsPDF";
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -286,23 +286,22 @@ function PaymentForm({
 
     setLocalDownloadingInvoice(true);
     try {
-      await downloadInvoicePDF({
-        invoiceNumber: entityNumber,
+      await downloadProjectDetailsPDF({
+        projectNumber: entityNumber,
         title: title || description,
         description: description,
-        date: date,
         deliverableItems: deliverableItems,
         subtotal: projectSubtotal,
         vatRate: getActiveVatRate(),
         vatAmount: getVatAmount(projectSubtotal),
-        totalAmount: projectSubtotal + getVatAmount(projectSubtotal),
+        totalCost: projectSubtotal + getVatAmount(projectSubtotal),
         amountPaid: amountPaid,
         pendingBalance: Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid),
         currency: nativeCurrency || "USD",
         clientEmail: clientEmail,
       });
     } catch (err) {
-      console.error("Failed to download invoice PDF:", err);
+      console.error("Failed to download project PDF for invoice view:", err);
     } finally {
       setLocalDownloadingInvoice(false);
     }
@@ -638,52 +637,28 @@ function PaymentForm({
             </div>
           </div>
 
-          {(type === "BUNDLE" || type === "ANALYSIS") && amountPaid === 0 ? (
-            <div className="w-full sm:w-60 shrink-0 order-1 lg:order-2 space-y-1.5 text-xs sm:text-sm">
-              <div className="flex justify-between items-center font-semibold">
-                <span className="text-gray-900">Total Cost:</span>
-                <span className="text-gray-900 font-bold">{formatPrice(projectSubtotal + getVatAmount(projectSubtotal))}</span>
-              </div>
+          <div className="w-full sm:w-60 shrink-0 order-1 lg:order-2 space-y-1.5 text-xs sm:text-sm">
+            <div className="flex justify-between items-center font-semibold">
+              <span className="text-gray-900">Total Cost</span>
+              <span className="text-gray-900 font-bold">
+                {formatPrice(projectSubtotal + getVatAmount(projectSubtotal))}
+              </span>
             </div>
-          ) : (
-            <div className="w-full sm:w-60 shrink-0 order-1 lg:order-2 space-y-1.5 text-xs sm:text-sm">
-              <div className="flex justify-between items-center font-semibold">
-                <span className="text-gray-900">Total Cost</span>
-                <span className="text-gray-900 font-bold">
-                  {formatPrice(projectSubtotal + getVatAmount(projectSubtotal))}
-                </span>
-              </div>
 
-              {amountPaid > 0 && (
-                <div className="flex justify-between items-center text-green-600">
-                  <span className="font-medium">Paid to Date</span>
-                  <span className="font-semibold">
-                    {formatPrice(amountPaid)}
-                  </span>
-                </div>
-              )}
-
-              {Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid) > 0.009 ? (
-                <div className="flex justify-between items-center pt-1 border-t border-gray-100 font-semibold text-red-600">
-                  <span>
-                    Pending Balance
-                  </span>
-                  <span className="font-bold">
-                    {formatPrice(Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid))}
-                  </span>
-                </div>
-              ) : amountPaid > 0 ? (
-                <div className="flex justify-between items-center pt-1 border-t border-gray-100 font-semibold text-green-600">
-                  <span>
-                    Fully Paid
-                  </span>
-                  <span className="font-bold">
-                    {formatPrice(amountPaid)}
-                  </span>
-                </div>
-              ) : null}
+            <div className="flex justify-between items-center text-green-600">
+              <span className="font-medium">Paid to Date</span>
+              <span className="font-semibold">
+                {formatPrice(amountPaid)}
+              </span>
             </div>
-          )}
+
+            <div className={`flex justify-between items-center pt-1 border-t border-gray-100 font-semibold ${Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid) > 0.009 ? "text-red-600" : "text-gray-600"}`}>
+              <span>Pending Balance</span>
+              <span className="font-bold">
+                {formatPrice(Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid))}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     )}

@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authService } from "@/lib/authService";
 import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "@/lib/generateCalculatorProjectPDF";
-import { downloadCalculatorInvoicePDF } from "@/lib/generateCalculatorInvoicePDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { getMainCalculatorCategory } from "@/lib/calculatorUtils";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
@@ -460,36 +459,9 @@ export default function CalculatorProjectPayments({
     if (isDownloadingInvoice || isDownloadingPdf) return;
     setIsDownloadingInvoice(true);
     try {
-      const searchInvoiceId = searchParams?.get("invoiceId") || undefined;
-      const resolvedInvoiceId =
-        activeProject.invoiceNumber ||
-        payments[0]?.invoiceNumber ||
-        searchInvoiceId ||
-        (activeProject._id ? `INV-2026-${activeProject._id.slice(-4).toUpperCase()}` : "INV-2026-001");
-
-      await downloadCalculatorInvoicePDF({
-        project: activeProject,
-        quote: linkedQuote,
-        invoiceNumber: resolvedInvoiceId,
-        projectNumber: formattedProjectNumber,
-        date: paymentDateFormatted,
-        paymentStatus: resolvedPaymentStatus,
-        status: isFullyPaid ? "PAID" : isPartiallyPaid ? "PARTIALLY PAID" : "PENDING",
-        title: itemTitle,
-        duration: itemDuration,
-        deliverableItems: deliverableItems,
-        subtotal: totalSubtotal,
-        vatRate: vatRate,
-        vatAmount: effectiveVatAmount,
-        totalAmount: totalProjectCost,
-        amountPaid: amountPaid,
-        pendingBalance: pendingBalance,
-        currency: currency,
-        payments: payments,
-        clientEmail: currentUser?.email || activeProject.clientEmail || "",
-      });
+      await downloadCalculatorProjectPDF(projectPayloadForPdf);
     } catch (err) {
-      console.error("Failed to download invoice PDF:", err);
+      console.error("Failed to download project PDF for invoice view:", err);
     } finally {
       setIsDownloadingInvoice(false);
     }

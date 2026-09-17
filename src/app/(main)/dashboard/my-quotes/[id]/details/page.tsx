@@ -1158,8 +1158,43 @@ export default function QuoteDetailsPage() {
                   calculatedDurationDays > 0
                     ? `${calculatedDurationDays} Day${calculatedDurationDays > 1 ? "s" : ""}`
                     : content.totalDuration || quote.totalDuration || "-";
-                const calculatedTotalCost = propItems.reduce((sum: number, it: any) => sum + (Number(it.amount ?? it.cost) || 0), 0);
-                const totalCost = content.totalCost ?? (calculatedTotalCost > 0 ? calculatedTotalCost : (quote.totalCost ?? 0));
+                const calculatedItemsSum = propItems.reduce((sum: number, it: any) => sum + (Number(it.amount ?? it.cost) || 0), 0);
+                const rawTotalCost = Number(
+                  content.totalCost ??
+                  (quote.totalCost ?? (calculatedItemsSum > 0 ? calculatedItemsSum : 0))
+                );
+                const vatRate = Number(
+                  content.vatRate !== undefined && content.vatRate !== null
+                    ? content.vatRate
+                    : ((msg as any).vatRate !== undefined && (msg as any).vatRate !== null
+                      ? (msg as any).vatRate
+                      : (quote.vatRate !== undefined && quote.vatRate !== null ? quote.vatRate : 0))
+                );
+                const rawSubtotal = Number(
+                  content.subtotalCost ??
+                  content.subtotal ??
+                  (calculatedItemsSum > 0 ? calculatedItemsSum : (quote.subtotal ?? 0))
+                );
+                const subtotal = rawSubtotal > 0
+                  ? rawSubtotal
+                  : (vatRate > 0 && rawTotalCost > 0
+                    ? Math.round((rawTotalCost / (1 + vatRate / 100)) * 100) / 100
+                    : rawTotalCost);
+                const vatAmount = Number(
+                  content.vatAmount ??
+                  (msg as any).vatAmount ??
+                  (vatRate > 0 && subtotal > 0
+                    ? Math.round(subtotal * (vatRate / 100) * 100) / 100
+                    : (quote.vatAmount ?? 0))
+                );
+                const totalCost = vatRate > 0 && vatAmount > 0
+                  ? (rawTotalCost >= subtotal + vatAmount - 0.05 ? rawTotalCost : Math.round((subtotal + vatAmount) * 100) / 100)
+                  : (rawTotalCost > 0 ? rawTotalCost : subtotal);
+
+                const proposalFiles = (content.attachedFiles && content.attachedFiles.length > 0)
+                  ? content.attachedFiles
+                  : (msg as any).attachments || (msg as any).attachedFiles || [];
+                const hasPropFiles = Boolean(proposalFiles && proposalFiles.length > 0);
 
                 // Check subsequent messages to track actions on this proposal
                 const subsequentMessages = allMessages.slice(i + 1);
@@ -1308,19 +1343,83 @@ export default function QuoteDetailsPage() {
                             </div>
                           )}
 
-                          {/* Total Duration & Cost */}
-                          <div className="flex flex-row justify-end gap-6 sm:gap-16 text-xs sm:text-sm mb-6">
-                            <div className="text-center">
-                              <div className="text-gray-500 font-bold mb-1 sm:mb-2 flex items-center justify-center gap-1">
-                                Total Duration
+                          {/* Attached Proposal Files if any */}
+                          {hasPropFiles && (
+                            <div className="mb-6">
+                              <h5 className="text-sm font-bold text-gray-700 mb-3">Attached Documents</h5>
+                              <div className="border-t border-gray-200 mb-4"></div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
+                                {proposalFiles.map((fileItem: any, fIdx: number) => {
+                                  const url = typeof fileItem === "string" ? fileItem : (fileItem.url || fileItem.path || fileItem.secure_url || "");
+                                  const rawName = typeof fileItem === "string" ? fileItem.split("/").pop() || `File-${fIdx + 1}` : (fileItem.filename || fileItem.name || fileItem.fileName || url.split("/").pop() || `File-${fIdx + 1}`);
+                                  const fileName = decodeURIComponent(rawName.split("?")[0]);
+                                  const safeUrl = getSafeUrl(url);
+                                  const isSvg = url.toLowerCase().includes(".svg");
+
+                                  return (
+                                    <a
+                                      key={fIdx}
+                                      href={safeUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
+                                    >
+                                      <div className="flex-grow flex items-center justify-center bg-gray-50 relative overflow-hidden">
+                                        {renderFileThumbnail(safeUrl, fileName, isSvg)}
+                                        <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
+                                          <div className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center">
+                                            <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex items-center justify-center h-10 min-h-[40px]">
+                                        <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={fileName}>
+                                          {fileName}
+                                        </span>
+                                      </div>
+                                    </a>
+                                  );
+                                })}
                               </div>
-                              <div className="font-medium text-gray-600">{formatDuration(totalDuration)}</div>
                             </div>
-                            <div className="text-center">
-                              <div className="text-gray-500 font-bold mb-1 sm:mb-2">Total Cost</div>
-                              <div className="font-medium text-gray-600">
-                                {formatCurrency(totalCost, proposalCurrency)}
+                          )}
+
+                          {/* Total Duration, Cost & VAT Breakdown */}
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 text-xs sm:text-sm mb-6 pt-2">
+                            {totalDuration && totalDuration !== "-" ? (
+                              <div className="text-left">
+                                <div className="text-gray-500 font-bold mb-1 sm:mb-2 flex items-center gap-1">
+                                  Total Duration
+                                </div>
+                                <div className="font-medium text-gray-700">{formatDuration(totalDuration)}</div>
                               </div>
+                            ) : <div />}
+
+                            <div className="flex flex-col items-end gap-2 text-xs sm:text-sm min-w-[240px] w-full sm:w-auto">
+                              {vatRate > 0 && vatAmount > 0 ? (
+                                <>
+                                  <div className="flex justify-between w-full gap-8">
+                                    <span className="text-gray-500 font-medium">Subtotal:</span>
+                                    <span className="font-bold text-gray-700">{formatCurrency(subtotal, proposalCurrency)}</span>
+                                  </div>
+                                  <div className="flex justify-between w-full gap-8">
+                                    <span className="text-gray-500 font-medium">VAT ({vatRate}%):</span>
+                                    <span className="font-bold text-gray-700">{formatCurrency(vatAmount, proposalCurrency)}</span>
+                                  </div>
+                                  <div className="border-t border-gray-200 w-full my-1" />
+                                  <div className="flex justify-between w-full gap-8">
+                                    <span className="text-gray-800 font-bold text-sm">Total (incl. VAT):</span>
+                                    <span className="font-extrabold text-gray-900 text-sm sm:text-base">{formatCurrency(totalCost, proposalCurrency)}</span>
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="flex justify-between w-full gap-8">
+                                  <span className="text-gray-800 font-bold text-sm">Total Cost:</span>
+                                  <span className="font-extrabold text-gray-900 text-sm sm:text-base">{formatCurrency(totalCost, proposalCurrency)}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
 

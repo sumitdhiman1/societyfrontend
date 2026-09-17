@@ -7,7 +7,6 @@ import { paymentService } from "@/lib/paymentService";
 import { authService } from "@/lib/authService";
 import { quoteService } from "@/lib/quoteService";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
-import { downloadCalculatorInvoicePDF } from "@/lib/generateCalculatorInvoicePDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 import CalculatorProjectPayments, { ReceiptModal } from "./CalculatorProjectPayments";
@@ -289,36 +288,9 @@ export default function ProjectPaymentsPage() {
     if (isDownloadingInvoice || isDownloadingPdf) return;
     setIsDownloadingInvoice(true);
     try {
-      const searchInvoiceId = searchParams?.get("invoiceId") || undefined;
-      const resolvedInvoiceId =
-        activeProject.invoiceNumber ||
-        payments[0]?.invoiceNumber ||
-        searchInvoiceId ||
-        (activeProject._id ? `INV-2026-${activeProject._id.slice(-4).toUpperCase()}` : "INV-2026-001");
-
-      await downloadCalculatorInvoicePDF({
-        project: activeProject,
-        quote: fetchedQuote || activeProject.quoteId,
-        invoiceNumber: resolvedInvoiceId,
-        projectNumber: formattedProjectNumber,
-        date: paymentDateFormatted,
-        paymentStatus: resolvedPaymentStatus,
-        status: isFullyPaid ? "PAID" : isPartiallyPaid ? "PARTIALLY PAID" : "PENDING",
-        title: activeProject.title || "Project Development",
-        duration: activeProject.timelineInDays ? `${activeProject.timelineInDays} Days` : "30 Days",
-        deliverableItems: deliverableItems,
-        subtotal: totalSubtotal,
-        vatRate: vatRate,
-        vatAmount: effectiveVatAmount,
-        totalAmount: totalProjectCost,
-        amountPaid: amountPaid,
-        pendingBalance: pendingBalance,
-        currency: currency,
-        payments: payments,
-        clientEmail: currentUser?.email || activeProject.clientEmail || "",
-      });
+      await downloadProjectDetailsPDF(activeProject);
     } catch (err) {
-      console.error("Failed to download invoice PDF:", err);
+      console.error("Failed to download project PDF for invoice view:", err);
     } finally {
       setIsDownloadingInvoice(false);
     }

@@ -72,13 +72,53 @@ function getTotalCost(quote: any, lineItems: Array<{ amount: number }>) {
 export async function generateQuotePDF(quote: any): Promise<void> {
   const currency = (quote.currency || "USD").toUpperCase();
   const lineItems = getLineItems(quote);
-  const totalCost = getTotalCost(quote, lineItems);
+  const explicitTotalCost = getTotalCost(quote, lineItems);
   const totalDuration =
     quote.totalDuration || quote.requirements?.estimatedTimeline || "-";
   const quoteNumber = quote.quoteNumber || quote._id || "quote";
   const description = (quote.projectDescription || "")
     .replace(/\n/g, "<br />")
     .replace(/- /g, "• ");
+
+  const latestProposal = quote.messages
+    ?.filter((m: any) => m.type === "quote_proposal")
+    ?.at(-1);
+  const propContent = latestProposal?.content || {};
+
+  const vatRate = Number(
+    propContent.vatRate !== undefined && propContent.vatRate !== null
+      ? propContent.vatRate
+      : (quote.vatRate !== undefined && quote.vatRate !== null ? quote.vatRate : 0)
+  );
+
+  const itemsSum = lineItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const rawSubtotal = Number(
+    propContent.subtotalCost ??
+    propContent.subtotal ??
+    (itemsSum > 0 ? itemsSum : (quote.subtotal ?? 0))
+  );
+
+  const rawTotalCost = Number(
+    propContent.totalCost ??
+    (explicitTotalCost > 0 ? explicitTotalCost : (quote.totalCost ?? 0))
+  );
+
+  const subtotal = rawSubtotal > 0
+    ? rawSubtotal
+    : (vatRate > 0 && rawTotalCost > 0
+      ? Math.round((rawTotalCost / (1 + vatRate / 100)) * 100) / 100
+      : rawTotalCost);
+
+  const vatAmount = Number(
+    propContent.vatAmount ??
+    (vatRate > 0 && subtotal > 0
+      ? Math.round(subtotal * (vatRate / 100) * 100) / 100
+      : (quote.vatAmount ?? 0))
+  );
+
+  const totalCost = vatRate > 0 && vatAmount > 0
+    ? (rawTotalCost >= subtotal + vatAmount - 0.05 ? rawTotalCost : Math.round((subtotal + vatAmount) * 100) / 100)
+    : (rawTotalCost > 0 ? rawTotalCost : subtotal);
 
   const html = `<!DOCTYPE html>
 <html>
@@ -108,7 +148,7 @@ export async function generateQuotePDF(quote: any): Promise<void> {
     Project #${quoteNumber}<br />
     Status: ${quote.status || "Pending"}<br />
     Submitted: ${formatDate(quote.dateSubmitted || quote.createdAt)}<br />
-    Expires: ${formatDate(quote.expirationDate)}
+    Expires: ${formatDate(quote.expirationDate || propContent.expires)}
   </p>
   <h2 style="font-size:18px;margin:0 0 8px;">${quote.projectTitle || "Project Proposal"}</h2>
   ${description ? `<div class="description">${description}</div>` : ""}
@@ -138,10 +178,25 @@ export async function generateQuotePDF(quote: any): Promise<void> {
       <div class="label">Total Duration</div>
       <div>${totalDuration}</div>
     </div>
+    ${vatRate > 0 && vatAmount > 0 ? `
+    <div>
+      <div class="label">Subtotal</div>
+      <div>${formatMoney(subtotal, currency)}</div>
+    </div>
+    <div>
+      <div class="label">VAT (${vatRate}%)</div>
+      <div>${formatMoney(vatAmount, currency)}</div>
+    </div>
+    <div>
+      <div class="label">Total (incl. VAT)</div>
+      <div>${formatMoney(totalCost, currency)}</div>
+    </div>
+    ` : `
     <div>
       <div class="label">Total Cost</div>
       <div>${formatMoney(totalCost, currency)}</div>
     </div>
+    `}
   </div>
   <div class="footer">Society Web Solutions — societywebsolutions.com</div>
 </body>
