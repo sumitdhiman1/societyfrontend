@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -73,6 +74,35 @@ const EyeIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   </svg>
 );
 
+const HaveQuestionsIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M1.05566 12.7191C-3.30398 3.29209 8.32684 -3.98504 14.8193 2.68491C21.4988 9.21804 14.2093 20.8 4.78906 16.4554L1.4707 16.7787C1.26975 16.798 1.07029 16.726 0.927734 16.5833C0.785324 16.4407 0.713988 16.2413 0.733398 16.0404L1.05566 12.7191ZM13.8652 3.64194C8.09139 -2.15271 -1.63995 4.53226 2.41113 12.598L2.42383 12.6234L2.4209 12.6527L2.15723 15.3529L4.85742 15.0902L4.88477 15.0882L4.91016 15.0999C7.90666 16.5489 11.4652 16.4 13.8936 13.9291C15.5869 12.0956 16.1729 10.1214 16.042 8.30991C15.9108 6.49524 15.0592 4.83681 13.8652 3.64194ZM8.74219 12.1712V12.1722C9.10604 12.185 9.39453 12.4839 9.39453 12.848C9.39438 13.2124 9.10616 13.5117 8.74219 13.5238H8.73535C8.37102 13.5119 8.08316 13.2124 8.08301 12.848C8.08301 12.484 8.37124 12.1849 8.73535 12.1722L8.74219 12.1712ZM9.41406 10.9544C9.409 11.3244 9.10813 11.6214 8.73828 11.6214C8.36917 11.6213 8.06839 11.324 8.0625 10.9544V10.3744C8.05825 9.49604 8.56937 8.6961 9.36914 8.33139L9.37012 8.33042C9.99024 8.05971 10.3555 7.40894 10.2617 6.73862L10.2607 6.73667C10.1675 5.92486 9.45605 5.32638 8.64062 5.37436C7.82531 5.42172 7.18841 6.09841 7.19043 6.91636L7.17773 7.04917C7.1518 7.17879 7.0881 7.29892 6.99316 7.39389C6.86669 7.5204 6.69473 7.59205 6.51562 7.59214H6.50293V7.59116C6.33136 7.57032 6.19169 7.51453 6.08398 7.42612C5.9761 7.33756 5.90642 7.2217 5.86719 7.09116C5.79004 6.83402 5.82822 6.51497 5.92188 6.20346C6.01643 5.88905 6.17181 5.56772 6.34375 5.29819C6.5113 5.03555 6.70133 4.81164 6.87598 4.6937L7.08398 4.53647C7.58346 4.19287 8.17989 4.01407 8.79004 4.02768C9.48829 4.04334 10.1574 4.30992 10.6738 4.77964C11.1905 5.24897 11.5195 5.88885 11.6025 6.58139L11.625 6.81186C11.6549 7.35027 11.5302 7.88806 11.2627 8.36069C10.9581 8.89931 10.4843 9.32256 9.91504 9.56675C9.60477 9.71347 9.40891 10.0298 9.41406 10.3734V10.9544Z" fill="#0D1939" stroke="#0D1939" strokeWidth="0.2"/>
+  </svg>
+);
+
+const MobileUserIcon = () => (
+  <svg width="15" height="19" viewBox="0 0 15 19" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M7.1604 0.100391C9.65605 0.100436 11.6858 2.13012 11.6858 4.62578C11.6857 7.1214 9.65592 9.15113 7.1604 9.15117C4.66474 9.15117 2.63505 7.12143 2.63501 4.62578C2.63501 2.1301 4.66471 0.100391 7.1604 0.100391ZM7.1604 1.56426C5.47064 1.56426 4.09888 2.93602 4.09888 4.62578C4.09892 6.31551 5.47067 7.68731 7.1604 7.68731C8.8501 7.68726 10.2219 6.31548 10.2219 4.62578C10.2219 2.93605 8.85012 1.5643 7.1604 1.56426Z" fill="#0D1939" stroke="#0D1939" strokeWidth="0.2"/>
+    <path d="M10.1707 9.17482C10.4616 9.00464 10.794 8.94431 11.1082 9.01076L11.1072 9.01174C12.9081 9.38426 14.2097 10.9848 14.2097 12.8194V17.2451C14.2097 17.648 13.8802 17.9774 13.4773 17.9776H0.831787C0.429 17.9773 0.100342 17.648 0.100342 17.2451V12.8194C0.100392 10.9829 1.40396 9.38093 3.20776 9.01076C3.57354 8.93484 3.95571 9.03208 4.26636 9.2549H4.26733C5.95828 10.4812 8.35765 10.4813 10.0486 9.2549L10.1707 9.17482ZM10.8552 10.4551C9.78281 11.2464 8.49976 11.6553 7.16089 11.6553C5.81419 11.6553 4.52445 11.2421 3.43042 10.4551C2.36558 10.7013 1.57109 11.6855 1.57104 12.8194V16.5127H12.7507V12.8194C12.7507 11.6861 11.957 10.7015 10.8552 10.4551Z" fill="#0D1939" stroke="#0D1939" strokeWidth="0.2"/>
+  </svg>
+);
+
+const MobileSearchButtonIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17.7552 15.5622L14.2499 12.0574C14.0917 11.8992 13.8772 11.8113 13.6522 11.8113H13.0791C14.0495 10.5705 14.6261 9.00967 14.6261 7.31179C14.6261 3.27273 11.3528 0 7.31303 0C3.27329 0 0 3.27273 0 7.31179C0 11.3508 3.27329 14.6236 7.31303 14.6236C9.01121 14.6236 10.5723 14.0471 11.8134 13.0768V13.6498C11.8134 13.8748 11.9013 14.0892 12.0595 14.2474L15.5648 17.7522C15.8953 18.0826 16.4297 18.0826 16.7567 17.7522L17.7517 16.7573C18.0822 16.4269 18.0822 15.8926 17.7552 15.5622ZM7.31303 11.8113C4.82731 11.8113 2.81271 9.80061 2.81271 7.31179C2.81271 4.82648 4.82379 2.81223 7.31303 2.81223C9.79876 2.81223 11.8134 4.82297 11.8134 7.31179C11.8134 9.79709 9.80228 11.8113 7.31303 11.8113Z" fill="white"/>
+  </svg>
+);
+
+const mobileNavLinks = [
+  { label: "Home", href: "/" },
+  { label: "Graphic Design & Branding", href: "/dashboard/new-project/packages?categorycode=GDB" },
+  { label: "Website Development", href: "/dashboard/new-project/packages?categorycode=WD" },
+  { label: "Website Maintenance", href: "/dashboard/new-project/packages?categorycode=WM" },
+  { label: "Search Engine Optimization", href: "/dashboard/new-project/packages?categorycode=SEO" },
+  { label: "Social Media Marketing", href: "/dashboard/new-project/packages?categorycode=SMM" },
+  { label: "Paid Ads Marketing", href: "/dashboard/new-project/packages?categorycode=PAM" },
+];
+
 export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
@@ -85,15 +115,58 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
   const [avatar, setAvatar] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileMenuOpen]);
 
   const router = useRouter();
   const shouldHideMenu = hideMenu;
+  const navRef = useRef<HTMLElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
   const notificationContainerRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const mobileProfileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+  const mobileSearchRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
+
+  const [navBottom, setNavBottom] = useState(88);
+
+  const updateNavBottom = useCallback(() => {
+    if (navRef.current) {
+      const rect = navRef.current.getBoundingClientRect();
+      setNavBottom(rect.bottom);
+    }
+  }, []);
+
+  useEffect(() => {
+    updateNavBottom();
+    window.addEventListener("resize", updateNavBottom);
+    window.addEventListener("scroll", updateNavBottom, { passive: true });
+    return () => {
+      window.removeEventListener("resize", updateNavBottom);
+      window.removeEventListener("scroll", updateNavBottom);
+    };
+  }, [updateNavBottom]);
+
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      updateNavBottom();
+    }
+  }, [mobileMenuOpen, updateNavBottom]);
 
   const { openChat } = useChatWidget();
   const { currency, setCurrency } = useCurrency();
@@ -342,9 +415,14 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
       const insideProfile =
         (profileRef.current && profileRef.current.contains(target)) ||
         (mobileProfileRef.current && mobileProfileRef.current.contains(target));
-      if (!insideProfile) setProfileDropdownOpen(false);
-      if (searchRef.current && !searchRef.current.contains(target))
-        setShowSuggestions(false);
+      if (!insideProfile) {
+        setProfileDropdownOpen(false);
+        setMobileProfileOpen(false);
+      }
+      const insideSearch =
+        (searchRef.current && searchRef.current.contains(target)) ||
+        (mobileSearchRef.current && mobileSearchRef.current.contains(target));
+      if (!insideSearch) setShowSuggestions(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -381,23 +459,39 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
   };
 
   return (
-    <nav className="w-full h-[88px] bg-[#00102E] text-white shadow-[0px_5px_20px_#0000000D] relative z-50 font-sans">
-      <div className="max-w-[1536px]  mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] h-full flex items-center justify-between">
-        <div className="flex items-center gap-3 shrink-0">
-          {/* Mobile view - lefside menu trigger visible only if the user is logined  */}
-          {isAuthenticated && (
-            <button
-              className="xl:hidden  text-white"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
+    <nav ref={navRef} className="w-full h-[88px] bg-[#00102E] text-white shadow-[0px_5px_20px_#0000000D] relative z-50 font-sans">
+      <div className="max-w-[1536px]  mx-auto px-5 md:px-8 lg:pl-[54px] lg:pr-[62px] h-full flex items-center justify-between">
+        <div className="flex items-center gap-3.5 shrink-0">
+          {/* Mobile view - menu trigger (hamburger when closed, X when open) */}
+          <button
+            className="xl:hidden text-white p-1 hover:bg-white/10 rounded-md transition-colors flex items-center justify-center"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+          >
+            {mobileMenuOpen ? (
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            ) : (
               <MenuIcon />
-            </button>
-          )}
+            )}
+          </button>
 
           {/* Logo */}
           <Link
             href="/"
-            className="flex items-center gap-2 z-50 shrink-0"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center gap-2 shrink-0"
           >
             <Image
               src="/images/Brand.svg"
@@ -411,35 +505,10 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
           </Link>
         </div>
 
-        {/* Mobile Search - Visible only on mobile/tablet */}
-        {!shouldHideMenu && (
-          <div className="flex-1 mx-4 h-10 bg-white rounded-md flex items-center overflow-hidden lg:hidden max-w-[400px]
-          hidden lg:block flex-1 max-w-md xl:max-w-2xl lg:mx-4 xl:mx-8 px-4 relative">
-            <input
-              type="text"
-              placeholder="Search"
-              className="flex-1 pl-3 pr-1 text-gray-700 bg-transparent outline-none placeholder-gray-400 text-sm font-medium font-sans"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                fetchSuggestions(e.target.value);
-              }}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              onFocus={() => setShowSuggestions(true)}
-            />
-            <button
-              onClick={() => handleSearch()}
-              className="h-full w-10 bg-[#4343F0] hover:bg-[#3232b7] text-white flex items-center justify-center transition-colors shrink-0"
-            >
-              <SearchIcon />
-            </button>
-          </div>
-        )}
-
         {/* Desktop Search */}
         {!shouldHideMenu && (
           <div
-            className="hidden lg:block flex-1 max-w-md xl:max-w-2xl lg:mx-4 xl:mx-8 px-4 relative"
+            className="hidden xl:block flex-1 max-w-md xl:max-w-2xl lg:mx-4 xl:mx-8 px-4 relative"
             ref={searchRef}
           >
             <div className="flex items-center w-full bg-white rounded-sm overflow-hidden h-11 shadow-sm border border-transparent focus-within:border-[#4343F0] transition-all">
@@ -609,188 +678,220 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
         </div>
 
         {/* Mobile Right Side */}
-        <div className="xl:hidden flex items-center gap-4 shrink-0">
-          {isAuthenticated ? (
-            <>
-              <Notification
-                notificationRef={notificationRef}
-                notificationsOpen={notificationsOpen}
-                setNotificationsOpen={setNotificationsOpen}
-                setMobileMenuOpen={setMobileMenuOpen}
-                isAuthenticated={isAuthenticated}
-                unreadCount={unreadCount}
-                setUnreadCount={setUnreadCount}
-              />
-              <Profile
-                profileRef={mobileProfileRef}
-                avatar={user.avatar ?? ""}
-                profileDropdownOpen={profileDropdownOpen}
-                setIsAuthenticated={setIsAuthenticated}
-                setProfileDropdownOpen={setProfileDropdownOpen}
-              />
-            </>
-          ) : (
-            <button
-              className="p-2 text-white hover:bg-gray-700 rounded-md transition-colors"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              <MenuIcon />
-            </button>
+        <div className="xl:hidden flex items-center gap-2.5 shrink-0">
+          {isAuthenticated && (
+            <Notification
+              notificationRef={notificationRef}
+              notificationsOpen={notificationsOpen}
+              setNotificationsOpen={setNotificationsOpen}
+              setMobileMenuOpen={setMobileMenuOpen}
+              isAuthenticated={isAuthenticated}
+              unreadCount={unreadCount}
+              setUnreadCount={setUnreadCount}
+            />
           )}
-        </div>
-      </div>
 
-      {/* Mobile Menu - slides in from right */}
-      <div
-        className={`fixed inset-0 z-50 lg:hidden transition-opacity duration-300 ${mobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
-      >
-        <div
-          className="absolute inset-0 bg-black/50"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-        <div
-          className={`absolute top-0 right-0 h-full w-[300px] max-w-[85vw] bg-[#EAEAFF] shadow-2xl flex flex-col transition-transform duration-300 ease-in-out ${mobileMenuOpen ? "translate-x-0" : "translate-x-full"}`}
-        >
-          <div className="flex items-center justify-between px-6 py-3    shrink-0">
+          {/* Have questions button */}
+          <button
+            onClick={openChat}
+            aria-label="Have questions"
+            className="w-[38px] h-[38px] rounded-full bg-white flex items-center justify-center transition-transform hover:scale-105 shadow-sm shrink-0"
+          >
+            <HaveQuestionsIcon />
+          </button>
+
+          {/* User icon button */}
+          <div className="relative" ref={mobileProfileRef}>
             <button
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-[#4343F0] p-1 hover:bg-white/10 rounded-md transition-colors"
+              onClick={() => {
+                if (isAuthenticated) {
+                  setMobileProfileOpen(!mobileProfileOpen);
+                } else {
+                  router.push("/login");
+                }
+              }}
+              aria-label="Account"
+              className="w-[38px] h-[38px] rounded-full bg-white flex items-center justify-center transition-transform hover:scale-105 shadow-sm shrink-0 overflow-hidden relative"
             >
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
+              <MobileUserIcon />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+              )}
             </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">
-            {!isAuthenticated && (
-              <div className="grid grid-cols-2 gap-3 pb-4 border-b border-gray-300">
+            {isAuthenticated && mobileProfileOpen && (
+              <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-2xl py-2 z-50 border border-gray-100 font-sans text-[#363636]">
                 <button
                   onClick={() => {
-                    router.push("/login");
-                    setMobileMenuOpen(false);
+                    setMobileProfileOpen(false);
+                    router.push("/dashboard/myAccount");
                   }}
-                  className="w-full h-11  bg-[#4343F0]   text-white text-sm font-bold flex items-center justify-center rounded-md"
+                  className="block w-full text-left px-5 py-2.5 text-[15px] font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  Log in
+                  My Account
                 </button>
                 <button
                   onClick={() => {
-                    const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
-                    if (currentPath.startsWith("/dashboard/my-analyses/")) {
-                      router.push(`/register?from=analysis&redirect=${encodeURIComponent(currentPath)}`);
-                    } else {
-                      router.push("/register");
-                    }
-                    setMobileMenuOpen(false);
+                    setMobileProfileOpen(false);
+                    router.push("/dashboard/payment-history");
                   }}
-                  className="w-full h-11 border-2 text-[#4343F0] border-[#4343F0] text-sm font-bold flex items-center justify-center rounded-md"
+                  className="block w-full text-left px-5 py-2.5 text-[15px] font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  Register
-                </button>
-              </div>
-            )}
-
-
-            {isAuthenticated && (
-              <div className="flex flex-col gap-5 pb-4 border-b border-gray-300">
-                <button
-                  onClick={() => {
-                    router.push("/dashboard/my-analyses");
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full text-left text-[#363636] hover:text-[#4343F0] hover:bg-white/5 px-4 rounded-md text-sm font-medium transition-colors"
-                >
-                  My Analyses
+                  Payment History
                 </button>
                 <button
                   onClick={() => {
-                    router.push("/dashboard/my-quotes");
-                    setMobileMenuOpen(false);
+                    setMobileProfileOpen(false);
+                    router.push("/dashboard/renewals");
                   }}
-                  className="w-full text-left  text-[#363636]
-                   hover:text-[#4343F0] hover:bg-white/5 px-4  
-                   rounded-md text-sm font-medium transition-colors"
+                  className="block w-full text-left px-5 py-2.5 text-[15px] font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  My Quotes
+                  Renewals
                 </button>
-                <button
-                  onClick={() => {
-                    router.push("/dashboard/my-projects");
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full text-left  text-[#363636] hover:text-[#4343F0]
-                   hover:bg-white/5 px-4 pb-2 rounded-md text-sm font-medium transition-colors"
-                >
-                  My Projects
-                </button>
-                <button
-                  onClick={() => {
-                    router.push("/dashboard/new-project");
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full bg-[#4343F0] hover:bg-[#3232b7]
-                   text-white text-sm font-bold px-4 py-3 rounded-md shadow-sm 
-                   transition-colors text-center"
-                >
-                  New Project
-                </button>
-
+                <div className="h-[1px] bg-gray-100 my-1" />
                 <button
                   onClick={() => {
                     authService.logout();
                     setIsAuthenticated(false);
+                    setMobileProfileOpen(false);
                     router.push("/");
-                    setMobileMenuOpen(false);
                   }}
-                  className="text-red-600 hover:text-red-800 hover:bg-red-500/10 px-4 py-2 rounded-md text-sm font-medium text-left transition-colors w-full flex items-center gap-2"
+                  className="block w-full text-left px-5 py-2.5 text-[15px] font-medium text-red-600 hover:bg-red-50 transition-colors"
                 >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                    <polyline points="16 17 21 12 16 7" />
-                    <line x1="21" y1="12" x2="9" y2="12" />
-                  </svg>
-                  Log Out
+                  Log out
                 </button>
               </div>
             )}
-
-            {/* {isAuthenticated && (
-              <>
-                <div className="flex items-center justify-between pt-2">
-                  <div className="flex items-center gap-3">
-                    <button
-                      className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
-                      onClick={() => openChat()}
-                    >
-                      <ChatIcon />
-                    </button>
-                  </div>
-                </div>
-              </>
-            )} */}
           </div>
         </div>
       </div>
+
+      {/* Mobile Menu - 100% full width, search at top, same for logged in and logged out */}
+      {mounted &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className={`fixed inset-x-0 bottom-0 z-40 bg-white flex flex-col transition-all duration-300 ease-in-out xl:hidden overflow-y-auto ${
+              mobileMenuOpen
+                ? "opacity-100 pointer-events-auto translate-y-0"
+                : "opacity-0 pointer-events-none -translate-y-2"
+            }`}
+            style={{
+              top: `${navBottom}px`,
+              height: `calc(100dvh - ${navBottom}px)`,
+              width: "100%",
+            }}
+          >
+            {/* Search Bar at Top of Menu */}
+            <div className="px-5 pt-5 pb-4 relative" ref={mobileSearchRef}>
+              <div className="w-full flex items-center bg-white border-[0.5px] border-[#C4C4C4] rounded-[5px] h-[50px] overflow-hidden">
+                <input
+                  type="text"
+                  placeholder="Search for it..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    fetchSuggestions(e.target.value);
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  onFocus={() => setShowSuggestions(true)}
+                  className="flex-1 pl-4 pr-2 outline-none text-[14px] leading-[21px] text-[#8B8B8B] placeholder-[#8B8B8B] font-normal bg-transparent"
+                  style={{ fontFamily: "var(--font-poppins), 'Poppins', sans-serif" }}
+                />
+                <button
+                  onClick={() => handleSearch()}
+                  className="w-[50px] h-[50px] bg-[#4343F0] hover:bg-[#3232b7] text-white flex items-center justify-center transition-colors shrink-0 rounded-r-[5px]"
+                  aria-label="Search"
+                >
+                  <MobileSearchButtonIcon />
+                </button>
+              </div>
+
+              {/* Suggestions dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute top-full left-5 right-5 mt-1 bg-white rounded-md shadow-xl border border-gray-100 overflow-hidden z-50">
+                  <ul className="py-2">
+                    {suggestions.map((item, i) => (
+                      <li key={i}>
+                        <button
+                          onClick={() => {
+                            if (item.link) {
+                              setShowSuggestions(false);
+                              setMobileMenuOpen(false);
+                              router.push(item.link);
+                            } else {
+                              setSearchQuery(item.text);
+                              handleSearch(item.text);
+                            }
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center justify-between group"
+                        >
+                          <div className="flex flex-col">
+                            <span className="text-sm font-semibold text-gray-800 group-hover:text-[#4343F0]">
+                              {item.text}
+                            </span>
+                            <span
+                              className={`text-[10px] uppercase tracking-wider font-bold ${
+                                item.category === "Free Package"
+                                  ? "text-emerald-600"
+                                  : "text-gray-400"
+                              }`}
+                            >
+                              {item.category}
+                            </span>
+                          </div>
+                          <svg
+                            className="w-4 h-4 text-[#363636] group-hover:text-[#4343F0]"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5l7 7-7 7"
+                            />
+                          </svg>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Divider below search bar */}
+            <div style={{ borderBottom: "1px solid rgba(139, 139, 139, 0.29)", opacity: 0.5 }} />
+
+            {/* Navigation links */}
+            <div className="flex flex-col">
+              {mobileNavLinks.map((link, index) => (
+                <div key={link.label}>
+                  <Link
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block w-full px-5 hover:text-[#4343F0] hover:bg-gray-50 transition-colors"
+                    style={{
+                      fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                      fontWeight: 500,
+                      fontSize: "14px",
+                      lineHeight: "40px",
+                      color: "#363636",
+                      paddingTop: "6px",
+                      paddingBottom: "6px",
+                    }}
+                  >
+                    {link.label}
+                  </Link>
+                  {index < mobileNavLinks.length - 1 && (
+                    <div style={{ borderBottom: "1px solid rgba(139, 139, 139, 0.29)", opacity: 0.5 }} />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>,
+          document.body
+        )}
     </nav>
   );
 }

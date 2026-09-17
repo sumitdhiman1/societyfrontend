@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAnalysis } from "@/context/AnalysisContext";
 import { analysesService } from "@/lib/analysesService";
+import { requestAnalysisService } from "@/lib/requestAnalysisService";
 import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";
 import { packagesService } from "@/lib/packagesService";
@@ -810,11 +811,60 @@ export default function AnalysisDetailsPage() {
     (analysis.isFree === undefined && baseAmount <= 0 && totalCost <= 0 && (!analysis.amountPaid || Number(analysis.amountPaid) <= 0))
   );
 
+  const [matchedProduct, setMatchedProduct] = useState<any>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadMatchedProduct = async () => {
+      try {
+        const res: any = await requestAnalysisService.getProducts(true);
+        const list = Array.isArray(res?.data) ? res.data : res?.data?.data || (Array.isArray(res) ? res : []);
+        const targetId = analysis.productId || analysis.analysisProductId || analysis.product?._id || analysis.product?.id;
+        const targetTitle = (analysis.title || "").toLowerCase().trim();
+        const found = list.find((p: any) =>
+          (targetId && (p._id === targetId || p.id === targetId)) ||
+          (p.title && targetTitle && p.title.toLowerCase().trim() === targetTitle) ||
+          (targetTitle.includes("check") && (p.title || "").toLowerCase().includes("check"))
+        );
+        if (isMounted && found) {
+          setMatchedProduct(found);
+        }
+      } catch (e) {
+        console.error("Failed to load matching analysis product:", e);
+      }
+    };
+    if (analysis) {
+      loadMatchedProduct();
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [analysis?._id, analysis?.title]);
+
   const rawTitle = analysis.title || "Free Website Analysis";
   const cleanItemTitle = rawTitle.includes(" - ") ? rawTitle.split(" - ")[0] : rawTitle;
+
+  const isGenericDesc = (desc?: string) => {
+    if (!desc) return true;
+    return (
+      desc.startsWith("Our standard free analysis offer covering brand, UI/UX") ||
+      desc.startsWith("Comprehensive Website Review, Detailed PDF Report")
+    );
+  };
+
   const cleanItemDescription =
-    analysis.deliverableItems?.[0]?.details ||
-    "Our standard free analysis offer covering brand, UI/UX, functionalities, AI potentiality, tech stack, speed, and SEO.";
+    (analysis.deliverableItems?.[0]?.details && !isGenericDesc(analysis.deliverableItems?.[0]?.details))
+      ? analysis.deliverableItems?.[0]?.details
+      : (matchedProduct?.shortDescription ||
+         matchedProduct?.description ||
+         matchedProduct?.longDescription ||
+         analysis.shortDescription ||
+         analysis.product?.shortDescription ||
+         analysis.product?.description ||
+         (analysis.description && !analysis.description.startsWith("Analysis for ") ? analysis.description : "") ||
+         (cleanItemTitle.toLowerCase().includes("check")
+           ? "An offer to check the completed work of any other web professionals, including your own in-house staff and/or partners. Fully custom and manual checking by our quality assurance team. Serves as a third, objective perspective on the quality of work completed."
+           : "Our classic analysis offer covering branding, UI/UX, functionalities, AI potentiality, tech stack, speed, and SEO. A manual review using a custom process created by Society Web Solutions, checking every important part of your website. Delivered as a custom PDF report within 5 days."));
 
   const rawUrls = (analysis.targetWebsiteUrl || analysis.websiteUrl || "").trim();
   const submittedUrls = rawUrls
@@ -824,13 +874,7 @@ export default function AnalysisDetailsPage() {
       .filter(Boolean)
     : [];
 
-  let submittedAdditionalComments = (analysis.additionalComments || analysis.metadata?.additionalComments || "").trim();
-  if (!submittedAdditionalComments && analysis.description) {
-    const match = analysis.description.match(/^Analysis for [^.]*\.\s*([\s\S]*)$/);
-    if (match && match[1]?.trim()) {
-      submittedAdditionalComments = match[1].trim();
-    }
-  }
+  const submittedAdditionalComments = (analysis.additionalComments || analysis.metadata?.additionalComments || "").trim();
 
   const submittedScopeOfWork = (analysis.scopeOfWork || analysis.metadata?.scopeOfWork || "").trim();
   const submittedWhoCompletedWork = (analysis.whoCompletedWork || analysis.metadata?.whoCompletedWork || "").trim();
@@ -862,6 +906,23 @@ export default function AnalysisDetailsPage() {
     !!submittedLoginsDetails ||
     extraMetadata.length > 0;
 
+  const getStatusBadgeStyle = (status: string) => {
+    const s = (status || "").toLowerCase();
+    if (s === "active" || s === "in_progress") {
+      return "bg-[#E1FCEF] text-[#14804A] border-[#E1FCEF]";
+    }
+    if (s === "completed") {
+      return "bg-[#EBF5FF] text-[#2563EB] border-[#EBF5FF]";
+    }
+    if (s === "paused") {
+      return "bg-[#FEF3C7] text-[#D97706] border-[#FEF3C7]";
+    }
+    if (s === "canceled" || s === "cancelled") {
+      return "bg-[#FEE2E2] text-[#B91C1C] border-[#FEE2E2]";
+    }
+    return "bg-[#E1FCEF] text-[#14804A] border-[#E1FCEF]";
+  };
+
   return (
     <div className="flex flex-col gap-8 w-full font-sans">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -873,7 +934,7 @@ export default function AnalysisDetailsPage() {
               <span className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-wider">
                 Submitted - {submittedDateStr || "Sep 4, 9:03 PM"}
               </span>
-              <span className="w-fit px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border uppercase tracking-wider bg-blue-100 text-blue-600 border border-blue-200">
+              <span className={`w-fit px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border uppercase tracking-wider ${getStatusBadgeStyle(analysis.status)}`}>
                 {statusDisplay}
               </span>
             </div>
