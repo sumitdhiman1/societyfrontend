@@ -9,10 +9,12 @@ import { mediaService } from "@/lib/mediaService";
 import { downloadFile, isImageUrl } from "@/lib/utils";
 import StatusPopup from "@/components/common/StatusPopup";
 import { useSupportTicketLive } from "@/hooks/useSupportTicketLive";
+import { useTimezone } from "@/context/TimezoneContext";
 
 export default function TicketDetailPage() {
   const params = useParams();
   const ticketId = params?.id as string;
+  const { formatDateTime: formatDateTimeTz } = useTimezone();
 
   const [ticket, setTicket] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +38,8 @@ export default function TicketDetailPage() {
   const formatDateTime = (dateStr?: string | Date) => {
     if (!dateStr) return "";
     const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", {
+    if (isNaN(d.getTime())) return "";
+    return formatDateTimeTz(d, {
       month: "short",
       day: "numeric",
       hour: "numeric",

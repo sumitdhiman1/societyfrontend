@@ -4,10 +4,12 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/lib/authService";
 import { requestAnalysisService, claimPendingAnalyses } from "@/lib/requestAnalysisService";
+import { useTimezone } from "@/context/TimezoneContext";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 export default function MyAnalysesPage() {
   const router = useRouter();
+  const { formatClockTime, formatClockDate, formatDateTime } = useTimezone();
   const [activeTab, setActiveTab] = useState<string>("all");
   const [analyses, setAnalyses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,25 +22,16 @@ export default function MyAnalysesPage() {
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
-      const time = now.toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
-      const weekday = now.toLocaleDateString("en-US", { weekday: "long" });
-      const day = now.getDate();
-      const month = now.toLocaleDateString("en-US", { month: "short" });
-      const year = now.getFullYear();
       setCurrentTime({
-        time,
-        date: `${weekday} ${day}, ${month}, ${year}`,
+        time: formatClockTime(now),
+        date: formatClockDate(now),
       });
     };
 
     updateClock();
     const interval = setInterval(updateClock, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [formatClockTime, formatClockDate]);
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
@@ -71,12 +64,12 @@ export default function MyAnalysesPage() {
               targetUrl: fullTargetUrl,
               displayTarget: cleanTarget,
               submittedDate: item.createdAt
-                ? new Date(item.createdAt).toLocaleString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })
+                ? formatDateTime(item.createdAt, {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })
                 : "Recently",
               status: normalizedStatus,
             };

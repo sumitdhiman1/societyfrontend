@@ -536,11 +536,27 @@ export function extractProjectDetails(data: any): ProjectPDFData {
       (data.price != null ? data.price : (data.amount != null ? data.amount : (data.total != null ? data.total : (data.package?.price || data.bundle?.price || 0))))
   );
 
-  const vatRate = Number(
+  const isEstoniaClient = (c?: string) => {
+    if (!c) return false;
+    const upper = c.trim().toUpperCase();
+    return upper === "EE" || upper === "EST" || upper === "ESTONIA";
+  };
+  const countryStr = String(
+    data.clientCountry ||
+      data.country ||
+      data.client?.country ||
+      data.client?.clientCountry ||
+      data.quoteId?.clientCountry ||
+      ""
+  );
+
+  const explicitVatRate = Number(
     data.vatRate ??
       data.vatPercentage ??
       (data.taxPercentage != null ? data.taxPercentage : 0)
   ) || 0;
+
+  const vatRate = explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(countryStr) ? 24 : 0);
 
   const rawVatAmount = Number(data.vatAmount ?? data.tax ?? 0);
 

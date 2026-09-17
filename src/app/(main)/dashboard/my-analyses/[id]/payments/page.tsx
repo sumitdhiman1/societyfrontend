@@ -10,6 +10,7 @@ import { downloadFile } from "@/lib/utils";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { useCurrency } from "@/context/CurrencyContext";
+import { useTimezone } from "@/context/TimezoneContext";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 
 function ReceiptModal({
@@ -223,6 +224,7 @@ export default function AnalysisPaymentsPage() {
   const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null);
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
   const { currency, setCurrency } = useCurrency();
+  const { formatDateTime: formatDateTimeTz } = useTimezone();
   const hasRefreshedRef = useRef(false);
 
   const fetchPayments = useCallback(async () => {
@@ -427,18 +429,16 @@ export default function AnalysisPaymentsPage() {
       if (!dateVal) return "Aug 28, 7:46 PM";
       const d = new Date(dateVal);
       if (isNaN(d.getTime())) return String(dateVal);
-      return (
-        d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
-        ", " +
-        d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
-      );
+      const datePart = formatDateTimeTz(d, { month: "short", day: "numeric" });
+      const timePart = formatDateTimeTz(d, { hour: "numeric", minute: "2-digit", hour12: true });
+      return `${datePart}, ${timePart}`;
     };
 
     const formatDateOnly = (dateVal: any) => {
       if (!dateVal) return "Aug 28, 2026";
       const d = new Date(dateVal);
       if (isNaN(d.getTime())) return String(dateVal);
-      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      return formatDateTimeTz(d, { month: "short", day: "numeric", year: "numeric" });
     };
 
     const startDateStr = formatDateTime(startDate);

@@ -6,6 +6,7 @@ import { authService } from "@/lib/authService";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { getMainCalculatorCategory } from "@/lib/calculatorUtils";
+import { useTimezone } from "@/context/TimezoneContext";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 
 export function ReceiptModal({
@@ -29,7 +30,7 @@ export function ReceiptModal({
       ? `SOC-2026-${project._id.slice(-4).toUpperCase()}`
       : "SOC-2026-001");
   const totalPrice = Number(payment?.amount ?? project.amountPaid ?? project.price ?? project.totalCost ?? 0);
-  const currency = (payment?.currency || project.currency || "USD").toUpperCase();
+  const currency = (payment?.currency || project.currency || (project?.currencySymbol === "€" ? "EUR" : project?.currencySymbol === "$" ? "USD" : "USD")).toUpperCase();
 
   const vatRate = Number(
     payment?.vatRate ??
@@ -56,8 +57,10 @@ export function ReceiptModal({
       maximumFractionDigits: 2,
     }).format(amt);
 
+  const { formatDateTime: formatDateTimeTz } = useTimezone();
+
   const dateFormatted = payment?.createdAt || project.createdAt
-    ? new Date(payment?.createdAt || project.createdAt).toLocaleDateString("en-GB", {
+    ? formatDateTimeTz(payment?.createdAt || project.createdAt, {
         day: "numeric",
         month: "short",
         year: "numeric",
@@ -243,12 +246,14 @@ export default function CalculatorProjectPayments({
   const cleanNumber = String(rawNumber).replace(/^Project\s*#?/i, "").replace(/^#/, "");
   const formattedProjectNumber = `Project #${cleanNumber}`;
 
+  const { formatDateTime: formatDateTimeTz } = useTimezone();
+
   const paymentDateFormatted = payments[0]?.createdAt
-    ? new Date(payments[0].createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    ? formatDateTimeTz(payments[0].createdAt, { month: "short", day: "numeric", year: "numeric" })
     : activeProject.startDate
-    ? new Date(activeProject.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    ? formatDateTimeTz(activeProject.startDate, { month: "short", day: "numeric", year: "numeric" })
     : activeProject.createdAt
-    ? new Date(activeProject.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    ? formatDateTimeTz(activeProject.createdAt, { month: "short", day: "numeric", year: "numeric" })
     : "Sep 7, 2026";
 
   const rawPaymentStatus = (activeProject.paymentStatus || payments[0]?.status || "pending").toLowerCase();
@@ -404,7 +409,12 @@ export default function CalculatorProjectPayments({
     (baseSubtotal > 0 ? baseSubtotal / 2 : (totalProjectCost > 0 ? totalProjectCost / 2 : 0))
   );
 
-  const currency = (activeProject.currency || linkedQuote.currency || payments[0]?.currency || "USD").toUpperCase();
+  const currency = (
+    activeProject.currency ||
+    linkedQuote.currency ||
+    payments[0]?.currency ||
+    (activeProject?.currencySymbol === "€" ? "EUR" : activeProject?.currencySymbol === "$" ? "USD" : "USD")
+  ).toUpperCase();
 
   const formatCurrency = (amt: number) =>
     new Intl.NumberFormat("en-US", {
@@ -627,7 +637,7 @@ export default function CalculatorProjectPayments({
                         {formatCurrency(payment.amount ?? 0)}
                       </td>
                       <td className="px-6 py-4 text-gray-500">
-                        {new Date(payment.createdAt).toLocaleDateString()}
+                        {payment.createdAt ? formatDateTimeTz(payment.createdAt, { month: "short", day: "numeric", year: "numeric" }) : "—"}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase ${getStatusColor(payment.status)}`}>
@@ -964,7 +974,7 @@ export default function CalculatorProjectPayments({
                       {formatCurrency(payment.amount ?? 0)}
                     </td>
                     <td className="px-6 py-4 text-gray-500">
-                      {new Date(payment.createdAt).toLocaleDateString()}
+                      {payment.createdAt ? formatDateTimeTz(payment.createdAt, { month: "short", day: "numeric", year: "numeric" }) : "—"}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase ${getStatusColor(payment.status)}`}>

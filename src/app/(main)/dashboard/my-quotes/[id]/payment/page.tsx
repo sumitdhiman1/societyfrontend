@@ -196,7 +196,8 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
   const [saveCard, setSaveCard] = useState(true);
   
   const { currency, setCurrency, conversionRate } = useCurrency();
-  const formatCurrency = (amt: number) => formatPriceWithCurrency(amt, currency || "USD", "USD", conversionRate);
+  const quoteSourceCurrency = (quoteDetails?.currency || "USD").toLowerCase();
+  const formatCurrency = (amt: number) => formatPriceWithCurrency(amt, currency || "USD", quoteSourceCurrency, conversionRate);
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentStep, setPaymentStep] = useState<PaymentProcessStep>("idle");
@@ -220,7 +221,7 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
     let amt = totalCost;
     if (paymentOption === "half") amt = depositAmount;
     else if (paymentOption === "other" && customAmount) return Number.parseFloat(customAmount);
-    return convertCurrencyAmount(amt, currency || "USD", "USD", conversionRate);
+    return convertCurrencyAmount(amt, currency || "USD", quoteSourceCurrency, conversionRate);
   };
 
   const handlePayment = async () => {
@@ -228,8 +229,8 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
     
     const errs: any = {};
     if (paymentOption === "other") {
-      const convertedTotal = convertCurrencyAmount(totalCost, currency || "USD", "USD", conversionRate);
-      const convertedDeposit = convertCurrencyAmount(depositAmount, currency || "USD", "USD", conversionRate);
+      const convertedTotal = convertCurrencyAmount(totalCost, currency || "USD", quoteSourceCurrency, conversionRate);
+      const convertedDeposit = convertCurrencyAmount(depositAmount, currency || "USD", quoteSourceCurrency, conversionRate);
       if (!customAmount || Number.parseFloat(customAmount) <= 0) errs.amount = "Enter a valid amount.";
       else if (Number.parseFloat(customAmount) > convertedTotal + 0.01) errs.amount = "Cannot exceed total cost.";
       else if (Number.parseFloat(customAmount) < convertedDeposit - 0.01) errs.amount = `Min ${formatCurrency(depositAmount)}.`;

@@ -740,7 +740,21 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
   const cleanSubtitle = isRawDump(data.subtitle) ? "" : (data.subtitle || "");
   const cleanDescription = isRawDump(data.description) ? "" : (data.description || "");
 
-  const vatRate = Number(data.vatRate) || 0;
+  const isEstoniaClient = (c?: string) => {
+    if (!c) return false;
+    const upper = c.trim().toUpperCase();
+    return upper === "EE" || upper === "EST" || upper === "ESTONIA";
+  };
+  const countryStr = String(
+    data.clientCountry ||
+      data.country ||
+      data.client?.country ||
+      data.client?.clientCountry ||
+      data.quoteId?.clientCountry ||
+      ""
+  );
+  const explicitVatRate = Number(data.vatRate) || 0;
+  const vatRate = explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(countryStr) ? 24 : 0);
   const rawSubtotal = data.subtotal !== undefined && Number(data.subtotal) > 0
     ? Number(data.subtotal)
     : (vatRate > 0 ? Math.round((totalPrice / (1 + vatRate / 100)) * 100) / 100 : totalPrice);

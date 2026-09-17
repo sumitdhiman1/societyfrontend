@@ -4,15 +4,18 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { supportService } from "@/lib/supportService";
 import { authService } from "@/lib/authService";
+import { useTimezone } from "@/context/TimezoneContext";
 
 export default function SupportHistoryPage() {
+  const { formatDateTime: formatDateTimeTz } = useTimezone();
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const formatDateTime = (dateStr?: string | Date) => {
     if (!dateStr) return "";
     const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", {
+    if (isNaN(d.getTime())) return "";
+    return formatDateTimeTz(d, {
       month: "short",
       day: "numeric",
       hour: "numeric",

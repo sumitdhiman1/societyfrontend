@@ -7,10 +7,12 @@ import { ProjectProvider, useProject } from "@/context/ProjectContext";
 import DeadlineTooltip from "@/components/common/DeadlineTooltip";
 import { getProjectEstimatedDeadline } from "@/lib/calculatorUtils";
 import { projectService } from "@/lib/projectService";
+import { useTimezone } from "@/context/TimezoneContext";
 import { toast } from "sonner";
 
 function ProjectLayoutContent({ children }: { children: React.ReactNode }) {
   const { project, isLoading, refreshProject, setProject } = useProject();
+  const { formatDateTime } = useTimezone();
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
@@ -77,9 +79,9 @@ function ProjectLayoutContent({ children }: { children: React.ReactNode }) {
     if (!date) return "";
     const d = new Date(date);
     if (isNaN(d.getTime())) return "";
-    const month = d.toLocaleString("en-US", { month: "short" });
-    const day = d.getDate();
-    const time = d.toLocaleString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    const month = formatDateTime(d, { month: "short" });
+    const day = formatDateTime(d, { day: "numeric" });
+    const time = formatDateTime(d, { hour: "numeric", minute: "2-digit", hour12: true });
     return `${month} ${day}, ${time}`;
   };
 

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useProject } from "@/context/ProjectContext";
 import { projectService } from "@/lib/projectService";
 import { mediaService } from "@/lib/mediaService";
@@ -17,6 +18,8 @@ import CalculatorSpecsCard from "@/components/common/CalculatorSpecsCard";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import { getMainCalculatorCategory, getProjectEstimatedDeadline } from "@/lib/calculatorUtils";
 import { capitalizeCurrencyInText } from "@/lib/currencyUtils";
+import { useCurrency } from "@/context/CurrencyContext";
+import { useTimezone } from "@/context/TimezoneContext";
 import { toast } from "sonner";
 import { paymentService } from "@/lib/paymentService";
 
@@ -218,7 +221,14 @@ function isExactPaymentRequestPaid(msg: any, project: any, payments: any[]): boo
 }
 
 export default function ProjectDetailsPage() {
-  const { project, refreshProject, setProject } = useProject();
+  const { project, setProject, refreshProject } = useProject();
+  const { currency: contextCurrency } = useCurrency();
+  const {
+    formatSubmittedDate: formatSubmittedDateTz,
+    formatMessageTimestamp: formatMessageTimestampTz,
+    formatDateTime: formatDateTimeTz,
+  } = useTimezone();
+  const router = useRouter();
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -380,37 +390,30 @@ export default function ProjectDetailsPage() {
   if (!project) return null;
 
   const formatSubmittedDate = (date: any) => {
-    if (!date) return "";
-    const d = new Date(date);
-    if (isNaN(d.getTime())) return "";
-    const month = d.toLocaleString("en-US", { month: "short" });
-    const day = d.getDate();
-    const time = d.toLocaleString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-    return `${month} ${day}, ${time}`;
+    return formatSubmittedDateTz(date);
   };
 
   const formatChatDate = (date: any) => {
     if (!date) return "";
     const d = new Date(date);
     if (isNaN(d.getTime())) return "";
-    const day = d.getDate();
-    const month = d.toLocaleString("en-US", { month: "short" });
-    const time = d.toLocaleString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).toLowerCase();
+    const day = formatDateTimeTz(d, { day: "numeric" });
+    const month = formatDateTimeTz(d, { month: "short" });
+    const time = formatDateTimeTz(d, { hour: "numeric", minute: "2-digit", hour12: true }).toLowerCase();
     return `${day} ${month}, ${time}`;
   };
 
   const formatMessageTimestamp = (date: any) => {
-    if (!date) return "";
-    const d = new Date(date);
-    if (isNaN(d.getTime())) return "";
-    const time = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-    const formattedDate = formatSubmittedDate(date);
-    return `${time} - ${formattedDate}`;
+    return formatMessageTimestampTz(date);
   };
 
   const formatCurrency = (amt: any, customCurrency?: string) => {
     const num = Number(amt || 0);
-    const curr = (customCurrency || project?.currency || (project?.currencySymbol === "€" ? "EUR" : project?.currencySymbol === "$" ? "USD" : "EUR")).toUpperCase();
+    const curr = (
+      customCurrency ||
+      project?.currency ||
+      (project?.currencySymbol === "€" ? "EUR" : project?.currencySymbol === "$" ? "USD" : currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || "USD")
+    ).toUpperCase();
     try {
       return new Intl.NumberFormat("en-US", {
         style: "currency",
@@ -674,11 +677,25 @@ export default function ProjectDetailsPage() {
     project.totalAmount ??
     (project.price != null ? project.price : 0)
   );
-  const vatRate = Number(
+  const isEstoniaClient = (country?: string) => {
+    if (!country) return false;
+    const c = country.trim().toUpperCase();
+    return c === "EE" || c === "EST" || c === "ESTONIA";
+  };
+  const clientCountryStr = String(
+    project.clientCountry ||
+    project.country ||
+    project.client?.country ||
+    project.client?.clientCountry ||
+    project.quoteId?.clientCountry ||
+    ""
+  );
+  const explicitVatRate = Number(
     project.vatRate ??
     project.vatPercentage ??
     (project.taxPercentage != null ? project.taxPercentage : 0)
   );
+  const vatRate = explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(clientCountryStr) ? 24 : 0);
   const rawVatAmount = Number(project.vatAmount ?? project.tax ?? 0);
   const rawBaseAmount = Number(
     project.baseAmount ??
@@ -701,7 +718,7 @@ export default function ProjectDetailsPage() {
       : vatRate > 0
       ? Math.round((baseAmount * (vatRate / 100)) * 100) / 100
       : 0;
-  const totalCost = rawTotalCost > 0 ? rawTotalCost : baseAmount + vatAmount;
+  const totalCost = rawTotalCost > 0 ? (rawTotalCost >= baseAmount + vatAmount - 0.05 ? rawTotalCost : Math.round((baseAmount + vatAmount) * 100) / 100) : Math.round((baseAmount + vatAmount) * 100) / 100;
 
   const totalPaidFromTransactions = (projectPayments || [])
     .filter((p: any) => ["succeeded", "paid", "completed"].includes(String(p?.status || "").toLowerCase()))
@@ -1478,10 +1495,30 @@ export default function ProjectDetailsPage() {
                 const canAct = isPending;
                 const targetProposalId = msg._id || msg.id;
 
-                const baseAmount = items.reduce((sum: number, it: any) => sum + (Number(it.amount) || 0), 0) || Number(content.total || 0);
-                const vatRate = content.vatRate ?? 0;
-                const vatAmount = content.vatAmount ?? ((baseAmount * vatRate) / 100);
-                const totalCost = content.total ?? (baseAmount + vatAmount);
+                const baseAmount = Number(content.subtotal || content.baseAmount || 0) || items.reduce((sum: number, it: any) => sum + (Number(it.amount ?? it.cost) || 0), 0) || Number(content.total || 0);
+                const vatRate = Number(content.vatRate ?? 0);
+                const vatAmount = Number(content.vatAmount ?? (vatRate > 0 ? (baseAmount * vatRate) / 100 : 0));
+                const totalCost = Number(content.totalCost ?? content.total ?? (baseAmount + vatAmount));
+
+                const calculatedDurationDays = items.reduce((sum: number, it: any) => {
+                  const dur = String(it.duration || "").toLowerCase();
+                  const match = dur.match(/(\d+(\.\d+)?)/);
+                  const val = match ? parseFloat(match[0]) : 0;
+                  if (dur.includes("week")) return sum + val * 7;
+                  if (dur.includes("month")) return sum + val * 30;
+                  return sum + val;
+                }, 0);
+                const rawDuration = content.totalDuration || content.duration || (calculatedDurationDays > 0 ? `${calculatedDurationDays} Day${calculatedDurationDays > 1 ? "s" : ""}` : "");
+                const formatOfferDuration = (val: any) => {
+                  if (!val) return "";
+                  const str = String(val).trim();
+                  const num = parseInt(str, 10);
+                  if (!isNaN(num) && !str.toLowerCase().includes("day") && !str.toLowerCase().includes("week") && !str.toLowerCase().includes("month")) {
+                    return `${num} Day${num !== 1 ? "s" : ""}`;
+                  }
+                  return str;
+                };
+                const totalOfferDuration = formatOfferDuration(rawDuration);
 
                 const expiresStr = content.expires
                   ? (isNaN(new Date(content.expires).getTime()) ? content.expires : formatSubmittedDate(content.expires))
@@ -1490,7 +1527,7 @@ export default function ProjectDetailsPage() {
                 return (
                   <div key={msgId} ref={isLast ? lastMessageRef : null} className="w-full">
                     <div className="bg-white border border-gray-200 rounded-2xl shadow-xs p-6 sm:p-8 md:p-10">
-                      {/* Top Meta: Submitted date & Add-On Offer badge */}
+                      {/* Top Meta: Submitted date & Add-On Offer badge on left; Expires / resolution date on right */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                         <div className="flex flex-wrap items-center gap-3">
                           <span className="text-xs sm:text-sm text-gray-500 font-medium">
@@ -1506,13 +1543,17 @@ export default function ProjectDetailsPage() {
                                 isModRequested ? "Modification Requested" : "Add-On Offer"}
                           </span>
                         </div>
-                        {content.status && content.status !== "pending" && (
+                        {content.status && content.status !== "pending" ? (
                           <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">
                             {isAccepted && content.acceptedAt ? `Accepted on ${formatSubmittedDate(content.acceptedAt)}` :
                               isDeclined && content.declinedAt ? `Declined on ${formatSubmittedDate(content.declinedAt)}` :
                                 isModRequested && content.modificationRequestedAt ? `Requested on ${formatSubmittedDate(content.modificationRequestedAt)}` : ""}
                           </span>
-                        )}
+                        ) : expiresStr && expiresStr !== "N/A" ? (
+                          <span className="text-xs sm:text-sm text-gray-500 font-medium">
+                            Expires - {expiresStr}
+                          </span>
+                        ) : null}
                       </div>
 
                       <div className="border-t border-gray-200 mb-6 sm:mb-8" />
@@ -1626,12 +1667,15 @@ export default function ProjectDetailsPage() {
                         </table>
                       </div>
 
-                      {/* Totals & Expiration Row */}
+                      {/* Totals & Duration Row */}
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 pt-2 pb-2">
                         <div>
-                          <span className="text-xs sm:text-sm text-gray-600 font-bold">
-                            Expires {expiresStr}
-                          </span>
+                          {totalOfferDuration ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-800 font-bold text-sm">Total Duration:</span>
+                              <span className="font-extrabold text-gray-900 text-sm sm:text-base">{totalOfferDuration}</span>
+                            </div>
+                          ) : null}
                         </div>
                         <div className="flex flex-col items-end gap-2 text-xs sm:text-sm min-w-[220px]">
                           <div className="flex justify-between w-full gap-8">
@@ -1650,6 +1694,11 @@ export default function ProjectDetailsPage() {
                             <span className="font-extrabold text-gray-900 text-sm sm:text-base">{formatCurrency(totalCost)}</span>
                           </div>
                         </div>
+                      </div>
+
+                      {/* Informational Acceptance Note */}
+                      <div className="mt-4 p-3.5 bg-blue-50/70 border border-blue-100 rounded-xl text-xs sm:text-sm text-blue-800 font-medium leading-relaxed">
+                        Upon acceptance of the offer, the total timeline and cost above will be added to the overall project timeline and cost.
                       </div>
 
                       {/* Action Buttons INSIDE the box (Accept, Request Modifications, Decline) with top border */}

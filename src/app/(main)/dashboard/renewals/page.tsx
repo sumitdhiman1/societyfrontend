@@ -15,6 +15,7 @@ import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import { projectService } from "@/lib/projectService";
 import { paymentService } from "@/lib/paymentService";
 import { authService } from "@/lib/authService";
+import { formatDateTimeWithUserTz } from "@/lib/dateUtils";
 import StatusPopup from "@/components/common/StatusPopup";
 import VisaIcon from "@/components/icons/visa";
 import MastercardIcon from "@/components/icons/mastercard";
@@ -47,9 +48,10 @@ const formatExpiryDate = (dateString?: string) => {
   if (!dateString) return "Oct 5, 1:00 PM";
   try {
     const d = new Date(dateString);
-    const month = d.toLocaleDateString("en-US", { month: "short" });
-    const day = d.getDate();
-    const time = d.toLocaleTimeString("en-US", {
+    if (isNaN(d.getTime())) return dateString;
+    const month = formatDateTimeWithUserTz(d, { month: "short" });
+    const day = formatDateTimeWithUserTz(d, { day: "numeric" });
+    const time = formatDateTimeWithUserTz(d, {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,

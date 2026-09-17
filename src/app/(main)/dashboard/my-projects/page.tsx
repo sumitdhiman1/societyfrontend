@@ -4,10 +4,12 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/lib/authService";
 import { projectService } from "@/lib/projectService";
+import { useTimezone } from "@/context/TimezoneContext";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 export default function MyProjectsPage() {
   const router = useRouter();
+  const { formatClockTime, formatClockDate, formatSubmittedDate } = useTimezone();
   const [activeTab, setActiveTab] = useState("all");
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [projects, setProjects] = useState<any[]>([]);
@@ -87,13 +89,7 @@ export default function MyProjectsPage() {
   }, [currentPage, activeTab, fetchProjectsData]);
 
   const formatDate = (date: any) => {
-    if (!date) return "";
-    const d = new Date(date);
-    if (isNaN(d.getTime())) return "";
-    const month = d.toLocaleString("en-US", { month: "short" });
-    const day = d.getDate();
-    const time = d.toLocaleString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-    return `Submitted on ${month} ${day}, ${time}`;
+    return formatSubmittedDate(date);
   };
 
   const stats = {
@@ -153,16 +149,10 @@ export default function MyProjectsPage() {
             {currentTime ? (
               <>
                 <div className="text-[11px] font-medium text-[#707070] mb-1 leading-none uppercase tracking-wide">
-                  {currentTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                  {formatClockTime(currentTime)}
                 </div>
                 <div className="text-[15px] font-semibold text-[#505050] leading-tight mt-1">
-                  {(() => {
-                    const day = currentTime.toLocaleDateString("en-US", { weekday: "long" });
-                    const date = currentTime.getDate();
-                    const month = currentTime.toLocaleDateString("en-US", { month: "short" });
-                    const year = currentTime.getFullYear();
-                    return `${day} ${date}, ${month}, ${year}`;
-                  })()}
+                  {formatClockDate(currentTime)}
                 </div>
               </>
             ) : (

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/lib/authService";
 import { quoteService } from "@/lib/quoteService";
+import { useTimezone } from "@/context/TimezoneContext";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 const STATUS_MAPPING: Record<string, string | undefined> = {
@@ -18,6 +19,7 @@ const STATUS_MAPPING: Record<string, string | undefined> = {
 
 export default function MyQuotesPage() {
   const router = useRouter();
+  const { formatClockTime, formatClockDate, formatSubmittedDate } = useTimezone();
   const [activeTab, setActiveTab] = useState("all");
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [quotes, setQuotes] = useState<any[]>([]);
@@ -131,35 +133,7 @@ export default function MyQuotesPage() {
     }
   };
 
-  const formatSubmittedDate = (dateString: string) => {
-    if (!dateString) return "";
-    const d = new Date(dateString);
-    if (isNaN(d.getTime())) return "";
-    const month = d.toLocaleString("en-US", { month: "short" });
-    const day = d.getDate();
-    const time = d.toLocaleString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-    return `Submitted on ${month} ${day}, ${time}`;
-  };
 
-  const formatClockTime = (date: Date) => {
-    return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
-
-  const formatClockDate = (date: Date) => {
-    const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
-    const day = date.getDate();
-    const month = date.toLocaleDateString("en-US", { month: "short" });
-    const year = date.getFullYear();
-    return `${weekday} ${day}, ${month}, ${year}`;
-  };
 
   return (
     <div className="bg-[#F4F5FA] flex-grow flex flex-col font-sans">

@@ -3,6 +3,7 @@ import { Inter, Manrope, Geist_Mono, Poppins } from "next/font/google";
 import "./globals.css";
 import { ChatWidgetProvider } from "@/context/ChatWidgetContext";
 import { CurrencyProvider } from "@/context/CurrencyContext";
+import { TimezoneProvider } from "@/context/TimezoneContext";
 import LiveChatWidget from "@/components/chat/LiveChatWidget";
 import { Toaster } from "sonner";
 
@@ -45,10 +46,12 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans">
         <Toaster position="top-right" richColors closeButton duration={8000} />
         <CurrencyProvider>
-          <ChatWidgetProvider>
-            {children}
-            <LiveChatWidget />
-          </ChatWidgetProvider>
+          <TimezoneProvider>
+            <ChatWidgetProvider>
+              {children}
+              <LiveChatWidget />
+            </ChatWidgetProvider>
+          </TimezoneProvider>
         </CurrencyProvider>
       </body>
     </html>

@@ -1436,6 +1436,26 @@ export default function AnalysisDetailsPage() {
               const vatAmount = content.vatAmount ?? ((baseAmount * vatRate) / 100);
               const totalCost = Number(content.total ?? content.totalCost ?? (baseAmount + vatAmount));
 
+              const calculatedDurationDays = items.reduce((sum: number, it: any) => {
+                const dur = String(it.duration || "").toLowerCase();
+                const match = dur.match(/(\d+(\.\d+)?)/);
+                const val = match ? parseFloat(match[0]) : 0;
+                if (dur.includes("week")) return sum + val * 7;
+                if (dur.includes("month")) return sum + val * 30;
+                return sum + val;
+              }, 0);
+              const rawDuration = content.totalDuration || content.duration || (calculatedDurationDays > 0 ? `${calculatedDurationDays} Day${calculatedDurationDays > 1 ? "s" : ""}` : "");
+              const formatOfferDuration = (val: any) => {
+                if (!val) return "";
+                const str = String(val).trim();
+                const num = parseInt(str, 10);
+                if (!isNaN(num) && !str.toLowerCase().includes("day") && !str.toLowerCase().includes("week") && !str.toLowerCase().includes("month")) {
+                  return `${num} Day${num !== 1 ? "s" : ""}`;
+                }
+                return str;
+              };
+              const totalOfferDuration = formatOfferDuration(rawDuration);
+
               const expiresStr = content.expires && content.expires !== "Not specified"
                 ? (isNaN(new Date(content.expires).getTime()) ? content.expires : formatSubmittedDate(content.expires))
                 : "N/A";
@@ -1446,7 +1466,7 @@ export default function AnalysisDetailsPage() {
                 return (
                   <div key={msgId} ref={isLast ? messagesEndRef : null} className="w-full my-4">
                     <div className="bg-white border border-gray-200 rounded-2xl shadow-xs p-6 sm:p-8 md:p-10">
-                      {/* Top Meta: Submitted date & Add-On Offer badge */}
+                      {/* Top Meta: Submitted date & Add-On Offer badge on left; Expires / resolution date on right */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                         <div className="flex flex-wrap items-center gap-3">
                           <span className="text-xs sm:text-sm text-gray-500 font-medium">
@@ -1462,13 +1482,17 @@ export default function AnalysisDetailsPage() {
                                 isModRequested ? "Modification Requested" : "Add-On Offer"}
                           </span>
                         </div>
-                        {content.status && content.status !== "pending" && (
+                        {content.status && content.status !== "pending" ? (
                           <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">
                             {isAccepted && content.acceptedAt ? `Accepted on ${formatSubmittedDate(content.acceptedAt)}` :
                               isDeclined && content.declinedAt ? `Declined on ${formatSubmittedDate(content.declinedAt)}` :
                                 isModRequested && content.modificationRequestedAt ? `Requested on ${formatSubmittedDate(content.modificationRequestedAt)}` : ""}
                           </span>
-                        )}
+                        ) : expiresStr && expiresStr !== "N/A" ? (
+                          <span className="text-xs sm:text-sm text-gray-500 font-medium">
+                            Expires - {expiresStr}
+                          </span>
+                        ) : null}
                       </div>
 
                       <div className="border-t border-gray-200 mb-6 sm:mb-8" />
@@ -1586,12 +1610,15 @@ export default function AnalysisDetailsPage() {
                         </table>
                       </div>
 
-                      {/* Totals & Expiration Row */}
+                      {/* Totals & Duration Row */}
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 pt-2 pb-2">
                         <div>
-                          <span className="text-xs sm:text-sm text-gray-600 font-bold">
-                            Expires {expiresStr}
-                          </span>
+                          {totalOfferDuration ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-800 font-bold text-sm">Total Duration:</span>
+                              <span className="font-extrabold text-gray-900 text-sm sm:text-base">{totalOfferDuration}</span>
+                            </div>
+                          ) : null}
                         </div>
                         <div className="flex flex-col items-end gap-2 text-xs sm:text-sm min-w-[220px]">
                           <div className="flex justify-between w-full gap-8">
@@ -1610,6 +1637,11 @@ export default function AnalysisDetailsPage() {
                             <span className="font-extrabold text-gray-900 text-sm sm:text-base">{formatCurrency(totalCost)}</span>
                           </div>
                         </div>
+                      </div>
+
+                      {/* Informational Acceptance Note */}
+                      <div className="mt-4 p-3.5 bg-blue-50/70 border border-blue-100 rounded-xl text-xs sm:text-sm text-blue-800 font-medium leading-relaxed">
+                        Upon acceptance of the offer, the total timeline and cost above will be added to the overall project timeline and cost.
                       </div>
 
                       {/* Action Buttons (Accept, Request Modifications, Decline) */}

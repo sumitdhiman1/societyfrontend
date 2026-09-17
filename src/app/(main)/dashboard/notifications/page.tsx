@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { notificationService } from "@/lib/services";
 import { authService } from "@/lib/authService";
 import { capitalizeCurrencyInText } from "@/lib/currencyUtils";
+import { useTimezone } from "@/context/TimezoneContext";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 const BellIcon = () => (
@@ -28,6 +29,7 @@ const EyeIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
 
 export default function NotificationsPage() {
   const router = useRouter();
+  const { formatDateTime } = useTimezone();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -154,7 +156,8 @@ export default function NotificationsPage() {
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", {
+    if (isNaN(date.getTime())) return dateStr;
+    return formatDateTime(date, {
       month: "short",
       day: "numeric",
       year: "numeric",

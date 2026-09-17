@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useChatWidget } from "@/context/ChatWidgetContext";
+import { useTimezone } from "@/context/TimezoneContext";
 import { chatService } from "@/lib/chatService";
 import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";
@@ -9,6 +10,7 @@ import { io, Socket } from "socket.io-client";
 
 export default function LiveChatWidget() {
   const { isOpen, toggleChat, closeChat, bottomOffset } = useChatWidget();
+  const { formatDateTime } = useTimezone();
   const [activeChat, setActiveChat] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState("");
@@ -445,7 +447,7 @@ export default function LiveChatWidget() {
                         }`}
                       >
                         {msg.createdAt
-                          ? new Date(msg.createdAt).toLocaleTimeString([], {
+                          ? formatDateTime(msg.createdAt, {
                               hour: "2-digit",
                               minute: "2-digit",
                             })

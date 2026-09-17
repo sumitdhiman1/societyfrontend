@@ -7,6 +7,7 @@ import { profileService } from "@/lib/profileService";
 import { mediaService } from "@/lib/mediaService";
 import { countryService, Country } from "@/lib/countryService";
 import { useCurrency } from "@/context/CurrencyContext";
+import { useTimezone } from "@/context/TimezoneContext";
 import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import LoadingDots from "@/components/common/LoadingDots";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
@@ -297,6 +298,7 @@ export default function MyAccountPage() {
   };
 
   const { currency, setCurrency } = useCurrency();
+  const { setTimeZone } = useTimezone();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -310,12 +312,19 @@ export default function MyAccountPage() {
           const localUser = authService.getUser();
           if (
             localUser &&
-            (localUser.avatar !== res.data.avatar || localUser.fullName !== res.data.fullName)
+            (localUser.avatar !== res.data.avatar ||
+              localUser.fullName !== res.data.fullName ||
+              localUser.timeZone !== res.data.timeZone)
           ) {
             authService.updateInternalUser({
               avatar: res.data.avatar,
               fullName: res.data.fullName,
+              timeZone: res.data.timeZone || res.data.timezone,
             });
+            if (res.data.timeZone || res.data.timezone) {
+              setTimeZone(res.data.timeZone || res.data.timezone);
+              localStorage.setItem("app-timezone", res.data.timeZone || res.data.timezone);
+            }
             router.refresh();
           }
         }
@@ -438,10 +447,11 @@ export default function MyAccountPage() {
 
       const res = await profileService.updateProfile(payload);
       if (res.isSuccessful) {
-        authService.updateInternalUser({
-          avatar: user.avatar,
-          fullName: user.fullName,
-        });
+        authService.updateInternalUser(payload);
+        if (payload.timeZone) {
+          setTimeZone(payload.timeZone);
+          localStorage.setItem("app-timezone", payload.timeZone);
+        }
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
       }

@@ -12,6 +12,8 @@ import { mediaService } from "@/lib/mediaService";
 import { packagesService } from "@/lib/packagesService";
 import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
 import { capitalizeCurrencyInText } from "@/lib/currencyUtils";
+import { useCurrency } from "@/context/CurrencyContext";
+import { useTimezone } from "@/context/TimezoneContext";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import RecommendedSolutions, { PackageCard } from "@/components/common/RecommendedSolutions";
@@ -258,6 +260,8 @@ const extractProjectId = (quoteObj: any, msgObj?: any, contentObj?: any): string
 
 export default function QuoteDetailsPage() {
   const { quote, setQuote, refreshQuote } = useQuote();
+  const { currency: contextCurrency } = useCurrency();
+  const { formatDateTime: formatDateTimeTz } = useTimezone();
   const router = useRouter();
 
   const [messageText, setMessageText] = useState("");
@@ -440,10 +444,10 @@ export default function QuoteDetailsPage() {
   if (!quote) return null;
 
   // Format Helpers
-  const currency = (quote.currency || "USD").toUpperCase();
+  const currency = (quote.currency || user?.currency || user?.preferredCurrency || contextCurrency || "USD").toUpperCase();
   const formatCurrency = (amt: any, customCurrency?: string) => {
     const num = Number(amt || 0);
-    const curr = (customCurrency || quote.currency || "USD").toUpperCase();
+    const curr = (customCurrency || quote.currency || user?.currency || user?.preferredCurrency || contextCurrency || "USD").toUpperCase();
     try {
       return new Intl.NumberFormat("en-US", {
         style: "currency",
@@ -460,7 +464,7 @@ export default function QuoteDetailsPage() {
     if (!date) return "";
     const d = new Date(date);
     if (isNaN(d.getTime())) return "";
-    return d.toLocaleString("en-US", {
+    return formatDateTimeTz(d, {
       month: "short",
       day: "numeric",
       hour: "numeric",
@@ -472,11 +476,9 @@ export default function QuoteDetailsPage() {
     if (!date) return "";
     const d = new Date(date);
     if (isNaN(d.getTime())) return "";
-    const month = d.toLocaleString("en-US", { month: "short" }).toUpperCase();
-    const day = d.getDate();
-    const time = d
-      .toLocaleString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
-      .toUpperCase();
+    const month = formatDateTimeTz(d, { month: "short" }).toUpperCase();
+    const day = formatDateTimeTz(d, { day: "numeric" });
+    const time = formatDateTimeTz(d, { hour: "numeric", minute: "2-digit", hour12: true }).toUpperCase();
     return `${month} ${day}, ${time}`;
   };
 
@@ -1137,7 +1139,7 @@ export default function QuoteDetailsPage() {
                       : [];
                 const senderName = msg.username || msg.senderName || managerName;
                 const proposalDesc = content.projectDescription || content.text || msg.message || "";
-                const proposalCurrency = (content.currency || quote.currency || "USD").toUpperCase();
+                const proposalCurrency = (content.currency || quote.currency || user?.currency || user?.preferredCurrency || contextCurrency || "USD").toUpperCase();
                 const calculatedDurationDays = propItems.reduce((sum: number, it: any) => {
                   const dur = String(it.duration || "").toLowerCase();
                   const match = dur.match(/(\d+(\.\d+)?)/);

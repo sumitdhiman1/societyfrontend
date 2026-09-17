@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { quoteService } from "@/lib/quoteService";
 import { authService } from "@/lib/authService";
 import { mediaService } from "@/lib/mediaService";
+import { useCurrency } from "@/context/CurrencyContext";
 
 type FileItem = {
   id: string;
@@ -31,6 +32,7 @@ const formatFileSize = (bytes: number): string => {
 
 export default function CustomQuotePage() {
   const router = useRouter();
+  const { currency } = useCurrency();
   const [projectTitle, setProjectTitle] = useState("");
   const [projectTitleError, setProjectTitleError] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
@@ -196,6 +198,7 @@ export default function CustomQuotePage() {
           projectDescription,
           serviceType: null,
           attachedFilesUrl,
+          currency: (currency || user?.currency || user?.preferredCurrency || "USD").toUpperCase(),
         });
 
         if (response.isSuccessful) {

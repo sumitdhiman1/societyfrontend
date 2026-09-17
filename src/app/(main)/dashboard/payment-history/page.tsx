@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import { paymentService } from "@/lib/paymentService";
+import { useTimezone } from "@/context/TimezoneContext";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 // DatePicker component
@@ -170,6 +171,7 @@ function DatePicker({
 }
 
 export default function PaymentHistoryPage() {
+  const { formatDateTime } = useTimezone();
   const [fromDate, setFromDate] = useState<Date | null>(null);
   const [toDate, setToDate] = useState<Date | null>(null);
   const [payments, setPayments] = useState<any[]>([]);
@@ -263,11 +265,12 @@ export default function PaymentHistoryPage() {
   const formatRowDate = (dateString: string) => {
     try {
       const d = new Date(dateString);
-      const datePart = d.toLocaleDateString("en-US", {
+      if (isNaN(d.getTime())) return dateString;
+      const datePart = formatDateTime(d, {
         month: "short",
         day: "numeric",
       });
-      const timePart = d.toLocaleTimeString("en-US", {
+      const timePart = formatDateTime(d, {
         hour: "numeric",
         minute: "2-digit",
         hour12: true,
