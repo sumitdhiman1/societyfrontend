@@ -79,7 +79,7 @@ function LoginForm() {
               <div className="text-sm">
                 <span className="opacity-60 text-gray-400 font-bold uppercase tracking-wider text-[11px]">Not a member?</span>
                 <Link href="/register" className="font-extrabold text-[#1a1a40] ml-3 hover:underline transition-all tracking-tight">
-                  Register now
+                  Register (Opens Monday)
                 </Link>
               </div>
             </div>
@@ -88,7 +88,7 @@ function LoginForm() {
           <div className="register-link-mobile">
             <span className="link-label">Not a member?</span>
             <Link href="/register" className="link-action">
-              Register now
+              Register (Opens Monday)
             </Link>
           </div>
 

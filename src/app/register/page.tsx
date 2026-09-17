@@ -87,7 +87,8 @@ const SubmitButton = ({ label, type = "button", disabled, onClick, className = "
   >
     {label}
   </button>
-);
+// Temporary development mode flag - set to false on Monday to re-enable registrations
+const IS_SIGNUP_DISABLED = true;
 
 function RegisterForm() {
   const router = useRouter();
@@ -169,6 +170,15 @@ function RegisterForm() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (IS_SIGNUP_DISABLED) {
+      setStatusPopup({
+        isOpen: true,
+        type: "error",
+        title: "Registration Paused",
+        message: "Sign-ups are temporarily disabled while the site is in development mode until Monday."
+      });
+      return;
+    }
     setLoading(true);
     setErrorMsg("");
     try {
@@ -205,9 +215,93 @@ function RegisterForm() {
   };
 
   const handleSocialLogin = (platform: string) => {
+    if (IS_SIGNUP_DISABLED) {
+      setStatusPopup({
+        isOpen: true,
+        type: "error",
+        title: "Registration Paused",
+        message: "Sign-ups are temporarily disabled while the site is in development mode until Monday."
+      });
+      return;
+    }
     if (platform === "Google") authService.loginWithGoogle();
     else if (platform === "Facebook") authService.loginWithFacebook();
   };
+
+  if (IS_SIGNUP_DISABLED) {
+    return (
+      <div className="min-h-screen w-full flex bg-white">
+        {/* Left Panel */}
+        <div className="hidden lg:block w-[40%] h-screen top-0 self-start overflow-hidden shrink-0 bg-[#060a12] relative">
+          <img src="/images/worldpic.png" className="w-full h-full object-cover" alt="Panel" />
+        </div>
+
+        {/* Right Panel */}
+        <div className="flex-1 flex justify-center items-center px-6 md:px-12 lg:px-16 xl:px-24 py-12">
+          <div className="w-full max-w-xl">
+            <div className="mb-6">
+              <a className="w-10 h-10 border border-gray-300 rounded-full flex items-center justify-center text-[#1a1a40] hover:bg-gray-50 hover:border-gray-600 transition-colors" href="/">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+              </a>
+            </div>
+
+            <div className="bg-gradient-to-br from-amber-500/10 via-blue-500/5 to-transparent border border-amber-200/80 rounded-3xl p-8 sm:p-10 shadow-sm relative overflow-hidden">
+              <div className="flex items-center gap-2 mb-6">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                  Development Mode
+                </span>
+              </div>
+
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1a1a40] tracking-tight mb-3">
+                Sign-Up Temporarily Paused
+              </h1>
+
+              <p className="text-sm sm:text-base text-gray-600 leading-relaxed font-medium mb-6">
+                Our platform is currently undergoing active development and system upgrades. New user registrations are temporarily disabled until <span className="font-bold text-gray-900">Monday</span>.
+              </p>
+
+              <div className="bg-white/80 border border-gray-200 rounded-2xl p-4 sm:p-5 mb-8 text-xs sm:text-sm text-gray-700 leading-relaxed shadow-xs">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <span className="font-bold text-gray-900 block mb-1">Existing Members</span>
+                    If you already have an active account, you can log in below to access your projects, quotes, and analyses.
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 w-full">
+                <a
+                  href="/login"
+                  className="flex-1 py-3.5 px-6 bg-[#183B7E] hover:bg-[#122d60] text-white font-bold rounded-xl text-center text-sm shadow-md transition-all active:scale-[0.99]"
+                >
+                  Log in to Account
+                </a>
+                <a
+                  href="/"
+                  className="flex-1 py-3.5 px-6 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-bold rounded-xl text-center text-sm transition-all"
+                >
+                  Back to Homepage
+                </a>
+              </div>
+            </div>
+
+            <p className="text-center text-xs text-gray-400 mt-6 font-medium">
+              Need immediate assistance? Reach out to{" "}
+              <a href="mailto:contact@societywebsolutions.com" className="text-blue-600 hover:underline">
+                contact@societywebsolutions.com
+              </a>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full flex bg-white">
