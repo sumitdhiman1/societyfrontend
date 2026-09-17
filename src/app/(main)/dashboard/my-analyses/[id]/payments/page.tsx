@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAnalysis } from "@/context/AnalysisContext";
 import { paymentService } from "@/lib/paymentService";
+import { requestAnalysisService } from "@/lib/requestAnalysisService";
 import { authService } from "@/lib/authService";
 import { downloadFile } from "@/lib/utils";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
@@ -273,6 +274,61 @@ export default function AnalysisPaymentsPage() {
     activeAnalysis.projectNumber ||
     (activeAnalysis.quoteNumber || (activeAnalysis._id ? `INV-2026-${activeAnalysis._id.slice(-3).toUpperCase()}` : "INV-2026-150"));
 
+  const [matchedProduct, setMatchedProduct] = useState<any>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadMatchedProduct = async () => {
+      try {
+        const res: any = await requestAnalysisService.getProducts(true);
+        const list = Array.isArray(res?.data) ? res.data : res?.data?.data || (Array.isArray(res) ? res : []);
+        const targetId = activeAnalysis.productId || activeAnalysis.analysisProductId || activeAnalysis.product?._id || activeAnalysis.product?.id;
+        const targetTitle = (activeAnalysis.title || "").toLowerCase().trim();
+        const found = list.find((p: any) =>
+          (targetId && (p._id === targetId || p.id === targetId)) ||
+          (p.title && targetTitle && p.title.toLowerCase().trim() === targetTitle) ||
+          (targetTitle.includes("check") && (p.title || "").toLowerCase().includes("check"))
+        );
+        if (isMounted && found) {
+          setMatchedProduct(found);
+        }
+      } catch (e) {
+        console.error("Failed to load matching analysis product in payments tab:", e);
+      }
+    };
+    if (activeAnalysis && activeAnalysis._id) {
+      loadMatchedProduct();
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [activeAnalysis?._id, activeAnalysis?.title]);
+
+  const isGenericDesc = (desc?: string) => {
+    if (!desc) return true;
+    return (
+      desc.startsWith("Our standard free analysis offer covering brand, UI/UX") ||
+      desc.startsWith("Comprehensive Website Review, Detailed PDF Report")
+    );
+  };
+
+  const rawTitle = activeAnalysis.title || "Free Website Analysis";
+  const dynamicAnalysisTitle = rawTitle.includes(" - ") ? rawTitle.split(" - ")[0] : rawTitle;
+
+  const dynamicAnalysisDesc =
+    (activeAnalysis.deliverableItems?.[0]?.details && !isGenericDesc(activeAnalysis.deliverableItems?.[0]?.details))
+      ? activeAnalysis.deliverableItems?.[0]?.details
+      : (matchedProduct?.shortDescription ||
+         matchedProduct?.description ||
+         matchedProduct?.longDescription ||
+         activeAnalysis.shortDescription ||
+         activeAnalysis.product?.shortDescription ||
+         activeAnalysis.product?.description ||
+         (activeAnalysis.description && !activeAnalysis.description.startsWith("Analysis for ") ? activeAnalysis.description : "") ||
+         (dynamicAnalysisTitle.toLowerCase().includes("check")
+           ? "An offer to check the completed work of any other web professionals, including your own in-house staff and/or partners. Fully custom and manual checking by our quality assurance team. Serves as a third, objective perspective on the quality of work completed."
+           : "Our classic analysis offer covering branding, UI/UX, functionalities, AI potentiality, tech stack, speed, and SEO. A manual review using a custom process created by Society Web Solutions, checking every important part of your website. Delivered as a custom PDF report within 5 days."));
+
   const totalPaidFromTransactions = (payments || [])
     .filter((p: any) => ["succeeded", "paid", "completed"].includes(p.status?.toLowerCase()))
     .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
@@ -282,15 +338,15 @@ export default function AnalysisPaymentsPage() {
   // 1. Regular items
   const regularItems = (activeAnalysis.deliverableItems && activeAnalysis.deliverableItems.length > 0)
     ? activeAnalysis.deliverableItems.map((item: any) => ({
-        description: item.description || item.title || item.name || "Analysis Deliverable",
-        details: item.details || "",
+        description: item.description || item.title || item.name || dynamicAnalysisTitle,
+        details: !isGenericDesc(item.details) ? item.details : dynamicAnalysisDesc,
         duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : (activeAnalysis.timelineInDays ? `${activeAnalysis.timelineInDays} Days` : "7 Days"),
         amount: Number(item.amount ?? (activeAnalysis.addons?.length ? 0 : (activeAnalysis.price ?? activeAnalysis.totalCost ?? 0))),
         isAddOn: false,
       }))
     : [{
-        description: activeAnalysis.title || "Free Website Analysis",
-        details: "Comprehensive Website Review, Detailed PDF Report, Key Performance Issues Identified, Actionable Recommendations",
+        description: dynamicAnalysisTitle,
+        details: dynamicAnalysisDesc,
         duration: activeAnalysis.timelineInDays ? `${activeAnalysis.timelineInDays} Days` : "5 Days",
         amount: Number(activeAnalysis.basePrice ?? (activeAnalysis.addons?.length ? 0 : (activeAnalysis.price ?? activeAnalysis.totalCost ?? 0))),
         isAddOn: false,
@@ -446,29 +502,29 @@ export default function AnalysisPaymentsPage() {
     const paymentDateStr = formatDateOnly(activeAnalysis.createdAt || startDate);
 
     const getDomainSubtitle = () => {
-      if (activeAnalysis.targetUrl) {
+      const rawUrl = activeAnalysis.targetWebsiteUrl || activeAnalysis.websiteUrl || activeAnalysis.targetUrl;
+      if (rawUrl) {
         try {
-          const u = activeAnalysis.targetUrl.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
-          return `Analysis for ${u}.`;
+          const u = rawUrl.replace(/^https?:\/\//i, "").replace(/\/.*$/, "").trim();
+          if (u) return `Analysis for ${u}.`;
         } catch {
-          return `Analysis for ${activeAnalysis.targetUrl}.`;
+          return `Analysis for ${rawUrl}.`;
         }
       }
       const title = activeAnalysis.title || "";
       if (title.includes(" - ")) {
         const part = title.split(" - ").pop()?.trim();
-        return `Analysis for ${part}.`;
+        if (part) return `Analysis for ${part}.`;
       }
-      return "Analysis for test.com.";
+      return "";
     };
 
     const formatPriceDisplay = (amt: number) => {
       return currency === "eur" ? `€${amt.toFixed(2)}` : `$${amt.toFixed(2)}`;
     };
 
-    const freeItemTitle = "Free Website Analysis";
-    const freeItemDesc =
-      "Our standard free analysis offer covering brand, UI/UX, functionalities, AI potentiality, tech stack, speed, and SEO.";
+    const freeItemTitle = dynamicAnalysisTitle;
+    const freeItemDesc = dynamicAnalysisDesc;
     const freeItemDuration = `${timelineDays} Days`;
 
     const handleViewInvoice = async (e?: React.MouseEvent) => {
@@ -521,12 +577,14 @@ export default function AnalysisPaymentsPage() {
                         </button>
                       </div>
                     </div>
-                    <p
-                      className="text-sm sm:text-gray-600 mb-4 leading-relaxed line-clamp-3 sm:line-clamp-2 font-sans"
-                      title={getDomainSubtitle()}
-                    >
-                      {getDomainSubtitle()}
-                    </p>
+                    {getDomainSubtitle() ? (
+                      <p
+                        className="text-sm sm:text-gray-600 mb-4 leading-relaxed line-clamp-3 sm:line-clamp-2 font-sans"
+                        title={getDomainSubtitle()}
+                      >
+                        {getDomainSubtitle()}
+                      </p>
+                    ) : null}
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] sm:text-xs text-gray-500 font-sans">
                       <span className="whitespace-nowrap">
                         Project No: <span className="text-gray-700 font-medium">#{projectNumber}</span>
@@ -638,89 +696,9 @@ export default function AnalysisPaymentsPage() {
                   </tbody>
                 </table>
               </div>
-            </div>
 
-            {/* 2. Free Website Analysis Succeeded Card */}
-            <div className="bg-white border border-gray-300 rounded-lg p-4 sm:p-6 md:p-8">
-              <div className="pb-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h3 className="text-lg sm:text-xl font-bold text-[#0D1939]">
-                    {activeAnalysis.title || "Free Website Analysis"}
-                  </h3>
-                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-[#E6F9EE] text-[#00A854] border border-[#00A854]/20">
-                    SUCCEEDED
-                  </span>
-                </div>
-                <span className="text-sm sm:text-base font-semibold text-[#4343F0] whitespace-nowrap">
-                  Project #{projectNumber}
-                </span>
-              </div>
-
-              <div className="px-6 py-3 flex items-center gap-2 text-xs sm:text-sm text-gray-500 font-medium">
-                <span>
-                  Payment Date: <span className="font-semibold text-gray-700">{paymentDateStr}</span>
-                </span>
-                <span className="text-gray-300">|</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedPayment(null);
-                    setShowReceipt(true);
-                  }}
-                  className="text-[#4343F0] hover:text-[#3232b7] underline decoration-[#4343F0]/40 hover:decoration-[#4343F0] underline-offset-2 font-semibold transition-colors cursor-pointer"
-                >
-                  View Receipt
-                </button>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[480px]">
-                  <thead>
-                    <tr className="border-t border-b border-gray-200 bg-white">
-                      <th className="text-left py-3.5 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                        ITEM
-                      </th>
-                      <th className="text-center py-3.5 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                        DURATION
-                      </th>
-                      <th className="text-right py-3.5 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                        AMOUNT
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 bg-white">
-                    <tr>
-                      <td className="py-4 px-6 text-sm">
-                        <div className="font-bold text-gray-800">{freeItemTitle}</div>
-                        <div className="text-xs text-gray-400 mt-0.5 leading-relaxed">
-                          {freeItemDesc}
-                        </div>
-                      </td>
-                      <td className="py-4 px-6 text-sm text-gray-600 font-medium text-center whitespace-nowrap">
-                        {freeItemDuration}
-                      </td>
-                      <td className="py-4 px-6 text-sm font-bold text-gray-800 text-right whitespace-nowrap">
-                        {formatPriceDisplay(0)}
-                      </td>
-                    </tr>
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t border-gray-200">
-                      <td colSpan={2}></td>
-                      <td className="py-4 px-6 text-right">
-                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                          TOTAL PAID
-                        </div>
-                        <div className="text-sm font-bold text-gray-900 mt-0.5">
-                          {formatPriceDisplay(0)}
-                        </div>
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-
-              <div className="px-6 py-4 flex flex-wrap justify-end gap-3 border-t border-gray-100 bg-white">
+              {/* Download & Print Action Buttons */}
+              <div className="mt-6 flex flex-wrap justify-end gap-3">
                 <button
                   type="button"
                   disabled={isDownloadingPdf}

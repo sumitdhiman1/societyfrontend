@@ -807,16 +807,14 @@ export default function ProjectDetailsPage() {
                 <span className="text-[10px] sm:text-xs text-gray-500 font-bold">
                   Submitted - {formatSubmittedDate(project.createdAt)}
                 </span>
-                <span className={`w-fit px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider border ${(project.status || "").toLowerCase() === "active" || (project.status || "").toLowerCase() === "in_progress"
-                  ? "border-green-300 text-green-700 bg-green-50"
-                  : (project.status || "").toLowerCase() === "completed"
-                    ? "border-blue-300 text-blue-700 bg-blue-50"
-                    : (project.status || "").toLowerCase() === "paused"
-                      ? "border-amber-300 text-amber-800 bg-amber-50"
-                      : (project.status || "").toLowerCase() === "canceled" || (project.status || "").toLowerCase() === "cancelled"
-                        ? "border-red-300 text-red-700 bg-red-50"
-                        : "border-gray-300 text-gray-700 bg-gray-50"
-                  }`}>
+                <span className={`w-fit px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider border ${(() => {
+                  const status = (project.status || "").toLowerCase();
+                  if (status === "active" || status === "in_progress") return "bg-[#E1FCEF] text-[#14804A] border-[#E1FCEF]";
+                  if (status === "paused") return "bg-[#FEF3C7] text-[#D97706] border-[#FEF3C7]";
+                  if (status === "completed") return "bg-[#EBF5FF] text-[#2563EB] border-[#EBF5FF]";
+                  if (status === "canceled" || status === "cancelled") return "bg-[#FEE2E2] text-[#B91C1C] border-[#FEE2E2]";
+                  return "bg-gray-100 text-gray-700 border-gray-200";
+                })()}`}>
                   {project.status || "ACTIVE"}
                 </span>
               </div>

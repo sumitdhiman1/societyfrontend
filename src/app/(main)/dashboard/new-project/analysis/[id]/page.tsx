@@ -10,6 +10,7 @@ import { useCurrency } from "@/context/CurrencyContext";
 import StatusPopup from "@/components/common/StatusPopup";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 import { formatPriceWithCurrency } from "@/lib/currencyUtils";
+import { toast } from "sonner";
 
 const SpinnerIcon = ({ size = 18 }: { size?: number }) => (
   <svg className="animate-spin" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -29,6 +30,7 @@ export default function AnalysisOrderPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [copiedEmail, setCopiedEmail] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [analysisNo, setAnalysisNo] = useState("");
   const [mountedDate, setMountedDate] = useState<Date | null>(null);
@@ -38,7 +40,7 @@ export default function AnalysisOrderPage() {
     whoCompletedWork: "",
     agreementDetails: "",
     scopeOfWork: "",
-    loginsDetails: "",
+    loginsDetails: "checking@societywebsolutions.com",
     additionalComments: "",
     email: "",
     fullName: "",
@@ -308,6 +310,15 @@ export default function AnalysisOrderPage() {
       ? "/images/free_checking_of_work.jpg"
       : "/images/free_website_analysis.jpg");
 
+  const handleCopyEmail = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const emailToCopy = "checking@societywebsolutions.com";
+    navigator.clipboard.writeText(emailToCopy);
+    setCopiedEmail(true);
+    toast.success("Email copied to clipboard!");
+    setTimeout(() => setCopiedEmail(false), 2000);
+  };
+
   const isCheckingOfWork = title.toLowerCase().includes("check") || title.toLowerCase().includes("work");
 
   const vf = product?.visibleFormFields || {};
@@ -387,73 +398,107 @@ export default function AnalysisOrderPage() {
         <div className="bg-[#fcfcfc] border border-gray-200 rounded-[4px] shadow-sm p-6 md:p-8 mb-10 md:mb-16">
           <h2 className="text-xl font-bold text-gray-700 mb-6">Fill out the form to order:</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {visibleFields.urlToCheck !== false && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">URL(s) to check:</label>
-                <textarea
-                  id="field-targetUrl"
-                  className="w-full min-h-[120px] bg-white border border-gray-300 rounded-[4px] p-3 text-sm outline-none focus:border-blue-500"
-                  placeholder="e.g. https://yourwebsite.com"
-                  value={formData.targetWebsiteUrl}
-                  onChange={(e) => setFormData({ ...formData, targetWebsiteUrl: e.target.value })}
-                />
-              </div>
-            )}
-            {visibleFields.additionalInfo !== false && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Provide any additional required information:</label>
-                <textarea
-                  className="w-full min-h-[120px] bg-white border border-gray-300 rounded-[4px] p-3 text-sm outline-none focus:border-blue-500"
-                  placeholder="Any extra information you'd like to share"
-                  value={formData.additionalComments}
-                  onChange={(e) => setFormData({ ...formData, additionalComments: e.target.value })}
-                />
-              </div>
-            )}
-            {visibleFields.whatToLookAt && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">What specifically do you want us to look at?</label>
-                <textarea
-                  className="w-full min-h-[120px] bg-white border border-gray-300 rounded-[4px] p-3 text-sm outline-none focus:border-blue-500"
-                  placeholder="e.g. design, functionality, SEO, speed, mobile, conversions, etc."
-                  value={formData.scopeOfWork}
-                  onChange={(e) => setFormData({ ...formData, scopeOfWork: e.target.value })}
-                />
-              </div>
-            )}
-            {visibleFields.whoCompletedWork && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Who was the work completed by?</label>
-                <textarea
-                  className="w-full min-h-[120px] bg-white border border-gray-300 rounded-[4px] p-3 text-sm outline-none focus:border-blue-500"
-                  placeholder="e.g. Freelancer, agency, internal team, etc."
-                  value={formData.whoCompletedWork}
-                  onChange={(e) => setFormData({ ...formData, whoCompletedWork: e.target.value })}
-                />
-              </div>
-            )}
-            {visibleFields.agreementDetails && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">What was the agreement for this work?</label>
-                <textarea
-                  className="w-full min-h-[120px] bg-white border border-gray-300 rounded-[4px] p-3 text-sm outline-none focus:border-blue-500"
-                  placeholder="e.g. timeline, deliverables, milestones, etc."
-                  value={formData.agreementDetails}
-                  onChange={(e) => setFormData({ ...formData, agreementDetails: e.target.value })}
-                />
-              </div>
-            )}
-            {visibleFields.shareAccess && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Please share required access with our email:</label>
-                <textarea
-                  className="w-full min-h-[120px] bg-white border border-gray-300 rounded-[4px] p-3 text-sm outline-none focus:border-blue-500 font-mono"
-                  placeholder="e.g. staging link, login credentials, collaborator invites, etc."
-                  value={formData.loginsDetails}
-                  onChange={(e) => setFormData({ ...formData, loginsDetails: e.target.value })}
-                />
-              </div>
-            )}
+            {/* Column 1 (Left side) */}
+            <div className="flex flex-col gap-6">
+              {visibleFields.urlToCheck !== false && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">URL(s) to check:</label>
+                  <textarea
+                    id="field-targetUrl"
+                    className="w-full min-h-[120px] bg-white border border-gray-300 rounded-[4px] p-3 text-sm outline-none focus:border-blue-500"
+                    placeholder="e.g. https://yourwebsite.com"
+                    value={formData.targetWebsiteUrl}
+                    onChange={(e) => setFormData({ ...formData, targetWebsiteUrl: e.target.value })}
+                  />
+                </div>
+              )}
+
+              {visibleFields.whoCompletedWork && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Who was the work completed by?</label>
+                  <select
+                    className="w-full h-[42px] bg-white border border-gray-300 rounded-[4px] px-3 text-sm text-gray-700 outline-none focus:border-blue-500 cursor-pointer"
+                    value={formData.whoCompletedWork}
+                    onChange={(e) => setFormData({ ...formData, whoCompletedWork: e.target.value })}
+                  >
+                    <option value="">Select</option>
+                    <option value="In-house staff">In-house staff</option>
+                    <option value="An agency">An agency</option>
+                    <option value="A freelancer">A freelancer</option>
+                  </select>
+                </div>
+              )}
+
+              {visibleFields.agreementDetails && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">What was the agreement for this work?</label>
+                  <textarea
+                    className="w-full min-h-[120px] bg-white border border-gray-300 rounded-[4px] p-3 text-sm outline-none focus:border-blue-500"
+                    placeholder="Ideally, provide the project proposal, accepted quote, or email exchange"
+                    value={formData.agreementDetails}
+                    onChange={(e) => setFormData({ ...formData, agreementDetails: e.target.value })}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Column 2 (Right side) */}
+            <div className="flex flex-col gap-6">
+              {visibleFields.whatToLookAt && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">What specifically do you want us to look at?</label>
+                  <textarea
+                    className="w-full min-h-[120px] bg-white border border-gray-300 rounded-[4px] p-3 text-sm outline-none focus:border-blue-500"
+                    placeholder="e.g. design, functionality, SEO, speed, mobile, conversions, etc."
+                    value={formData.scopeOfWork}
+                    onChange={(e) => setFormData({ ...formData, scopeOfWork: e.target.value })}
+                  />
+                </div>
+              )}
+
+              {visibleFields.shareAccess && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Please share required access with our email:</label>
+                  <div className="flex items-center w-full bg-[#fdfdfd] border border-gray-300 rounded-[4px] h-[42px] overflow-hidden focus-within:border-blue-500">
+                    <input
+                      type="text"
+                      readOnly
+                      value="checking@societywebsolutions.com"
+                      className="w-full bg-transparent px-3 text-sm text-gray-700 outline-none select-all font-sans"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCopyEmail}
+                      className="px-3 h-full border-l border-gray-200 text-gray-500 hover:text-gray-800 hover:bg-gray-50 flex items-center justify-center transition-colors cursor-pointer"
+                      title="Copy email to clipboard"
+                    >
+                      {copiedEmail ? (
+                        <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {visibleFields.additionalInfo !== false && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Provide any additional required information:</label>
+                  <textarea
+                    className="w-full min-h-[120px] bg-white border border-gray-300 rounded-[4px] p-3 text-sm outline-none focus:border-blue-500"
+                    placeholder="Any extra information you'd like to share"
+                    value={formData.additionalComments}
+                    onChange={(e) => setFormData({ ...formData, additionalComments: e.target.value })}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
