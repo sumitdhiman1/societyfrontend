@@ -11,11 +11,13 @@ const httpClient = new HttpClient();
 interface SupportNewsletterProps {
   noPadding?: boolean;
   className?: string;
+  gridClassName?: string;
 }
 
 export default function SupportNewsletter({
   noPadding = false,
   className = "",
+  gridClassName = "",
 }: SupportNewsletterProps) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -99,7 +101,9 @@ export default function SupportNewsletter({
       />
 
       <div
-        className="support-section w-full grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 font-sans mt-8 md:mt-12"
+        className={`support-section w-full grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 font-sans ${
+          gridClassName || "mt-8 md:mt-12"
+        }`}
         style={{ fontFamily: "var(--font-inter), sans-serif" }}
       >
         {/* Support Card */}
@@ -120,8 +124,8 @@ export default function SupportNewsletter({
               className="object-contain max-w-full h-auto max-h-[170px] md:max-h-[200px]"
             />
           </div>
-          <div className="w-full md:flex-1 flex flex-col items-center md:items-start z-10 text-center md:text-left space-y-4 xl:space-y-5 px-6 md:px-0 md:pl-6 md:pr-4 py-0">
-            <h3 className="text-[28px] md:text-[25px] leading-[34px] md:leading-[30px] font-bold text-[#434343] capitalize font-sans">
+          <div className="w-full md:flex-1 flex flex-col items-center md:items-start z-10 text-center md:text-left px-6 md:px-0 md:pl-6 md:pr-4 py-0">
+            <h3 className="text-[28px] md:text-[30px] leading-[34px] md:leading-[36px] font-bold text-[#434343] capitalize font-sans mb-[36px]">
               Visit Help &amp; Support
             </h3>
             <Link href="/help-support" className="w-full max-w-[400px] md:max-w-none">
@@ -153,8 +157,8 @@ export default function SupportNewsletter({
               className="object-contain max-w-full h-auto max-h-[170px] md:max-h-[200px]"
             />
           </div>
-          <div className="w-full md:flex-1 flex flex-col items-center md:items-start z-10 text-center md:text-left space-y-4 xl:space-y-5 px-6 md:px-0 md:pl-6 md:pr-4 py-0">
-            <h3 className="text-[28px] md:text-[25px] leading-[34px] md:leading-[30px] font-bold text-[#434343] capitalize font-sans">
+          <div className="w-full md:flex-1 flex flex-col items-center md:items-start z-10 text-center md:text-left px-6 md:px-0 md:pl-6 md:pr-4 py-0">
+            <h3 className="text-[28px] md:text-[30px] leading-[34px] md:leading-[36px] font-bold text-[#434343] capitalize font-sans mb-[36px]">
               Sign Up For Updates!
             </h3>
             <form
