@@ -1195,7 +1195,6 @@ const CalculatorPaymentForm = ({
     if (!isAuth) return 0;
     const codeOrName = userCountry?.trim() || "";
     if (!codeOrName) return 0;
-    if (isEstonia(codeOrName)) return 24;
     const direct = countryService.getVatRateSync(codeOrName);
     if (direct > 0) return direct;
     const found = countriesList.find(
@@ -1204,8 +1203,9 @@ const CalculatorPaymentForm = ({
         c.iso3?.toUpperCase() === codeOrName.toUpperCase() ||
         c.name?.toLowerCase() === codeOrName.toLowerCase()
     );
-    if (found && isEstonia(found.name || found.iso2)) return 24;
-    return found ? Number(found.vatRate) || 0 : 0;
+    if (found && Number(found.vatRate) > 0) return Number(found.vatRate);
+    if (isEstonia(codeOrName)) return 24;
+    return 0;
   }, [isAuth, userCountry, countriesList]);
 
   const vatMultiplier = vatRate > 0 ? vatRate / 100 : 0;
@@ -1684,7 +1684,6 @@ export default function CalculatorPage() {
     if (!authService.isAuthenticated()) return 0;
     const codeOrName = userCountry?.trim() || "";
     if (!codeOrName) return 0;
-    if (isEstonia(codeOrName)) return 24;
     const direct = countryService.getVatRateSync(codeOrName);
     if (direct > 0) return direct;
     const found = countriesList.find(
@@ -1693,8 +1692,9 @@ export default function CalculatorPage() {
         c.iso3?.toUpperCase() === codeOrName.toUpperCase() ||
         c.name?.toLowerCase() === codeOrName.toLowerCase()
     );
-    if (found && isEstonia(found.name || found.iso2)) return 24;
-    return found ? Number(found.vatRate) || 0 : 0;
+    if (found && Number(found.vatRate) > 0) return Number(found.vatRate);
+    if (isEstonia(codeOrName)) return 24;
+    return 0;
   }, [userCountry, countriesList]);
 
   const vatMultiplier = vatRate > 0 ? vatRate / 100 : 0;

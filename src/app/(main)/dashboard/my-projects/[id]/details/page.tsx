@@ -22,6 +22,7 @@ import { useCurrency } from "@/context/CurrencyContext";
 import { useTimezone } from "@/context/TimezoneContext";
 import { toast } from "sonner";
 import { paymentService } from "@/lib/paymentService";
+import { countryService } from "@/lib/countryService";
 
 const renderStatusMessageText = (rawText: string, attachments?: any[]) => {
   const text = capitalizeCurrencyInText(rawText);
@@ -283,6 +284,7 @@ export default function ProjectDetailsPage() {
   useEffect(() => {
     setCurrentUser(authService.getUser());
     refreshProject(true);
+    countryService.getAllCountries().catch(() => {});
   }, [refreshProject]);
 
   useEffect(() => {
@@ -688,14 +690,21 @@ export default function ProjectDetailsPage() {
     project.client?.country ||
     project.client?.clientCountry ||
     project.quoteId?.clientCountry ||
+    currentUser?.country ||
     ""
   );
+  const dbVatRate = countryService.getVatRateSync(clientCountryStr);
   const explicitVatRate = Number(
     project.vatRate ??
     project.vatPercentage ??
     (project.taxPercentage != null ? project.taxPercentage : 0)
   );
-  const vatRate = explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(clientCountryStr) ? 24 : 0);
+  const vatRate = dbVatRate > 0 ? dbVatRate : (explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(clientCountryStr) ? 24 : 0));
+  
+  const projectItemsSum = Array.isArray(project.deliverableItems)
+    ? project.deliverableItems.reduce((sum: number, it: any) => sum + (Number(it.amount ?? it.cost) || 0), 0)
+    : 0;
+
   const rawVatAmount = Number(project.vatAmount ?? project.tax ?? 0);
   const rawBaseAmount = Number(
     project.baseAmount ??
@@ -707,17 +716,17 @@ export default function ProjectDetailsPage() {
     0
   );
   const baseAmount =
-    rawBaseAmount > 0
+    projectItemsSum > 0
+      ? projectItemsSum
+      : rawBaseAmount > 0
       ? rawBaseAmount
       : vatRate > 0 && rawTotalCost > 0
       ? Math.round((rawTotalCost / (1 + vatRate / 100)) * 100) / 100
       : rawTotalCost;
   const vatAmount =
-    rawVatAmount > 0
-      ? rawVatAmount
-      : vatRate > 0
+    vatRate > 0
       ? Math.round((baseAmount * (vatRate / 100)) * 100) / 100
-      : 0;
+      : rawVatAmount;
   const totalCost = rawTotalCost > 0 ? (rawTotalCost >= baseAmount + vatAmount - 0.05 ? rawTotalCost : Math.round((baseAmount + vatAmount) * 100) / 100) : Math.round((baseAmount + vatAmount) * 100) / 100;
 
   const totalPaidFromTransactions = (projectPayments || [])

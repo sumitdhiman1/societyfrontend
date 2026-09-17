@@ -231,8 +231,13 @@ function PaymentForm({
     return vatRate > 0 ? (baseAmount * vatRate) / 100 : 0;
   };
 
+  const getPayableDeliverablesSum = () => {
+    const payableItems = (deliverableItems || []).filter((item) => type !== "BUNDLE" || !item.isAddOn);
+    return payableItems.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+  };
+
   const getPendingWithVat = () => {
-    const currentDeliverablesSum = (deliverableItems || []).reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+    const currentDeliverablesSum = getPayableDeliverablesSum();
     const currentSubtotal = currentDeliverablesSum > 0 ? currentDeliverablesSum : (totalCost + amountPaid);
     return Math.max(0, currentSubtotal + getVatAmount(currentSubtotal) - amountPaid);
   };
@@ -242,12 +247,12 @@ function PaymentForm({
   const canPayDepositHalf = depositAmount > 0 && getDepositWithVat() < getPendingWithVat() - 0.009;
 
   useEffect(() => {
-    const currentDeliverablesSum = (deliverableItems || []).reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+    const currentDeliverablesSum = getPayableDeliverablesSum();
     const currentSubtotal = currentDeliverablesSum > 0 ? currentDeliverablesSum : (totalCost + amountPaid);
     const vatMultiplier = 1 + getActiveVatRate() / 100;
     const effectivePending = amountPaid > 0
       ? Math.max(0, (currentSubtotal * vatMultiplier) - amountPaid)
-      : totalCost * (getActiveVatRate() > 0 ? vatMultiplier : 1);
+      : currentSubtotal * (getActiveVatRate() > 0 ? vatMultiplier : 1);
     const convertedPending = convertCurrencyAmount(effectivePending, currency, nativeCurrency || "USD", conversionRate);
 
     const paramAmount = searchParams?.get("amount");
@@ -258,7 +263,7 @@ function PaymentForm({
       setPaymentOption("custom");
       setCustomAmount(convertedPending.toFixed(2));
     }
-  }, [searchParams, amountPaid, totalCost, deliverableItems, currency, conversionRate, nativeCurrency, countriesList, userCountry, billingSameAsBusiness, billingAddress.country, propVatRate]);
+  }, [searchParams, amountPaid, totalCost, deliverableItems, currency, conversionRate, nativeCurrency, countriesList, userCountry, billingSameAsBusiness, billingAddress.country, propVatRate, type]);
 
   useEffect(() => {
     if (paymentOption === "half" && !canPayDepositHalf) {
@@ -431,6 +436,10 @@ function PaymentForm({
         ? rawLineItems.substring(0, 397) + "..."
         : rawLineItems;
 
+      const currentVatRate = getActiveVatRate();
+      const currentPayableSubtotal = getPayableDeliverablesSum() > 0 ? getPayableDeliverablesSum() : totalCost;
+      const currentVatAmount = getVatAmount(currentPayableSubtotal);
+
       setPaymentStep("gateway");
       const intentResponse = await paymentService.createPaymentIntent({
         amount: finalAmount,
@@ -450,6 +459,10 @@ function PaymentForm({
           invoiceNumber: effectiveInvoiceNumber,
           messageId: effectiveMessageId,
           description: effectiveDescription,
+          vatRate: currentVatRate,
+          vatAmount: currentVatAmount,
+          subtotal: currentPayableSubtotal,
+          clientCountry: getActiveCountryCode(),
         },
       });
 
@@ -565,7 +578,7 @@ function PaymentForm({
   const addonItems = (deliverableItems || []).filter((item) => item.isAddOn);
   const subtotalRegular = regularItems.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
   const subtotalAddons = addonItems.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
-  const deliverablesSum = subtotalRegular + subtotalAddons;
+  const deliverablesSum = type === "BUNDLE" ? subtotalRegular : (subtotalRegular + subtotalAddons);
   const projectSubtotal = deliverablesSum > 0 ? deliverablesSum : (totalCost + amountPaid);
   const pendingAmount = deliverablesSum > 0 ? Math.max(0, deliverablesSum - amountPaid) : totalCost;
 

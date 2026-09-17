@@ -1,4 +1,5 @@
 import { authService } from "./authService";
+import { countryService } from "./countryService";
 
 // ─── Shared Utilities ────────────────────────────────────────────────────────
 
@@ -312,12 +313,27 @@ export function extractCalcInvoiceData(data: any): CalcInvoiceData {
   }
 
   // Financials
-  const vatRate = Number(
+  const isEstoniaClient = (c?: string) => {
+    if (!c) return false;
+    const upper = c.trim().toUpperCase();
+    return upper === "EE" || upper === "EST" || upper === "ESTONIA";
+  };
+  const countryStr = String(
+    data.clientCountry ||
+      project.clientCountry ||
+      project.country ||
+      project.client?.country ||
+      project.client?.clientCountry ||
+      ""
+  );
+  const dbVatRate = countryService.getVatRateSync(countryStr);
+  const explicitVatRate = Number(
     data.vatRate ??
       project.vatRate ??
       project.vatPercentage ??
       (project.taxPercentage != null ? project.taxPercentage : 0)
   );
+  const vatRate = dbVatRate > 0 ? dbVatRate : (explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(countryStr) ? 24 : 0));
 
   const subtotal = Number(
     data.subtotal ??

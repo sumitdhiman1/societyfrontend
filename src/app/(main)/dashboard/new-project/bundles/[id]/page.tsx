@@ -978,7 +978,7 @@ function BundleDetailsContent() {
                       const oneTimeList = getIncludedFeatures("one-time");
                       const oneTimeDetails = oneTimeList.map((f: any) => f.name).join(", ");
 
-                      const items: any[] = [
+                      return [
                         {
                           description: "Initial Project Setup & Implementation",
                           details: oneTimeDetails || `${pkg.name} (${selectedTier.title} Tier)`,
@@ -988,20 +988,6 @@ function BundleDetailsContent() {
                           isAddOn: false,
                         },
                       ];
-                      if (recurringAmount > 0) {
-                        const recurringList = getIncludedFeatures("monthly");
-                        const recurringDetails = recurringList.map((f: any) => f.name).join(", ");
-
-                        items.push({
-                          description: "Ongoing Maintenance Phase",
-                          details: recurringDetails || "Website Maintenance, SEO, Social Media",
-                          amount: recurringAmount,
-                          duration: selectedTier.recurringTimeline ? `${selectedTier.recurringTimeline.value || selectedTier.recurringTimeline}` : "1",
-                          unit: selectedTier.recurringTimeline?.type || "Month",
-                          isAddOn: true,
-                        });
-                      }
-                      return items;
                     })()}
                     clientEmail={email}
                     successRedirectUrl="/dashboard/my-projects"

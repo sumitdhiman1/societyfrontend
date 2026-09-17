@@ -1,13 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authService } from "@/lib/authService";
+import { countryService } from "@/lib/countryService";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { getMainCalculatorCategory } from "@/lib/calculatorUtils";
 import { useTimezone } from "@/context/TimezoneContext";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
+
+const isEstoniaClient = (c?: string) => {
+  if (!c) return false;
+  const s = c.trim().toLowerCase();
+  return s === "ee" || s === "est" || s === "estonia";
+};
 
 export function ReceiptModal({
   isOpen,
@@ -32,12 +39,15 @@ export function ReceiptModal({
   const totalPrice = Number(payment?.amount ?? project.amountPaid ?? project.price ?? project.totalCost ?? 0);
   const currency = (payment?.currency || project.currency || (project?.currencySymbol === "€" ? "EUR" : project?.currencySymbol === "$" ? "USD" : "USD")).toUpperCase();
 
-  const vatRate = Number(
+  const clientCountryStr = project?.clientCountry || project?.country || payment?.clientCountry || "";
+  const dbVatRate = countryService.getVatRateSync(clientCountryStr);
+  const explicitVatRate = Number(
     payment?.vatRate ??
     project.vatRate ??
     project.vatPercentage ??
     (project.taxPercentage != null ? project.taxPercentage : 0)
   );
+  const vatRate = dbVatRate > 0 ? dbVatRate : (explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(clientCountryStr) ? 24 : 0));
   const vatAmount = Number(
     payment?.vatAmount ??
     project.vatAmount ??
@@ -233,6 +243,10 @@ export default function CalculatorProjectPayments({
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
   const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null);
 
+  useEffect(() => {
+    countryService.getAllCountries().catch(() => {});
+  }, []);
+
   const activeProject = project || {};
   const linkedQuote = quote || (typeof activeProject.quoteId === "object" ? activeProject.quoteId : activeProject.quote) || {};
   const specs = activeProject.calculatorSpecs || linkedQuote?.requirements || activeProject.requirements || {};
@@ -277,13 +291,21 @@ export default function CalculatorProjectPayments({
     activeProject.timeline ||
     "2 weeks";
 
-  const vatRate = Number(
+  const clientCountryStr =
+    activeProject.clientCountry ||
+    activeProject.country ||
+    linkedQuote?.clientCountry ||
+    linkedQuote?.country ||
+    "";
+  const dbVatRate = countryService.getVatRateSync(clientCountryStr);
+  const explicitVatRate = Number(
     activeProject.vatRate ??
     activeProject.vatPercentage ??
     linkedQuote.vatRate ??
     linkedQuote.vatPercentage ??
     (activeProject.taxPercentage != null ? activeProject.taxPercentage : 0)
   );
+  const vatRate = dbVatRate > 0 ? dbVatRate : (explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(clientCountryStr) ? 24 : 0));
 
   // Prefer project.price (always in payment currency) over quote.totalCost (always USD)
   // to avoid cross-currency Math.max picking the larger USD value for EUR payers.

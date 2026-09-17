@@ -10,6 +10,7 @@ import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generatePr
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { useCurrency } from "@/context/CurrencyContext";
 import { useTimezone } from "@/context/TimezoneContext";
+import { countryService } from "@/lib/countryService";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 import CalculatorProjectPayments, { ReceiptModal } from "./CalculatorProjectPayments";
 
@@ -74,6 +75,7 @@ export default function ProjectPaymentsPage() {
   }, [projectId]);
 
   useEffect(() => {
+    countryService.getAllCountries().catch(() => {});
     if (projectId) {
       fetchPayments();
     }
@@ -147,11 +149,26 @@ export default function ProjectPaymentsPage() {
     ? formatDateTimeTz(activeProject.createdAt, { month: "short", day: "numeric", year: "numeric" })
     : "Sep 7, 2026";
 
-  const vatRate = Number(
+  const isEstoniaClient = (country?: string) => {
+    if (!country) return false;
+    const c = country.trim().toUpperCase();
+    return c === "EE" || c === "EST" || c === "ESTONIA";
+  };
+  const clientCountryStr = String(
+    activeProject.clientCountry ||
+    activeProject.country ||
+    activeProject.client?.country ||
+    activeProject.client?.clientCountry ||
+    activeProject.quoteId?.clientCountry ||
+    ""
+  );
+  const dbVatRate = countryService.getVatRateSync(clientCountryStr);
+  const explicitVatRate = Number(
     activeProject.vatRate ??
     activeProject.vatPercentage ??
     (activeProject.taxPercentage != null ? activeProject.taxPercentage : 0)
   );
+  const vatRate = dbVatRate > 0 ? dbVatRate : (explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(clientCountryStr) ? 24 : 0));
 
   const rawBaseCost = Number(activeProject.price ?? activeProject.totalPrice ?? activeProject.totalCost ?? 0);
   const baseSubtotal = Number(

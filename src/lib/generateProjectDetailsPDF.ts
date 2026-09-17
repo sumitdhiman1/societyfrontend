@@ -1,4 +1,5 @@
 import { authService } from "./authService";
+import { countryService } from "./countryService";
 import {
   calculateSeoRawTimelineDays,
   formatGraphicsTimelineLabel,
@@ -550,13 +551,14 @@ export function extractProjectDetails(data: any): ProjectPDFData {
       ""
   );
 
+  const dbVatRate = countryService.getVatRateSync(countryStr);
   const explicitVatRate = Number(
     data.vatRate ??
       data.vatPercentage ??
       (data.taxPercentage != null ? data.taxPercentage : 0)
   ) || 0;
 
-  const vatRate = explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(countryStr) ? 24 : 0);
+  const vatRate = dbVatRate > 0 ? dbVatRate : (explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(countryStr) ? 24 : 0));
 
   const rawVatAmount = Number(data.vatAmount ?? data.tax ?? 0);
 
@@ -574,22 +576,22 @@ export function extractProjectDetails(data: any): ProjectPDFData {
   const addonsSum = addons.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
 
   const baseAmount =
-    rawBaseAmount > 0
+    deliverablesSum > 0
+      ? deliverablesSum + addonsSum
+      : rawBaseAmount > 0
       ? rawBaseAmount
       : vatRate > 0 && rawTotalCost > 0
       ? Math.round((rawTotalCost / (1 + vatRate / 100)) * 100) / 100
-      : (deliverablesSum > 0 ? deliverablesSum + addonsSum : (rawTotalCost > 0 ? rawTotalCost : 0));
+      : (rawTotalCost > 0 ? rawTotalCost : 0);
 
   const vatAmount =
-    rawVatAmount > 0
-      ? rawVatAmount
-      : vatRate > 0
+    vatRate > 0
       ? Math.round((baseAmount * (vatRate / 100)) * 100) / 100
-      : 0;
+      : rawVatAmount;
 
   const totalPrice = rawTotalCost > 0
-    ? rawTotalCost
-    : (baseAmount + vatAmount > 0 ? baseAmount + vatAmount : (deliverablesSum + addonsSum > 0 ? deliverablesSum + addonsSum : Number(data.amountPaid || 0)));
+    ? (rawTotalCost >= baseAmount + vatAmount - 0.05 ? rawTotalCost : Math.round((baseAmount + vatAmount) * 100) / 100)
+    : (baseAmount + vatAmount > 0 ? Math.round((baseAmount + vatAmount) * 100) / 100 : (deliverablesSum + addonsSum > 0 ? deliverablesSum + addonsSum : Number(data.amountPaid || 0)));
 
   // If there's only 1 deliverable item and its amount is 0, set it to baseAmount or totalPrice
   if (deliverables.length === 1 && deliverables[0].amount === 0 && (baseAmount > 0 || totalPrice > 0)) {
