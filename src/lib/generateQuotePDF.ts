@@ -66,7 +66,7 @@ function getTotalCost(quote: any, lineItems: Array<{ amount: number }>) {
     quote.estimatedPrice ||
     quote.requirements?.calculatedPrice;
   if (explicit) return explicit;
-  return lineItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+  return lineItems.reduce((sum: number, item: { amount: number }) => sum + (item.amount || 0), 0);
 }
 
 export async function generateQuotePDF(quote: any): Promise<void> {
@@ -91,7 +91,7 @@ export async function generateQuotePDF(quote: any): Promise<void> {
       : (quote.vatRate !== undefined && quote.vatRate !== null ? quote.vatRate : 0)
   );
 
-  const itemsSum = lineItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const itemsSum = lineItems.reduce((sum: number, item: { amount: number }) => sum + (Number(item.amount) || 0), 0);
   const rawSubtotal = Number(
     propContent.subtotalCost ??
     propContent.subtotal ??

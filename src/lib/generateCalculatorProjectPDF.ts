@@ -921,7 +921,7 @@ function estimateOptionHeight(opt: { question: string; answers: string[] }): num
     const aLines = Math.max(1, Math.ceil(text.length / 70));
     aHeight = aLines * 19;
   } else {
-    aHeight = answers.reduce((sum, a) => {
+    aHeight = answers.reduce((sum: number, a: string) => {
       const lines = Math.max(1, Math.ceil(a.length / 65));
       return sum + lines * 19 + 3;
     }, 0);
@@ -944,7 +944,7 @@ function paginateCalculatorPDF(
   }
 
   const heights = options.map(estimateOptionHeight);
-  const totalOptionsHeight = heights.reduce((sum, h) => sum + h, 0);
+  const totalOptionsHeight = heights.reduce((sum: number, h: number) => sum + h, 0);
 
   // Summary card height: timeline + subtotal(if vat) + vat(if vat) + investment total + margins
   const summaryCardHeight = hasVat ? 194 : 150;

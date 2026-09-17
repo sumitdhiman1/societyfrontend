@@ -267,7 +267,7 @@ export function extractInvoicePDFData(data: any): InvoicePDFData {
   const subtotal = Number(
     data.subtotal ??
     project.subtotal ??
-    deliverableItems.reduce((sum, it) => sum + (it.amount || 0), 0)
+    deliverableItems.reduce((sum: number, it: any) => sum + (it.amount || 0), 0)
   );
 
   const vatAmount = Number(

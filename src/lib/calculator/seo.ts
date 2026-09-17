@@ -230,7 +230,7 @@ export function calculateSeoRawTimelineDays(
     }
   });
 
-  return Object.values(headingsTimeline).reduce((sum, d) => sum + d, 0);
+  return Object.values(headingsTimeline).reduce((sum: number, d: number) => sum + d, 0);
 }
 
 // ─── Visibility ───────────────────────────────────────────────────────────────
