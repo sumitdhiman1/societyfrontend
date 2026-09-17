@@ -87,6 +87,8 @@ const SubmitButton = ({ label, type = "button", disabled, onClick, className = "
   >
     {label}
   </button>
+);
+
 // Temporary development mode flag - set to false on Monday to re-enable registrations
 const IS_SIGNUP_DISABLED = true;
 
