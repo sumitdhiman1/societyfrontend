@@ -1,4 +1,3 @@
-import { authService } from "./authService";
 import {
   calculateSeoRawTimelineDays,
   formatGraphicsTimelineLabel,
@@ -6,8 +5,8 @@ import {
   resolveGraphicsTimelineAnswer,
   snapGraphicsBaselineDays,
   getProjectEstimatedDeadline,
+  getMainCalculatorCategory,
 } from "./calculatorUtils";
-import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "./generateCalculatorProjectPDF";
 
 function resolveCalculatorEstimatedTimeline(data: any): string {
   const specs = data.calculatorSpecs || data.requirements || {};
@@ -347,6 +346,10 @@ export function extractProjectDetails(data: any): ProjectPDFData {
     }));
   } else if (data.calculatorSpecs) {
     const categoryName =
+      getMainCalculatorCategory(
+        data.calculatorSpecs.categoryKey,
+        data.calculatorSpecs.categoryName
+      ) ||
       data.calculatorSpecs.categoryName ||
       data.serviceType ||
       "Website Development";
@@ -354,7 +357,7 @@ export function extractProjectDetails(data: any): ProjectPDFData {
     deliverables = [
       {
         name: categoryName,
-        details: "",
+        details: "Based on calculator selections",
         duration: resolvedTimeline || data.calculatorSpecs.estimatedTimeline || data.timeline || "14 Days",
         amount: rawTotalPrice > 0 ? rawTotalPrice : Number(data.amountPaid || 0),
       },
@@ -787,24 +790,8 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
   `;
 }
 
-function isCalculatorProject(data: any): boolean {
-  if (Array.isArray(data?.deliverableItems) && data.deliverableItems.length > 0) {
-    return false;
-  }
-  return Boolean(
-    (data?.calculatorSpecs &&
-      (Array.isArray(data?.calculatorSpecs?.selections) ||
-        data?.calculatorSpecs?.categoryKey ||
-        data?.calculatorSpecs?.calculatedPrice)) ||
-      (Array.isArray(data?.breakdownItems) && data.breakdownItems.length > 0)
-  );
-}
-
 export async function downloadProjectDetailsPDF(data: any): Promise<void> {
   if (typeof window === "undefined") return;
-  if (isCalculatorProject(data)) {
-    return downloadCalculatorProjectPDF(data);
-  }
 
   const d = extractProjectDetails(data);
 
@@ -886,9 +873,6 @@ export async function downloadProjectDetailsPDF(data: any): Promise<void> {
 
 export function printProjectDetails(data: any): void {
   if (typeof window === "undefined") return;
-  if (isCalculatorProject(data)) {
-  return printCalculatorProjectPDF(data);
-  }
 
   const d = extractProjectDetails(data);
   const printContent = `

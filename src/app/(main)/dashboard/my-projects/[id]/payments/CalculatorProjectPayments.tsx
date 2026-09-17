@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authService } from "@/lib/authService";
-import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "@/lib/generateCalculatorProjectPDF";
+import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { getMainCalculatorCategory } from "@/lib/calculatorUtils";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
@@ -446,9 +446,9 @@ export default function CalculatorProjectPayments({
     if (isDownloadingPdf || isDownloadingInvoice) return;
     setIsDownloadingPdf(true);
     try {
-      await downloadCalculatorProjectPDF(projectPayloadForPdf);
+      await downloadProjectDetailsPDF(projectPayloadForPdf);
     } catch (err) {
-      console.error("Failed to download calculator project PDF:", err);
+      console.error("Failed to download project PDF:", err);
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -459,7 +459,7 @@ export default function CalculatorProjectPayments({
     if (isDownloadingInvoice || isDownloadingPdf) return;
     setIsDownloadingInvoice(true);
     try {
-      await downloadCalculatorProjectPDF(projectPayloadForPdf);
+      await downloadProjectDetailsPDF(projectPayloadForPdf);
     } catch (err) {
       console.error("Failed to download project PDF for invoice view:", err);
     } finally {
@@ -469,7 +469,7 @@ export default function CalculatorProjectPayments({
 
   const handlePrintDetails = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
-    printCalculatorProjectPDF(projectPayloadForPdf);
+    printProjectDetails(projectPayloadForPdf);
   };
 
   const handleDownloadReceipt = async (payment: any) => {
