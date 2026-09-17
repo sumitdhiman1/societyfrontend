@@ -38,8 +38,8 @@ export class QuoteService {
   }
 
   async downloadQuotePDF(quote: { _id?: string; quoteNumber?: string; [key: string]: any }) {
-    const { generateQuotePDF } = await import("./generateQuotePDF");
-    await generateQuotePDF(quote);
+    const { downloadProjectDetailsPDF } = await import("./generateProjectDetailsPDF");
+    await downloadProjectDetailsPDF({ ...quote, isQuote: true });
   }
 
   async getQuoteFiles(id: string) {

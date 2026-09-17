@@ -1,3 +1,4 @@
+import { authService } from "./authService";
 import {
   calculateSeoRawTimelineDays,
   formatGraphicsTimelineLabel,
@@ -139,9 +140,10 @@ async function ensurePdfLibraries(): Promise<{ html2canvasLib: any; jsPdfLib: an
 }
 
 function formatQuoteNumber(raw: any): string {
-  if (!raw) return "SOC-PROJECT";
+  if (!raw) return "";
   const str = String(raw).replace(/^INV-/i, "").replace(/^PROJECT-/i, "").trim();
-  if (str.startsWith("#") || /^[A-Za-z]/.test(str)) {
+  if (!str) return "";
+  if (str.startsWith("#")) {
     return str;
   }
   return `#${str}`;
@@ -203,12 +205,15 @@ function parseDurationDays(durationInput: any): number {
 export interface ProjectPDFData {
   title: string;
   projectNumber: string;
+  referenceNumber: string;
   rawProjectNumber: string;
+  isProject?: boolean;
   clientEmail: string;
   clientName: string;
   status: string;
   submittedDate: string;
   deadlineDate: string;
+  validUntilDate: string;
   description: string;
   deliverables: Array<{
     name: string;
@@ -270,29 +275,86 @@ export function extractProjectDetails(data: any): ProjectPDFData {
     data.type ||
     "Custom Web Project";
 
-  const rawProjectNumber = String(
-    data.projectNumber ||
-      data.orderNumber ||
-      data.orderId ||
-      data.invoiceNumber ||
-      data.quoteNumber ||
-      data.quoteId ||
-      data._id ||
-      data.id ||
-      "SOC-PROJECT"
-  );
-  const projectNumber = formatQuoteNumber(rawProjectNumber);
+  const rawRef =
+    data.referenceNumber ||
+    data.refNumber ||
+    data.refNo ||
+    data.ref_no ||
+    data.reference ||
+    data.quoteNumber ||
+    data.quoteNo ||
+    data.quote_no ||
+    data.proposalNumber ||
+    data.proposalNo ||
+    data.quoteId?.quoteNumber ||
+    data.quoteId?.referenceNumber ||
+    data.quote?.quoteNumber ||
+    data.quote?.referenceNumber ||
+    (typeof data.quoteId === "string" && !data.quoteId.match(/^[0-9a-fA-F]{24}$/) ? data.quoteId : "") ||
+    data.analysisNumber ||
+    data.orderNumber ||
+    data.orderId ||
+    data.customId ||
+    data.number ||
+    "";
 
-  const submittedDate = formatSubmittedDate(
+  const explicitProjectNumber =
+    data.projectNumber &&
+    String(data.projectNumber).trim() !== "" &&
+    !String(data.projectNumber).includes("SOC-PROJECT")
+      ? String(data.projectNumber).trim()
+      : "";
+
+  const isExplicitQuote =
+    data.isQuote === true ||
+    (Boolean(data.quoteNumber || data.proposalNumber || data.quoteId?.quoteNumber) && data.isProject !== true);
+
+  let isProject = false;
+  if (!isExplicitQuote) {
+    if (data.isProject === true) {
+      isProject = true;
+    } else if (explicitProjectNumber && !data.quoteNumber) {
+      isProject = true;
+    } else if (
+      explicitProjectNumber &&
+      data.status &&
+      ["APPROVED", "ACCEPTED", "IN_PROGRESS", "IN PROGRESS", "COMPLETED"].includes(String(data.status).toUpperCase())
+    ) {
+      isProject = true;
+    }
+  }
+
+  let rawReferenceNumber = rawRef;
+  if (!rawReferenceNumber) {
+    if (!isProject && explicitProjectNumber) {
+      rawReferenceNumber = explicitProjectNumber;
+    } else if (data._id && typeof data._id === "string" && data._id.length >= 4) {
+      const year = new Date().getFullYear();
+      rawReferenceNumber = `SOC-${year}-${data._id.slice(-5).toUpperCase()}`;
+    } else if (data.id && typeof data.id === "string") {
+      rawReferenceNumber = String(data.id);
+    } else if (explicitProjectNumber) {
+      rawReferenceNumber = explicitProjectNumber;
+    } else {
+      rawReferenceNumber = `SOC-${new Date().getFullYear()}-0001`;
+    }
+  }
+
+  const referenceNumber = formatQuoteNumber(rawReferenceNumber);
+  const projectNumber = explicitProjectNumber ? formatQuoteNumber(explicitProjectNumber) : "";
+  const rawProjectNumber = isProject && projectNumber ? projectNumber : referenceNumber;
+
+  const rawCreatedAt =
     data.createdAt ||
-      data.created_at ||
-      data.createdDate ||
-      data.orderDate ||
-      data.date ||
-      data.startDate ||
-      data.timestamp ||
-      new Date().toISOString()
-  );
+    data.created_at ||
+    data.createdDate ||
+    data.orderDate ||
+    data.date ||
+    data.startDate ||
+    data.timestamp ||
+    new Date().toISOString();
+
+  const submittedDate = formatSubmittedDate(rawCreatedAt);
 
   const rawDeadline =
     getProjectEstimatedDeadline(data) ||
@@ -304,6 +366,30 @@ export function extractProjectDetails(data: any): ProjectPDFData {
   const deadlineDate = rawDeadline
     ? formatSubmittedDate(rawDeadline)
     : "Ongoing";
+
+  const baseCreatedDate = new Date(rawCreatedAt);
+  const validCreated = !isNaN(baseCreatedDate.getTime()) ? baseCreatedDate : new Date();
+  const defaultValidUntil = new Date(validCreated);
+  defaultValidUntil.setMonth(defaultValidUntil.getMonth() + 3);
+
+  const rawValidUntil =
+    data.validUntil ||
+    data.calculatorSpecs?.validUntil ||
+    data.requirements?.validUntil ||
+    data.quoteId?.validUntil;
+
+  let validUntilObj: Date = defaultValidUntil;
+  if (rawValidUntil) {
+    const parsed = rawValidUntil instanceof Date ? rawValidUntil : new Date(rawValidUntil);
+    if (!isNaN(parsed.getTime())) {
+      validUntilObj = parsed;
+    }
+  } else if (data.validUntilDays || data.calculatorSpecs?.validUntilDays) {
+    const days = Number(data.validUntilDays || data.calculatorSpecs?.validUntilDays);
+    validUntilObj = new Date(validCreated.getTime() + days * 24 * 60 * 60 * 1000);
+  }
+
+  const validUntilDate = formatSubmittedDate(validUntilObj);
 
   const status = String(data.status || "In Progress")
     .replace(/_/g, " ")
@@ -560,12 +646,15 @@ export function extractProjectDetails(data: any): ProjectPDFData {
   return {
     rawProjectNumber,
     projectNumber,
+    referenceNumber,
+    isProject,
     title,
     clientEmail,
     clientName,
     status,
     submittedDate,
     deadlineDate,
+    validUntilDate,
     duration,
     totalPrice,
     currency,
@@ -617,7 +706,7 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
             ${LOGO_SVG}
           </div>
           <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; margin: 0; padding: 0; white-space: nowrap;">
-            <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.01em; color: #2A2AA0; margin: 0 0 5px 0; line-height: 1; padding: 0;">PROJECT DETAILS</div>
+            <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.01em; color: #2A2AA0; margin: 0 0 10px 0; line-height: 1; padding: 0;">PROJECT QUOTE</div>
             <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 13.5px; line-height: 1.3; color: #1E293B; margin-bottom: 3px;">Society Web Solutions</div>
             <div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.45; color: #64748B;">1645 Palm Beach Lakes Blvd</div>
             <div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.45; color: #64748B; margin-bottom: 2px;">West Palm Beach, FL, US</div>
@@ -645,35 +734,56 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
             <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 10.5px; letter-spacing: 0.08em; color: #94A3B8; text-transform: uppercase; margin: 0 0 8px 0;">PREPARED FOR</div>
             <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 15.5px; line-height: 1.3; color: #0F172A; margin: 0 0 3px 0;">${d.clientName}</div>
             ${d.clientEmail ? `<div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.4; color: #64748B;">${d.clientEmail}</div>` : ""}
-            <div style="font-family: Inter, sans-serif; font-size: 12px; color: #64748B; margin-top: 4px;">Status: <span style="font-weight: 600; color: #0F172A; text-transform: capitalize;">${d.status}</span></div>
           </div>
 
-          <!-- Project Details -->
+          <!-- Quote Details / Project Details -->
           <div style="width: 240px; display: flex; flex-direction: column;">
-            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 10.5px; letter-spacing: 0.08em; color: #94A3B8; text-transform: uppercase; margin: 0 0 8px 0;">PROJECT DETAILS</div>
+            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 10.5px; letter-spacing: 0.08em; color: #94A3B8; text-transform: uppercase; margin: 0 0 8px 0;">${d.isProject && d.projectNumber ? "PROJECT DETAILS" : "QUOTE DETAILS"}</div>
+            ${
+              d.isProject && d.projectNumber
+                ? d.referenceNumber && d.referenceNumber !== d.projectNumber
+                  ? `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Ref Number:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${d.referenceNumber}</span>
+            </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
               <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Project ID:</span>
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${d.projectNumber}</span>
             </div>
+            `
+                  : `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Submitted:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Project ID:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${d.projectNumber}</span>
+            </div>
+            `
+                : `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Ref Number:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${d.referenceNumber || d.projectNumber}</span>
+            </div>
+            `
+            }
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Issued on:</span>
               <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: #0F172A;">${d.submittedDate}</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Est. Deadline:</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: #00875A;">${d.deadlineDate}</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Quote Validity:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: #0F172A;">${d.validUntilDate || d.deadlineDate}</span>
             </div>
           </div>
         </section>
 
         <!-- ── Project Overview & Scope ── -->
-        <div style="margin-top: 20px; margin-bottom: 14px;">
+        <div style="margin-top: 18px; margin-bottom: 16px;">
           <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 15px; color: #2A2AA0; margin-bottom: 6px;">${cleanTitle}</div>
-          ${d.description ? `<p style="font-family: Inter, sans-serif; font-size: 12.5px; color: #475569; line-height: 1.6; margin: 0; white-space: pre-line;">${d.description}</p>` : ""}
+          ${d.description ? `<p style="font-family: Inter, sans-serif; font-size: 12px; color: #475569; line-height: 1.5; margin: 0; white-space: pre-line;">${d.description}</p>` : ""}
         </div>
 
         <!-- ── Deliverables Table ── -->
-        <div style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; margin-bottom: 24px; background: #FFFFFF;">
+        <div style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; margin-bottom: 20px; background: #FFFFFF;">
           <table style="width: 100%; border-collapse: collapse; text-align: left;">
             <thead>
               <tr style="background: #2A2AA0; border-bottom: 1px solid #2A2AA0;">
@@ -735,10 +845,10 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
         </div>
 
         <!-- ── Summary Box (Bottom-Right) ── -->
-        <div style="display: flex; justify-content: flex-end; margin-top: 24px; margin-bottom: 32px;">
+        <div style="display: flex; justify-content: flex-end; margin-top: 20px; margin-bottom: 24px;">
           <div style="width: 380px; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border: 1px solid #1E293B;">
             <!-- Timeline Row -->
-            <div style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px;">
+            <div style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; box-sizing: border-box;">
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">ESTIMATED TIMELINE</span>
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${d.duration}</span>
             </div>
@@ -747,13 +857,13 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
               d.vatRate && d.vatRate > 0 && d.vatAmount && d.vatAmount > 0
                 ? `
             <!-- Subtotal Row -->
-            <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px;">
+            <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; box-sizing: border-box;">
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">SUBTOTAL</span>
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${d.formattedSubtotal}</span>
             </div>
 
             <!-- VAT Row -->
-            <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px;">
+            <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; box-sizing: border-box;">
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">VAT (${d.vatRate}%)</span>
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${d.formattedVatAmount}</span>
             </div>
@@ -762,9 +872,9 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
             }
 
             <!-- Total Cost Row -->
-            <div style="background-color: #2A2AA0; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 62px; ${d.vatRate && d.vatRate > 0 && d.vatAmount && d.vatAmount > 0 ? "border-top: 1px solid #3E3EE8;" : "border-top: 1px solid #1E293B;"}">
+            <div style="background-color: #2A2AA0; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 58px; box-sizing: border-box; ${d.vatRate && d.vatRate > 0 && d.vatAmount && d.vatAmount > 0 ? "border-top: 1px solid #3E3EE8;" : "border-top: 1px solid #1E293B;"}">
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; letter-spacing: 0.06em; color: #FFFFFF; text-transform: uppercase; white-space: nowrap;">TOTAL COST</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 21px; color: #FFFFFF; white-space: nowrap; margin-left: 16px;">${d.formattedPrice}</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 20px; color: #FFFFFF; white-space: nowrap; margin-left: 16px;">${d.formattedPrice}</span>
             </div>
           </div>
         </div>
@@ -790,7 +900,7 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
   `;
 }
 
-export async function downloadProjectDetailsPDF(data: any): Promise<void> {
+export async function downloadProjectDetailsPDF(data: any, customFilename?: string): Promise<void> {
   if (typeof window === "undefined") return;
 
   const d = extractProjectDetails(data);
@@ -857,8 +967,8 @@ export async function downloadProjectDetailsPDF(data: any): Promise<void> {
         }
       }
 
-      const cleanNum = d.rawProjectNumber.replace(/[^a-zA-Z0-9-_]/g, "") || "1";
-      const filename = `Project_Details_${cleanNum}.pdf`;
+      const cleanNum = (d.rawProjectNumber || d.referenceNumber || d.projectNumber || "1").replace(/[^a-zA-Z0-9-_]/g, "");
+      const filename = customFilename || (cleanNum ? `Project_Quote_${cleanNum}.pdf` : "Project_Quote.pdf");
       pdf.save(filename);
     } finally {
       if (document.body.contains(container)) {
@@ -875,12 +985,13 @@ export function printProjectDetails(data: any): void {
   if (typeof window === "undefined") return;
 
   const d = extractProjectDetails(data);
+  const printTitle = d.rawProjectNumber || d.referenceNumber || d.projectNumber || "Quote";
   const printContent = `
     <!DOCTYPE html>
     <html>
       <head>
         <meta charset="utf-8" />
-        <title>Project Details - ${d.projectNumber}</title>
+        <title>Project Quote - ${printTitle}</title>
         <style>
           @page {
             size: A4 portrait;

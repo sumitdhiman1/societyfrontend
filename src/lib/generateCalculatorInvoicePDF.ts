@@ -730,7 +730,7 @@ export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
           line-height: 1;
           letter-spacing: -0.01em;
           color: #2A2AA0;
-          margin: 0 0 5px 0;
+          margin: 0 0 10px 0;
           text-transform: uppercase;
         }
 
