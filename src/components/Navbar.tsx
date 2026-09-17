@@ -122,7 +122,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
   }, []);
 
   useEffect(() => {
-    if (mobileMenuOpen) {
+    if (mobileMenuOpen || mobileProfileOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -130,7 +130,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [mobileMenuOpen]);
+  }, [mobileMenuOpen, mobileProfileOpen]);
 
   const router = useRouter();
   const shouldHideMenu = hideMenu;
@@ -139,6 +139,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
   const notificationContainerRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const mobileProfileRef = useRef<HTMLDivElement>(null);
+  const mobileProfileMenuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const mobileSearchRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -412,11 +413,14 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
         (notificationContainerRef.current && notificationContainerRef.current.contains(target)) ||
         (notificationRef.current && notificationRef.current.contains(target));
       if (!insideNotification) setNotificationsOpen(false);
-      const insideProfile =
-        (profileRef.current && profileRef.current.contains(target)) ||
-        (mobileProfileRef.current && mobileProfileRef.current.contains(target));
+      const insideProfile = profileRef.current && profileRef.current.contains(target);
       if (!insideProfile) {
         setProfileDropdownOpen(false);
+      }
+      const insideMobileProfile =
+        (mobileProfileRef.current && mobileProfileRef.current.contains(target)) ||
+        (mobileProfileMenuRef.current && mobileProfileMenuRef.current.contains(target));
+      if (!insideMobileProfile) {
         setMobileProfileOpen(false);
       }
       const insideSearch =
@@ -465,10 +469,17 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
           {/* Mobile view - menu trigger (hamburger when closed, X when open) */}
           <button
             className="xl:hidden text-white p-1 hover:bg-white/10 rounded-md transition-colors flex items-center justify-center"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+            onClick={() => {
+              if (mobileMenuOpen || mobileProfileOpen) {
+                setMobileMenuOpen(false);
+                setMobileProfileOpen(false);
+              } else {
+                setMobileMenuOpen(true);
+              }
+            }}
+            aria-label={mobileMenuOpen || mobileProfileOpen ? "Close menu" : "Open menu"}
           >
-            {mobileMenuOpen ? (
+            {mobileMenuOpen || mobileProfileOpen ? (
               <svg
                 width="24"
                 height="24"
@@ -490,7 +501,10 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
           {/* Logo */}
           <Link
             href="/"
-            onClick={() => setMobileMenuOpen(false)}
+            onClick={() => {
+              setMobileMenuOpen(false);
+              setMobileProfileOpen(false);
+            }}
             className="flex items-center gap-2 shrink-0"
           >
             <Image
@@ -691,21 +705,13 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
             />
           )}
 
-          {/* Have questions button */}
-          <button
-            onClick={openChat}
-            aria-label="Have questions"
-            className="w-[38px] h-[38px] rounded-full bg-white flex items-center justify-center transition-transform hover:scale-105 shadow-sm shrink-0"
-          >
-            <HaveQuestionsIcon />
-          </button>
-
           {/* User icon button */}
           <div className="relative" ref={mobileProfileRef}>
             <button
               onClick={() => {
                 if (isAuthenticated) {
                   setMobileProfileOpen(!mobileProfileOpen);
+                  setMobileMenuOpen(false);
                 } else {
                   router.push("/login");
                 }
@@ -714,53 +720,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
               className="w-[38px] h-[38px] rounded-full bg-white flex items-center justify-center transition-transform hover:scale-105 shadow-sm shrink-0 overflow-hidden relative"
             >
               <MobileUserIcon />
-              {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
-              )}
             </button>
-            {isAuthenticated && mobileProfileOpen && (
-              <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-2xl py-2 z-50 border border-gray-100 font-sans text-[#363636]">
-                <button
-                  onClick={() => {
-                    setMobileProfileOpen(false);
-                    router.push("/dashboard/myAccount");
-                  }}
-                  className="block w-full text-left px-5 py-2.5 text-[15px] font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  My Account
-                </button>
-                <button
-                  onClick={() => {
-                    setMobileProfileOpen(false);
-                    router.push("/dashboard/payment-history");
-                  }}
-                  className="block w-full text-left px-5 py-2.5 text-[15px] font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Payment History
-                </button>
-                <button
-                  onClick={() => {
-                    setMobileProfileOpen(false);
-                    router.push("/dashboard/renewals");
-                  }}
-                  className="block w-full text-left px-5 py-2.5 text-[15px] font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Renewals
-                </button>
-                <div className="h-[1px] bg-gray-100 my-1" />
-                <button
-                  onClick={() => {
-                    authService.logout();
-                    setIsAuthenticated(false);
-                    setMobileProfileOpen(false);
-                    router.push("/");
-                  }}
-                  className="block w-full text-left px-5 py-2.5 text-[15px] font-medium text-red-600 hover:bg-red-50 transition-colors"
-                >
-                  Log out
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -888,6 +848,202 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
                   )}
                 </div>
               ))}
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Mobile Account Menu - 100% full width, exact like attached PDF */}
+      {mounted &&
+        typeof document !== "undefined" &&
+        isAuthenticated &&
+        createPortal(
+          <div
+            ref={mobileProfileMenuRef}
+            className={`fixed inset-x-0 bottom-0 z-40 bg-white flex flex-col transition-all duration-300 ease-in-out xl:hidden overflow-y-auto ${
+              mobileProfileOpen
+                ? "opacity-100 pointer-events-auto translate-y-0"
+                : "opacity-0 pointer-events-none -translate-y-2"
+            }`}
+            style={{
+              top: `${navBottom}px`,
+              height: `calc(100dvh - ${navBottom}px)`,
+              width: "100%",
+            }}
+          >
+            {/* ACCOUNT Section */}
+            <div className="px-6 pt-6 pb-4 flex flex-col">
+              <div className="flex items-center justify-between py-2">
+                <button
+                  onClick={() => {
+                    setMobileProfileOpen(false);
+                    router.push("/dashboard/myAccount");
+                  }}
+                  className="text-left font-medium text-[15px] text-[#363636] hover:text-[#4343F0] transition-colors"
+                  style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+                >
+                  My Account
+                </button>
+                <span
+                  className="text-[13px] font-bold text-[#A0AEC0] tracking-wider uppercase select-none"
+                  style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+                >
+                  ACCOUNT
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setMobileProfileOpen(false);
+                  router.push("/dashboard/payment-history");
+                }}
+                className="w-full text-left py-2 font-medium text-[15px] text-[#363636] hover:text-[#4343F0] transition-colors"
+                style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+              >
+                My Payments
+              </button>
+              <button
+                onClick={() => {
+                  setMobileProfileOpen(false);
+                  router.push("/dashboard/renewals");
+                }}
+                className="w-full text-left py-2 font-medium text-[15px] text-[#363636] hover:text-[#4343F0] transition-colors"
+                style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+              >
+                Renewals
+              </button>
+              <button
+                onClick={() => {
+                  setMobileProfileOpen(false);
+                  router.push("/dashboard/settings");
+                }}
+                className="w-full text-left py-2 font-medium text-[15px] text-[#363636] hover:text-[#4343F0] transition-colors"
+                style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+              >
+                Settings
+              </button>
+            </div>
+
+            {/* Divider */}
+            <div style={{ borderBottom: "1px solid rgba(139, 139, 139, 0.29)", opacity: 0.5 }} />
+
+            {/* PROJECTS Section */}
+            <div className="px-6 py-4 flex flex-col">
+              <div className="flex items-center justify-between py-2">
+                <button
+                  onClick={() => {
+                    setMobileProfileOpen(false);
+                    router.push("/dashboard/new-project");
+                  }}
+                  className="text-left font-medium text-[15px] text-[#363636] hover:text-[#4343F0] transition-colors"
+                  style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+                >
+                  New Project
+                </button>
+                <span
+                  className="text-[13px] font-bold text-[#A0AEC0] tracking-wider uppercase select-none"
+                  style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+                >
+                  PROJECTS
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setMobileProfileOpen(false);
+                  router.push("/dashboard/my-projects");
+                }}
+                className="w-full text-left py-2 font-medium text-[15px] text-[#363636] hover:text-[#4343F0] transition-colors"
+                style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+              >
+                My Projects
+              </button>
+              <button
+                onClick={() => {
+                  setMobileProfileOpen(false);
+                  router.push("/dashboard/my-quotes");
+                }}
+                className="w-full text-left py-2 font-medium text-[15px] text-[#363636] hover:text-[#4343F0] transition-colors"
+                style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+              >
+                My Quotes
+              </button>
+              <button
+                onClick={() => {
+                  setMobileProfileOpen(false);
+                  router.push("/dashboard/my-analyses");
+                }}
+                className="w-full text-left py-2 font-medium text-[15px] text-[#363636] hover:text-[#4343F0] transition-colors"
+                style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+              >
+                My Analyses
+              </button>
+            </div>
+
+            {/* Divider */}
+            <div style={{ borderBottom: "1px solid rgba(139, 139, 139, 0.29)", opacity: 0.5 }} />
+
+            {/* CONTACT Section */}
+            <div className="px-6 py-4 flex flex-col">
+              <div className="flex items-center justify-between py-2">
+                <button
+                  onClick={() => {
+                    setMobileProfileOpen(false);
+                    router.push("/help-support");
+                  }}
+                  className="text-left font-medium text-[15px] text-[#363636] hover:text-[#4343F0] transition-colors"
+                  style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+                >
+                  Help & Support
+                </button>
+                <span
+                  className="text-[13px] font-bold text-[#A0AEC0] tracking-wider uppercase select-none"
+                  style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+                >
+                  CONTACT
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setMobileProfileOpen(false);
+                  openChat();
+                }}
+                className="w-full text-left py-2 font-medium text-[15px] text-[#363636] hover:text-[#4343F0] transition-colors"
+                style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+              >
+                Live Chat
+              </button>
+            </div>
+
+            {/* Divider */}
+            <div style={{ borderBottom: "1px solid rgba(139, 139, 139, 0.29)", opacity: 0.5 }} />
+
+            {/* Log Out Section */}
+            <div className="flex items-center justify-center py-6">
+              <button
+                onClick={() => {
+                  authService.logout();
+                  setIsAuthenticated(false);
+                  setMobileProfileOpen(false);
+                  router.push("/");
+                }}
+                className="inline-flex items-center justify-center gap-2 text-[16px] font-semibold text-[#EF4444] hover:text-red-700 transition-colors"
+                style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#EF4444"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                <span>Log Out</span>
+              </button>
             </div>
           </div>,
           document.body

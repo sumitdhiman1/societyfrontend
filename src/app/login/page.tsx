@@ -13,6 +13,10 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect");
 
+  const isSignupDisabled =
+    process.env.NEXT_PUBLIC_DISABLE_SIGNUP === "true" ||
+    (process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_DISABLE_SIGNUP !== "false");
+
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(searchParams.get("error") || "");
@@ -79,7 +83,7 @@ function LoginForm() {
               <div className="text-sm">
                 <span className="opacity-60 text-gray-400 font-bold uppercase tracking-wider text-[11px]">Not a member?</span>
                 <Link href="/register" className="font-extrabold text-[#1a1a40] ml-3 hover:underline transition-all tracking-tight">
-                  Register now
+                  {isSignupDisabled ? "Register (Opens Monday)" : "Register now"}
                 </Link>
               </div>
             </div>
@@ -88,7 +92,7 @@ function LoginForm() {
           <div className="register-link-mobile">
             <span className="link-label">Not a member?</span>
             <Link href="/register" className="link-action">
-              Register now
+              {isSignupDisabled ? "Register (Opens Monday)" : "Register now"}
             </Link>
           </div>
 
