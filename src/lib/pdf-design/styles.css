@@ -59,10 +59,11 @@ body {
   flex-direction: column;
   align-items: flex-start;
 }
+
 .header-logo img {
-    width: 100%;
-    max-width: 328px;
-    height: auto;
+  width: 100%;
+  max-width: 328px;
+  height: auto;
 }
 
 .header-logo {
@@ -260,6 +261,102 @@ body {
 
 .meta-value-highlight {
   color: #A53E3F;
+}
+
+.green-higlight {
+  color: #00875A !important;
+}
+
+/* --------------------------------------------------------------------------
+   Deliverables & Work Scope Section
+   -------------------------------------------------------------------------- */
+.deliverables-section {
+  margin-bottom: 60px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.deliverables-table-wrapper {
+  border: 2px solid #D9D9D9;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #FFFFFF;
+}
+
+.deliverables-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.deliverables-table thead tr {
+  background-color: #2A2AA0;
+  color: #FFFFFF;
+}
+
+.deliverables-table thead th {
+  padding: 16px 24px;
+  font-family: 'Inter', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.deliverables-table thead th.col-deliverable {
+  text-align: left;
+  width: 55%;
+}
+
+.deliverables-table thead th.col-timeline {
+  text-align: center;
+  width: 22%;
+}
+
+.deliverables-table thead th.col-estimate {
+  text-align: right;
+  width: 23%;
+}
+
+.deliverables-table tbody td {
+  padding: 18px 24px;
+  font-family: 'Inter', sans-serif;
+  font-size: 22px;
+  color: #111827;
+}
+
+.deliverables-table tbody td.col-deliverable {
+  font-weight: 600;
+  text-align: left;
+}
+
+.deliverables-table tbody td.col-timeline {
+  font-weight: 600;
+  text-align: center;
+}
+
+.deliverables-table tbody td.col-estimate {
+  font-weight: 700;
+  text-align: right;
+}
+
+.deliverables-table tbody tr {
+  border-top: 1px solid #E5E7EB;
+}
+
+.deliverables-table .table-subheading {
+  background-color: #F1F5F9;
+  border-top: 2px solid #D9D9D9;
+  border-bottom: 2px solid #D9D9D9;
+}
+
+.deliverables-table .table-subheading td {
+  padding: 14px 24px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* --------------------------------------------------------------------------

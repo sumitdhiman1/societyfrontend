@@ -1044,11 +1044,7 @@ export default function ProjectDetailsPage() {
                     if (isDownloadingPdf) return;
                     setIsDownloadingPdf(true);
                     try {
-                      if (project.calculatorSpecs) {
-                        await downloadCalculatorProjectPDF(project);
-                      } else {
-                        await downloadProjectDetailsPDF(project);
-                      }
+                      await downloadProjectDetailsPDF(project);
                     } catch (err) {
                       console.error("Failed to download PDF", err);
                       toast.error("Failed to download PDF. Please try again.");
@@ -1071,11 +1067,7 @@ export default function ProjectDetailsPage() {
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
-                    if (project.calculatorSpecs) {
-                      printCalculatorProjectPDF(project);
-                    } else {
-                      printProjectDetails(project);
-                    }
+                    printProjectDetails(project);
                   }}
                   className="flex-1 sm:flex-initial px-6 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap"
                 >

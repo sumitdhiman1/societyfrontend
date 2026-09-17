@@ -13,6 +13,9 @@ import LoadingDots from "@/components/common/LoadingDots";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
 import RecommendedSolutions, { PackageCard } from "@/components/common/RecommendedSolutions";
+import DeadlineTooltip from "@/components/common/DeadlineTooltip";
+import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
+import { getProjectEstimatedDeadline } from "@/lib/calculatorUtils";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
 
@@ -288,6 +291,7 @@ export default function AnalysisDetailsPage() {
   const [attachments, setAttachments] = useState<any[]>([]);
   const [availablePackages, setAvailablePackages] = useState<any[]>([]);
   const [availableCategories, setAvailableCategories] = useState<any[]>([]);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const actionLoadingRef = useRef(false);
 
@@ -763,6 +767,49 @@ export default function AnalysisDetailsPage() {
   const allAddonDeliverables = addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages;
   const addonsTotal = allAddonDeliverables.reduce((sum: number, it: any) => sum + (Number(it.amount) || 0), 0);
 
+  const rawBaseAmount =
+    (Number(analysis.subtotal) > 0 ? Number(analysis.subtotal) : 0) ||
+    (Number(analysis.baseAmount) > 0 ? Number(analysis.baseAmount) : 0) ||
+    (Number(analysis.price) > 0 ? Number(analysis.price) : 0) ||
+    (Number(analysis.package?.amount) > 0 ? Number(analysis.package?.amount) : 0) ||
+    (Number(analysis.package?.price) > 0 ? Number(analysis.package?.price) : 0) ||
+    0;
+
+  const rawTotalCost =
+    (Number(analysis.totalCost) > 0 ? Number(analysis.totalCost) : 0) ||
+    (Number(analysis.totalPrice) > 0 ? Number(analysis.totalPrice) : 0) ||
+    (Number(analysis.amount) > 0 ? Number(analysis.amount) : 0) ||
+    (Number(analysis.price) > 0 ? Number(analysis.price) : 0) ||
+    (rawBaseAmount > 0 ? rawBaseAmount + addonsTotal : 0);
+
+  const vatRate = Number(
+    analysis.vatRate ??
+    analysis.vatPercentage ??
+    (analysis.taxPercentage != null ? analysis.taxPercentage : 0)
+  );
+  const rawVatAmount = Number(analysis.vatAmount ?? analysis.tax ?? 0);
+
+  const baseAmount =
+    rawBaseAmount > 0
+      ? rawBaseAmount + (allAddonDeliverables.length > 0 ? addonsTotal : 0)
+      : vatRate > 0 && rawTotalCost > 0
+      ? Math.round(((rawTotalCost + (allAddonDeliverables.length > 0 ? addonsTotal : 0)) / (1 + vatRate / 100)) * 100) / 100
+      : (rawTotalCost > 0 ? rawTotalCost : 0) + (allAddonDeliverables.length > 0 ? addonsTotal : 0);
+
+  const vatAmount =
+    rawVatAmount > 0
+      ? rawVatAmount
+      : vatRate > 0
+      ? Math.round((baseAmount * (vatRate / 100)) * 100) / 100
+      : 0;
+
+  const totalCost = rawTotalCost > 0 && rawTotalCost >= baseAmount + vatAmount ? rawTotalCost : (vatAmount > 0 ? baseAmount + vatAmount : baseAmount);
+
+  const isFreeAnalysis = Boolean(
+    analysis.isFree === true ||
+    (analysis.isFree === undefined && baseAmount <= 0 && totalCost <= 0 && (!analysis.amountPaid || Number(analysis.amountPaid) <= 0))
+  );
+
   const rawTitle = analysis.title || "Free Website Analysis";
   const cleanItemTitle = rawTitle.includes(" - ") ? rawTitle.split(" - ")[0] : rawTitle;
   const cleanItemDescription =
@@ -914,24 +961,81 @@ export default function AnalysisDetailsPage() {
               </table>
             </div>
 
-            {/* Totals Summary */}
-            {allAddonDeliverables.length > 0 && (
+            {/* Totals Summary (Only for Paid Analysis) */}
+            {!isFreeAnalysis && (
               <div className="flex flex-row justify-end gap-6 sm:gap-12 text-xs sm:text-sm mb-4">
                 <div className="text-center">
                   <div className="text-gray-500 font-bold mb-1 sm:mb-2">Base Amount</div>
-                  <div className="font-semibold text-gray-800">
-                    {analysis.isFree || !analysis.price ? "Free" : formatCurrency(analysis.price)}
+                  <div className="font-semibold text-gray-800">{formatCurrency(baseAmount)}</div>
+                </div>
+                {vatRate > 0 && vatAmount > 0 && (
+                  <div className="text-center">
+                    <div className="text-gray-500 font-bold mb-1 sm:mb-2">VAT ({vatRate}%)</div>
+                    <div className="font-semibold text-gray-800">{formatCurrency(vatAmount)}</div>
                   </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-gray-500 font-bold mb-1 sm:mb-2">Add-Ons</div>
-                  <div className="font-semibold text-gray-800">{formatCurrency(addonsTotal)}</div>
-                </div>
+                )}
                 <div className="text-center">
                   <div className="font-bold mb-1 sm:mb-2 text-gray-800">Total Amount</div>
-                  <div className="font-bold text-gray-900">
-                    {formatCurrency(addonsTotal + (Number(analysis.price) || 0))}
+                  <div className="font-bold text-gray-900">{formatCurrency(totalCost)}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Bottom Card Row: Estimated Deadline & Action Buttons (Only for Paid Analysis) */}
+            {!isFreeAnalysis && (
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-gray-200 mb-6">
+                <div>
+                  <div className="text-xs text-gray-500 flex flex-wrap items-center gap-2">
+                    <span className="font-bold text-gray-800 mr-2">Estimated Deadline:</span>
+                    <span>
+                      {getProjectEstimatedDeadline(analysis)
+                        ? formatSubmittedDate(getProjectEstimatedDeadline(analysis))
+                        : analysis.deadline
+                        ? formatSubmittedDate(analysis.deadline)
+                        : "Ongoing"}
+                    </span>
+                    <DeadlineTooltip position="center" />
                   </div>
+                </div>
+
+                <div className="flex flex-row gap-3 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    disabled={isDownloadingPdf}
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      if (isDownloadingPdf) return;
+                      setIsDownloadingPdf(true);
+                      try {
+                        await downloadProjectDetailsPDF(analysis);
+                      } catch (err) {
+                        console.error("Failed to download PDF", err);
+                        toast.error("Failed to download PDF. Please try again.");
+                      } finally {
+                        setIsDownloadingPdf(false);
+                      }
+                    }}
+                    className="flex-1 sm:flex-initial px-6 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                  >
+                    {isDownloadingPdf ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Downloading...</span>
+                      </>
+                    ) : (
+                      "Download Project (.PDF)"
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      printProjectDetails(analysis);
+                    }}
+                    className="flex-1 sm:flex-initial px-6 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap"
+                  >
+                    Print Details
+                  </button>
                 </div>
               </div>
             )}
