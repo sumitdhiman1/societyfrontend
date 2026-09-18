@@ -122,7 +122,7 @@ function UnifiedRenewalDetailsBox({
   );
   const dbVatRate = countryService.getVatRateSync(clientCountryStr);
   const explicitVatRate = Number(project.vatRate ?? project.vatPercentage ?? 0);
-  const vatRate = dbVatRate > 0 ? dbVatRate : (explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(clientCountryStr) ? 24 : 0));
+  const vatRate = isEstoniaClient(clientCountryStr) ? 24 : (dbVatRate > 0 ? dbVatRate : (explicitVatRate > 0 ? explicitVatRate : 0));
 
   const renewalPrice =
     typeof project.price === "number"

@@ -738,7 +738,16 @@ export default function AnalysisDetailsPage() {
   const managerName = manager?.fullName || "Not assigned yet";
   const managerAvatar = manager?.avatar;
 
-  const addonItemsFromAddons = (analysis?.addons || []).flatMap((addon: any) =>
+  const seenAddonKeys = new Set<string>();
+  const uniqueAnalysisAddons = (analysis?.addons || []).filter((addon: any) => {
+    const key = String(addon.proposalMessageId || addon._id || (Array.isArray(addon.deliverableItems) ? addon.deliverableItems.map((i: any) => `${i.description}-${i.amount}-${i.duration}`).join('|') : '')).trim();
+    if (!key) return true;
+    if (seenAddonKeys.has(key)) return false;
+    seenAddonKeys.add(key);
+    return true;
+  });
+
+  const addonItemsFromAddons = uniqueAnalysisAddons.flatMap((addon: any) =>
     (addon.deliverableItems || []).map((d: any) => ({
       description: d.description || d.title || d.name || 'Add-on deliverable',
       amount: Number(d.amount ?? d.cost ?? 0),
@@ -748,11 +757,16 @@ export default function AnalysisDetailsPage() {
     }))
   );
 
+  const seenMsgIds = new Set<string>();
   const addonItemsFromMessages = (analysis?.messages || [])
     .filter((m: any) => {
       const isQuote = m.type === 'quote_proposal' || m.content?.type === 'quote_proposal';
       const isAccepted = m.content?.status === 'accepted' || m.status === 'accepted';
-      return isQuote && isAccepted;
+      if (!isQuote || !isAccepted) return false;
+      const mId = String(m.id || m._id || m.content?.id || '').trim();
+      if (mId && seenMsgIds.has(mId)) return false;
+      if (mId) seenMsgIds.add(mId);
+      return true;
     })
     .flatMap((m: any) => {
       const deliverables = m.content?.deliverableItems || m.deliverableItems || [];
@@ -765,23 +779,40 @@ export default function AnalysisDetailsPage() {
       }));
     });
 
-  const allAddonDeliverables = addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages;
+  const rawAddonItems = addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages;
+  const seenItemKeys = new Set<string>();
+  const allAddonDeliverables = rawAddonItems.filter((item: any) => {
+    const key = `${String(item.description || '').trim().toLowerCase()}-${Number(item.amount || 0)}-${String(item.duration || '').trim().toLowerCase()}`;
+    if (seenItemKeys.has(key)) return false;
+    seenItemKeys.add(key);
+    return true;
+  });
+
   const addonsTotal = allAddonDeliverables.reduce((sum: number, it: any) => sum + (Number(it.amount) || 0), 0);
 
-  const rawBaseAmount =
+  const pureInitialBase =
+    (Number(analysis.package?.amount) > 0 ? Number(analysis.package?.amount) : 0) ||
+    (Number(analysis.package?.price) > 0 ? Number(analysis.package?.price) : 0) ||
+    (Array.isArray(analysis.deliverableItems) && analysis.deliverableItems.length > 0
+      ? analysis.deliverableItems.reduce((s: number, i: any) => s + (Number(i.amount ?? i.cost) || 0), 0)
+      : 0);
+
+  const rawSubtotal =
     (Number(analysis.subtotal) > 0 ? Number(analysis.subtotal) : 0) ||
     (Number(analysis.baseAmount) > 0 ? Number(analysis.baseAmount) : 0) ||
     (Number(analysis.price) > 0 ? Number(analysis.price) : 0) ||
-    (Number(analysis.package?.amount) > 0 ? Number(analysis.package?.amount) : 0) ||
-    (Number(analysis.package?.price) > 0 ? Number(analysis.package?.price) : 0) ||
     0;
+
+  const baseAmount = pureInitialBase > 0
+    ? pureInitialBase + addonsTotal
+    : (rawSubtotal >= addonsTotal ? rawSubtotal : rawSubtotal + addonsTotal);
 
   const rawTotalCost =
     (Number(analysis.totalCost) > 0 ? Number(analysis.totalCost) : 0) ||
     (Number(analysis.totalPrice) > 0 ? Number(analysis.totalPrice) : 0) ||
     (Number(analysis.amount) > 0 ? Number(analysis.amount) : 0) ||
     (Number(analysis.price) > 0 ? Number(analysis.price) : 0) ||
-    (rawBaseAmount > 0 ? rawBaseAmount + addonsTotal : 0);
+    baseAmount;
 
   const vatRate = Number(
     analysis.vatRate ??
@@ -790,13 +821,6 @@ export default function AnalysisDetailsPage() {
   );
   const rawVatAmount = Number(analysis.vatAmount ?? analysis.tax ?? 0);
 
-  const baseAmount =
-    rawBaseAmount > 0
-      ? rawBaseAmount + (allAddonDeliverables.length > 0 ? addonsTotal : 0)
-      : vatRate > 0 && rawTotalCost > 0
-      ? Math.round(((rawTotalCost + (allAddonDeliverables.length > 0 ? addonsTotal : 0)) / (1 + vatRate / 100)) * 100) / 100
-      : (rawTotalCost > 0 ? rawTotalCost : 0) + (allAddonDeliverables.length > 0 ? addonsTotal : 0);
-
   const vatAmount =
     rawVatAmount > 0
       ? rawVatAmount
@@ -804,7 +828,7 @@ export default function AnalysisDetailsPage() {
       ? Math.round((baseAmount * (vatRate / 100)) * 100) / 100
       : 0;
 
-  const totalCost = rawTotalCost > 0 && rawTotalCost >= baseAmount + vatAmount ? rawTotalCost : (vatAmount > 0 ? baseAmount + vatAmount : baseAmount);
+  const totalCost = baseAmount + vatAmount;
 
   const isFreeAnalysis = Boolean(
     analysis.isFree === true ||

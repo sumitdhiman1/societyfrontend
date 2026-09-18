@@ -459,13 +459,18 @@ export function extractProjectDetails(data: any): ProjectPDFData {
     ];
   }
 
-  // Addons extraction
-  const addons: Array<{ name: string; details?: string; duration: string; amount: number }> = [];
+  // Addons extraction with deduplication
+  const rawAddonsList: Array<{ name: string; details?: string; duration: string; amount: number }> = [];
+  const seenAddonKeys = new Set<string>();
   if (Array.isArray(data.addons)) {
     data.addons.forEach((addon: any) => {
+      const addonKey = String(addon.proposalMessageId || addon._id || '').trim();
+      if (addonKey && seenAddonKeys.has(addonKey)) return;
+      if (addonKey) seenAddonKeys.add(addonKey);
+
       if (Array.isArray(addon.deliverableItems)) {
         addon.deliverableItems.forEach((item: any) => {
-          addons.push({
+          rawAddonsList.push({
             name: item.description || item.name || item.title || "Add-on Task",
             details: item.details || "",
             duration: item.duration
@@ -481,7 +486,8 @@ export function extractProjectDetails(data: any): ProjectPDFData {
   }
 
   // Also check messages for accepted quote proposals only if addons is empty
-  if (addons.length === 0 && Array.isArray(data.messages)) {
+  if (rawAddonsList.length === 0 && Array.isArray(data.messages)) {
+    const seenMsgIds = new Set<string>();
     data.messages
       .filter((m: any) => {
         const isQuote = m.type === "quote_proposal" || m.content?.type === "quote_proposal";
@@ -490,12 +496,16 @@ export function extractProjectDetails(data: any): ProjectPDFData {
           m.proposalStatus === "accepted" ||
           m.content?.status === "accepted" ||
           m.status === "accepted";
-        return isQuote && isAccepted;
+        if (!isQuote || !isAccepted) return false;
+        const mId = String(m.id || m._id || m.content?.id || '').trim();
+        if (mId && seenMsgIds.has(mId)) return false;
+        if (mId) seenMsgIds.add(mId);
+        return true;
       })
       .forEach((m: any) => {
         const items = m.deliverableItems || m.content?.deliverableItems || [];
         items.forEach((item: any) => {
-          addons.push({
+          rawAddonsList.push({
             name: item.description || item.name || item.title || "Add-on Task",
             details: item.details || "",
             duration: item.duration
@@ -507,6 +517,21 @@ export function extractProjectDetails(data: any): ProjectPDFData {
           });
         });
       });
+  }
+
+  const seenAddonItemKeys = new Set<string>();
+  const addons: Array<{ name: string; details?: string; duration: string; amount: number }> = rawAddonsList.filter((item) => {
+    const key = `${String(item.name || '').trim().toLowerCase()}-${Number(item.amount || 0)}-${String(item.duration || '').trim().toLowerCase()}`;
+    if (seenAddonItemKeys.has(key)) return false;
+    seenAddonItemKeys.add(key);
+    return true;
+  });
+
+  if (addons.length > 0) {
+    deliverables = deliverables.filter((d) => {
+      const key = `${String(d.name || '').trim().toLowerCase()}-${Number(d.amount || 0)}-${String(d.duration || '').trim().toLowerCase()}`;
+      return !seenAddonItemKeys.has(key);
+    });
   }
 
   // Calculate total duration in days across all deliverables and addons

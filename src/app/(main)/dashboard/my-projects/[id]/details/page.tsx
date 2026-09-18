@@ -730,9 +730,76 @@ export default function ProjectDetailsPage() {
 
   const rawBaseCost = Number(project?.price ?? project?.totalPrice ?? project?.totalCost ?? 0);
 
-  // 1. Regular items
-  const regularItems = (project?.deliverableItems && project.deliverableItems.length > 0)
-    ? project.deliverableItems.map((item: any) => ({
+  // 1. Deduplicate addons from project.addons
+  const seenAddonKeys = new Set<string>();
+  const uniqueProjectAddons = (project?.addons || []).filter((addon: any) => {
+    const key = String(addon.proposalMessageId || addon._id || (Array.isArray(addon.deliverableItems) ? addon.deliverableItems.map((i: any) => `${i.description}-${i.amount}-${i.duration}`).join('|') : '')).trim();
+    if (!key) return true;
+    if (seenAddonKeys.has(key)) return false;
+    seenAddonKeys.add(key);
+    return true;
+  });
+
+  const addonItemsFromAddons = uniqueProjectAddons.flatMap((addon: any) =>
+    (addon.deliverableItems || []).map((item: any) => ({
+      description: item.description || item.title || item.name || "Add-On Deliverable",
+      details: item.details || "",
+      duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") || String(item.duration).toLowerCase().includes("week") || String(item.duration).toLowerCase().includes("month") ? "" : "Days")}`.trim() : (addon.totalDuration ? `${addon.totalDuration}`.trim() : "1 Days"),
+      amount: Number(item.amount ?? item.cost ?? 0),
+      isAddOn: true,
+    }))
+  );
+
+  // 2. Addon items from project.messages (fallback if project.addons is empty)
+  const seenMsgIds = new Set<string>();
+  const addonItemsFromMessages = (project?.messages || [])
+    .filter((m: any) => {
+      const isQuote = m.type === "quote_proposal" || m.content?.type === "quote_proposal";
+      const isAccepted =
+        m.content?.proposalStatus === "accepted" ||
+        m.proposalStatus === "accepted" ||
+        m.content?.status === "accepted" ||
+        m.status === "accepted";
+      if (!isQuote || !isAccepted) return false;
+      const mId = String(m.id || m._id || m.content?.id || "").trim();
+      if (mId && seenMsgIds.has(mId)) return false;
+      if (mId) seenMsgIds.add(mId);
+      return true;
+    })
+    .flatMap((m: any) => {
+      const items = m.deliverableItems || m.content?.deliverableItems || m.content?.items || [];
+      return items.map((item: any) => ({
+        description: item.description || item.title || item.name || "Add-On Deliverable",
+        details: item.details || "",
+        duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") || String(item.duration).toLowerCase().includes("week") || String(item.duration).toLowerCase().includes("month") ? "" : "Days")}`.trim() : (m.content?.duration ? `${m.content.duration}`.trim() : "1 Days"),
+        amount: Number(item.amount ?? item.cost ?? 0),
+        isAddOn: true,
+      }));
+    });
+
+  const rawAddonItems = addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages;
+  const seenItemKeys = new Set<string>();
+  const allAddonItems = rawAddonItems.filter((item: any) => {
+    const key = `${String(item.description || "").trim().toLowerCase()}-${Number(item.amount || 0)}-${String(item.duration || "").trim().toLowerCase()}`;
+    if (seenItemKeys.has(key)) return false;
+    seenItemKeys.add(key);
+    return true;
+  });
+
+  // 3. Regular items (filter out items marked as add-on or that match an add-on item)
+  const nonAddonDeliverableItems = (project?.deliverableItems && project.deliverableItems.length > 0)
+    ? project.deliverableItems.filter((item: any) => {
+        if (item.isAddOn) return false;
+        if (allAddonItems.length > 0) {
+          const key = `${String(item.description || item.title || item.name || "").trim().toLowerCase()}-${Number(item.amount ?? item.cost ?? 0)}-${String(item.duration || "").trim().toLowerCase()}`;
+          if (seenItemKeys.has(key)) return false;
+        }
+        return true;
+      })
+    : [];
+
+  const regularItems = nonAddonDeliverableItems.length > 0
+    ? nonAddonDeliverableItems.map((item: any) => ({
       description: item.description || item.title || item.name || "Deliverable",
       details: item.details || "",
       duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") || String(item.duration).toLowerCase().includes("week") || String(item.duration).toLowerCase().includes("month") ? "" : "Days")}`.trim() : "30 Days",
@@ -756,6 +823,8 @@ export default function ProjectDetailsPage() {
       : [];
 
   const regularItemsSum = regularItems.reduce((sum: number, it: any) => sum + (Number(it.amount) || 0), 0);
+  const addonsTotal = allAddonItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
+
   const baseSubtotal = regularItemsSum > 0
     ? regularItemsSum
     : Number(
@@ -766,43 +835,7 @@ export default function ProjectDetailsPage() {
           : rawBaseCost)
       );
 
-  // 2. Addon items from project.addons
-  const addonItemsFromAddons = (project?.addons || []).flatMap((addon: any) =>
-    (addon.deliverableItems || []).map((item: any) => ({
-      description: item.description || item.title || item.name || "Add-On Deliverable",
-      details: item.details || "",
-      duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") || String(item.duration).toLowerCase().includes("week") || String(item.duration).toLowerCase().includes("month") ? "" : "Days")}`.trim() : (addon.totalDuration ? `${addon.totalDuration}`.trim() : "1 Days"),
-      amount: Number(item.amount ?? item.cost ?? 0),
-      isAddOn: true,
-    }))
-  );
-
-  // 3. Addon items from project.messages (fallback if project.addons is empty)
-  const addonItemsFromMessages = (project?.messages || [])
-    .filter((m: any) => {
-      const isQuote = m.type === "quote_proposal" || m.content?.type === "quote_proposal";
-      const isAccepted =
-        m.content?.proposalStatus === "accepted" ||
-        m.proposalStatus === "accepted" ||
-        m.content?.status === "accepted" ||
-        m.status === "accepted";
-      return isQuote && isAccepted;
-    })
-    .flatMap((m: any) => {
-      const items = m.deliverableItems || m.content?.deliverableItems || m.content?.items || [];
-      return items.map((item: any) => ({
-        description: item.description || item.title || item.name || "Add-On Deliverable",
-        details: item.details || "",
-        duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") || String(item.duration).toLowerCase().includes("week") || String(item.duration).toLowerCase().includes("month") ? "" : "Days")}`.trim() : (m.content?.duration ? `${m.content.duration}`.trim() : "1 Days"),
-        amount: Number(item.amount ?? item.cost ?? 0),
-        isAddOn: true,
-      }));
-    });
-
-  const allAddonItems = addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages;
-
-  const addonsTotal = allAddonItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
-  const totalSubtotal = baseSubtotal + addonsTotal;
+  const totalSubtotal = baseSubtotal + (regularItemsSum > 0 ? addonsTotal : 0);
   const effectiveVatAmount = vatRate > 0 && totalSubtotal > 0
     ? Math.round((totalSubtotal * (vatRate / 100)) * 100) / 100
     : Number(project?.vatAmount ?? linkedQuote?.vatAmount ?? 0);

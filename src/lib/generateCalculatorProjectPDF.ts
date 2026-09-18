@@ -756,7 +756,7 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
   );
   const dbVatRate = countryService.getVatRateSync(countryStr);
   const explicitVatRate = Number(data.vatRate) || 0;
-  const vatRate = dbVatRate > 0 ? dbVatRate : (explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(countryStr) ? 24 : 0));
+  const vatRate = isEstoniaClient(countryStr) ? 24 : (dbVatRate > 0 ? dbVatRate : (explicitVatRate > 0 ? explicitVatRate : 0));
   const rawSubtotal = data.subtotal !== undefined && Number(data.subtotal) > 0
     ? Number(data.subtotal)
     : (vatRate > 0 ? Math.round((totalPrice / (1 + vatRate / 100)) * 100) / 100 : totalPrice);

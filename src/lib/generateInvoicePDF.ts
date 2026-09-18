@@ -278,7 +278,7 @@ export function extractInvoicePDFData(data: any): InvoicePDFData {
       project.vatPercentage ??
       (project.taxPercentage != null ? project.taxPercentage : 0)
   );
-  const vatRate = dbVatRate > 0 ? dbVatRate : (explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(countryStr) ? 24 : 0));
+  const vatRate = isEstoniaClient(countryStr) ? 24 : (dbVatRate > 0 ? dbVatRate : (explicitVatRate > 0 ? explicitVatRate : 0));
 
   const subtotal = Number(
     data.subtotal ??

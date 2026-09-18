@@ -47,7 +47,7 @@ export function ReceiptModal({
     project.vatPercentage ??
     (project.taxPercentage != null ? project.taxPercentage : 0)
   );
-  const vatRate = dbVatRate > 0 ? dbVatRate : (explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(clientCountryStr) ? 24 : 0));
+  const vatRate = isEstoniaClient(clientCountryStr) ? 24 : (dbVatRate > 0 ? dbVatRate : (explicitVatRate > 0 ? explicitVatRate : 0));
   const vatAmount = Number(
     payment?.vatAmount ??
     project.vatAmount ??
@@ -305,7 +305,7 @@ export default function CalculatorProjectPayments({
     linkedQuote.vatPercentage ??
     (activeProject.taxPercentage != null ? activeProject.taxPercentage : 0)
   );
-  const vatRate = dbVatRate > 0 ? dbVatRate : (explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(clientCountryStr) ? 24 : 0));
+  const vatRate = isEstoniaClient(clientCountryStr) ? 24 : (dbVatRate > 0 ? dbVatRate : (explicitVatRate > 0 ? explicitVatRate : 0));
 
   // Prefer project.price (always in payment currency) over quote.totalCost (always USD)
   // to avoid cross-currency Math.max picking the larger USD value for EUR payers.
@@ -354,8 +354,17 @@ export default function CalculatorProjectPayments({
     },
   ];
 
-  // 2. Addon items from activeProject.addons
-  const addonItemsFromAddons = (activeProject.addons || []).flatMap((addon: any) =>
+  // 2. Deduplicate addon items from activeProject.addons
+  const seenAddonKeys = new Set<string>();
+  const uniqueProjectAddons = (activeProject.addons || []).filter((addon: any) => {
+    const key = String(addon.proposalMessageId || addon._id || (Array.isArray(addon.deliverableItems) ? addon.deliverableItems.map((i: any) => `${i.description}-${i.amount}-${i.duration}`).join('|') : '')).trim();
+    if (!key) return true;
+    if (seenAddonKeys.has(key)) return false;
+    seenAddonKeys.add(key);
+    return true;
+  });
+
+  const addonItemsFromAddons = uniqueProjectAddons.flatMap((addon: any) =>
     (addon.deliverableItems || []).map((item: any) => ({
       description: item.description || item.title || item.name || "Add-On Deliverable",
       details: item.details || "",
@@ -366,6 +375,7 @@ export default function CalculatorProjectPayments({
   );
 
   // 3. Addon items from activeProject.messages (fallback if activeProject.addons is empty)
+  const seenMsgIds = new Set<string>();
   const addonItemsFromMessages = (activeProject.messages || [])
     .filter((m: any) => {
       const isQuote = m.type === "quote_proposal" || m.content?.type === "quote_proposal";
@@ -374,7 +384,11 @@ export default function CalculatorProjectPayments({
         m.proposalStatus === "accepted" ||
         m.content?.status === "accepted" ||
         m.status === "accepted";
-      return isQuote && isAccepted;
+      if (!isQuote || !isAccepted) return false;
+      const mId = String(m.id || m._id || m.content?.id || "").trim();
+      if (mId && seenMsgIds.has(mId)) return false;
+      if (mId) seenMsgIds.add(mId);
+      return true;
     })
     .flatMap((m: any) => {
       const items = m.deliverableItems || m.content?.deliverableItems || m.content?.items || [];
@@ -387,9 +401,17 @@ export default function CalculatorProjectPayments({
       }));
     });
 
-  const resolvedAddonItems = (allAddonItems && allAddonItems.length > 0)
+  const rawAddonItems = (allAddonItems && allAddonItems.length > 0)
     ? allAddonItems
     : (addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages);
+
+  const seenItemKeys = new Set<string>();
+  const resolvedAddonItems = rawAddonItems.filter((item: any) => {
+    const key = `${String(item.description || "").trim().toLowerCase()}-${Number(item.amount || 0)}-${String(item.duration || "").trim().toLowerCase()}`;
+    if (seenItemKeys.has(key)) return false;
+    seenItemKeys.add(key);
+    return true;
+  });
 
   const deliverableItems = resolvedAddonItems.length > 0
     ? [...primaryItems, ...resolvedAddonItems]
