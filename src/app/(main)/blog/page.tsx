@@ -151,7 +151,7 @@ function BlogContent() {
         </div>
       </div>
 
-      <main className="bg-[#041235] flex-grow w-full max-w-[1536px] mx-auto pt-16 pb-20 min-w-0">
+      <main className="bg-[#041235] flex-grow w-full max-w-[1536px] mx-auto pt-8 md:pt-16 pb-8 md:pb-20 min-w-0">
         {isLoading ? (
           <div className="flex justify-center items-center py-24">
             <div className="text-center">
@@ -249,7 +249,7 @@ function BlogContent() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-3 mt-12 mb-16">
+              <div className="flex justify-center items-center gap-3 mt-8 md:mt-12 mb-8 md:mb-16">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
@@ -273,7 +273,7 @@ function BlogContent() {
         )}
 
         {/* Support & Newsletter Section */}
-        <div className="w-full mt-12">
+        <div className="w-full mt-8 md:mt-12">
           <SupportNewsletter noPadding={false} />
         </div>
       </main>

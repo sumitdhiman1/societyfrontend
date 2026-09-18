@@ -197,13 +197,13 @@ export default function CompanyPage() {
       <main className="flex-grow overflow-hidden">
         <section className="relative h-[420px] sm:h-[436px] bg-[#00102E] flex items-center overflow-hidden">
           <img src="/images/image.png" className="company-bg absolute right-0 top-[33%] h-full w-auto object-cover object-right opacity-90 z-0 scale-[2] origin-right translate-y-[5%]" alt="Hero background" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#00102E] to-[#0E2549]/0 to-transparent z-0"></div>
+          <div className="company-bg-overlay absolute inset-0 bg-gradient-to-b from-[#00102E] to-[#0E2549]/0 to-transparent z-0"></div>
           <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] relative z-10 text-left w-full flex flex-col items-start gap-[16px]">
-            <span className="text-[#A3A3A3] text-lg sm:text-[22px] font-bold leading-normal sm:leading-[30px]">About us</span>
+            <span className="text-[#FFFFFF] text-lg sm:text-[22px] font-bold leading-normal sm:leading-[30px]">About us</span>
             <h1 className="text-3xl sm:text-4xl md:text-[56px] font-bold text-white leading-tight sm:leading-[48px] md:leading-[64px]">
               World class websites and <br /> online marketing.
             </h1>
-            <p className="text-[#A3A3A3] text-base sm:text-[18px] font-normal leading-relaxed sm:leading-[26px] mt-2">
+            <p className="text-[#FFFFFF] text-base sm:text-[18px] font-normal leading-relaxed sm:leading-[26px] mt-2">
               Society Web Solutions provides an all-in-one business class
               <br className="hidden sm:block" />
               service oriented around web presence success.
