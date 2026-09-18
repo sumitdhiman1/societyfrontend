@@ -132,15 +132,32 @@ export default function MyQuotesPage() {
         return "bg-yellow-100 text-yellow-800 border-yellow-200";
     }
   };
-
-
+  const getMobilePages = () => {
+    const total = pagination.totalPages;
+    if (total <= 4) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    if (currentPage <= 2) {
+      return [1, 2, "...", total];
+    }
+    if (currentPage === 3) {
+      return total === 5 ? [1, 2, 3, 4, 5] : [1, 2, 3, "...", total];
+    }
+    if (currentPage >= total - 1) {
+      return [1, "...", total - 1, total];
+    }
+    if (currentPage === total - 2) {
+      return [1, "...", total - 2, total - 1, total];
+    }
+    return [1, "...", currentPage, "...", total];
+  };
 
   return (
-    <div className="bg-[#F3F4F6] flex-grow flex flex-col font-sans">
-      <main className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-6 md:pb-8 flex flex-col">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-6 md:gap-0">
+    <div className="bg-[#F3F4F6] flex-grow flex flex-col font-sans w-full max-w-full overflow-x-hidden">
+      <main className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-8 md:pb-12 flex flex-col">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-0 md:mb-6 gap-6 md:gap-0">
           <div className="w-full md:w-auto min-w-0 overflow-hidden">
-            <div className="flex items-center gap-6 mb-8 md:mb-12">
+            <div className="flex items-center gap-6 mb-5 md:mb-12">
               <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100">
                 My Quotes
               </h1>
@@ -158,8 +175,8 @@ export default function MyQuotesPage() {
                     setCurrentPage(1);
                   }}
                   className={`pb-3 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 rounded-none cursor-pointer ${activeTab === tab.id
-                      ? "text-primary-300 border-b-2 border-primary-300"
-                      : "text-gray-500 hover:text-gray-700"
+                    ? "text-primary-300 border-b-2 border-primary-300"
+                    : "text-gray-500 hover:text-gray-700"
                     }`}
                 >
                   {tab.label} ({tab.count})
@@ -185,7 +202,7 @@ export default function MyQuotesPage() {
         </div>
 
         <div
-          className={`space-y-6 mt-8 flex-grow flex flex-col transition-all duration-300 ${fetchingData ? "opacity-50 pointer-events-none" : "opacity-100"
+          className={`space-y-6 mt-5 md:mt-8 flex-grow flex flex-col transition-all duration-300 ${fetchingData ? "opacity-50 pointer-events-none" : "opacity-100"
             }`}
         >
           {initialLoading && quotes.length === 0 ? (
@@ -278,30 +295,77 @@ export default function MyQuotesPage() {
           )}
 
           {/* New Quote Banner */}
-          <div className="border border-dashed border-[#717171] rounded-[8px] p-8 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 mt-8">
+          <div className="border border-dashed border-[#717171] rounded-[8px] p-6 sm:p-8 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 mt-8">
             <h3
-              className="text-[22px] font-bold text-gray-900 font-sans"
+              className="text-[20px] sm:text-[22px] font-bold text-gray-900 font-sans"
               style={{ fontFamily: "var(--font-inter), sans-serif" }}
             >
               New Quote
             </h3>
             <button
               onClick={() => router.push("/dashboard/new-project/custom-quote")}
-              className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-[15px] font-bold py-3.5 px-8 rounded-[7px] transition-all shadow-sm whitespace-nowrap font-sans border-2 border-[#4343F0] cursor-pointer"
+              className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-[15px] font-bold py-3.5 px-8 rounded-[7px] transition-all shadow-sm whitespace-nowrap font-sans border-2 border-[#4343F0] cursor-pointer w-full sm:w-auto text-center"
             >
               Create a New Quote
             </button>
           </div>
         </div>
 
+        {/* Mobile Pagination */}
         {!initialLoading && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-12 py-4">
+          <div className="flex md:hidden items-center justify-center gap-1.5 my-8 w-full max-w-full">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className={`px-2.5 py-1.5 rounded-[4px] text-xs font-bold transition-all shrink-0 ${currentPage === 1
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-white border border-gray-200 text-gray-700 active:scale-95 cursor-pointer"
+                }`}
+            >
+              Previous
+            </button>
+            <div className="flex items-center gap-1">
+              {getMobilePages().map((pageItem, idx) =>
+                pageItem === "..." ? (
+                  <span key={`ellipsis-${idx}`} className="px-1 text-gray-400 font-bold text-xs select-none">
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={pageItem}
+                    onClick={() => setCurrentPage(Number(pageItem))}
+                    className={`w-8 h-8 flex items-center justify-center rounded-[4px] text-xs font-bold transition-all cursor-pointer ${currentPage === pageItem
+                      ? "bg-primary-300 text-white shadow-md shadow-blue-500/20"
+                      : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
+                  >
+                    {pageItem}
+                  </button>
+                )
+              )}
+            </div>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
+              disabled={currentPage === pagination.totalPages}
+              className={`px-2.5 py-1.5 rounded-[4px] text-xs font-bold transition-all shrink-0 ${currentPage === pagination.totalPages
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-white border border-gray-200 text-gray-700 active:scale-95 cursor-pointer"
+                }`}
+            >
+              Next
+            </button>
+          </div>
+        )}
+
+        {/* Desktop Pagination - 100% Untouched */}
+        {!initialLoading && pagination.totalPages > 1 && (
+          <div className="hidden md:flex items-center justify-center gap-2 mt-12 py-4">
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
               className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${currentPage === 1
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
                 }`}
             >
               Previous
@@ -312,8 +376,8 @@ export default function MyQuotesPage() {
                   key={i + 1}
                   onClick={() => setCurrentPage(i + 1)}
                   className={`w-10 h-10 flex items-center justify-center rounded-[4px] text-sm font-bold transition-all cursor-pointer ${currentPage === i + 1
-                      ? "bg-primary-300 text-white shadow-lg shadow-blue-500/20"
-                      : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
+                    ? "bg-primary-300 text-white shadow-lg shadow-blue-500/20"
+                    : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
                     }`}
                 >
                   {i + 1}
@@ -324,8 +388,8 @@ export default function MyQuotesPage() {
               onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
               disabled={currentPage === pagination.totalPages}
               className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${currentPage === pagination.totalPages
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
                 }`}
             >
               Next
@@ -333,8 +397,8 @@ export default function MyQuotesPage() {
           </div>
         )}
 
-        <div className="mt-10 md:mt-14 mb-2">
-          <SupportNewsletter noPadding />
+        <div className={!initialLoading && pagination.totalPages > 1 ? "mt-0 md:mt-16" : "mt-8 md:mt-16"}>
+          <SupportNewsletter noPadding gridClassName="mt-0 md:mt-12" />
         </div>
       </main>
     </div>
