@@ -11,6 +11,9 @@ import { paymentService } from "@/lib/paymentService";
 import { useCurrency } from "@/context/CurrencyContext";
 import { convertCurrencyAmount, formatPriceWithCurrency, formatActiveCurrency } from "@/lib/currencyUtils";
 import { downloadProjectDetailsPDF } from "@/lib/generateProjectDetailsPDF";
+import { downloadCalculatorProjectPDF } from "@/lib/generateCalculatorProjectPDF";
+import { isCalculatorProject } from "@/lib/calculatorUtils";
+import { getVatRateForCountry } from "@/lib/vatHelper";
 type PaymentProcessStep = "idle" | "preparing" | "gateway" | "bank_auth" | "confirming" | "activating" | "success" | "error";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
@@ -72,19 +75,24 @@ const CustomPopup = ({ isOpen, onClose, type, title, message }: any) => {
   );
 };
 
-const InvoicePreview = ({ isOpen, onClose, quoteNumber, totalCost, deliverableItems, description, vatRate = 0, vatAmount = 0, subtotal }: any) => {
+const InvoicePreview = ({ isOpen, onClose, quoteNumber, totalCost, deliverableItems, description, vatRate: propVatRate = 0, vatAmount: propVatAmount = 0, subtotal, clientCountry }: any) => {
   if (!isOpen) return null;
 
   const handlePrint = () => {
     window.print();
   };
 
+  const user = authService.getUser();
+  const countryStr = String(clientCountry || user?.country || user?.billingCountry || user?.clientCountry || "").trim();
+  const vatRate = Number(propVatRate || 0) > 0 ? Number(propVatRate) : getVatRateForCountry(countryStr);
+  const vatAmount = Number(propVatAmount || 0);
+
   const calculatedSubtotal = subtotal !== undefined && subtotal > 0
     ? subtotal
     : (vatRate > 0 && totalCost > 0
       ? Math.round((totalCost / (1 + vatRate / 100)) * 100) / 100
       : (totalCost - (vatAmount || 0)));
-  const calculatedVatAmount = vatAmount !== undefined && vatAmount > 0
+  const calculatedVatAmount = vatAmount > 0
     ? vatAmount
     : (vatRate > 0 ? Math.round(calculatedSubtotal * (vatRate / 100) * 100) / 100 : 0);
 
@@ -250,7 +258,14 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
     
     try {
       setPaymentStep("gateway");
-      const intentRes = await paymentService.createPaymentIntent({
+      const convertedTotalCost = convertCurrencyAmount(totalCost, currency || "USD", quoteSourceCurrency, conversionRate);
+      const isDeposit = paymentOption === "half" || (paymentOption === "other" && amount < (convertedTotalCost - 0.05));
+      const convertedSubtotal = quoteDetails.subtotal !== undefined
+        ? convertCurrencyAmount(quoteDetails.subtotal, currency || "USD", quoteSourceCurrency, conversionRate)
+        : (quoteDetails.vatRate > 0 ? Math.round((convertedTotalCost / (1 + quoteDetails.vatRate / 100)) * 100) / 100 : convertedTotalCost);
+      const convertedVatAmount = quoteDetails.vatRate > 0 ? Math.round((convertedTotalCost - convertedSubtotal) * 100) / 100 : 0;
+
+      const paymentPayload = {
         amount,
         currency,
         payment_method_types: ["card"],
@@ -259,12 +274,28 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
           type: "QUOTE",
           quoteId: quoteDetails._id,
           quoteNumber: quoteDetails.quoteNumber,
-          vatRate: quoteDetails.vatRate,
-          vatAmount: quoteDetails.vatAmount,
-          subtotal: quoteDetails.subtotal,
-          clientCountry: quoteDetails.clientCountry || quoteDetails.client?.country,
+          billingType: quoteDetails.billingType || (quoteDetails.isMonthly ? "monthly" : "fixed"),
+          paymentOption: paymentOption,
+          isDeposit: isDeposit ? "true" : "false",
+          fullAmount: convertedTotalCost,
+          calculatedPrice: convertedTotalCost,
+          fullSubtotal: convertedSubtotal,
+          fullVatAmount: convertedVatAmount,
+          vatRate: quoteDetails.vatRate || 0,
+          vatAmount: isDeposit && quoteDetails.vatRate > 0 ? Math.round((amount - (amount / (1 + quoteDetails.vatRate / 100))) * 100) / 100 : convertedVatAmount,
+          subtotal: isDeposit && quoteDetails.vatRate > 0 ? Math.round((amount / (1 + quoteDetails.vatRate / 100)) * 100) / 100 : convertedSubtotal,
+          clientCountry: quoteDetails.clientCountry || quoteDetails.client?.country || quoteDetails.country,
+          conversionRate: String(conversionRate),
+          paymentCurrency: currency,
+          depositAmount: isDeposit ? String(amount) : undefined,
         }
-      });
+      };
+
+      console.log("================================================================");
+      console.log("[QUOTE PAYMENT] METADATA BEFORE SENDING TRANSACTION:", paymentPayload);
+      console.log("================================================================");
+
+      const intentRes = await paymentService.createPaymentIntent(paymentPayload);
       
       if (!intentRes.isSuccessful || !intentRes.data) {
         throw new Error(intentRes.message || "Failed to initialize payment.");
@@ -326,7 +357,11 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
                   type="button"
                   onClick={async (e) => {
                     e.preventDefault();
-                    await downloadProjectDetailsPDF(quoteDetails);
+                    if (isCalculatorProject(quoteDetails)) {
+                      await downloadCalculatorProjectPDF(quoteDetails);
+                    } else {
+                      await downloadProjectDetailsPDF(quoteDetails);
+                    }
                   }}
                   className="text-gray-500 underline underline-offset-2 hover:text-gray-700 cursor-pointer"
                 >
@@ -464,6 +499,7 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
         subtotal={quoteDetails.subtotal}
         vatRate={quoteDetails.vatRate}
         vatAmount={quoteDetails.vatAmount}
+        clientCountry={quoteDetails.clientCountry || quoteDetails.client?.country || quoteDetails.country}
         deliverableItems={quoteDetails.lineItems || quoteDetails.deliverableItems}
         description={quoteDetails.projectDescription || quoteDetails.projectTitle}
       />

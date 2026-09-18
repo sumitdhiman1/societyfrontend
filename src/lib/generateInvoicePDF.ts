@@ -264,16 +264,32 @@ export function extractInvoicePDFData(data: any): InvoicePDFData {
     const upper = c.trim().toUpperCase();
     return upper === "EE" || upper === "EST" || upper === "ESTONIA";
   };
+
+  const explicitVatRate = Number(
+    data.vatRate ??
+      project.vatRate ??
+      data.vatPercentage ??
+      project.vatPercentage ??
+      (data.taxPercentage != null ? data.taxPercentage : (project.taxPercentage != null ? project.taxPercentage : 0))
+  ) || 0;
+
+  let loggedUserCountry = "";
+  try {
+    const user = authService.getUser();
+    loggedUserCountry = user?.country || user?.clientCountry || user?.billingCountry || "";
+  } catch {}
+
   const countryStr = String(
     data.clientCountry ||
       project.clientCountry ||
       project.country ||
       project.client?.country ||
       project.client?.clientCountry ||
+      loggedUserCountry ||
       ""
   );
-  // VAT only applies for Estonian clients (24%); all other countries are 0%
-  const vatRate = getVatRateForCountry(countryStr);
+  // VAT applies for explicit vatRate or Estonian clients (24%)
+  const vatRate = explicitVatRate > 0 ? explicitVatRate : getVatRateForCountry(countryStr);
 
   const subtotal = Number(
     data.subtotal ??

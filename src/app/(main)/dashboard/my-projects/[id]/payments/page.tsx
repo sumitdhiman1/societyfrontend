@@ -7,6 +7,7 @@ import { paymentService } from "@/lib/paymentService";
 import { authService } from "@/lib/authService";
 import { quoteService } from "@/lib/quoteService";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
+import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "@/lib/generateCalculatorProjectPDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { useCurrency } from "@/context/CurrencyContext";
 import { useTimezone } from "@/context/TimezoneContext";
@@ -362,7 +363,15 @@ export default function ProjectPaymentsPage() {
     if (isDownloadingPdf || isDownloadingInvoice) return;
     setIsDownloadingPdf(true);
     try {
-      await downloadProjectDetailsPDF(activeProject);
+      if (isCalc) {
+        await downloadCalculatorProjectPDF({
+          ...activeProject,
+          calculatorSpecs: activeProject?.calculatorSpecs || fetchedQuote?.requirements || fetchedQuote?.calculatorSpecs,
+          quote: fetchedQuote || (typeof activeProject?.quoteId === "object" ? activeProject?.quoteId : null),
+        });
+      } else {
+        await downloadProjectDetailsPDF(activeProject);
+      }
     } catch (err) {
       console.error("Failed to download project PDF:", err);
     } finally {
@@ -375,7 +384,15 @@ export default function ProjectPaymentsPage() {
     if (isDownloadingInvoice || isDownloadingPdf) return;
     setIsDownloadingInvoice(true);
     try {
-      await downloadProjectDetailsPDF(activeProject);
+      if (isCalc) {
+        await downloadCalculatorProjectPDF({
+          ...activeProject,
+          calculatorSpecs: activeProject?.calculatorSpecs || fetchedQuote?.requirements || fetchedQuote?.calculatorSpecs,
+          quote: fetchedQuote || (typeof activeProject?.quoteId === "object" ? activeProject?.quoteId : null),
+        });
+      } else {
+        await downloadProjectDetailsPDF(activeProject);
+      }
     } catch (err) {
       console.error("Failed to download project PDF for invoice view:", err);
     } finally {
@@ -385,7 +402,15 @@ export default function ProjectPaymentsPage() {
 
   const handlePrintDetails = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
-    printProjectDetails(activeProject);
+    if (isCalc) {
+      printCalculatorProjectPDF({
+        ...activeProject,
+        calculatorSpecs: activeProject?.calculatorSpecs || fetchedQuote?.requirements || fetchedQuote?.calculatorSpecs,
+        quote: fetchedQuote || (typeof activeProject?.quoteId === "object" ? activeProject?.quoteId : null),
+      });
+    } else {
+      printProjectDetails(activeProject);
+    }
   };
 
   const handleDownloadReceipt = async (payment: any) => {

@@ -16,7 +16,7 @@ import DeadlineTooltip from "@/components/common/DeadlineTooltip";
 import RecommendedSolutions from "@/components/common/RecommendedSolutions";
 import CalculatorSpecsCard from "@/components/common/CalculatorSpecsCard";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
-import { getMainCalculatorCategory, getProjectEstimatedDeadline } from "@/lib/calculatorUtils";
+import { getMainCalculatorCategory, getProjectEstimatedDeadline, isCalculatorProject } from "@/lib/calculatorUtils";
 import { capitalizeCurrencyInText } from "@/lib/currencyUtils";
 import { useCurrency } from "@/context/CurrencyContext";
 import { useTimezone } from "@/context/TimezoneContext";
@@ -1218,7 +1218,17 @@ export default function ProjectDetailsPage() {
                     if (isDownloadingPdf) return;
                     setIsDownloadingPdf(true);
                     try {
-                      await downloadProjectDetailsPDF(project);
+                      const isCalc = isCalculatorProject(project, fetchedQuote);
+                      if (isCalc) {
+                        const projectPayloadForPdf = {
+                          ...project,
+                          calculatorSpecs: project?.calculatorSpecs || fetchedQuote?.requirements || fetchedQuote?.calculatorSpecs,
+                          quote: fetchedQuote || (typeof project?.quoteId === "object" ? project?.quoteId : null),
+                        };
+                        await downloadCalculatorProjectPDF(projectPayloadForPdf);
+                      } else {
+                        await downloadProjectDetailsPDF(project);
+                      }
                     } catch (err) {
                       console.error("Failed to download PDF", err);
                       toast.error("Failed to download PDF. Please try again.");
@@ -1241,7 +1251,17 @@ export default function ProjectDetailsPage() {
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
-                    printProjectDetails(project);
+                    const isCalc = isCalculatorProject(project, fetchedQuote);
+                    if (isCalc) {
+                      const projectPayloadForPdf = {
+                        ...project,
+                        calculatorSpecs: project?.calculatorSpecs || fetchedQuote?.requirements || fetchedQuote?.calculatorSpecs,
+                        quote: fetchedQuote || (typeof project?.quoteId === "object" ? project?.quoteId : null),
+                      };
+                      printCalculatorProjectPDF(projectPayloadForPdf);
+                    } else {
+                      printProjectDetails(project);
+                    }
                   }}
                   className="flex-1 sm:flex-initial px-6 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap"
                 >

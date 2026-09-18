@@ -761,3 +761,34 @@ export function getProjectEstimatedDeadline(project: any): Date | null {
 
   return null;
 }
+
+/** Check whether a project or quote originated from the price calculator */
+export function isCalculatorProject(project: any, quote?: any): boolean {
+  if (!project) return false;
+  if (project.isCalculator) return true;
+  if (project.source === "calculator") return true;
+  if (project.calculatorSpecs && Object.keys(project.calculatorSpecs).length > 0) return true;
+
+  const q = quote || (typeof project.quoteId === "object" ? project.quoteId : null) || project.quote;
+  if (q) {
+    if (q.isCalculator === true) return true;
+    if (q.source === "calculator") return true;
+    if (
+      q.requirements?.categoryKey ||
+      q.requirements?.calculatedPrice ||
+      (Array.isArray(q.requirements?.selections) && q.requirements.selections.length > 0)
+    ) {
+      return true;
+    }
+  }
+
+  if (
+    project.requirements?.categoryKey ||
+    (Array.isArray(project.requirements?.selections) && project.requirements.selections.length > 0)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+

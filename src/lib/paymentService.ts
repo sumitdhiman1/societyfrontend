@@ -30,6 +30,7 @@ export class PaymentService {
   }
 
   async createPaymentIntent(data: any) {
+    console.log("[PaymentService.createPaymentIntent] Sending to API:", data);
     return this.client.post("/payments/create-intent", data);
   }
 
