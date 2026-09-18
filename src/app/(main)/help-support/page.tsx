@@ -44,7 +44,7 @@ export default function HelpSupportPage() {
         </div>
       </div>
 
-      <main className="flex-grow w-full max-w-[1600px] mx-auto px-4 md:px-8 lg:px-[54px] py-12 md:py-16">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:px-[54px] py-12 md:py-16">
         {/* Main Support Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
           {supportOptions.map((option, idx) => (
@@ -157,8 +157,8 @@ export default function HelpSupportPage() {
         </div>
 
         {/* Newsletter Section */}
-        <div className="mt-8 border-t border-gray-100 pt-16">
-          <SupportNewsletter />
+        <div className="mt-8 border-t border-gray-200 pt-16">
+          <SupportNewsletter noPadding />
         </div>
       </main>
     </div>
