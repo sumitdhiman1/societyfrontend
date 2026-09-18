@@ -549,25 +549,28 @@ export default function ProjectDetailsPage() {
 
     const uploadedUrls = attachments.filter((a) => a.status === "done" && a.url).map((a) => a.url);
 
-    if (messageText.trim() || uploadedUrls.length > 0) {
-      setIsSending(true);
-      try {
-        const pId = project._id || project.id || project.projectId || project.project_id || project.orderId || project.uuid || project.uid || project.project?._id || project.project?.id;
-        const res = await projectService.addMessage(pId, messageText, false, uploadedUrls);
-        if (res && (res.statusCode === 200 || res.statusCode === 201)) {
-          setMessageText("");
-          setAttachments([]);
-          refreshProject();
-          setTimeout(() => {
-            scrollToBottomMessages("smooth");
-          }, 200);
-        }
-      } catch (error) {
-        console.error("Failed to send message:", error);
-        toast.error("Failed to send message");
-      } finally {
-        setIsSending(false);
+    if (!messageText.trim()) {
+      toast.error("Please enter a message before sending.");
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const pId = project._id || project.id || project.projectId || project.project_id || project.orderId || project.uuid || project.uid || project.project?._id || project.project?.id;
+      const res = await projectService.addMessage(pId, messageText, false, uploadedUrls);
+      if (res && (res.statusCode === 200 || res.statusCode === 201)) {
+        setMessageText("");
+        setAttachments([]);
+        refreshProject();
+        setTimeout(() => {
+          scrollToBottomMessages("smooth");
+        }, 200);
       }
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      toast.error("Failed to send message");
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -2216,13 +2219,13 @@ export default function ProjectDetailsPage() {
                   isLoggedIn &&
                   (isSending ||
                     isUploading ||
-                    (!messageText.trim() && attachments.filter((a) => a.status === "done").length === 0))
+                    !messageText.trim())
                 }
                 className={`flex-1 sm:flex-none px-7 py-2.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
                   isLoggedIn &&
                   (isSending ||
                     isUploading ||
-                    (!messageText.trim() && attachments.filter((a) => a.status === "done").length === 0))
+                    !messageText.trim())
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
                     : "bg-[#4343F0] hover:bg-[#3232b7] text-white cursor-pointer active:scale-95"
                 }`}
