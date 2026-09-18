@@ -44,9 +44,9 @@ export default function HelpSupportPage() {
         </div>
       </div>
 
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:px-[54px] py-12 md:py-16">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:px-[54px] py-8 md:py-16">
         {/* Main Support Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-8 md:mb-16">
           {supportOptions.map((option, idx) => (
             <div
               key={idx}
@@ -61,24 +61,24 @@ export default function HelpSupportPage() {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               </div>
-              <div className="p-8 flex flex-col flex-grow">
-                <h3 className="text-2xl font-bold mb-4 text-[#404040]">
+              <div className="p-6 md:p-8 flex flex-col flex-grow">
+                <h3 className="text-xl sm:text-2xl font-bold mb-3 md:mb-4 text-[#404040]">
                   {option.title}
                 </h3>
-                <p className="text-sm text-[#808080] mb-8 leading-relaxed">
+                <p className="text-sm text-[#808080] mb-6 md:mb-8 leading-relaxed">
                   {option.description}
                 </p>
                 <div className="mt-auto">
                   {option.onClick ? (
                     <button
                       onClick={option.onClick}
-                      className="w-full py-3 px-6 bg-[#5356ff] hover:bg-[#3232b7] border border-transparent rounded text-sm font-bold text-white transition-colors uppercase"
+                      className="w-full py-3 px-6 bg-[#5356ff] hover:bg-[#3232b7] border border-transparent rounded text-sm font-bold text-white transition-colors uppercase cursor-pointer"
                     >
                       {option.buttonText}
                     </button>
                   ) : (
                     <Link href={option.href || "#"}>
-                      <button className="w-full py-3 px-6 bg-[#5356ff] hover:bg-[#3232b7] border border-transparent rounded text-sm font-bold text-white transition-colors uppercase">
+                      <button className="w-full py-3 px-6 bg-[#5356ff] hover:bg-[#3232b7] border border-transparent rounded text-sm font-bold text-white transition-colors uppercase cursor-pointer">
                         {option.buttonText}
                       </button>
                     </Link>
@@ -90,8 +90,8 @@ export default function HelpSupportPage() {
         </div>
 
         {/* Secondary Options */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16">
-          <div className="lg:col-span-3 border border-[#B0B0B0] rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 mb-3 md:mb-16">
+          <div className="lg:col-span-3 border border-[#B0B0B0] rounded-lg overflow-hidden hover:shadow-md transition-shadow bg-white">
             <Link href="/faq" className="block h-full group">
               <div className="h-32 bg-[#f5f5f5] overflow-hidden">
                 <Image
@@ -102,7 +102,7 @@ export default function HelpSupportPage() {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               </div>
-              <div className="p-6">
+              <div className="p-5 md:p-6">
                 <h3 className="text-lg font-bold text-[#404040]">
                   Frequently Asked Questions
                 </h3>
@@ -110,7 +110,7 @@ export default function HelpSupportPage() {
             </Link>
           </div>
 
-          <div className="lg:col-span-3 border border-[#B0B0B0] rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+          <div className="lg:col-span-3 border border-[#B0B0B0] rounded-lg overflow-hidden hover:shadow-md transition-shadow bg-white">
             <Link href="/help-support/history" className="block h-full group">
               <div className="h-32 bg-[#f5f5f5] overflow-hidden">
                 <Image
@@ -121,7 +121,7 @@ export default function HelpSupportPage() {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               </div>
-              <div className="p-6">
+              <div className="p-5 md:p-6">
                 <h3 className="text-lg font-bold text-[#404040]">
                   My Support History
                 </h3>
@@ -130,8 +130,8 @@ export default function HelpSupportPage() {
           </div>
 
           <div className="lg:col-span-6 pl-0 lg:pl-10 flex flex-col justify-center">
-            <h3 className="text-2xl font-bold text-[#404040] mb-8">Give us a call</h3>
-            <div className="flex flex-col md:flex-row gap-8 mb-4">
+            <h3 className="text-2xl font-bold text-[#404040] mb-4 md:mb-8">Give us a call</h3>
+            <div className="flex flex-col md:flex-row gap-4 md:gap-8 mb-4">
               <div className="flex-1">
                 <p className="text-sm font-bold text-[#808080] mb-2">United States</p>
                 <div className="bg-[#5356ff] rounded-lg px-4 py-3 flex items-center gap-3 shadow-md hover:bg-[#3232b7] transition-colors cursor-pointer group">
@@ -157,8 +157,8 @@ export default function HelpSupportPage() {
         </div>
 
         {/* Newsletter Section */}
-        <div className="mt-8 border-t border-gray-200 pt-16">
-          <SupportNewsletter noPadding />
+        <div className="border-t border-gray-200 pt-8 md:pt-16">
+          <SupportNewsletter noPadding gridClassName="!mt-0 md:!mt-12" />
         </div>
       </main>
     </div>
