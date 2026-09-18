@@ -207,6 +207,7 @@ export default function ProjectPaymentsPage() {
 
   // 2. Addon items from activeProject.messages (fallback if activeProject.addons is empty)
   const seenMsgIds = new Set<string>();
+  const initialProposalId = String(activeProject?.acceptedProposalMessageId || linkedQuote?.acceptedProposalMessageId || "").trim();
   const addonItemsFromMessages = (activeProject.messages || [])
     .filter((m: any) => {
       const isQuote = m.type === "quote_proposal" || m.content?.type === "quote_proposal";
@@ -217,6 +218,7 @@ export default function ProjectPaymentsPage() {
         m.status === "accepted";
       if (!isQuote || !isAccepted) return false;
       const mId = String(m.id || m._id || m.content?.id || "").trim();
+      if (initialProposalId && mId === initialProposalId) return false;
       if (mId && seenMsgIds.has(mId)) return false;
       if (mId) seenMsgIds.add(mId);
       return true;
@@ -253,25 +255,33 @@ export default function ProjectPaymentsPage() {
       })
     : [];
 
+  const rawQuoteSubtotal = Number(
+    activeProject.subtotal ??
+    linkedQuote.subtotal ??
+    (vatRate > 0 && rawBaseCost > 0
+      ? Math.round((rawBaseCost / (1 + vatRate / 100)) * 100) / 100
+      : rawBaseCost)
+  );
+
   const regularItems = nonAddonDeliverableItems.length > 0
-    ? nonAddonDeliverableItems.map((item: any) => ({
-      description: item.description || item.title || item.name || "Deliverable",
-      details: item.details || "",
-      duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "30 Days",
-      amount: Number(item.amount ?? 0),
-      isAddOn: false,
-    }))
+    ? nonAddonDeliverableItems.map((item: any) => {
+        let itemAmount = Number(item.amount ?? 0);
+        if (itemAmount === 0 && nonAddonDeliverableItems.length === 1 && rawQuoteSubtotal > 0) {
+          itemAmount = rawQuoteSubtotal;
+        }
+        return {
+          description: item.description || item.title || item.name || "Deliverable",
+          details: item.details || "",
+          duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "30 Days",
+          amount: itemAmount,
+          isAddOn: false,
+        };
+      })
     : activeProject.title
       ? [{
         description: activeProject.title,
         duration: activeProject.timelineInDays ? `${activeProject.timelineInDays} Days` : "30 Days",
-        amount: Number(
-          activeProject.subtotal ??
-          linkedQuote.subtotal ??
-          (vatRate > 0 && rawBaseCost > 0
-            ? Math.round((rawBaseCost / (1 + vatRate / 100)) * 100) / 100
-            : rawBaseCost)
-        ),
+        amount: rawQuoteSubtotal,
         isAddOn: false,
       }]
       : [];
@@ -455,10 +465,12 @@ export default function ProjectPaymentsPage() {
     ) ||
     hasInvoiceOrAmountQuery;
 
-  const depositAmount = Number(
-    activeProject.depositAmount ||
-    (totalSubtotal > 0 ? totalSubtotal / 2 : (totalProjectCost > 0 ? totalProjectCost / 2 : 0))
-  );
+  const depositAmount = amountPaid > 0
+    ? 0
+    : Number(
+        activeProject.depositAmount ||
+        (totalSubtotal > 0 ? totalSubtotal / 2 : (totalProjectCost > 0 ? totalProjectCost / 2 : 0))
+      );
 
   // -------------------------------------------------------------------------
   // CASE 1: Payment Pending or Part-Payment -> UnifiedPaymentForm UI

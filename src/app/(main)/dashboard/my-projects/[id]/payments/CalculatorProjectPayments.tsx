@@ -9,7 +9,7 @@ import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "@/lib/g
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { getMainCalculatorCategory } from "@/lib/calculatorUtils";
 import { useTimezone } from "@/context/TimezoneContext";
-import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
+import CalculatorUnifiedPaymentForm from "@/components/dashboard/CalculatorUnifiedPaymentForm";
 
 const isEstoniaClient = (c?: string) => {
   if (!c) return false;
@@ -493,11 +493,13 @@ export default function CalculatorProjectPayments({
     ) ||
     hasInvoiceOrAmountQuery;
 
-  const depositAmount = Number(
-    activeProject.depositAmount ||
-    linkedQuote.depositAmount ||
-    (totalSubtotal > 0 ? totalSubtotal / 2 : (totalProjectCost > 0 ? totalProjectCost / 2 : 0))
-  );
+  const depositAmount = amountPaid > 0
+    ? 0
+    : Number(
+        activeProject.depositAmount ||
+        linkedQuote.depositAmount ||
+        (totalSubtotal > 0 ? totalSubtotal / 2 : (totalProjectCost > 0 ? totalProjectCost / 2 : 0))
+      );
 
   const currency = (
     activeProject.currency ||
@@ -606,9 +608,9 @@ export default function CalculatorProjectPayments({
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          {/* Left Column: Unified Payment Form (col-span-2) */}
+          {/* Left Column: Calculator Unified Payment Form (col-span-2) */}
           <div className="lg:col-span-2">
-            <UnifiedPaymentForm
+            <CalculatorUnifiedPaymentForm
               type="project"
               entityId={projectId}
               entityNumber={cleanNumber}
