@@ -67,7 +67,11 @@ export function formatActiveCurrency(
 
 export function capitalizeCurrencyInText(text?: string): string {
   if (!text) return "";
-  return text.replace(/\b(eur|usd|gbp|cad|aud)\b/gi, (match) => match.toUpperCase());
+  const cleaned = text.replace(/(\d+\.\d{3,})/g, (match) => {
+    const num = parseFloat(match);
+    return Number.isFinite(num) ? num.toFixed(2) : match;
+  });
+  return cleaned.replace(/\b(eur|usd|gbp|cad|aud)\b/gi, (match) => match.toUpperCase());
 }
 
 
