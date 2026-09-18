@@ -474,27 +474,6 @@ a[class*="bg-primary-"] {
   background-color: #4343f0 !important;
 }
 
-button[class*="bg-[#0d1939]"]:hover,
-button[class*="bg-[#0D1939]"]:hover,
-button[class*="bg-[#002E8A]"]:hover,
-button[class*="bg-[#001B54]"]:hover,
-button[class*="bg-[#4343F0]"]:hover,
-button[class*="bg-[#3232b7]"]:hover,
-button[class*="bg-[#2D2DA3]"]:hover,
-button[class*="bg-[#163659]"]:hover,
-button[class*="bg-primary-"]:hover,
-a[class*="bg-[#0d1939]"]:hover,
-a[class*="bg-[#0D1939]"]:hover,
-a[class*="bg-[#002E8A]"]:hover,
-a[class*="bg-[#001B54]"]:hover,
-a[class*="bg-[#4343F0]"]:hover,
-a[class*="bg-[#3232b7]"]:hover,
-a[class*="bg-[#2D2DA3]"]:hover,
-a[class*="bg-[#163659]"]:hover,
-a[class*="bg-primary-"]:hover {
-  color: #fff !important;
-  background-color: #5c5cf2 !important;
-}
 
 /* FAQ Content */
 .faq-content ul {

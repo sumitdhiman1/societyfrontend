@@ -135,7 +135,7 @@ const Notification = ({
       <div className="relative flex items-center justify-center shrink-0">
         <button
           type="button"
-          className="w-10 h-10 rounded-full bg-white text-gray-700 flex items-center justify-center transition-transform hover:scale-105 shadow-sm shrink-0"
+          className="w-[38px] h-[38px] min-w-[38px] min-h-[38px] xl:w-10 xl:h-10 rounded-full bg-white text-gray-700 flex items-center justify-center transition-transform hover:scale-105 shadow-sm shrink-0"
           onClick={() => setNotificationsOpen(!notificationsOpen)}
         >
           <BellIcon />

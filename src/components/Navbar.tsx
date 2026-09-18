@@ -74,22 +74,84 @@ const EyeIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   </svg>
 );
 
-const HaveQuestionsIcon = () => (
+const USFlagIcon = () => (
+  <svg
+    width="26"
+    height="26"
+    viewBox="0 0 32 32"
+    className="shrink-0 rounded-full overflow-hidden shadow-xs"
+    style={{ borderRadius: "50%" }}
+  >
+    <defs>
+      <clipPath id="us-flag-nav-clip">
+        <circle cx="16" cy="16" r="16" />
+      </clipPath>
+    </defs>
+    <g clipPath="url(#us-flag-nav-clip)">
+      <rect width="32" height="32" fill="#B22234" />
+      <rect y="2.46" width="32" height="2.46" fill="#FFFFFF" />
+      <rect y="7.38" width="32" height="2.46" fill="#FFFFFF" />
+      <rect y="12.3" width="32" height="2.46" fill="#FFFFFF" />
+      <rect y="17.23" width="32" height="2.46" fill="#FFFFFF" />
+      <rect y="22.15" width="32" height="2.46" fill="#FFFFFF" />
+      <rect y="27.07" width="32" height="2.46" fill="#FFFFFF" />
+      <rect width="14" height="17.23" fill="#3C3B6E" />
+      <circle cx="3" cy="3.5" r="0.9" fill="#FFFFFF" />
+      <circle cx="7" cy="3.5" r="0.9" fill="#FFFFFF" />
+      <circle cx="11" cy="3.5" r="0.9" fill="#FFFFFF" />
+      <circle cx="5" cy="6.5" r="0.9" fill="#FFFFFF" />
+      <circle cx="9" cy="6.5" r="0.9" fill="#FFFFFF" />
+      <circle cx="3" cy="9.5" r="0.9" fill="#FFFFFF" />
+      <circle cx="7" cy="9.5" r="0.9" fill="#FFFFFF" />
+      <circle cx="11" cy="9.5" r="0.9" fill="#FFFFFF" />
+      <circle cx="5" cy="12.5" r="0.9" fill="#FFFFFF" />
+      <circle cx="9" cy="12.5" r="0.9" fill="#FFFFFF" />
+    </g>
+  </svg>
+);
+
+const EUFlagIcon = () => (
+  <svg
+    width="26"
+    height="26"
+    viewBox="0 0 32 32"
+    className="shrink-0 rounded-full overflow-hidden shadow-xs"
+    style={{ borderRadius: "50%" }}
+  >
+    <circle cx="16" cy="16" r="16" fill="#003399" />
+    <g fill="#FFCC00">
+      <circle cx="16" cy="5.5" r="1.1" />
+      <circle cx="21.25" cy="6.9" r="1.1" />
+      <circle cx="25.1" cy="10.75" r="1.1" />
+      <circle cx="26.5" cy="16" r="1.1" />
+      <circle cx="25.1" cy="21.25" r="1.1" />
+      <circle cx="21.25" cy="25.1" r="1.1" />
+      <circle cx="16" cy="26.5" r="1.1" />
+      <circle cx="10.75" cy="25.1" r="1.1" />
+      <circle cx="6.9" cy="21.25" r="1.1" />
+      <circle cx="5.5" cy="16" r="1.1" />
+      <circle cx="6.9" cy="10.75" r="1.1" />
+      <circle cx="10.75" cy="6.9" r="1.1" />
+    </g>
+  </svg>
+);
+
+const HaveQuestionsIcon = ({ color = "#FFFFFF" }: { color?: string }) => (
   <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M1.05566 12.7191C-3.30398 3.29209 8.32684 -3.98504 14.8193 2.68491C21.4988 9.21804 14.2093 20.8 4.78906 16.4554L1.4707 16.7787C1.26975 16.798 1.07029 16.726 0.927734 16.5833C0.785324 16.4407 0.713988 16.2413 0.733398 16.0404L1.05566 12.7191ZM13.8652 3.64194C8.09139 -2.15271 -1.63995 4.53226 2.41113 12.598L2.42383 12.6234L2.4209 12.6527L2.15723 15.3529L4.85742 15.0902L4.88477 15.0882L4.91016 15.0999C7.90666 16.5489 11.4652 16.4 13.8936 13.9291C15.5869 12.0956 16.1729 10.1214 16.042 8.30991C15.9108 6.49524 15.0592 4.83681 13.8652 3.64194ZM8.74219 12.1712V12.1722C9.10604 12.185 9.39453 12.4839 9.39453 12.848C9.39438 13.2124 9.10616 13.5117 8.74219 13.5238H8.73535C8.37102 13.5119 8.08316 13.2124 8.08301 12.848C8.08301 12.484 8.37124 12.1849 8.73535 12.1722L8.74219 12.1712ZM9.41406 10.9544C9.409 11.3244 9.10813 11.6214 8.73828 11.6214C8.36917 11.6213 8.06839 11.324 8.0625 10.9544V10.3744C8.05825 9.49604 8.56937 8.6961 9.36914 8.33139L9.37012 8.33042C9.99024 8.05971 10.3555 7.40894 10.2617 6.73862L10.2607 6.73667C10.1675 5.92486 9.45605 5.32638 8.64062 5.37436C7.82531 5.42172 7.18841 6.09841 7.19043 6.91636L7.17773 7.04917C7.1518 7.17879 7.0881 7.29892 6.99316 7.39389C6.86669 7.5204 6.69473 7.59205 6.51562 7.59214H6.50293V7.59116C6.33136 7.57032 6.19169 7.51453 6.08398 7.42612C5.9761 7.33756 5.90642 7.2217 5.86719 7.09116C5.79004 6.83402 5.82822 6.51497 5.92188 6.20346C6.01643 5.88905 6.17181 5.56772 6.34375 5.29819C6.5113 5.03555 6.70133 4.81164 6.87598 4.6937L7.08398 4.53647C7.58346 4.19287 8.17989 4.01407 8.79004 4.02768C9.48829 4.04334 10.1574 4.30992 10.6738 4.77964C11.1905 5.24897 11.5195 5.88885 11.6025 6.58139L11.625 6.81186C11.6549 7.35027 11.5302 7.88806 11.2627 8.36069C10.9581 8.89931 10.4843 9.32256 9.91504 9.56675C9.60477 9.71347 9.40891 10.0298 9.41406 10.3734V10.9544Z" fill="#0D1939" stroke="#0D1939" strokeWidth="0.2"/>
+    <path d="M1.05566 12.7191C-3.30398 3.29209 8.32684 -3.98504 14.8193 2.68491C21.4988 9.21804 14.2093 20.8 4.78906 16.4554L1.4707 16.7787C1.26975 16.798 1.07029 16.726 0.927734 16.5833C0.785324 16.4407 0.713988 16.2413 0.733398 16.0404L1.05566 12.7191ZM13.8652 3.64194C8.09139 -2.15271 -1.63995 4.53226 2.41113 12.598L2.42383 12.6234L2.4209 12.6527L2.15723 15.3529L4.85742 15.0902L4.88477 15.0882L4.91016 15.0999C7.90666 16.5489 11.4652 16.4 13.8936 13.9291C15.5869 12.0956 16.1729 10.1214 16.042 8.30991C15.9108 6.49524 15.0592 4.83681 13.8652 3.64194ZM8.74219 12.1712V12.1722C9.10604 12.185 9.39453 12.4839 9.39453 12.848C9.39438 13.2124 9.10616 13.5117 8.74219 13.5238H8.73535C8.37102 13.5119 8.08316 13.2124 8.08301 12.848C8.08301 12.484 8.37124 12.1849 8.73535 12.1722L8.74219 12.1712ZM9.41406 10.9544C9.409 11.3244 9.10813 11.6214 8.73828 11.6214C8.36917 11.6213 8.06839 11.324 8.0625 10.9544V10.3744C8.05825 9.49604 8.56937 8.6961 9.36914 8.33139L9.37012 8.33042C9.99024 8.05971 10.3555 7.40894 10.2617 6.73862L10.2607 6.73667C10.1675 5.92486 9.45605 5.32638 8.64062 5.37436C7.82531 5.42172 7.18841 6.09841 7.19043 6.91636L7.17773 7.04917C7.1518 7.17879 7.0881 7.29892 6.99316 7.39389C6.86669 7.5204 6.69473 7.59205 6.51562 7.59214H6.50293V7.59116C6.33136 7.57032 6.19169 7.51453 6.08398 7.42612C5.9761 7.33756 5.90642 7.2217 5.86719 7.09116C5.79004 6.83402 5.82822 6.51497 5.92188 6.20346C6.01643 5.88905 6.17181 5.56772 6.34375 5.29819C6.5113 5.03555 6.70133 4.81164 6.87598 4.6937L7.08398 4.53647C7.58346 4.19287 8.17989 4.01407 8.79004 4.02768C9.48829 4.04334 10.1574 4.30992 10.6738 4.77964C11.1905 5.24897 11.5195 5.88885 11.6025 6.58139L11.625 6.81186C11.6549 7.35027 11.5302 7.88806 11.2627 8.36069C10.9581 8.89931 10.4843 9.32256 9.91504 9.56675C9.60477 9.71347 9.40891 10.0298 9.41406 10.3734V10.9544Z" fill={color} stroke={color} strokeWidth="0.2" />
   </svg>
 );
 
 const MobileUserIcon = () => (
   <svg width="15" height="19" viewBox="0 0 15 19" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M7.1604 0.100391C9.65605 0.100436 11.6858 2.13012 11.6858 4.62578C11.6857 7.1214 9.65592 9.15113 7.1604 9.15117C4.66474 9.15117 2.63505 7.12143 2.63501 4.62578C2.63501 2.1301 4.66471 0.100391 7.1604 0.100391ZM7.1604 1.56426C5.47064 1.56426 4.09888 2.93602 4.09888 4.62578C4.09892 6.31551 5.47067 7.68731 7.1604 7.68731C8.8501 7.68726 10.2219 6.31548 10.2219 4.62578C10.2219 2.93605 8.85012 1.5643 7.1604 1.56426Z" fill="#0D1939" stroke="#0D1939" strokeWidth="0.2"/>
-    <path d="M10.1707 9.17482C10.4616 9.00464 10.794 8.94431 11.1082 9.01076L11.1072 9.01174C12.9081 9.38426 14.2097 10.9848 14.2097 12.8194V17.2451C14.2097 17.648 13.8802 17.9774 13.4773 17.9776H0.831787C0.429 17.9773 0.100342 17.648 0.100342 17.2451V12.8194C0.100392 10.9829 1.40396 9.38093 3.20776 9.01076C3.57354 8.93484 3.95571 9.03208 4.26636 9.2549H4.26733C5.95828 10.4812 8.35765 10.4813 10.0486 9.2549L10.1707 9.17482ZM10.8552 10.4551C9.78281 11.2464 8.49976 11.6553 7.16089 11.6553C5.81419 11.6553 4.52445 11.2421 3.43042 10.4551C2.36558 10.7013 1.57109 11.6855 1.57104 12.8194V16.5127H12.7507V12.8194C12.7507 11.6861 11.957 10.7015 10.8552 10.4551Z" fill="#0D1939" stroke="#0D1939" strokeWidth="0.2"/>
+    <path d="M7.1604 0.100391C9.65605 0.100436 11.6858 2.13012 11.6858 4.62578C11.6857 7.1214 9.65592 9.15113 7.1604 9.15117C4.66474 9.15117 2.63505 7.12143 2.63501 4.62578C2.63501 2.1301 4.66471 0.100391 7.1604 0.100391ZM7.1604 1.56426C5.47064 1.56426 4.09888 2.93602 4.09888 4.62578C4.09892 6.31551 5.47067 7.68731 7.1604 7.68731C8.8501 7.68726 10.2219 6.31548 10.2219 4.62578C10.2219 2.93605 8.85012 1.5643 7.1604 1.56426Z" fill="#0D1939" stroke="#0D1939" strokeWidth="0.2" />
+    <path d="M10.1707 9.17482C10.4616 9.00464 10.794 8.94431 11.1082 9.01076L11.1072 9.01174C12.9081 9.38426 14.2097 10.9848 14.2097 12.8194V17.2451C14.2097 17.648 13.8802 17.9774 13.4773 17.9776H0.831787C0.429 17.9773 0.100342 17.648 0.100342 17.2451V12.8194C0.100392 10.9829 1.40396 9.38093 3.20776 9.01076C3.57354 8.93484 3.95571 9.03208 4.26636 9.2549H4.26733C5.95828 10.4812 8.35765 10.4813 10.0486 9.2549L10.1707 9.17482ZM10.8552 10.4551C9.78281 11.2464 8.49976 11.6553 7.16089 11.6553C5.81419 11.6553 4.52445 11.2421 3.43042 10.4551C2.36558 10.7013 1.57109 11.6855 1.57104 12.8194V16.5127H12.7507V12.8194C12.7507 11.6861 11.957 10.7015 10.8552 10.4551Z" fill="#0D1939" stroke="#0D1939" strokeWidth="0.2" />
   </svg>
 );
 
 const MobileSearchButtonIcon = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M17.7552 15.5622L14.2499 12.0574C14.0917 11.8992 13.8772 11.8113 13.6522 11.8113H13.0791C14.0495 10.5705 14.6261 9.00967 14.6261 7.31179C14.6261 3.27273 11.3528 0 7.31303 0C3.27329 0 0 3.27273 0 7.31179C0 11.3508 3.27329 14.6236 7.31303 14.6236C9.01121 14.6236 10.5723 14.0471 11.8134 13.0768V13.6498C11.8134 13.8748 11.9013 14.0892 12.0595 14.2474L15.5648 17.7522C15.8953 18.0826 16.4297 18.0826 16.7567 17.7522L17.7517 16.7573C18.0822 16.4269 18.0822 15.8926 17.7552 15.5622ZM7.31303 11.8113C4.82731 11.8113 2.81271 9.80061 2.81271 7.31179C2.81271 4.82648 4.82379 2.81223 7.31303 2.81223C9.79876 2.81223 11.8134 4.82297 11.8134 7.31179C11.8134 9.79709 9.80228 11.8113 7.31303 11.8113Z" fill="white"/>
+    <path d="M17.7552 15.5622L14.2499 12.0574C14.0917 11.8992 13.8772 11.8113 13.6522 11.8113H13.0791C14.0495 10.5705 14.6261 9.00967 14.6261 7.31179C14.6261 3.27273 11.3528 0 7.31303 0C3.27329 0 0 3.27273 0 7.31179C0 11.3508 3.27329 14.6236 7.31303 14.6236C9.01121 14.6236 10.5723 14.0471 11.8134 13.0768V13.6498C11.8134 13.8748 11.9013 14.0892 12.0595 14.2474L15.5648 17.7522C15.8953 18.0826 16.4297 18.0826 16.7567 17.7522L17.7517 16.7573C18.0822 16.4269 18.0822 15.8926 17.7552 15.5622ZM7.31303 11.8113C4.82731 11.8113 2.81271 9.80061 2.81271 7.31179C2.81271 4.82648 4.82379 2.81223 7.31303 2.81223C9.79876 2.81223 11.8134 4.82297 11.8134 7.31179C11.8134 9.79709 9.80228 11.8113 7.31303 11.8113Z" fill="white" />
   </svg>
 );
 
@@ -106,6 +168,7 @@ const mobileNavLinks = [
 export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
+  const [haveQuestionsOpen, setHaveQuestionsOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -122,7 +185,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
   }, []);
 
   useEffect(() => {
-    if (mobileMenuOpen || mobileProfileOpen) {
+    if (mobileMenuOpen || mobileProfileOpen || haveQuestionsOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -130,7 +193,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [mobileMenuOpen, mobileProfileOpen]);
+  }, [mobileMenuOpen, mobileProfileOpen, haveQuestionsOpen]);
 
   const router = useRouter();
   const shouldHideMenu = hideMenu;
@@ -164,10 +227,10 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
   }, [updateNavBottom]);
 
   useEffect(() => {
-    if (mobileMenuOpen) {
+    if (mobileMenuOpen || haveQuestionsOpen) {
       updateNavBottom();
     }
-  }, [mobileMenuOpen, updateNavBottom]);
+  }, [mobileMenuOpen, haveQuestionsOpen, updateNavBottom]);
 
   const { openChat } = useChatWidget();
   const { currency, setCurrency } = useCurrency();
@@ -464,25 +527,27 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
 
   return (
     <nav ref={navRef} className="w-full h-[88px] bg-[#00102E] text-white shadow-[0px_5px_20px_#0000000D] relative z-50 font-sans">
-      <div className="max-w-[1536px]  mx-auto px-5 md:px-8 lg:pl-[54px] lg:pr-[62px] h-full flex items-center justify-between">
-        <div className="flex items-center gap-3.5 shrink-0">
+      <div className="max-w-[1536px] mx-auto px-3.5 min-[360px]:px-4 min-[375px]:px-5 md:px-8 lg:pl-[54px] lg:pr-[62px] h-full flex items-center justify-between">
+        <div className="flex items-center gap-2 min-[360px]:gap-2.5 min-[375px]:gap-3 min-[412px]:gap-3.5 shrink-0">
           {/* Mobile view - menu trigger (hamburger when closed, X when open) */}
           <button
-            className="xl:hidden text-white p-1 hover:bg-white/10 rounded-md transition-colors flex items-center justify-center"
+            className="xl:hidden text-white p-1 hover:bg-white/10 rounded-md transition-colors flex items-center justify-center shrink-0"
             onClick={() => {
-              if (mobileMenuOpen || mobileProfileOpen) {
+              if (mobileMenuOpen || mobileProfileOpen || haveQuestionsOpen) {
                 setMobileMenuOpen(false);
                 setMobileProfileOpen(false);
+                setHaveQuestionsOpen(false);
               } else {
                 setMobileMenuOpen(true);
+                setMobileProfileOpen(false);
+                setHaveQuestionsOpen(false);
               }
             }}
-            aria-label={mobileMenuOpen || mobileProfileOpen ? "Close menu" : "Open menu"}
+            aria-label={mobileMenuOpen || mobileProfileOpen || haveQuestionsOpen ? "Close menu" : "Open menu"}
           >
-            {mobileMenuOpen || mobileProfileOpen ? (
+            {mobileMenuOpen || mobileProfileOpen || haveQuestionsOpen ? (
               <svg
-                width="24"
-                height="24"
+                className="w-7 h-7 min-[360px]:w-8 min-[360px]:h-8"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -504,17 +569,17 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
             onClick={() => {
               setMobileMenuOpen(false);
               setMobileProfileOpen(false);
+              setHaveQuestionsOpen(false);
             }}
-            className="flex items-center gap-2 shrink-0"
+            className="flex items-center shrink-0"
           >
             <Image
               src="/images/Brand.svg"
               alt="Society Logo"
-              width={162}
-              height={32}
+              width={200}
+              height={40}
               priority
-              className="object-contain w-[100px] lg:w-[162px] h-[24px] lg:h-[32px]"
-              style={{ width: "auto", height: "auto" }}
+              className="object-contain w-[128px] min-[360px]:w-[145px] min-[375px]:w-[158px] min-[412px]:w-[178px] min-[413px]:w-[200px] min-[413px]:max-w-[200px] xl:w-[162px] xl:max-w-none h-auto"
             />
           </Link>
         </div>
@@ -569,8 +634,8 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
                           </span>
                           <span
                             className={`text-[10px] uppercase tracking-wider font-bold ${item.category === "Free Package"
-                                ? "text-emerald-600"
-                                : "text-gray-400"
+                              ? "text-emerald-600"
+                              : "text-gray-400"
                               }`}
                           >
                             {item.category}
@@ -668,7 +733,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
             <div className="flex items-center gap-6">
               <button
                 onClick={() => router.push("/login")}
-                className="w-[176px] h-[46px] border-2 border-[#E3E6E6] text-white text-[15px] font-bold flex items-center justify-center rounded-[7px] transition-colors hover:bg-white/10 whitespace-nowrap"
+                className="w-[176px] h-[46px] border-2 border-[#E3E6E6] text-white text-[15px] font-bold flex items-center justify-center rounded-[7px] transition-colors hover:bg-white/10 whitespace-nowrap cursor-pointer"
                 style={{ fontFamily: "var(--font-inter), sans-serif" }}
               >
                 Log in
@@ -682,7 +747,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
                     router.push("/register");
                   }
                 }}
-                className="w-[148px] h-[46px] bg-[#4545F0] hover:bg-[#3232b7] text-white text-[15px] font-bold flex items-center justify-center rounded-[7px] transition-all shadow-md hover:shadow-lg whitespace-nowrap"
+                className="w-[148px] h-[46px] bg-[#4545F0] hover:bg-[#3232b7] text-white text-[15px] font-bold flex items-center justify-center rounded-[7px] transition-all shadow-md hover:shadow-lg whitespace-nowrap cursor-pointer"
                 style={{ fontFamily: "var(--font-inter), sans-serif" }}
               >
                 Register
@@ -692,36 +757,71 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
         </div>
 
         {/* Mobile Right Side */}
-        <div className="xl:hidden flex items-center gap-2.5 shrink-0">
-          {isAuthenticated && (
-            <Notification
-              notificationRef={notificationRef}
-              notificationsOpen={notificationsOpen}
-              setNotificationsOpen={setNotificationsOpen}
-              setMobileMenuOpen={setMobileMenuOpen}
-              isAuthenticated={isAuthenticated}
-              unreadCount={unreadCount}
-              setUnreadCount={setUnreadCount}
-            />
-          )}
+        <div className="xl:hidden flex items-center gap-2 min-[360px]:gap-2.5 min-[412px]:gap-3 shrink-0">
+          {isAuthenticated ? (
+            <>
+              <Notification
+                notificationRef={notificationRef}
+                notificationsOpen={notificationsOpen}
+                setNotificationsOpen={setNotificationsOpen}
+                setMobileMenuOpen={setMobileMenuOpen}
+                isAuthenticated={isAuthenticated}
+                unreadCount={unreadCount}
+                setUnreadCount={setUnreadCount}
+              />
 
-          {/* User icon button */}
-          <div className="relative" ref={mobileProfileRef}>
-            <button
-              onClick={() => {
-                if (isAuthenticated) {
-                  setMobileProfileOpen(!mobileProfileOpen);
+              {/* User icon button */}
+              <div className="relative" ref={mobileProfileRef}>
+                <button
+                  onClick={() => {
+                    setMobileProfileOpen(!mobileProfileOpen);
+                    setMobileMenuOpen(false);
+                    setHaveQuestionsOpen(false);
+                  }}
+                  aria-label="Account"
+                  className="w-[38px] h-[38px] min-w-[38px] min-h-[38px] rounded-full bg-white flex items-center justify-center transition-all hover:scale-105 shadow-sm shrink-0 relative"
+                >
+                  <MobileUserIcon />
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Have questions button (without-login case) */}
+              <button
+                onClick={() => {
                   setMobileMenuOpen(false);
-                } else {
+                  setMobileProfileOpen(false);
+                  setHaveQuestionsOpen(!haveQuestionsOpen);
+                }}
+                aria-label="Have questions"
+                className={`w-[38px] h-[38px] min-w-[38px] min-h-[38px] rounded-full flex items-center justify-center shadow-sm shrink-0 ${haveQuestionsOpen
+                  ? "bg-[#4343F0] text-white"
+                  : "bg-white text-[#0D1939]"
+                  }`}
+                style={{
+                  backgroundColor: haveQuestionsOpen ? "#4343F0" : "#FFFFFF",
+                  transition: "0.2s",
+                }}
+              >
+                <HaveQuestionsIcon color={haveQuestionsOpen ? "#FFFFFF" : "#0D1939"} />
+              </button>
+
+              {/* User / Login icon button */}
+              <button
+                onClick={() => {
+                  setHaveQuestionsOpen(false);
+                  setMobileMenuOpen(false);
+                  setMobileProfileOpen(false);
                   router.push("/login");
-                }
-              }}
-              aria-label="Account"
-              className="w-[38px] h-[38px] rounded-full bg-white flex items-center justify-center transition-transform hover:scale-105 shadow-sm shrink-0 overflow-hidden relative"
-            >
-              <MobileUserIcon />
-            </button>
-          </div>
+                }}
+                aria-label="Account"
+                className="w-[38px] h-[38px] min-w-[38px] min-h-[38px] rounded-full bg-white flex items-center justify-center transition-all hover:scale-105 shadow-sm shrink-0"
+              >
+                <MobileUserIcon />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -730,11 +830,10 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
         typeof document !== "undefined" &&
         createPortal(
           <div
-            className={`fixed inset-x-0 bottom-0 z-40 bg-white flex flex-col transition-all duration-300 ease-in-out xl:hidden overflow-y-auto ${
-              mobileMenuOpen
-                ? "opacity-100 pointer-events-auto translate-y-0"
-                : "opacity-0 pointer-events-none -translate-y-2"
-            }`}
+            className={`fixed inset-x-0 bottom-0 z-40 bg-white flex flex-col transition-all duration-300 ease-in-out xl:hidden overflow-y-auto ${mobileMenuOpen
+              ? "opacity-100 pointer-events-auto translate-y-0"
+              : "opacity-0 pointer-events-none -translate-y-2"
+              }`}
             style={{
               top: `${navBottom}px`,
               height: `calc(100dvh - ${navBottom}px)`,
@@ -790,11 +889,10 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
                               {item.text}
                             </span>
                             <span
-                              className={`text-[10px] uppercase tracking-wider font-bold ${
-                                item.category === "Free Package"
-                                  ? "text-emerald-600"
-                                  : "text-gray-400"
-                              }`}
+                              className={`text-[10px] uppercase tracking-wider font-bold ${item.category === "Free Package"
+                                ? "text-emerald-600"
+                                : "text-gray-400"
+                                }`}
                             >
                               {item.category}
                             </span>
@@ -860,11 +958,10 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
         createPortal(
           <div
             ref={mobileProfileMenuRef}
-            className={`fixed inset-x-0 bottom-0 z-40 bg-white flex flex-col transition-all duration-300 ease-in-out xl:hidden overflow-y-auto ${
-              mobileProfileOpen
-                ? "opacity-100 pointer-events-auto translate-y-0"
-                : "opacity-0 pointer-events-none -translate-y-2"
-            }`}
+            className={`fixed inset-x-0 bottom-0 z-40 bg-white flex flex-col transition-all duration-300 ease-in-out xl:hidden overflow-y-auto ${mobileProfileOpen
+              ? "opacity-100 pointer-events-auto translate-y-0"
+              : "opacity-0 pointer-events-none -translate-y-2"
+              }`}
             style={{
               top: `${navBottom}px`,
               height: `calc(100dvh - ${navBottom}px)`,
@@ -1044,6 +1141,98 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
                 </svg>
                 <span>Log Out</span>
               </button>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Have Questions Dropdown (Mobile, without-login case) */}
+      {mounted &&
+        typeof document !== "undefined" &&
+        !isAuthenticated &&
+        createPortal(
+          <div
+            className={`fixed inset-x-0 bottom-0 z-40 transition-opacity duration-200 ease-in-out xl:hidden ${haveQuestionsOpen
+              ? "opacity-100 pointer-events-auto"
+              : "opacity-0 pointer-events-none"
+              }`}
+            style={{
+              top: `${navBottom}px`,
+            }}
+          >
+            {/* Dark Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/60 transition-opacity"
+              onClick={() => setHaveQuestionsOpen(false)}
+            />
+
+            {/* Dropdown Card */}
+            <div className="relative bg-white w-full px-5 pt-6 pb-7 shadow-lg">
+              {/* Have questions? */}
+              <div>
+                <h3
+                  className="text-[17px] font-semibold text-[#1B2535] mb-3"
+                  style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+                >
+                  Have questions?
+                </h3>
+                <button
+                  onClick={() => {
+                    setHaveQuestionsOpen(false);
+                    openChat();
+                  }}
+                  className="bg-[#4343F0] hover:bg-[#3232b7] text-white text-[15px] font-semibold px-6 py-2.5 rounded-full inline-flex items-center justify-center shadow-xs transition-colors"
+                  style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+                >
+                  Start a Live Chat
+                </button>
+              </div>
+
+              {/* Call Us: */}
+              <div className="mt-6">
+                <h3
+                  className="text-[17px] font-semibold text-[#1B2535] mb-3"
+                  style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+                >
+                  Call Us:
+                </h3>
+                <div className="flex flex-col gap-3">
+                  <a
+                    href="tel:+15619353359"
+                    className="inline-flex items-center gap-2.5 text-[16px] font-semibold text-[#4343F0] hover:underline"
+                    style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+                  >
+                    <USFlagIcon />
+                    <span>+1 (561) 935-3359</span>
+                  </a>
+                  <a
+                    href="tel:+37256813501"
+                    className="inline-flex items-center gap-2.5 text-[16px] font-semibold text-[#4343F0] hover:underline"
+                    style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+                  >
+                    <EUFlagIcon />
+                    <span>+372 5681 3501</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Existing customer? */}
+              <div className="mt-6">
+                <h3
+                  className="text-[17px] font-semibold text-[#1B2535] mb-2"
+                  style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+                >
+                  Existing customer?
+                </h3>
+                <Link
+                  href="/login"
+                  onClick={() => setHaveQuestionsOpen(false)}
+                  className="inline-block text-[16px] font-semibold text-[#4343F0] hover:underline"
+                  style={{ fontFamily: "var(--font-inter), 'Inter', sans-serif" }}
+                >
+                  Log in for Improved Support
+                </Link>
+              </div>
             </div>
           </div>,
           document.body
