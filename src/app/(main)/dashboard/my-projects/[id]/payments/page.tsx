@@ -372,6 +372,8 @@ export default function ProjectPaymentsPage() {
       ? Number(activeProject.amountDue)
       : null;
 
+  const hasInvoiceOrAmountQuery = Boolean(searchParams?.get("amount")) || Boolean(searchParams?.get("invoiceId"));
+
   // Check if payment was done in parts or has a pending balance:
   // ONLY render the Unified Payment form if the project is NOT fully paid (or has an explicit invoice/amount query)
   const isPartPayment =
