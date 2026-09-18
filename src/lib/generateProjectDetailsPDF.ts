@@ -569,23 +569,33 @@ export function extractProjectDetails(data: any): ProjectPDFData {
     const upper = c.trim().toUpperCase();
     return upper === "EE" || upper === "EST" || upper === "ESTONIA";
   };
+  const explicitVatRate = Number(
+    data.vatRate ??
+      data.vatPercentage ??
+      data.quoteId?.vatRate ??
+      data.quoteId?.vatPercentage ??
+      (data.taxPercentage != null ? data.taxPercentage : 0)
+  ) || 0;
+
+  let loggedUserCountry = "";
+  try {
+    const user = authService.getUser();
+    loggedUserCountry = user?.country || user?.clientCountry || user?.billingCountry || "";
+  } catch {}
+
   const countryStr = String(
     data.clientCountry ||
       data.country ||
       data.client?.country ||
       data.client?.clientCountry ||
       data.quoteId?.clientCountry ||
+      data.quoteId?.country ||
+      loggedUserCountry ||
       ""
   );
 
-  const explicitVatRate = Number(
-    data.vatRate ??
-      data.vatPercentage ??
-      (data.taxPercentage != null ? data.taxPercentage : 0)
-  ) || 0;
-
-  // VAT only applies for Estonian clients (24%); all other countries are 0%
-  const vatRate = getVatRateForCountry(countryStr);
+  // VAT applies for explicit vatRate or Estonian clients (24%)
+  const vatRate = explicitVatRate > 0 ? explicitVatRate : getVatRateForCountry(countryStr);
 
   const rawVatAmount = Number(data.vatAmount ?? data.tax ?? 0);
 

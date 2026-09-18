@@ -258,26 +258,50 @@ export class AuthService {
     return !!this.getAccessToken() || !!this.getRefreshToken();
   }
 
-  async getProfile() {
+  private inFlightProfilePromise: Promise<any> | null = null;
+  private lastProfileFetchTime: number = 0;
+
+  async getProfile(force = false) {
     if (!this.isAuthenticated()) return null;
-    try {
-      const client = new HttpClient(this.session);
-      let res = await client.get("/auth/me");
-      let user = res?.data?.user || res?.user || res?.data;
-      if (!user || (!user.id && !user._id && !user.email)) {
-        res = await client.get("/profile/getmyprofile");
-        user = res?.data?.user || res?.user || res?.data;
-      }
-      if (user && (user.id || user._id || user.email)) {
-        this.updateInternalUser(user);
-        const merged = { ...(this.getUser() || {}), ...user };
-        this.inMemoryUser = merged;
-        return merged;
-      }
-    } catch (e) {
-      console.warn("[AuthService] getProfile error:", e);
+    const now = Date.now();
+    if (!force && this.inMemoryUser && (now - this.lastProfileFetchTime < 10000)) {
+      return this.inMemoryUser;
     }
-    return this.getUser();
+    if (this.inFlightProfilePromise) {
+      return this.inFlightProfilePromise;
+    }
+
+    this.inFlightProfilePromise = (async () => {
+      try {
+        const client = new HttpClient(this.session);
+        let res = await client.get("/auth/me");
+        let user = res?.data?.user || res?.user || res?.data;
+        if (!user || (!user.id && !user._id && !user.email)) {
+          res = await client.get("/profile/getmyprofile");
+          user = res?.data?.user || res?.user || res?.data;
+        }
+        if (user && (user.id || user._id || user.email)) {
+          this.lastProfileFetchTime = Date.now();
+          const prevUser = this.getUser();
+          const merged = { ...(prevUser || {}), ...user };
+          this.inMemoryUser = merged;
+          try {
+            const updatedUser = this.encodeUserData(merged);
+            document.cookie = `user_data=${updatedUser}; path=/; max-age=604800; SameSite=Lax;`;
+          } catch (e) {
+            console.error("Failed to update user_data cookie:", e);
+          }
+          return merged;
+        }
+      } catch (e) {
+        console.warn("[AuthService] getProfile error:", e);
+      } finally {
+        this.inFlightProfilePromise = null;
+      }
+      return this.getUser();
+    })();
+
+    return this.inFlightProfilePromise;
   }
 
   updateInternalUser(data: any) {

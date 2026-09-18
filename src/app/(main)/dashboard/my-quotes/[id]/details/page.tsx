@@ -17,6 +17,7 @@ import { useTimezone } from "@/context/TimezoneContext";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import RecommendedSolutions, { PackageCard } from "@/components/common/RecommendedSolutions";
+import { getVatRateForCountry } from "@/lib/vatHelper";
 import { io, Socket } from "socket.io-client";
 
 // Helper components
@@ -1167,13 +1168,22 @@ export default function QuoteDetailsPage() {
                   content.totalCost ??
                   (quote.totalCost ?? (calculatedItemsSum > 0 ? calculatedItemsSum : 0))
                 );
-                const vatRate = Number(
+                const explicitVatRate = Number(
                   content.vatRate !== undefined && content.vatRate !== null
                     ? content.vatRate
                     : ((msg as any).vatRate !== undefined && (msg as any).vatRate !== null
                       ? (msg as any).vatRate
                       : (quote.vatRate !== undefined && quote.vatRate !== null ? quote.vatRate : 0))
                 );
+                const countryStr = String(
+                  quote.clientCountry ||
+                  quote.country ||
+                  user?.country ||
+                  user?.billingCountry ||
+                  user?.clientCountry ||
+                  ""
+                );
+                const vatRate = explicitVatRate > 0 ? explicitVatRate : getVatRateForCountry(countryStr);
                 const rawSubtotal = Number(
                   content.subtotalCost ??
                   content.subtotal ??

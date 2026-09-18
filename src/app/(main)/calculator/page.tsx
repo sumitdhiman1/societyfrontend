@@ -624,6 +624,8 @@ const ProposalPreview = ({
     if (isDownloading) return;
     setIsDownloading(true);
     const refNum = getProposalRefNumber();
+    const user = authService.getUser();
+    const resolvedCountry = user?.country || user?.clientCountry || user?.billingCountry || (vatRate > 0 ? "Estonia" : "");
     try {
       await downloadCalculatorPdf({
         refNumber: refNum,
@@ -638,6 +640,8 @@ const ProposalPreview = ({
         conversionRate,
         categoryKey: category.categoryKey,
         billingType: isMonthly ? "monthly" : undefined,
+        clientCountry: resolvedCountry,
+        country: resolvedCountry,
       });
       if (onDownloadPdf) onDownloadPdf();
     } catch (err) {
@@ -686,6 +690,8 @@ const ProposalPreview = ({
     setIsSendingEmail(true);
 
     const refNum = getProposalRefNumber();
+    const user = authService.getUser();
+    const resolvedCountry = user?.country || user?.clientCountry || user?.billingCountry || (vatRate > 0 ? "Estonia" : "");
 
     try {
       const subject = `Estimate: ${category.categoryName} (${refNum})`;
@@ -710,6 +716,8 @@ const ProposalPreview = ({
         conversionRate,
         categoryKey: category.categoryKey,
         billingType: isMonthly ? "monthly" : undefined,
+        clientCountry: resolvedCountry,
+        country: resolvedCountry,
       });
 
       const res = await fetch("/api-gateway/quotes/email-calculator-proposal", {
@@ -1084,30 +1092,6 @@ const CalculatorPaymentForm = ({
         }
 
         try {
-          const { profileService } = await import("@/lib/profileService");
-          const profile = await profileService.getMyProfile();
-          const profileUser = profile?.data?.user || profile?.data || profile?.user;
-          if (profileUser) {
-            const profileName = resolveUserName(profileUser);
-            if (profileName) {
-              setCardholderName((prev) => (prev?.trim() ? prev : profileName));
-            }
-            if (profileUser.isEmailVerified !== undefined) {
-              setIsEmailVerified(!!profileUser.isEmailVerified);
-            }
-            setUserCountry(
-              profileUser.country ||
-              profileUser.billingCountry ||
-              user?.country ||
-              user?.billingCountry ||
-              (currency === "eur" ? "DE" : "US")
-            );
-          }
-        } catch {
-          setUserCountry(user?.country || user?.billingCountry || (currency === "eur" ? "DE" : "US"));
-        }
-
-        try {
           const freshUser = await authService.getProfile();
           if (freshUser) {
             const freshName = resolveUserName(freshUser);
@@ -1129,13 +1113,23 @@ const CalculatorPaymentForm = ({
 
     checkAuth();
     const handleAuthChange = () => {
-      checkAuth();
+      const u = authService.getUser();
+      if (u) {
+        setIsAuth(true);
+        setIsEmailVerified(!!u.isEmailVerified);
+        const name = resolveUserName(u);
+        if (name) setCardholderName(name);
+        if (u.country || u.billingCountry) setUserCountry(u.country || u.billingCountry);
+      } else {
+        setIsAuth(false);
+        setCardholderName("");
+      }
     };
-    window.addEventListener("auth:login", handleAuthChange);
+    window.addEventListener("auth:login", checkAuth);
     window.addEventListener("auth:logout", handleAuthChange);
     window.addEventListener("auth:user_update", handleAuthChange);
     return () => {
-      window.removeEventListener("auth:login", handleAuthChange);
+      window.removeEventListener("auth:login", checkAuth);
       window.removeEventListener("auth:logout", handleAuthChange);
       window.removeEventListener("auth:user_update", handleAuthChange);
     };
@@ -1330,8 +1324,12 @@ const CalculatorPaymentForm = ({
       // currency the user chose to pay in.
       const usdBaseAmount = totalPrice; // totalPrice is always the raw USD amount from the calculator
 
-      setPaymentStep("gateway");
-      const intentRes = await paymentService.createPaymentIntent({
+      const isDeposit = paymentOption === "half";
+      const fullSubtotalInCurrency = payableTotal;
+      const fullVatAmountInCurrency = Math.round(payableTotal * vatMultiplier * 100) / 100;
+      const fullTotalInCurrency = Math.round((payableTotal + fullVatAmountInCurrency) * 100) / 100;
+
+      const paymentPayload = {
         amount,          // actual charge amount in chosen currency (totalPayable, including VAT)
         currency,        // "usd" or "eur"
         useCredits: false,
@@ -1342,17 +1340,32 @@ const CalculatorPaymentForm = ({
           billingType: isMonthlyBilling ? "monthly" : "fixed",
           isMonthly: isMonthlyBilling ? "true" : "false",
           categoryKey,
-          // fullAmount is the USD base price so backend always compares like-for-like
-          fullAmount: usdBaseAmount,
-          calculatedPrice: usdBaseAmount,
+          fullAmount: fullTotalInCurrency,
+          calculatedPrice: fullTotalInCurrency,
+          fullSubtotal: fullSubtotalInCurrency,
+          fullVatAmount: fullVatAmountInCurrency,
           vatRate: String(vatRate),
           vatAmount: String(vatAmount),
+          subtotal: String(baseAmount),
           userCountry: userCountry || undefined,
-          // store conversion rate so backend can normalise EUR payments back to USD
           conversionRate: String(conversionRate),
           paymentCurrency: currency,
+          paymentOption: paymentOption,
+          isDeposit: isDeposit ? "true" : "false",
+          depositAmount: isDeposit ? String(totalPayable) : undefined,
+          depositSubtotal: isDeposit ? String(baseAmount) : undefined,
+          depositVatAmount: isDeposit ? String(vatAmount) : undefined,
+          baseAmount: String(baseAmount),
+          totalPayable: String(totalPayable),
         },
-      });
+      };
+
+      console.log("================================================================");
+      console.log("[CALCULATOR CHECKOUT] METADATA BEFORE SENDING TRANSACTION:", paymentPayload);
+      console.log("================================================================");
+
+      setPaymentStep("gateway");
+      const intentRes = await paymentService.createPaymentIntent(paymentPayload);
 
       if (!intentRes.isSuccessful || !intentRes.data) {
         throw new Error(intentRes.message || "Failed to initialize payment.");
