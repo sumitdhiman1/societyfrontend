@@ -2,7 +2,7 @@
 @import "./theme.css";
 
 :root {
-  --background: #ffffff;
+  --background: #f3f4f6;
   --foreground: #171717;
   --primary: #4343F0;
   --accent: #00102E;

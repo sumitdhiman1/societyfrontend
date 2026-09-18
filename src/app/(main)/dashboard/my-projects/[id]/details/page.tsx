@@ -22,6 +22,7 @@ import { useCurrency } from "@/context/CurrencyContext";
 import { useTimezone } from "@/context/TimezoneContext";
 import { toast } from "sonner";
 import { paymentService } from "@/lib/paymentService";
+import { quoteService } from "@/lib/quoteService";
 
 const renderStatusMessageText = (rawText: string, attachments?: any[]) => {
   const text = capitalizeCurrencyInText(rawText);
@@ -267,6 +268,23 @@ export default function ProjectDetailsPage() {
   const [isRestarting, setIsRestarting] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [projectPayments, setProjectPayments] = useState<any[]>([]);
+  const [fetchedQuote, setFetchedQuote] = useState<any>(null);
+
+  useEffect(() => {
+    const rawQuoteId = typeof project?.quoteId === "string" ? project.quoteId : project?.quoteId?._id;
+    if (rawQuoteId && !fetchedQuote && (!project?.quoteId || typeof project?.quoteId === "string" || !project?.quoteId?.requirements)) {
+      quoteService
+        .getQuoteById(rawQuoteId)
+        .then((res) => {
+          if (res?.data) {
+            setFetchedQuote(res.data);
+          }
+        })
+        .catch((err) => {
+          console.warn("Could not fetch quote for verification:", err);
+        });
+    }
+  }, [project?.quoteId, project?.calculatorSpecs, project?.isCalculator, fetchedQuote]);
 
   const requireAuth = () => {
     if (!authService.isAuthenticated()) {
@@ -412,6 +430,7 @@ export default function ProjectDetailsPage() {
     const curr = (
       customCurrency ||
       project?.currency ||
+      projectPayments[0]?.currency ||
       (project?.currencySymbol === "€" ? "EUR" : project?.currencySymbol === "$" ? "USD" : currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || "USD")
     ).toUpperCase();
     try {
@@ -530,25 +549,28 @@ export default function ProjectDetailsPage() {
 
     const uploadedUrls = attachments.filter((a) => a.status === "done" && a.url).map((a) => a.url);
 
-    if (messageText.trim() || uploadedUrls.length > 0) {
-      setIsSending(true);
-      try {
-        const pId = project._id || project.id || project.projectId || project.project_id || project.orderId || project.uuid || project.uid || project.project?._id || project.project?.id;
-        const res = await projectService.addMessage(pId, messageText, false, uploadedUrls);
-        if (res && (res.statusCode === 200 || res.statusCode === 201)) {
-          setMessageText("");
-          setAttachments([]);
-          refreshProject();
-          setTimeout(() => {
-            scrollToBottomMessages("smooth");
-          }, 200);
-        }
-      } catch (error) {
-        console.error("Failed to send message:", error);
-        toast.error("Failed to send message");
-      } finally {
-        setIsSending(false);
+    if (!messageText.trim()) {
+      toast.error("Please enter a message before sending.");
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const pId = project._id || project.id || project.projectId || project.project_id || project.orderId || project.uuid || project.uid || project.project?._id || project.project?.id;
+      const res = await projectService.addMessage(pId, messageText, false, uploadedUrls);
+      if (res && (res.statusCode === 200 || res.statusCode === 201)) {
+        setMessageText("");
+        setAttachments([]);
+        refreshProject();
+        setTimeout(() => {
+          scrollToBottomMessages("smooth");
+        }, 200);
       }
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      toast.error("Failed to send message");
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -561,11 +583,18 @@ export default function ProjectDetailsPage() {
       const avatar = currentUser?.avatar;
       const pId = project._id || project.id || project.projectId || project.project_id || project.orderId || project.uuid || project.uid || project.project?._id || project.project?.id;
       const res = await projectService.acceptProposal(pId, proposalId, username, avatar);
-      if (res && (res.statusCode === 200 || res.statusCode === 201)) {
-        refreshProject();
+      if (res && (res.statusCode === 200 || res.statusCode === 201 || res.isSuccessful || res.data)) {
+        if (res.data) {
+          setProject(res.data);
+        }
+        toast.success("Add-on proposal accepted successfully!");
+        await refreshProject();
+      } else {
+        toast.error(res?.message || "Failed to accept proposal");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to accept proposal:", error);
+      toast.error(error?.message || "Failed to accept proposal");
     } finally {
       actionLoadingRef.current = false;
       setIsActionLoading(false);
@@ -671,67 +700,162 @@ export default function ProjectDetailsPage() {
     (project.calculatorSpecs?.categoryKey === "seo" && project.calculatorSpecs?.seoServiceMode === "monthly")
   );
 
-  // Calculations for base amount, VAT, and total cost
-  const rawTotalCost = Number(
-    project.totalCost ??
-    project.totalAmount ??
-    (project.price != null ? project.price : 0)
-  );
-  const isEstoniaClient = (country?: string) => {
-    if (!country) return false;
-    const c = country.trim().toUpperCase();
-    return c === "EE" || c === "EST" || c === "ESTONIA";
+  const linkedQuote = fetchedQuote || (typeof project?.quoteId === "object" && project?.quoteId ? project.quoteId : null) || project?.quote || {};
+  const isEstoniaClient = (c?: string) => {
+    if (!c) return false;
+    const upper = c.trim().toUpperCase();
+    return upper === "EE" || upper === "EST" || upper === "ESTONIA";
   };
-  const clientCountryStr = String(
-    project.clientCountry ||
-    project.country ||
-    project.client?.country ||
-    project.client?.clientCountry ||
-    project.quoteId?.clientCountry ||
+  const countryStr = String(
+    project?.clientCountry ||
+    project?.country ||
+    project?.client?.country ||
+    project?.client?.clientCountry ||
+    project?.client?.billingCountry ||
+    project?.billingCountry ||
+    linkedQuote?.clientCountry ||
+    linkedQuote?.country ||
+    (typeof linkedQuote?.client === "object" ? (linkedQuote?.client?.country || linkedQuote?.client?.clientCountry || linkedQuote?.client?.billingCountry) : "") ||
+    currentUser?.country ||
+    currentUser?.clientCountry ||
     ""
   );
+
   const explicitVatRate = Number(
-    project.vatRate ??
-    project.vatPercentage ??
-    (project.taxPercentage != null ? project.taxPercentage : 0)
+    project?.vatRate ??
+    project?.vatPercentage ??
+    linkedQuote?.vatRate ??
+    linkedQuote?.vatPercentage ??
+    (project?.taxPercentage != null ? project?.taxPercentage : 0)
+  ) || 0;
+
+  const vatRate = explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(countryStr) ? 24 : 0);
+
+  const rawBaseCost = Number(project?.price ?? project?.totalPrice ?? project?.totalCost ?? 0);
+
+  // 1. Deduplicate addons from project.addons
+  const seenAddonKeys = new Set<string>();
+  const uniqueProjectAddons = (project?.addons || []).filter((addon: any) => {
+    const key = String(addon.proposalMessageId || addon._id || (Array.isArray(addon.deliverableItems) ? addon.deliverableItems.map((i: any) => `${i.description}-${i.amount}-${i.duration}`).join('|') : '')).trim();
+    if (!key) return true;
+    if (seenAddonKeys.has(key)) return false;
+    seenAddonKeys.add(key);
+    return true;
+  });
+
+  const addonItemsFromAddons = uniqueProjectAddons.flatMap((addon: any) =>
+    (addon.deliverableItems || []).map((item: any) => ({
+      description: item.description || item.title || item.name || "Add-On Deliverable",
+      details: item.details || "",
+      duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") || String(item.duration).toLowerCase().includes("week") || String(item.duration).toLowerCase().includes("month") ? "" : "Days")}`.trim() : (addon.totalDuration ? `${addon.totalDuration}`.trim() : "1 Days"),
+      amount: Number(item.amount ?? item.cost ?? 0),
+      isAddOn: true,
+    }))
   );
-  const vatRate = explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(clientCountryStr) ? 24 : 0);
-  const rawVatAmount = Number(project.vatAmount ?? project.tax ?? 0);
-  const rawBaseAmount = Number(
-    project.baseAmount ??
-    project.subtotal ??
-    project.calculatorSpecs?.calculatedPrice ??
-    project.calculatorSpecs?.subtotal ??
-    project.quoteId?.requirements?.calculatedPrice ??
-    project.quoteId?.requirements?.subtotal ??
-    0
-  );
-  const baseAmount =
-    rawBaseAmount > 0
-      ? rawBaseAmount
-      : vatRate > 0 && rawTotalCost > 0
-      ? Math.round((rawTotalCost / (1 + vatRate / 100)) * 100) / 100
-      : rawTotalCost;
-  const vatAmount =
-    rawVatAmount > 0
-      ? rawVatAmount
-      : vatRate > 0
-      ? Math.round((baseAmount * (vatRate / 100)) * 100) / 100
-      : 0;
-  const totalCost = rawTotalCost > 0 ? (rawTotalCost >= baseAmount + vatAmount - 0.05 ? rawTotalCost : Math.round((baseAmount + vatAmount) * 100) / 100) : Math.round((baseAmount + vatAmount) * 100) / 100;
+
+  // 2. Addon items from project.messages (fallback if project.addons is empty)
+  const seenMsgIds = new Set<string>();
+  const addonItemsFromMessages = (project?.messages || [])
+    .filter((m: any) => {
+      const isQuote = m.type === "quote_proposal" || m.content?.type === "quote_proposal";
+      const isAccepted =
+        m.content?.proposalStatus === "accepted" ||
+        m.proposalStatus === "accepted" ||
+        m.content?.status === "accepted" ||
+        m.status === "accepted";
+      if (!isQuote || !isAccepted) return false;
+      const mId = String(m.id || m._id || m.content?.id || "").trim();
+      if (mId && seenMsgIds.has(mId)) return false;
+      if (mId) seenMsgIds.add(mId);
+      return true;
+    })
+    .flatMap((m: any) => {
+      const items = m.deliverableItems || m.content?.deliverableItems || m.content?.items || [];
+      return items.map((item: any) => ({
+        description: item.description || item.title || item.name || "Add-On Deliverable",
+        details: item.details || "",
+        duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") || String(item.duration).toLowerCase().includes("week") || String(item.duration).toLowerCase().includes("month") ? "" : "Days")}`.trim() : (m.content?.duration ? `${m.content.duration}`.trim() : "1 Days"),
+        amount: Number(item.amount ?? item.cost ?? 0),
+        isAddOn: true,
+      }));
+    });
+
+  const rawAddonItems = addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages;
+  const seenItemKeys = new Set<string>();
+  const allAddonItems = rawAddonItems.filter((item: any) => {
+    const key = `${String(item.description || "").trim().toLowerCase()}-${Number(item.amount || 0)}-${String(item.duration || "").trim().toLowerCase()}`;
+    if (seenItemKeys.has(key)) return false;
+    seenItemKeys.add(key);
+    return true;
+  });
+
+  // 3. Regular items (filter out items marked as add-on or that match an add-on item)
+  const nonAddonDeliverableItems = (project?.deliverableItems && project.deliverableItems.length > 0)
+    ? project.deliverableItems.filter((item: any) => {
+        if (item.isAddOn) return false;
+        if (allAddonItems.length > 0) {
+          const key = `${String(item.description || item.title || item.name || "").trim().toLowerCase()}-${Number(item.amount ?? item.cost ?? 0)}-${String(item.duration || "").trim().toLowerCase()}`;
+          if (seenItemKeys.has(key)) return false;
+        }
+        return true;
+      })
+    : [];
+
+  const regularItems = nonAddonDeliverableItems.length > 0
+    ? nonAddonDeliverableItems.map((item: any) => ({
+      description: item.description || item.title || item.name || "Deliverable",
+      details: item.details || "",
+      duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") || String(item.duration).toLowerCase().includes("week") || String(item.duration).toLowerCase().includes("month") ? "" : "Days")}`.trim() : "30 Days",
+      amount: Number(item.amount ?? item.cost ?? 0),
+      isAddOn: false,
+    }))
+    : project?.title
+      ? [{
+        description: project.title,
+        details: project.description || "",
+        duration: project.timelineInDays ? `${project.timelineInDays} Days` : (project.totalDuration || project.duration || project.timeline || "30 Days"),
+        amount: Number(
+          project?.subtotal ??
+          linkedQuote?.subtotal ??
+          (vatRate > 0 && rawBaseCost > 0
+            ? Math.round((rawBaseCost / (1 + vatRate / 100)) * 100) / 100
+            : rawBaseCost)
+        ),
+        isAddOn: false,
+      }]
+      : [];
+
+  const regularItemsSum = regularItems.reduce((sum: number, it: any) => sum + (Number(it.amount) || 0), 0);
+  const addonsTotal = allAddonItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
+
+  const baseSubtotal = regularItemsSum > 0
+    ? regularItemsSum
+    : Number(
+        project?.subtotal ??
+        linkedQuote?.subtotal ??
+        (vatRate > 0 && rawBaseCost > 0
+          ? Math.round((rawBaseCost / (1 + vatRate / 100)) * 100) / 100
+          : rawBaseCost)
+      );
+
+  const totalSubtotal = baseSubtotal + (regularItemsSum > 0 ? addonsTotal : 0);
+  const effectiveVatAmount = vatRate > 0 && totalSubtotal > 0
+    ? Math.round((totalSubtotal * (vatRate / 100)) * 100) / 100
+    : Number(project?.vatAmount ?? linkedQuote?.vatAmount ?? 0);
+  const totalCost = totalSubtotal + effectiveVatAmount;
 
   const totalPaidFromTransactions = (projectPayments || [])
     .filter((p: any) => ["succeeded", "paid", "completed"].includes(String(p?.status || "").toLowerCase()))
     .reduce((sum: number, p: any) => sum + (Number(p?.amount) || 0), 0);
 
-  const amountPaid = Math.max(Number(project.amountPaid || 0), totalPaidFromTransactions);
-  const explicitAmountDue = project.amountDue != null && !isNaN(Number(project.amountDue)) ? Number(project.amountDue) : null;
+  const amountPaid = Math.max(Number(project?.amountPaid || 0), totalPaidFromTransactions);
+  const calculatedPending = Math.max(0, totalCost - amountPaid);
   const isActuallyPaidInFull = totalCost > 0 && amountPaid >= totalCost - 0.009;
   const pendingBalance = isActuallyPaidInFull
     ? 0
-    : explicitAmountDue !== null && explicitAmountDue > 0
-    ? explicitAmountDue
-    : Math.max(0, totalCost - amountPaid);
+    : amountPaid === 0
+    ? totalCost
+    : calculatedPending;
 
   // Date for delivery due divider
   const deliveryDueStr = project.deadline ? formatSubmittedDate(project.deadline) : "";
@@ -940,9 +1064,9 @@ export default function ProjectDetailsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {project.deliverableItems && project.deliverableItems.length > 0 ? (
-                      project.deliverableItems.map((item: any, idx: number) => (
-                        <tr key={item.description + idx} className={idx < project.deliverableItems.length - 1 ? "border-b border-gray-400" : ""}>
+                    {regularItems.length > 0 ? (
+                      regularItems.map((item: any, idx: number) => (
+                        <tr key={item.description + idx} className={(idx < regularItems.length - 1 || allAddonItems.length > 0) ? "border-b border-gray-400" : ""}>
                           <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
                             <div className="font-medium text-gray-700 mb-1">{item.description || item.title || item.name}</div>
                             {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
@@ -956,35 +1080,33 @@ export default function ProjectDetailsPage() {
                         </tr>
                       ))
                     ) : (
-                      <tr>
-                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-semibold">{project.title}</td>
+                      <tr className={allAddonItems.length > 0 ? "border-b border-gray-400" : ""}>
+                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-semibold">{project.title || "Deliverable"}</td>
                         <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-center">-</td>
                         <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-800 text-right font-bold">
-                          {formatCurrency(baseAmount)}
+                          {formatCurrency(baseSubtotal)}
                         </td>
                       </tr>
                     )}
                     {/* Add-ons section if exists */}
-                    {project.addons && project.addons.length > 0 && (
+                    {allAddonItems.length > 0 && (
                       <React.Fragment>
                         <tr className="bg-gray-800">
                           <td colSpan={3} className="px-6 py-2.5 text-xs font-bold text-white tracking-wider">Add-On Tasks</td>
                         </tr>
-                        {project.addons.map((addon: any, aIdx: number) => (
-                          addon.deliverableItems.map((item: any, iIdx: number) => (
-                            <tr key={`addon-${aIdx}-${iIdx}`} className={(aIdx === project.addons.length - 1 && iIdx === addon.deliverableItems.length - 1) ? "" : "border-b border-gray-400"}>
-                              <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
-                                <div className="font-medium text-gray-700 mb-1">{item.description}</div>
-                                {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
-                              </td>
-                              <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
-                                {item.duration} {item.unit || "Days"}
-                              </td>
-                              <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
-                                {formatCurrency(item.amount ?? 0)}
-                              </td>
-                            </tr>
-                          ))
+                        {allAddonItems.map((item: any, iIdx: number) => (
+                          <tr key={`addon-${iIdx}`} className={iIdx === allAddonItems.length - 1 ? "" : "border-b border-gray-400"}>
+                            <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
+                              <div className="font-medium text-gray-700 mb-1">{item.description}</div>
+                              {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
+                            </td>
+                            <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
+                              {item.duration}
+                            </td>
+                            <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
+                              {formatCurrency(item.amount ?? 0)}
+                            </td>
+                          </tr>
                         ))}
                       </React.Fragment>
                     )}
@@ -1005,7 +1127,7 @@ export default function ProjectDetailsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
+                    <tr className={allAddonItems.length > 0 ? "border-b border-gray-400" : ""}>
                       <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
                         <div className="font-medium text-gray-700 mb-1">
                           {getMainCalculatorCategory(
@@ -1019,30 +1141,28 @@ export default function ProjectDetailsPage() {
                         {project.calculatorSpecs?.estimatedTimeline || project.timeline || "-"}
                       </td>
                       <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top">
-                        {formatCurrency(baseAmount)}
+                        {formatCurrency(baseSubtotal)}
                       </td>
                     </tr>
                     {/* Add-ons section if exists for calculator projects */}
-                    {project.addons && project.addons.length > 0 && (
+                    {allAddonItems.length > 0 && (
                       <React.Fragment>
                         <tr className="bg-gray-800">
                           <td colSpan={3} className="px-6 py-2.5 text-xs font-bold text-white tracking-wider">Add-On Tasks</td>
                         </tr>
-                        {project.addons.map((addon: any, aIdx: number) => (
-                          addon.deliverableItems.map((item: any, iIdx: number) => (
-                            <tr key={`addon-calc-${aIdx}-${iIdx}`} className={(aIdx === project.addons.length - 1 && iIdx === addon.deliverableItems.length - 1) ? "" : "border-b border-gray-400"}>
-                              <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
-                                <div className="font-medium text-gray-700 mb-1">{item.description}</div>
-                                {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
-                              </td>
-                              <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
-                                {item.duration} {item.unit || "Days"}
-                              </td>
-                              <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
-                                {formatCurrency(item.amount ?? 0)}
-                              </td>
-                            </tr>
-                          ))
+                        {allAddonItems.map((item: any, iIdx: number) => (
+                          <tr key={`addon-calc-${iIdx}`} className={iIdx === allAddonItems.length - 1 ? "" : "border-b border-gray-400"}>
+                            <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
+                              <div className="font-medium text-gray-700 mb-1">{item.description}</div>
+                              {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
+                            </td>
+                            <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
+                              {item.duration}
+                            </td>
+                            <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
+                              {formatCurrency(item.amount ?? 0)}
+                            </td>
+                          </tr>
                         ))}
                       </React.Fragment>
                     )}
@@ -1053,14 +1173,16 @@ export default function ProjectDetailsPage() {
 
             {/* Totals Summary */}
             <div className={`flex flex-row justify-end gap-6 sm:gap-12 text-xs sm:text-sm ${project.calculatorSpecs ? "mb-4" : "mb-8"}`}>
-              <div className="text-center">
-                <div className="text-gray-500 font-bold mb-1 sm:mb-2">Base Amount</div>
-                <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(baseAmount)}</div>
-              </div>
-              {vatRate > 0 && vatAmount > 0 && (
+              {vatRate > 0 && effectiveVatAmount > 0 && (
+                <div className="text-center">
+                  <div className="text-gray-500 font-bold mb-1 sm:mb-2">Base Amount</div>
+                  <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(totalSubtotal)}</div>
+                </div>
+              )}
+              {vatRate > 0 && effectiveVatAmount > 0 && (
                 <div className="text-center">
                   <div className="text-gray-500 font-bold mb-1 sm:mb-2">VAT ({vatRate}%)</div>
-                  <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(vatAmount)}</div>
+                  <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(effectiveVatAmount)}</div>
                 </div>
               )}
               <div className="text-center">
@@ -1518,9 +1640,17 @@ export default function ProjectDetailsPage() {
                 };
                 const totalOfferDuration = formatOfferDuration(rawDuration);
 
-                const expiresStr = content.expires
-                  ? (isNaN(new Date(content.expires).getTime()) ? content.expires : formatSubmittedDate(content.expires))
-                  : "N/A";
+                const cleanExpires = (val: any) => {
+                  if (!val || val === "Not specified" || val === "N/A" || val === "-") return "N/A";
+                  const rawStr = String(val).trim();
+                  const strippedStr = rawStr.replace(/^(submitted\s*(on|-)?|expires\s*(on|-)?)\s*/i, "").trim();
+                  const d = new Date(strippedStr);
+                  if (!isNaN(d.getTime())) {
+                    return formatSubmittedDate(d);
+                  }
+                  return strippedStr || rawStr;
+                };
+                const expiresStr = cleanExpires(content.expires);
 
                 return (
                   <div key={msgId} ref={isLast ? lastMessageRef : null} className="w-full">
@@ -1549,7 +1679,7 @@ export default function ProjectDetailsPage() {
                           </span>
                         ) : expiresStr && expiresStr !== "N/A" ? (
                           <span className="text-xs sm:text-sm text-gray-500 font-medium">
-                            Expires - {expiresStr}
+                            Expires on {expiresStr}
                           </span>
                         ) : null}
                       </div>
@@ -1676,17 +1806,21 @@ export default function ProjectDetailsPage() {
                           ) : null}
                         </div>
                         <div className="flex flex-col items-end gap-2 text-xs sm:text-sm min-w-[220px]">
-                          <div className="flex justify-between w-full gap-8">
-                            <span className="text-gray-500 font-medium">Base Amount:</span>
-                            <span className="font-bold text-gray-700">{formatCurrency(baseAmount)}</span>
-                          </div>
+                          {vatRate > 0 && vatAmount > 0 && (
+                            <div className="flex justify-between w-full gap-8">
+                              <span className="text-gray-500 font-medium">Base Amount:</span>
+                              <span className="font-bold text-gray-700">{formatCurrency(baseAmount)}</span>
+                            </div>
+                          )}
                           {vatRate > 0 && vatAmount > 0 && (
                             <div className="flex justify-between w-full gap-8">
                               <span className="text-gray-500 font-medium">VAT ({vatRate}%):</span>
                               <span className="font-bold text-gray-700">{formatCurrency(vatAmount)}</span>
                             </div>
                           )}
-                          <div className="border-t border-gray-200 w-full my-1" />
+                          {vatRate > 0 && vatAmount > 0 && (
+                            <div className="border-t border-gray-200 w-full my-1" />
+                          )}
                           <div className="flex justify-between w-full gap-8">
                             <span className="text-gray-800 font-bold text-sm">Total Cost:</span>
                             <span className="font-extrabold text-gray-900 text-sm sm:text-base">{formatCurrency(totalCost)}</span>
@@ -2085,13 +2219,13 @@ export default function ProjectDetailsPage() {
                   isLoggedIn &&
                   (isSending ||
                     isUploading ||
-                    (!messageText.trim() && attachments.filter((a) => a.status === "done").length === 0))
+                    !messageText.trim())
                 }
                 className={`flex-1 sm:flex-none px-7 py-2.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
                   isLoggedIn &&
                   (isSending ||
                     isUploading ||
-                    (!messageText.trim() && attachments.filter((a) => a.status === "done").length === 0))
+                    !messageText.trim())
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
                     : "bg-[#4343F0] hover:bg-[#3232b7] text-white cursor-pointer active:scale-95"
                 }`}

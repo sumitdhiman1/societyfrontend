@@ -1,4 +1,6 @@
 import { authService } from "./authService";
+import { countryService } from "./countryService";
+import { getVatRateForCountry } from "./vatHelper";
 
 function loadScript(src: string): Promise<void> {
   if (typeof document === "undefined") return Promise.resolve();
@@ -257,12 +259,21 @@ export function extractInvoicePDFData(data: any): InvoicePDFData {
   }
 
   // Financial calculations
-  const vatRate = Number(
-    data.vatRate ??
-    project.vatRate ??
-    project.vatPercentage ??
-    (project.taxPercentage != null ? project.taxPercentage : 0)
+  const isEstoniaClient = (c?: string) => {
+    if (!c) return false;
+    const upper = c.trim().toUpperCase();
+    return upper === "EE" || upper === "EST" || upper === "ESTONIA";
+  };
+  const countryStr = String(
+    data.clientCountry ||
+      project.clientCountry ||
+      project.country ||
+      project.client?.country ||
+      project.client?.clientCountry ||
+      ""
   );
+  // VAT only applies for Estonian clients (24%); all other countries are 0%
+  const vatRate = getVatRateForCountry(countryStr);
 
   const subtotal = Number(
     data.subtotal ??

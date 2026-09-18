@@ -43,7 +43,7 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${manrope.variable} ${poppins.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">
+      <body className="min-h-full flex flex-col font-sans bg-[#f3f4f6]">
         <Toaster position="top-right" richColors closeButton duration={8000} />
         <CurrencyProvider>
           <TimezoneProvider>

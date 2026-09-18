@@ -1,4 +1,5 @@
 import HttpClient from './HttpClient';
+import { getVatRateForCountry } from './vatHelper';
 
 export interface Country {
   _id?: string;
@@ -92,8 +93,7 @@ class CountryService {
   }
 
   getVatRateSync(countryCodeOrName: string): number {
-    const match = this.findCachedCountry(countryCodeOrName);
-    return match ? (Number(match.vatRate) || 0) : 0;
+    return getVatRateForCountry(countryCodeOrName);
   }
 }
 

@@ -350,6 +350,11 @@ export default function QuoteDetailsPage() {
 
   const isLoggedIn = Boolean(user) || authService.isAuthenticated();
 
+  const refreshQuoteRef = useRef(refreshQuote);
+  useEffect(() => {
+    refreshQuoteRef.current = refreshQuote;
+  }, [refreshQuote]);
+
   // Real-time socket connection
   useEffect(() => {
     let activeSocket: Socket | null = null;
@@ -411,7 +416,7 @@ export default function QuoteDetailsPage() {
       const handleMessageUpdate = (data: any) => {
         const incomingId = data?.projectId || data?.quoteId || data?.project?._id || data?.quote?._id;
         if (!incomingId || String(incomingId) === String(qId)) {
-          refreshQuote(true);
+          refreshQuoteRef.current(true);
         }
       };
 
@@ -423,7 +428,7 @@ export default function QuoteDetailsPage() {
       sock.on("notification", (notif: any) => {
         const pId = notif?.data?.quoteId || notif?.data?.projectId || notif?.quoteId || notif?.projectId;
         if (!pId || String(pId) === String(qId)) {
-          refreshQuote(true);
+          refreshQuoteRef.current(true);
         }
       });
     };
@@ -439,7 +444,7 @@ export default function QuoteDetailsPage() {
         } catch { }
       }
     };
-  }, [quote?._id, quote?.id, refreshQuote]);
+  }, [quote?._id, quote?.id]);
 
   if (!quote) return null;
 
@@ -627,7 +632,12 @@ export default function QuoteDetailsPage() {
 
     const uploadedUrls = attachments.filter((a) => a.status === "done" && a.url).map((a) => a.url);
 
-    if ((messageText.trim() || uploadedUrls.length > 0) && quote) {
+    if (!messageText.trim()) {
+      toast.error("Please enter a message before sending.");
+      return;
+    }
+
+    if (quote) {
       setIsSending(true);
       try {
         const res = await quoteService.updateQuote(quote._id, {
@@ -1767,13 +1777,13 @@ export default function QuoteDetailsPage() {
                 disabled={
                   isLoggedIn &&
                   (isSending ||
-                    (!messageText.trim() && attachments.length === 0) ||
+                    !messageText.trim() ||
                     attachments.some((a) => a.status === "uploading"))
                 }
                 className={`flex-1 sm:flex-none px-8 py-2.5 rounded-[8px] text-sm font-bold transition-all ${
                   isLoggedIn &&
                   (isSending ||
-                    (!messageText.trim() && attachments.length === 0) ||
+                    !messageText.trim() ||
                     attachments.some((a) => a.status === "uploading"))
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed opacity-50"
                     : "bg-[#4343F0] hover:bg-[#3333D0] text-white cursor-pointer active:scale-95"

@@ -18,15 +18,13 @@ const ToggleRow = ({
   <div className="flex items-center justify-between py-6 border-b border-gray-100 last:border-0 hover:bg-gray-50 px-4 -mx-4 transition-colors rounded-[4px]">
     <span className="text-sm font-bold text-gray-700">{label}</span>
     <div
-      className={`w-10 h-5 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
-        checked ? "bg-primary-300" : "bg-gray-300"
-      }`}
+      className={`w-10 h-5 flex items-center rounded-full p-1 cursor-pointer transition-colors ${checked ? "bg-primary-300" : "bg-gray-300"
+        }`}
       onClick={() => onChange(!checked)}
     >
       <div
-        className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform ${
-          checked ? "translate-x-5" : ""
-        }`}
+        className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform ${checked ? "translate-x-5" : ""
+          }`}
       />
     </div>
   </div>

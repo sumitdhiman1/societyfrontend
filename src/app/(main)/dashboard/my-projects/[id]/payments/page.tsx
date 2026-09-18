@@ -84,7 +84,12 @@ export default function ProjectPaymentsPage() {
       hasRefreshedRef.current = true;
       refreshProject();
       fetchPayments();
-      window.history.replaceState(null, "", `/dashboard/my-projects/${projectId}/payments`);
+      const timer = setTimeout(() => {
+        try {
+          window.history.replaceState(null, "", `/dashboard/my-projects/${projectId}/payments`);
+        } catch {}
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [searchParams, projectId, refreshProject, fetchPayments]);
 
@@ -147,23 +152,108 @@ export default function ProjectPaymentsPage() {
     ? formatDateTimeTz(activeProject.createdAt, { month: "short", day: "numeric", year: "numeric" })
     : "Sep 7, 2026";
 
-  const vatRate = Number(
+  const isEstoniaClient = (c?: string) => {
+    if (!c) return false;
+    const upper = c.trim().toUpperCase();
+    return upper === "EE" || upper === "EST" || upper === "ESTONIA";
+  };
+  const linkedQuote = fetchedQuote || (typeof activeProject.quoteId === "object" ? activeProject.quoteId : activeProject.quote) || {};
+  const countryStr = String(
+    activeProject.clientCountry ||
+    activeProject.country ||
+    activeProject.client?.country ||
+    activeProject.client?.clientCountry ||
+    activeProject.client?.billingCountry ||
+    activeProject.billingCountry ||
+    linkedQuote.clientCountry ||
+    linkedQuote.country ||
+    (typeof linkedQuote.client === "object" ? (linkedQuote.client?.country || linkedQuote.client?.clientCountry || linkedQuote.client?.billingCountry) : "") ||
+    currentUser?.country ||
+    currentUser?.clientCountry ||
+    ""
+  );
+
+  const explicitVatRate = Number(
     activeProject.vatRate ??
     activeProject.vatPercentage ??
+    linkedQuote.vatRate ??
+    linkedQuote.vatPercentage ??
     (activeProject.taxPercentage != null ? activeProject.taxPercentage : 0)
-  );
+  ) || 0;
+  const vatRate = explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(countryStr) ? 24 : 0);
 
   const rawBaseCost = Number(activeProject.price ?? activeProject.totalPrice ?? activeProject.totalCost ?? 0);
-  const baseSubtotal = Number(
-    activeProject.subtotal ??
-    (vatRate > 0 && rawBaseCost > 0
-      ? Math.round((rawBaseCost / (1 + vatRate / 100)) * 100) / 100
-      : rawBaseCost)
+
+  // 1. Deduplicate addons from activeProject.addons
+  const seenAddonKeys = new Set<string>();
+  const uniqueProjectAddons = (activeProject.addons || []).filter((addon: any) => {
+    const key = String(addon.proposalMessageId || addon._id || (Array.isArray(addon.deliverableItems) ? addon.deliverableItems.map((i: any) => `${i.description}-${i.amount}-${i.duration}`).join('|') : '')).trim();
+    if (!key) return true;
+    if (seenAddonKeys.has(key)) return false;
+    seenAddonKeys.add(key);
+    return true;
+  });
+
+  const addonItemsFromAddons = uniqueProjectAddons.flatMap((addon: any) =>
+    (addon.deliverableItems || []).map((item: any) => ({
+      description: item.description || item.title || item.name || "Add-On Deliverable",
+      details: item.details || "",
+      duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
+      amount: Number(item.amount ?? 0),
+      isAddOn: true,
+    }))
   );
 
-  // 1. Regular items
-  const regularItems = (activeProject.deliverableItems && activeProject.deliverableItems.length > 0)
-    ? activeProject.deliverableItems.map((item: any) => ({
+  // 2. Addon items from activeProject.messages (fallback if activeProject.addons is empty)
+  const seenMsgIds = new Set<string>();
+  const addonItemsFromMessages = (activeProject.messages || [])
+    .filter((m: any) => {
+      const isQuote = m.type === "quote_proposal" || m.content?.type === "quote_proposal";
+      const isAccepted =
+        m.content?.proposalStatus === "accepted" ||
+        m.proposalStatus === "accepted" ||
+        m.content?.status === "accepted" ||
+        m.status === "accepted";
+      if (!isQuote || !isAccepted) return false;
+      const mId = String(m.id || m._id || m.content?.id || "").trim();
+      if (mId && seenMsgIds.has(mId)) return false;
+      if (mId) seenMsgIds.add(mId);
+      return true;
+    })
+    .flatMap((m: any) => {
+      const items = m.deliverableItems || m.content?.deliverableItems || m.content?.items || [];
+      return items.map((item: any) => ({
+        description: item.description || item.title || item.name || "Add-On Deliverable",
+        details: item.details || "",
+        duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
+        amount: Number(item.amount ?? 0),
+        isAddOn: true,
+      }));
+    });
+
+  const rawAddonItems = addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages;
+  const seenItemKeys = new Set<string>();
+  const allAddonItems = rawAddonItems.filter((item: any) => {
+    const key = `${String(item.description || "").trim().toLowerCase()}-${Number(item.amount || 0)}-${String(item.duration || "").trim().toLowerCase()}`;
+    if (seenItemKeys.has(key)) return false;
+    seenItemKeys.add(key);
+    return true;
+  });
+
+  // 3. Regular items (filter out items marked as add-on or that match an add-on item)
+  const nonAddonDeliverableItems = (activeProject.deliverableItems && activeProject.deliverableItems.length > 0)
+    ? activeProject.deliverableItems.filter((item: any) => {
+        if (item.isAddOn) return false;
+        if (allAddonItems.length > 0) {
+          const key = `${String(item.description || item.title || item.name || "").trim().toLowerCase()}-${Number(item.amount ?? item.cost ?? 0)}-${String(item.duration || "").trim().toLowerCase()}`;
+          if (seenItemKeys.has(key)) return false;
+        }
+        return true;
+      })
+    : [];
+
+  const regularItems = nonAddonDeliverableItems.length > 0
+    ? nonAddonDeliverableItems.map((item: any) => ({
       description: item.description || item.title || item.name || "Deliverable",
       details: item.details || "",
       duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "30 Days",
@@ -174,37 +264,29 @@ export default function ProjectPaymentsPage() {
       ? [{
         description: activeProject.title,
         duration: activeProject.timelineInDays ? `${activeProject.timelineInDays} Days` : "30 Days",
-        amount: baseSubtotal,
+        amount: Number(
+          activeProject.subtotal ??
+          linkedQuote.subtotal ??
+          (vatRate > 0 && rawBaseCost > 0
+            ? Math.round((rawBaseCost / (1 + vatRate / 100)) * 100) / 100
+            : rawBaseCost)
+        ),
         isAddOn: false,
       }]
       : [];
 
-  // 2. Addon items from activeProject.addons
-  const addonItemsFromAddons = (activeProject.addons || []).flatMap((addon: any) =>
-    (addon.deliverableItems || []).map((item: any) => ({
-      description: item.description || item.title || item.name || "Add-On Deliverable",
-      details: item.details || "",
-      duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
-      amount: Number(item.amount ?? 0),
-      isAddOn: true,
-    }))
-  );
+  const regularItemsSum = regularItems.reduce((sum: number, it: any) => sum + (Number(it.amount) || 0), 0);
+  const addonsTotal = allAddonItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
 
-  // 3. Addon items from activeProject.messages
-  const addonItemsFromMessages = (activeProject.messages || [])
-    .filter((m: any) => m.type === "quote_proposal" || m.content?.proposalStatus === "accepted" || m.proposalStatus === "accepted")
-    .flatMap((m: any) => {
-      const items = m.deliverableItems || m.content?.deliverableItems || [];
-      return items.map((item: any) => ({
-        description: item.description || item.title || item.name || "Add-On Deliverable",
-        details: item.details || "",
-        duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
-        amount: Number(item.amount ?? 0),
-        isAddOn: true,
-      }));
-    });
-
-  const allAddonItems = addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages;
+  const baseSubtotal = regularItemsSum > 0
+    ? regularItemsSum
+    : Number(
+        activeProject.subtotal ??
+        linkedQuote.subtotal ??
+        (vatRate > 0 && rawBaseCost > 0
+          ? Math.round((rawBaseCost / (1 + vatRate / 100)) * 100) / 100
+          : rawBaseCost)
+      );
 
   // Combine deliverable items
   const deliverableItems = allAddonItems.length > 0 ? [...regularItems, ...allAddonItems] : regularItems;
@@ -214,22 +296,19 @@ export default function ProjectPaymentsPage() {
     .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
 
   const amountPaid = Math.max(Number(activeProject.amountPaid || 0), totalPaidFromTransactions);
-  const addonsTotal = allAddonItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
   const totalSubtotal = baseSubtotal + addonsTotal;
-  const effectiveVatAmount = Number(
-    activeProject.vatAmount ??
-    (vatRate > 0 ? Math.round((totalSubtotal * (vatRate / 100)) * 100) / 100 : 0)
-  );
+  const effectiveVatAmount = vatRate > 0 && totalSubtotal > 0
+    ? Math.round((totalSubtotal * (vatRate / 100)) * 100) / 100
+    : Number(activeProject.vatAmount ?? linkedQuote.vatAmount ?? 0);
   const totalProjectCost = totalSubtotal + effectiveVatAmount;
 
-  const explicitAmountDue = activeProject.amountDue != null && !isNaN(Number(activeProject.amountDue)) ? Number(activeProject.amountDue) : null;
   const calculatedPending = Math.max(0, totalProjectCost - amountPaid);
   const isActuallyPaidInFull = totalProjectCost > 0 && amountPaid >= totalProjectCost - 0.009;
 
   const pendingBalance = isActuallyPaidInFull
     ? 0
-    : explicitAmountDue !== null && explicitAmountDue > 0
-    ? explicitAmountDue
+    : amountPaid === 0
+    ? totalProjectCost
     : calculatedPending;
 
   const isPartiallyPaid = !isActuallyPaidInFull && amountPaid > 0.009 && pendingBalance > 0.009;
@@ -321,6 +400,11 @@ export default function ProjectPaymentsPage() {
     }
   };
 
+  const explicitAmountDue =
+    activeProject.amountDue !== undefined && activeProject.amountDue !== null
+      ? Number(activeProject.amountDue)
+      : null;
+
   const hasInvoiceOrAmountQuery = Boolean(searchParams?.get("amount")) || Boolean(searchParams?.get("invoiceId"));
 
   // Check if payment was done in parts or has a pending balance:
@@ -348,7 +432,7 @@ export default function ProjectPaymentsPage() {
 
   const depositAmount = Number(
     activeProject.depositAmount ||
-    (baseSubtotal > 0 ? baseSubtotal / 2 : (totalProjectCost > 0 ? totalProjectCost / 2 : 0))
+    (totalSubtotal > 0 ? totalSubtotal / 2 : (totalProjectCost > 0 ? totalProjectCost / 2 : 0))
   );
 
   // -------------------------------------------------------------------------
@@ -360,7 +444,7 @@ export default function ProjectPaymentsPage() {
     const searchMessageId = searchParams?.get("messageId") || undefined;
     const searchDescription = searchParams?.get("description") || undefined;
     const targetCost = amountPaid === 0
-      ? baseSubtotal
+      ? totalSubtotal
       : (vatRate > 0 ? Math.round((pendingBalance / (1 + vatRate / 100)) * 100) / 100 : pendingBalance);
 
     return (

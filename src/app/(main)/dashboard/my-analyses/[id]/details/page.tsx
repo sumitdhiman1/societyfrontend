@@ -738,7 +738,16 @@ export default function AnalysisDetailsPage() {
   const managerName = manager?.fullName || "Not assigned yet";
   const managerAvatar = manager?.avatar;
 
-  const addonItemsFromAddons = (analysis?.addons || []).flatMap((addon: any) =>
+  const seenAddonKeys = new Set<string>();
+  const uniqueAnalysisAddons = (analysis?.addons || []).filter((addon: any) => {
+    const key = String(addon.proposalMessageId || addon._id || (Array.isArray(addon.deliverableItems) ? addon.deliverableItems.map((i: any) => `${i.description}-${i.amount}-${i.duration}`).join('|') : '')).trim();
+    if (!key) return true;
+    if (seenAddonKeys.has(key)) return false;
+    seenAddonKeys.add(key);
+    return true;
+  });
+
+  const addonItemsFromAddons = uniqueAnalysisAddons.flatMap((addon: any) =>
     (addon.deliverableItems || []).map((d: any) => ({
       description: d.description || d.title || d.name || 'Add-on deliverable',
       amount: Number(d.amount ?? d.cost ?? 0),
@@ -748,11 +757,16 @@ export default function AnalysisDetailsPage() {
     }))
   );
 
+  const seenMsgIds = new Set<string>();
   const addonItemsFromMessages = (analysis?.messages || [])
     .filter((m: any) => {
       const isQuote = m.type === 'quote_proposal' || m.content?.type === 'quote_proposal';
       const isAccepted = m.content?.status === 'accepted' || m.status === 'accepted';
-      return isQuote && isAccepted;
+      if (!isQuote || !isAccepted) return false;
+      const mId = String(m.id || m._id || m.content?.id || '').trim();
+      if (mId && seenMsgIds.has(mId)) return false;
+      if (mId) seenMsgIds.add(mId);
+      return true;
     })
     .flatMap((m: any) => {
       const deliverables = m.content?.deliverableItems || m.deliverableItems || [];
@@ -765,23 +779,40 @@ export default function AnalysisDetailsPage() {
       }));
     });
 
-  const allAddonDeliverables = addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages;
+  const rawAddonItems = addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages;
+  const seenItemKeys = new Set<string>();
+  const allAddonDeliverables = rawAddonItems.filter((item: any) => {
+    const key = `${String(item.description || '').trim().toLowerCase()}-${Number(item.amount || 0)}-${String(item.duration || '').trim().toLowerCase()}`;
+    if (seenItemKeys.has(key)) return false;
+    seenItemKeys.add(key);
+    return true;
+  });
+
   const addonsTotal = allAddonDeliverables.reduce((sum: number, it: any) => sum + (Number(it.amount) || 0), 0);
 
-  const rawBaseAmount =
+  const pureInitialBase =
+    (Number(analysis.package?.amount) > 0 ? Number(analysis.package?.amount) : 0) ||
+    (Number(analysis.package?.price) > 0 ? Number(analysis.package?.price) : 0) ||
+    (Array.isArray(analysis.deliverableItems) && analysis.deliverableItems.length > 0
+      ? analysis.deliverableItems.reduce((s: number, i: any) => s + (Number(i.amount ?? i.cost) || 0), 0)
+      : 0);
+
+  const rawSubtotal =
     (Number(analysis.subtotal) > 0 ? Number(analysis.subtotal) : 0) ||
     (Number(analysis.baseAmount) > 0 ? Number(analysis.baseAmount) : 0) ||
     (Number(analysis.price) > 0 ? Number(analysis.price) : 0) ||
-    (Number(analysis.package?.amount) > 0 ? Number(analysis.package?.amount) : 0) ||
-    (Number(analysis.package?.price) > 0 ? Number(analysis.package?.price) : 0) ||
     0;
+
+  const baseAmount = pureInitialBase > 0
+    ? pureInitialBase + addonsTotal
+    : (rawSubtotal >= addonsTotal ? rawSubtotal : rawSubtotal + addonsTotal);
 
   const rawTotalCost =
     (Number(analysis.totalCost) > 0 ? Number(analysis.totalCost) : 0) ||
     (Number(analysis.totalPrice) > 0 ? Number(analysis.totalPrice) : 0) ||
     (Number(analysis.amount) > 0 ? Number(analysis.amount) : 0) ||
     (Number(analysis.price) > 0 ? Number(analysis.price) : 0) ||
-    (rawBaseAmount > 0 ? rawBaseAmount + addonsTotal : 0);
+    baseAmount;
 
   const vatRate = Number(
     analysis.vatRate ??
@@ -790,13 +821,6 @@ export default function AnalysisDetailsPage() {
   );
   const rawVatAmount = Number(analysis.vatAmount ?? analysis.tax ?? 0);
 
-  const baseAmount =
-    rawBaseAmount > 0
-      ? rawBaseAmount + (allAddonDeliverables.length > 0 ? addonsTotal : 0)
-      : vatRate > 0 && rawTotalCost > 0
-      ? Math.round(((rawTotalCost + (allAddonDeliverables.length > 0 ? addonsTotal : 0)) / (1 + vatRate / 100)) * 100) / 100
-      : (rawTotalCost > 0 ? rawTotalCost : 0) + (allAddonDeliverables.length > 0 ? addonsTotal : 0);
-
   const vatAmount =
     rawVatAmount > 0
       ? rawVatAmount
@@ -804,7 +828,7 @@ export default function AnalysisDetailsPage() {
       ? Math.round((baseAmount * (vatRate / 100)) * 100) / 100
       : 0;
 
-  const totalCost = rawTotalCost > 0 && rawTotalCost >= baseAmount + vatAmount ? rawTotalCost : (vatAmount > 0 ? baseAmount + vatAmount : baseAmount);
+  const totalCost = baseAmount + vatAmount;
 
   const isFreeAnalysis = Boolean(
     analysis.isFree === true ||
@@ -1025,10 +1049,12 @@ export default function AnalysisDetailsPage() {
             {/* Totals Summary (Only for Paid Analysis) */}
             {!isFreeAnalysis && (
               <div className="flex flex-row justify-end gap-6 sm:gap-12 text-xs sm:text-sm mb-4">
-                <div className="text-center">
-                  <div className="text-gray-500 font-bold mb-1 sm:mb-2">Base Amount</div>
-                  <div className="font-semibold text-gray-800">{formatCurrency(baseAmount)}</div>
-                </div>
+                {vatRate > 0 && vatAmount > 0 && (
+                  <div className="text-center">
+                    <div className="text-gray-500 font-bold mb-1 sm:mb-2">Base Amount</div>
+                    <div className="font-semibold text-gray-800">{formatCurrency(baseAmount)}</div>
+                  </div>
+                )}
                 {vatRate > 0 && vatAmount > 0 && (
                   <div className="text-center">
                     <div className="text-gray-500 font-bold mb-1 sm:mb-2">VAT ({vatRate}%)</div>
@@ -1517,9 +1543,17 @@ export default function AnalysisDetailsPage() {
               };
               const totalOfferDuration = formatOfferDuration(rawDuration);
 
-              const expiresStr = content.expires && content.expires !== "Not specified"
-                ? (isNaN(new Date(content.expires).getTime()) ? content.expires : formatSubmittedDate(content.expires))
-                : "N/A";
+              const cleanExpires = (val: any) => {
+                if (!val || val === "Not specified" || val === "N/A" || val === "-") return "N/A";
+                const rawStr = String(val).trim();
+                const strippedStr = rawStr.replace(/^(submitted\s*(on|-)?|expires\s*(on|-)?)\s*/i, "").trim();
+                const d = new Date(strippedStr);
+                if (!isNaN(d.getTime())) {
+                  return formatSubmittedDate(d);
+                }
+                return strippedStr || rawStr;
+              };
+              const expiresStr = cleanExpires(content.expires);
 
               const isLast = idx === (analysis.messages?.length || 0) - 1;
 
@@ -1551,7 +1585,7 @@ export default function AnalysisDetailsPage() {
                           </span>
                         ) : expiresStr && expiresStr !== "N/A" ? (
                           <span className="text-xs sm:text-sm text-gray-500 font-medium">
-                            Expires - {expiresStr}
+                            Expires on {expiresStr}
                           </span>
                         ) : null}
                       </div>
@@ -1682,17 +1716,21 @@ export default function AnalysisDetailsPage() {
                           ) : null}
                         </div>
                         <div className="flex flex-col items-end gap-2 text-xs sm:text-sm min-w-[220px]">
-                          <div className="flex justify-between w-full gap-8">
-                            <span className="text-gray-500 font-medium">Base Amount:</span>
-                            <span className="font-bold text-gray-700">{formatCurrency(baseAmount)}</span>
-                          </div>
+                          {vatRate > 0 && vatAmount > 0 && (
+                            <div className="flex justify-between w-full gap-8">
+                              <span className="text-gray-500 font-medium">Base Amount:</span>
+                              <span className="font-bold text-gray-700">{formatCurrency(baseAmount)}</span>
+                            </div>
+                          )}
                           {vatRate > 0 && vatAmount > 0 && (
                             <div className="flex justify-between w-full gap-8">
                               <span className="text-gray-500 font-medium">VAT ({vatRate}%):</span>
                               <span className="font-bold text-gray-700">{formatCurrency(vatAmount)}</span>
                             </div>
                           )}
-                          <div className="border-t border-gray-200 w-full my-1" />
+                          {vatRate > 0 && vatAmount > 0 && (
+                            <div className="border-t border-gray-200 w-full my-1" />
+                          )}
                           <div className="flex justify-between w-full gap-8">
                             <span className="text-gray-800 font-bold text-sm">Total Cost:</span>
                             <span className="font-extrabold text-gray-900 text-sm sm:text-base">{formatCurrency(totalCost)}</span>

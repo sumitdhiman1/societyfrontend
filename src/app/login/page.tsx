@@ -49,7 +49,7 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-white">
+    <div className="min-h-screen w-full flex bg-[#f3f4f6]">
       {/* Left Panel - Image */}
       <div className="hidden lg:block w-[40%] h-screen top-0 self-start overflow-hidden shrink-0 bg-[#060a12] relative">
         <Image

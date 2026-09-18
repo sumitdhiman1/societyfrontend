@@ -255,7 +255,15 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
         currency,
         payment_method_types: ["card"],
         saveCard,
-        metadata: { type: "QUOTE", quoteId: quoteDetails._id, quoteNumber: quoteDetails.quoteNumber }
+        metadata: {
+          type: "QUOTE",
+          quoteId: quoteDetails._id,
+          quoteNumber: quoteDetails.quoteNumber,
+          vatRate: quoteDetails.vatRate,
+          vatAmount: quoteDetails.vatAmount,
+          subtotal: quoteDetails.subtotal,
+          clientCountry: quoteDetails.clientCountry || quoteDetails.client?.country,
+        }
       });
       
       if (!intentRes.isSuccessful || !intentRes.data) {

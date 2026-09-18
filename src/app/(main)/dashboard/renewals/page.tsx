@@ -15,6 +15,8 @@ import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import { projectService } from "@/lib/projectService";
 import { paymentService } from "@/lib/paymentService";
 import { authService } from "@/lib/authService";
+import { countryService } from "@/lib/countryService";
+import { getVatRateForCountry } from "@/lib/vatHelper";
 import { formatDateTimeWithUserTz } from "@/lib/dateUtils";
 import StatusPopup from "@/components/common/StatusPopup";
 import VisaIcon from "@/components/icons/visa";
@@ -99,12 +101,28 @@ function UnifiedRenewalDetailsBox({
   });
 
   useEffect(() => {
+    countryService.getAllCountries().catch(() => { });
     const user = authService.getUser();
     if (user) {
       setCardholderName(user.fullName || "");
       setUserEmail(user.email || "");
     }
   }, []);
+
+  const isEstoniaClient = (country?: string) => {
+    if (!country) return false;
+    const c = country.trim().toUpperCase();
+    return c === "EE" || c === "EST" || c === "ESTONIA";
+  };
+  const clientCountryStr = String(
+    project.clientCountry ||
+    project.country ||
+    project.client?.country ||
+    project.client?.clientCountry ||
+    ""
+  );
+  // VAT only applies for Estonian clients (24%); all other countries are 0%
+  const vatRate = getVatRateForCountry(clientCountryStr);
 
   const renewalPrice =
     typeof project.price === "number"
@@ -113,8 +131,19 @@ function UnifiedRenewalDetailsBox({
         ? project.renewalPrice
         : parseFloat(String(project.price || project.renewalPrice || 100).replace(/[^0-9.]/g, "")) || 100;
 
+  const baseSubtotal = Number(
+    project.subtotal ??
+    (vatRate > 0 && renewalPrice > 0
+      ? Math.round((renewalPrice / (1 + vatRate / 100)) * 100) / 100
+      : renewalPrice)
+  );
+  const vatAmount = vatRate > 0 ? Math.round((baseSubtotal * (vatRate / 100)) * 100) / 100 : 0;
+  const totalDueAmount = Math.round((baseSubtotal + vatAmount) * 100) / 100;
+
   const projectCurrency = (project.currency || "USD").toUpperCase();
-  const formattedTotal = formatPrice(renewalPrice, projectCurrency);
+  const formattedSubtotal = formatPrice(baseSubtotal, projectCurrency);
+  const formattedVat = formatPrice(vatAmount, projectCurrency);
+  const formattedTotal = formatPrice(totalDueAmount > 0 ? totalDueAmount : renewalPrice, projectCurrency);
 
   const handleProcessPayment = async () => {
     if (!termsAccepted) {
@@ -130,7 +159,7 @@ function UnifiedRenewalDetailsBox({
     setProcessing(true);
     try {
       const res = await paymentService.createPaymentIntent({
-        amount: renewalPrice,
+        amount: totalDueAmount > 0 ? totalDueAmount : renewalPrice,
         currency: projectCurrency.toLowerCase(),
         metadata: {
           type: "PROJECT",
@@ -139,6 +168,10 @@ function UnifiedRenewalDetailsBox({
           title: `Renewal: ${project.title}`,
           description: `Monthly maintenance renewal for ${project.title}`,
           isRenewal: true,
+          vatRate,
+          vatAmount,
+          subtotal: baseSubtotal,
+          clientCountry: clientCountryStr,
         },
       });
 
@@ -244,12 +277,14 @@ function UnifiedRenewalDetailsBox({
         <div className="space-y-3">
           <div className="flex justify-between text-xs font-semibold text-gray-600">
             <span>Subtotal</span>
-            <span>{formattedTotal}</span>
+            <span>{formattedSubtotal}</span>
           </div>
-          <div className="flex justify-between text-xs font-semibold text-gray-600">
-            <span>VAT (0%)</span>
-            <span>$0.00</span>
-          </div>
+          {vatRate > 0 && (
+            <div className="flex justify-between text-xs font-semibold text-gray-600">
+              <span>VAT ({vatRate}%)</span>
+              <span>{formattedVat}</span>
+            </div>
+          )}
         </div>
 
         <div className="border-t border-gray-200/60 my-6" />

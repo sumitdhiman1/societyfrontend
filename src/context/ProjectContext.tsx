@@ -46,8 +46,12 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
-      router.push(`/login?redirect=/dashboard/my-projects/${projectId}`);
-      return;
+      const timer = setTimeout(() => {
+        if (!authService.isAuthenticated()) {
+          router.push(`/login?redirect=/dashboard/my-projects/${projectId}`);
+        }
+      }, 50);
+      return () => clearTimeout(timer);
     }
 
     if (projectId) {

@@ -18,6 +18,7 @@ import { useCurrency } from "@/context/CurrencyContext";
 import StatusPopup from "@/components/common/StatusPopup";
 type PaymentProcessStep = "idle" | "preparing" | "gateway" | "bank_auth" | "confirming" | "activating" | "success" | "error";
 import { countryService, Country } from "@/lib/countryService";
+import { getVatRateForCountry, isEstoniaCountry } from "@/lib/vatHelper";
 import { convertCurrencyAmount, formatPriceWithCurrency, formatActiveCurrency } from "@/lib/currencyUtils";
 import { downloadProjectDetailsPDF } from "@/lib/generateProjectDetailsPDF";
 
@@ -215,15 +216,7 @@ function PaymentForm({
     }
     const activeCode = getActiveCountryCode();
     if (!activeCode) return 0;
-    const directRate = countryService.getVatRateSync(activeCode);
-    if (directRate !== undefined && directRate > 0) return directRate;
-    const found = countriesList.find(
-      (c) =>
-        c.iso2?.toUpperCase() === activeCode.toUpperCase() ||
-        c.iso3?.toUpperCase() === activeCode.toUpperCase() ||
-        c.name?.toLowerCase() === activeCode.toLowerCase()
-    );
-    return found ? (Number(found.vatRate) || 0) : 0;
+    return getVatRateForCountry(activeCode);
   };
 
   const getVatAmount = (baseAmount: number) => {
@@ -231,8 +224,13 @@ function PaymentForm({
     return vatRate > 0 ? (baseAmount * vatRate) / 100 : 0;
   };
 
+  const getPayableDeliverablesSum = () => {
+    const payableItems = (deliverableItems || []).filter((item) => type !== "BUNDLE" || !item.isAddOn);
+    return payableItems.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+  };
+
   const getPendingWithVat = () => {
-    const currentDeliverablesSum = (deliverableItems || []).reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+    const currentDeliverablesSum = getPayableDeliverablesSum();
     const currentSubtotal = currentDeliverablesSum > 0 ? currentDeliverablesSum : (totalCost + amountPaid);
     return Math.max(0, currentSubtotal + getVatAmount(currentSubtotal) - amountPaid);
   };
@@ -242,12 +240,12 @@ function PaymentForm({
   const canPayDepositHalf = depositAmount > 0 && getDepositWithVat() < getPendingWithVat() - 0.009;
 
   useEffect(() => {
-    const currentDeliverablesSum = (deliverableItems || []).reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+    const currentDeliverablesSum = getPayableDeliverablesSum();
     const currentSubtotal = currentDeliverablesSum > 0 ? currentDeliverablesSum : (totalCost + amountPaid);
     const vatMultiplier = 1 + getActiveVatRate() / 100;
     const effectivePending = amountPaid > 0
       ? Math.max(0, (currentSubtotal * vatMultiplier) - amountPaid)
-      : totalCost * (getActiveVatRate() > 0 ? vatMultiplier : 1);
+      : currentSubtotal * (getActiveVatRate() > 0 ? vatMultiplier : 1);
     const convertedPending = convertCurrencyAmount(effectivePending, currency, nativeCurrency || "USD", conversionRate);
 
     const paramAmount = searchParams?.get("amount");
@@ -258,7 +256,7 @@ function PaymentForm({
       setPaymentOption("custom");
       setCustomAmount(convertedPending.toFixed(2));
     }
-  }, [searchParams, amountPaid, totalCost, deliverableItems, currency, conversionRate, nativeCurrency, countriesList, userCountry, billingSameAsBusiness, billingAddress.country, propVatRate]);
+  }, [searchParams, amountPaid, totalCost, deliverableItems, currency, conversionRate, nativeCurrency, countriesList, userCountry, billingSameAsBusiness, billingAddress.country, propVatRate, type]);
 
   useEffect(() => {
     if (paymentOption === "half" && !canPayDepositHalf) {
@@ -431,6 +429,10 @@ function PaymentForm({
         ? rawLineItems.substring(0, 397) + "..."
         : rawLineItems;
 
+      const currentVatRate = getActiveVatRate();
+      const currentPayableSubtotal = getPayableDeliverablesSum() > 0 ? getPayableDeliverablesSum() : totalCost;
+      const currentVatAmount = getVatAmount(currentPayableSubtotal);
+
       setPaymentStep("gateway");
       const intentResponse = await paymentService.createPaymentIntent({
         amount: finalAmount,
@@ -450,6 +452,10 @@ function PaymentForm({
           invoiceNumber: effectiveInvoiceNumber,
           messageId: effectiveMessageId,
           description: effectiveDescription,
+          vatRate: currentVatRate,
+          vatAmount: currentVatAmount,
+          subtotal: currentPayableSubtotal,
+          clientCountry: getActiveCountryCode(),
         },
       });
 
@@ -565,7 +571,7 @@ function PaymentForm({
   const addonItems = (deliverableItems || []).filter((item) => item.isAddOn);
   const subtotalRegular = regularItems.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
   const subtotalAddons = addonItems.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
-  const deliverablesSum = subtotalRegular + subtotalAddons;
+  const deliverablesSum = type === "BUNDLE" ? subtotalRegular : (subtotalRegular + subtotalAddons);
   const projectSubtotal = deliverablesSum > 0 ? deliverablesSum : (totalCost + amountPaid);
   const pendingAmount = deliverablesSum > 0 ? Math.max(0, deliverablesSum - amountPaid) : totalCost;
 
@@ -713,15 +719,18 @@ function PaymentForm({
                 </>
               )}
 
-              <tr className="border-t-2 border-gray-200 bg-gray-50/70">
-                <td className="py-2.5 px-3 sm:px-6"></td>
-                <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
-                  Base Amount:
-                </td>
-                <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
-                  {formatPrice(projectSubtotal)}
-                </td>
-              </tr>
+              {getActiveVatRate() > 0 && (
+                <tr className="border-t-2 border-gray-200 bg-gray-50/70">
+                  <td className="py-2.5 px-3 sm:px-6"></td>
+                  <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
+                    Base Amount:
+                  </td>
+                  <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
+                    {formatPrice(projectSubtotal)}
+                  </td>
+                </tr>
+              )}
+              {getActiveVatRate() > 0 && (
               <tr className="bg-gray-50/70">
                 <td className="py-2.5 px-3 sm:px-6"></td>
                 <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
@@ -731,6 +740,7 @@ function PaymentForm({
                   {formatPrice(getVatAmount(projectSubtotal))}
                 </td>
               </tr>
+              )}
               <tr className="bg-blue-50/50 border-t border-gray-200">
                 <td className="py-3 px-3 sm:px-6"></td>
                 <td className="py-3 px-3 sm:px-6 text-left text-xs sm:text-sm font-bold text-gray-800 uppercase font-sans whitespace-nowrap">
@@ -1106,7 +1116,7 @@ function PaymentForm({
                       {countriesList && countriesList.length > 0 ? (
                         countriesList.map((c) => (
                           <option key={c.iso2 || c._id} value={c.iso2}>
-                            {c.flagEmoji ? `${c.flagEmoji} ` : ""}{c.name} ({c.iso2}){c.vatRate > 0 ? ` - ${c.vatRate}% VAT` : ""}
+                            {c.flagEmoji ? `${c.flagEmoji} ` : ""}{c.name} ({c.iso2}){['EE','EST','ESTONIA'].includes((c.iso2 || '').toUpperCase()) && c.vatRate > 0 ? ` - ${c.vatRate}% VAT` : ""}
                           </option>
                         ))
                       ) : (

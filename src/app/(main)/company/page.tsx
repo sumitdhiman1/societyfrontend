@@ -182,9 +182,8 @@ export default function CompanyPage() {
     return Array.from({ length: 5 }).map((_, idx) => (
       <svg
         key={idx}
-        className={`w-[16.66px] h-[16.66px] ${
-          idx < starsCount ? "text-[#D1AC40] fill-current" : "text-gray-300 fill-current"
-        } shrink-0`}
+        className={`w-[16.66px] h-[16.66px] ${idx < starsCount ? "text-[#D1AC40] fill-current" : "text-gray-300 fill-current"
+          } shrink-0`}
         viewBox="0 0 20 20"
       >
         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
@@ -213,7 +212,7 @@ export default function CompanyPage() {
         </section>
 
         {/* ── Our Company Section ──────────────────────────────────────── */}
-        <section className="bg-white text-[#363636] py-12 md:py-[70px]">
+        <section className="bg-[#f3f4f6] text-[#363636] py-12 md:py-[70px]">
           <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] w-full flex flex-col gap-8 md:gap-[30px]">
             <div className="flex flex-col lg:flex-row w-full justify-between gap-8 lg:gap-12">
               <div className="flex flex-col gap-[21px] w-full lg:w-[42%] lg:max-w-[530px] shrink-0">
@@ -307,7 +306,7 @@ export default function CompanyPage() {
         </section>
 
         {/* ── Dynamic Testimonials & CTA Section ────────────────────────── */}
-        <section className="bg-[#F4F5FA] text-[#363636] pt-12 md:pt-[70px] pb-0 flex flex-col items-center">
+        <section className="bg-[#f3f4f6] text-[#363636] pt-12 md:pt-[70px] pb-0 flex flex-col items-center">
           <div className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] flex flex-col items-center gap-6 md:gap-[25px]">
             <h2 className="w-full text-2xl sm:text-3xl md:text-[40px] lg:text-[50px] font-semibold leading-tight sm:leading-[44px] md:leading-[60px] text-center text-[#363636]">
               See what our business community has to say

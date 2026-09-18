@@ -86,8 +86,8 @@ function ProjectLayoutContent({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="bg-white flex-grow flex flex-col font-sans" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
-      <main className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12 overflow-x-hidden">
+    <div className="bg-[#F3F4F6] flex-grow flex flex-col font-sans" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
+      <main className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12 overflow-x-hidden ">
         <div className="mb-10">
           <div className="flex items-center gap-3 group mb-8 md:mb-12">
             {isEditingTitle ? (
@@ -180,8 +180,8 @@ function ProjectLayoutContent({ children }: { children: React.ReactNode }) {
                   {getProjectEstimatedDeadline(project)
                     ? formatDate(getProjectEstimatedDeadline(project))
                     : project.deadline
-                    ? formatDate(project.deadline)
-                    : "Ongoing"}
+                      ? formatDate(project.deadline)
+                      : "Ongoing"}
                 </span>
                 <DeadlineTooltip position="left" />
               </div>
