@@ -755,6 +755,7 @@ export default function ProjectDetailsPage() {
 
   // 2. Addon items from project.messages (fallback if project.addons is empty)
   const seenMsgIds = new Set<string>();
+  const initialProposalId = String(project?.acceptedProposalMessageId || linkedQuote?.acceptedProposalMessageId || "").trim();
   const addonItemsFromMessages = (project?.messages || [])
     .filter((m: any) => {
       const isQuote = m.type === "quote_proposal" || m.content?.type === "quote_proposal";
@@ -765,6 +766,8 @@ export default function ProjectDetailsPage() {
         m.status === "accepted";
       if (!isQuote || !isAccepted) return false;
       const mId = String(m.id || m._id || m.content?.id || "").trim();
+      // Skip the initial quote proposal if it matches the main project accepted proposal
+      if (initialProposalId && mId === initialProposalId) return false;
       if (mId && seenMsgIds.has(mId)) return false;
       if (mId) seenMsgIds.add(mId);
       return true;
@@ -801,26 +804,34 @@ export default function ProjectDetailsPage() {
       })
     : [];
 
+  const rawQuoteSubtotal = Number(
+    project?.subtotal ??
+    linkedQuote?.subtotal ??
+    (vatRate > 0 && rawBaseCost > 0
+      ? Math.round((rawBaseCost / (1 + vatRate / 100)) * 100) / 100
+      : rawBaseCost)
+  );
+
   const regularItems = nonAddonDeliverableItems.length > 0
-    ? nonAddonDeliverableItems.map((item: any) => ({
-      description: item.description || item.title || item.name || "Deliverable",
-      details: item.details || "",
-      duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") || String(item.duration).toLowerCase().includes("week") || String(item.duration).toLowerCase().includes("month") ? "" : "Days")}`.trim() : "30 Days",
-      amount: Number(item.amount ?? item.cost ?? 0),
-      isAddOn: false,
-    }))
+    ? nonAddonDeliverableItems.map((item: any) => {
+        let itemAmount = Number(item.amount ?? item.cost ?? 0);
+        if (itemAmount === 0 && nonAddonDeliverableItems.length === 1 && rawQuoteSubtotal > 0) {
+          itemAmount = rawQuoteSubtotal;
+        }
+        return {
+          description: item.description || item.title || item.name || "Deliverable",
+          details: item.details || "",
+          duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") || String(item.duration).toLowerCase().includes("week") || String(item.duration).toLowerCase().includes("month") ? "" : "Days")}`.trim() : "30 Days",
+          amount: itemAmount,
+          isAddOn: false,
+        };
+      })
     : project?.title
       ? [{
         description: project.title,
         details: project.description || "",
         duration: project.timelineInDays ? `${project.timelineInDays} Days` : (project.totalDuration || project.duration || project.timeline || "30 Days"),
-        amount: Number(
-          project?.subtotal ??
-          linkedQuote?.subtotal ??
-          (vatRate > 0 && rawBaseCost > 0
-            ? Math.round((rawBaseCost / (1 + vatRate / 100)) * 100) / 100
-            : rawBaseCost)
-        ),
+        amount: rawQuoteSubtotal,
         isAddOn: false,
       }]
       : [];

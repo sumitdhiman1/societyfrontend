@@ -493,11 +493,13 @@ export default function CalculatorProjectPayments({
     ) ||
     hasInvoiceOrAmountQuery;
 
-  const depositAmount = Number(
-    activeProject.depositAmount ||
-    linkedQuote.depositAmount ||
-    (totalSubtotal > 0 ? totalSubtotal / 2 : (totalProjectCost > 0 ? totalProjectCost / 2 : 0))
-  );
+  const depositAmount = amountPaid > 0
+    ? 0
+    : Number(
+        activeProject.depositAmount ||
+        linkedQuote.depositAmount ||
+        (totalSubtotal > 0 ? totalSubtotal / 2 : (totalProjectCost > 0 ? totalProjectCost / 2 : 0))
+      );
 
   const currency = (
     activeProject.currency ||

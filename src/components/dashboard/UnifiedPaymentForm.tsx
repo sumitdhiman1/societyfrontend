@@ -237,7 +237,7 @@ function PaymentForm({
 
   const getDepositWithVat = () => depositAmount * (1 + getActiveVatRate() / 100);
 
-  const canPayDepositHalf = depositAmount > 0 && getDepositWithVat() < getPendingWithVat() - 0.009;
+  const canPayDepositHalf = amountPaid <= 0 && depositAmount > 0 && getDepositWithVat() < getPendingWithVat() - 0.009;
 
   useEffect(() => {
     const currentDeliverablesSum = getPayableDeliverablesSum();
