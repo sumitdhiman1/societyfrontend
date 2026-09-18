@@ -12,11 +12,14 @@ export const QuoteProvider = ({ children }: { children: React.ReactNode }) => {
 
   const [quote, setQuote] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const isInitialMount = useRef(true);
+  const quoteRef = useRef<any>(null);
+  useEffect(() => {
+    quoteRef.current = quote;
+  }, [quote]);
 
   const fetchQuote = useCallback(async (silent = false) => {
     if (!id) return;
-    if (!silent && !quote) {
+    if (!silent && !quoteRef.current) {
       setIsLoading(true);
     }
     try {
@@ -33,18 +36,16 @@ export const QuoteProvider = ({ children }: { children: React.ReactNode }) => {
         setIsLoading(false);
       }
     }
-  }, [id, quote]);
+  }, [id]);
 
   useEffect(() => {
-    if (id && isInitialMount.current) {
-      isInitialMount.current = false;
-      fetchQuote(false);
-    }
+    if (!id) return;
+    fetchQuote(false);
 
-    // Active silent background polling (every 3 seconds) for live chat updates
+    // Active silent background polling (every 5 seconds) for live chat updates
     const pollInterval = setInterval(() => {
       fetchQuote(true);
-    }, 3000);
+    }, 5000);
 
     // Listen to window custom events from sockets
     const handleRealtimeQuote = (e: any) => {
@@ -68,7 +69,6 @@ export const QuoteProvider = ({ children }: { children: React.ReactNode }) => {
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      isInitialMount.current = true;
       clearInterval(pollInterval);
       window.removeEventListener("notification:new", handleRealtimeQuote);
       window.removeEventListener("quote_message", handleRealtimeQuote);
@@ -78,12 +78,14 @@ export const QuoteProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, [id, fetchQuote]);
 
+  const refreshQuote = useCallback((silent = true) => fetchQuote(silent), [fetchQuote]);
+
   const value = useMemo(() => ({
     quote,
     setQuote,
     isLoading,
-    refreshQuote: (silent = true) => fetchQuote(silent)
-  }), [quote, isLoading, fetchQuote]);
+    refreshQuote,
+  }), [quote, isLoading, refreshQuote]);
 
   return <QuoteContext.Provider value={value}>{children}</QuoteContext.Provider>;
 };

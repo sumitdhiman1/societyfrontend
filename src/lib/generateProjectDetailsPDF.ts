@@ -1,4 +1,5 @@
 import { authService } from "./authService";
+import { getVatRateForCountry } from "./vatHelper";
 import {
   calculateSeoRawTimelineDays,
   formatGraphicsTimelineLabel,
@@ -583,7 +584,8 @@ export function extractProjectDetails(data: any): ProjectPDFData {
       (data.taxPercentage != null ? data.taxPercentage : 0)
   ) || 0;
 
-  const vatRate = explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(countryStr) ? 24 : 0);
+  // VAT only applies for Estonian clients (24%); all other countries are 0%
+  const vatRate = getVatRateForCountry(countryStr);
 
   const rawVatAmount = Number(data.vatAmount ?? data.tax ?? 0);
 

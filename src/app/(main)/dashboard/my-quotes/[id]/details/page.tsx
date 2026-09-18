@@ -350,6 +350,11 @@ export default function QuoteDetailsPage() {
 
   const isLoggedIn = Boolean(user) || authService.isAuthenticated();
 
+  const refreshQuoteRef = useRef(refreshQuote);
+  useEffect(() => {
+    refreshQuoteRef.current = refreshQuote;
+  }, [refreshQuote]);
+
   // Real-time socket connection
   useEffect(() => {
     let activeSocket: Socket | null = null;
@@ -411,7 +416,7 @@ export default function QuoteDetailsPage() {
       const handleMessageUpdate = (data: any) => {
         const incomingId = data?.projectId || data?.quoteId || data?.project?._id || data?.quote?._id;
         if (!incomingId || String(incomingId) === String(qId)) {
-          refreshQuote(true);
+          refreshQuoteRef.current(true);
         }
       };
 
@@ -423,7 +428,7 @@ export default function QuoteDetailsPage() {
       sock.on("notification", (notif: any) => {
         const pId = notif?.data?.quoteId || notif?.data?.projectId || notif?.quoteId || notif?.projectId;
         if (!pId || String(pId) === String(qId)) {
-          refreshQuote(true);
+          refreshQuoteRef.current(true);
         }
       });
     };
@@ -439,7 +444,7 @@ export default function QuoteDetailsPage() {
         } catch { }
       }
     };
-  }, [quote?._id, quote?.id, refreshQuote]);
+  }, [quote?._id, quote?.id]);
 
   if (!quote) return null;
 

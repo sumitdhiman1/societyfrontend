@@ -16,6 +16,7 @@ import { projectService } from "@/lib/projectService";
 import { paymentService } from "@/lib/paymentService";
 import { authService } from "@/lib/authService";
 import { countryService } from "@/lib/countryService";
+import { getVatRateForCountry } from "@/lib/vatHelper";
 import { formatDateTimeWithUserTz } from "@/lib/dateUtils";
 import StatusPopup from "@/components/common/StatusPopup";
 import VisaIcon from "@/components/icons/visa";
@@ -120,9 +121,8 @@ function UnifiedRenewalDetailsBox({
     project.client?.clientCountry ||
     ""
   );
-  const dbVatRate = countryService.getVatRateSync(clientCountryStr);
-  const explicitVatRate = Number(project.vatRate ?? project.vatPercentage ?? 0);
-  const vatRate = isEstoniaClient(clientCountryStr) ? 24 : (dbVatRate > 0 ? dbVatRate : (explicitVatRate > 0 ? explicitVatRate : 0));
+  // VAT only applies for Estonian clients (24%); all other countries are 0%
+  const vatRate = getVatRateForCountry(clientCountryStr);
 
   const renewalPrice =
     typeof project.price === "number"

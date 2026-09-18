@@ -1,5 +1,6 @@
 import { authService } from "./authService";
 import { countryService } from "./countryService";
+import { getVatRateForCountry } from "./vatHelper";
 import type { CalculatorSelection } from "./priceCalculatorService";
 import {
   calculateGraphicsRawTimelineDays,
@@ -754,9 +755,8 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
       data.quoteId?.clientCountry ||
       ""
   );
-  const dbVatRate = countryService.getVatRateSync(countryStr);
-  const explicitVatRate = Number(data.vatRate) || 0;
-  const vatRate = isEstoniaClient(countryStr) ? 24 : (dbVatRate > 0 ? dbVatRate : (explicitVatRate > 0 ? explicitVatRate : 0));
+  // VAT only applies for Estonian clients (24%); all other countries are 0%
+  const vatRate = getVatRateForCountry(countryStr);
   const rawSubtotal = data.subtotal !== undefined && Number(data.subtotal) > 0
     ? Number(data.subtotal)
     : (vatRate > 0 ? Math.round((totalPrice / (1 + vatRate / 100)) * 100) / 100 : totalPrice);

@@ -18,6 +18,7 @@ import { useCurrency } from "@/context/CurrencyContext";
 import { authService } from "@/lib/authService";
 import { countryService, Country } from "@/lib/countryService";
 import { paymentService } from "@/lib/paymentService";
+import { getVatRateForCountry } from "@/lib/vatHelper";
 import { priceCalculatorService, CalculatorCategory, CalculatorConfig, CalculatorSelection } from "@/lib/priceCalculatorService";
 import {
   getSelectedTier,
@@ -1195,18 +1196,8 @@ const CalculatorPaymentForm = ({
     if (!isAuth) return 0;
     const codeOrName = userCountry?.trim() || "";
     if (!codeOrName) return 0;
-    const direct = countryService.getVatRateSync(codeOrName);
-    if (direct > 0) return direct;
-    const found = countriesList.find(
-      (c) =>
-        c.iso2?.toUpperCase() === codeOrName.toUpperCase() ||
-        c.iso3?.toUpperCase() === codeOrName.toUpperCase() ||
-        c.name?.toLowerCase() === codeOrName.toLowerCase()
-    );
-    if (found && Number(found.vatRate) > 0) return Number(found.vatRate);
-    if (isEstonia(codeOrName)) return 24;
-    return 0;
-  }, [isAuth, userCountry, countriesList]);
+    return getVatRateForCountry(codeOrName);
+  }, [isAuth, userCountry]);
 
   const vatMultiplier = vatRate > 0 ? vatRate / 100 : 0;
   const currencyLabel = currency.toUpperCase();
@@ -1684,18 +1675,8 @@ export default function CalculatorPage() {
     if (!authService.isAuthenticated()) return 0;
     const codeOrName = userCountry?.trim() || "";
     if (!codeOrName) return 0;
-    const direct = countryService.getVatRateSync(codeOrName);
-    if (direct > 0) return direct;
-    const found = countriesList.find(
-      (c) =>
-        c.iso2?.toUpperCase() === codeOrName.toUpperCase() ||
-        c.iso3?.toUpperCase() === codeOrName.toUpperCase() ||
-        c.name?.toLowerCase() === codeOrName.toLowerCase()
-    );
-    if (found && Number(found.vatRate) > 0) return Number(found.vatRate);
-    if (isEstonia(codeOrName)) return 24;
-    return 0;
-  }, [userCountry, countriesList]);
+    return getVatRateForCountry(codeOrName);
+  }, [userCountry]);
 
   const vatMultiplier = vatRate > 0 ? vatRate / 100 : 0;
 

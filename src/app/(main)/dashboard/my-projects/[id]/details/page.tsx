@@ -1170,10 +1170,12 @@ export default function ProjectDetailsPage() {
 
             {/* Totals Summary */}
             <div className={`flex flex-row justify-end gap-6 sm:gap-12 text-xs sm:text-sm ${project.calculatorSpecs ? "mb-4" : "mb-8"}`}>
-              <div className="text-center">
-                <div className="text-gray-500 font-bold mb-1 sm:mb-2">Base Amount</div>
-                <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(totalSubtotal)}</div>
-              </div>
+              {vatRate > 0 && effectiveVatAmount > 0 && (
+                <div className="text-center">
+                  <div className="text-gray-500 font-bold mb-1 sm:mb-2">Base Amount</div>
+                  <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(totalSubtotal)}</div>
+                </div>
+              )}
               {vatRate > 0 && effectiveVatAmount > 0 && (
                 <div className="text-center">
                   <div className="text-gray-500 font-bold mb-1 sm:mb-2">VAT ({vatRate}%)</div>
@@ -1801,17 +1803,21 @@ export default function ProjectDetailsPage() {
                           ) : null}
                         </div>
                         <div className="flex flex-col items-end gap-2 text-xs sm:text-sm min-w-[220px]">
-                          <div className="flex justify-between w-full gap-8">
-                            <span className="text-gray-500 font-medium">Base Amount:</span>
-                            <span className="font-bold text-gray-700">{formatCurrency(baseAmount)}</span>
-                          </div>
+                          {vatRate > 0 && vatAmount > 0 && (
+                            <div className="flex justify-between w-full gap-8">
+                              <span className="text-gray-500 font-medium">Base Amount:</span>
+                              <span className="font-bold text-gray-700">{formatCurrency(baseAmount)}</span>
+                            </div>
+                          )}
                           {vatRate > 0 && vatAmount > 0 && (
                             <div className="flex justify-between w-full gap-8">
                               <span className="text-gray-500 font-medium">VAT ({vatRate}%):</span>
                               <span className="font-bold text-gray-700">{formatCurrency(vatAmount)}</span>
                             </div>
                           )}
-                          <div className="border-t border-gray-200 w-full my-1" />
+                          {vatRate > 0 && vatAmount > 0 && (
+                            <div className="border-t border-gray-200 w-full my-1" />
+                          )}
                           <div className="flex justify-between w-full gap-8">
                             <span className="text-gray-800 font-bold text-sm">Total Cost:</span>
                             <span className="font-extrabold text-gray-900 text-sm sm:text-base">{formatCurrency(totalCost)}</span>
