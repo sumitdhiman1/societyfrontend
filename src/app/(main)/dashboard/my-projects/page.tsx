@@ -108,12 +108,32 @@ export default function MyProjectsPage() {
     { id: "canceled", label: "Cancelled", count: stats.cancelled },
   ];
 
+  const getMobilePages = () => {
+    const total = pagination.totalPages;
+    if (total <= 4) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    if (currentPage <= 2) {
+      return [1, 2, "...", total];
+    }
+    if (currentPage === 3) {
+      return total === 5 ? [1, 2, 3, 4, 5] : [1, 2, 3, "...", total];
+    }
+    if (currentPage >= total - 1) {
+      return [1, "...", total - 1, total];
+    }
+    if (currentPage === total - 2) {
+      return [1, "...", total - 2, total - 1, total];
+    }
+    return [1, "...", currentPage, "...", total];
+  };
+
   return (
-    <div className="bg-[#F3F4F6] flex-grow flex flex-col">
-      <main className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-6 md:gap-0">
+    <div className="bg-[#F3F4F6] flex-grow flex flex-col font-sans w-full max-w-full overflow-x-hidden">
+      <main className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-8 md:pb-12 flex flex-col">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-0 md:mb-6 gap-6 md:gap-0">
           <div className="w-full md:w-auto min-w-0 overflow-hidden">
-            <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100 mb-8 md:mb-12">
+            <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100 mb-5 md:mb-12">
               My Projects
             </h1>
 
@@ -161,7 +181,7 @@ export default function MyProjectsPage() {
           </div>
         </div>
 
-        <div className={`space-y-6 mt-8 min-h-[400px] transition-all duration-300 ${isTransitioning ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
+        <div className={`space-y-6 mt-5 md:mt-8 min-h-[400px] flex-grow flex flex-col transition-all duration-300 ${isTransitioning ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
           {loading && projects.length === 0 ? (
             [1, 2, 3].map((i) => (
               <div key={i} className="border border-gray-200 rounded-[4px] p-6 h-40 animate-pulse bg-gray-50" />
@@ -216,66 +236,112 @@ export default function MyProjectsPage() {
           )}
 
           {/* New Project Banner */}
-          <div className="border border-dashed border-[#717171] rounded-[8px] p-8 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 mt-8">
+          <div className="border border-dashed border-[#717171] rounded-[8px] p-6 sm:p-8 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 mt-8">
             <h3
-              className="text-[22px] font-bold text-gray-900 font-sans"
+              className="text-[20px] sm:text-[22px] font-bold text-gray-900 font-sans"
               style={{ fontFamily: "var(--font-inter), sans-serif" }}
             >
               New Project
             </h3>
             <button
               onClick={() => router.push("/dashboard/new-project")}
-              className="bg-[#4343F0] hover:bg-[#3232b7] text-white text-[15px] font-bold py-3.5 px-8 rounded-[7px] transition-all shadow-sm whitespace-nowrap font-sans border-2 border-[#4343F0] cursor-pointer"
+              className="bg-[#4343F0] hover:bg-[#3232b7] text-white text-[15px] font-bold py-3.5 px-8 rounded-[7px] transition-all shadow-sm whitespace-nowrap font-sans border-2 border-[#4343F0] cursor-pointer w-full sm:w-auto text-center"
             >
               Create a New Project
             </button>
           </div>
-
-          {/* Pagination */}
-          {!loading && pagination.totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-12 py-4">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${currentPage === 1
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
-                  }`}
-              >
-                Previous
-              </button>
-
-              <div className="flex items-center gap-1 mx-4">
-                {[...Array(pagination.totalPages)].map((_, i) => (
-                  <button
-                    key={i + 1}
-                    onClick={() => setCurrentPage(i + 1)}
-                    className={`w-10 h-10 flex items-center justify-center rounded-[4px] text-sm font-bold transition-all cursor-pointer ${currentPage === i + 1
-                      ? "bg-[#4343F0] text-white shadow-md shadow-blue-500/20"
-                      : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
-                      }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(pagination.totalPages, prev + 1))}
-                disabled={currentPage === pagination.totalPages}
-                className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${currentPage === pagination.totalPages
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
-                  }`}
-              >
-                Next
-              </button>
-            </div>
-          )}
         </div>
 
-        <div className="mt-16">
-          <SupportNewsletter noPadding />
+        {/* Mobile Pagination */}
+        {!loading && pagination.totalPages > 1 && (
+          <div className="flex md:hidden items-center justify-center gap-1.5 my-8 w-full max-w-full">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className={`px-2.5 py-1.5 rounded-[4px] text-xs font-bold transition-all shrink-0 ${currentPage === 1
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-white border border-gray-200 text-gray-700 active:scale-95 cursor-pointer"
+                }`}
+            >
+              Previous
+            </button>
+            <div className="flex items-center gap-1">
+              {getMobilePages().map((pageItem, idx) =>
+                pageItem === "..." ? (
+                  <span key={`ellipsis-${idx}`} className="px-1 text-gray-400 font-bold text-xs select-none">
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={pageItem}
+                    onClick={() => setCurrentPage(Number(pageItem))}
+                    className={`w-8 h-8 flex items-center justify-center rounded-[4px] text-xs font-bold transition-all cursor-pointer ${currentPage === pageItem
+                      ? "bg-[#4343F0] text-white shadow-md shadow-blue-500/20"
+                      : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
+                  >
+                    {pageItem}
+                  </button>
+                )
+              )}
+            </div>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(pagination.totalPages, prev + 1))}
+              disabled={currentPage === pagination.totalPages}
+              className={`px-2.5 py-1.5 rounded-[4px] text-xs font-bold transition-all shrink-0 ${currentPage === pagination.totalPages
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-white border border-gray-200 text-gray-700 active:scale-95 cursor-pointer"
+                }`}
+            >
+              Next
+            </button>
+          </div>
+        )}
+
+        {/* Desktop Pagination - 100% Untouched */}
+        {!loading && pagination.totalPages > 1 && (
+          <div className="hidden md:flex items-center justify-center gap-2 mt-12 py-4">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${currentPage === 1
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
+                }`}
+            >
+              Previous
+            </button>
+
+            <div className="flex items-center gap-1 mx-4">
+              {[...Array(pagination.totalPages)].map((_, i) => (
+                <button
+                  key={i + 1}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={`w-10 h-10 flex items-center justify-center rounded-[4px] text-sm font-bold transition-all cursor-pointer ${currentPage === i + 1
+                    ? "bg-[#4343F0] text-white shadow-md shadow-blue-500/20"
+                    : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
+                    }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(pagination.totalPages, prev + 1))}
+              disabled={currentPage === pagination.totalPages}
+              className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${currentPage === pagination.totalPages
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
+                }`}
+            >
+              Next
+            </button>
+          </div>
+        )}
+
+        <div className={!loading && pagination.totalPages > 1 ? "mt-0 md:mt-16" : "mt-8 md:mt-16"}>
+          <SupportNewsletter noPadding gridClassName="mt-0 md:mt-12" />
         </div>
       </main>
     </div>

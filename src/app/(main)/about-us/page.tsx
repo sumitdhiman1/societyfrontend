@@ -52,7 +52,7 @@ export default function AboutUsPage() {
                 <div className="flex flex-col lg:flex-row lg:justify-between gap-8 lg:gap-0">
 
                     {/* Left column */}
-                    <div className="flex flex-col gap-[21px] w-full lg:w-[528px] lg:max-w-[528px] lg:shrink-0 overflow-hidden">
+                    <div className="flex flex-col gap-3 md:gap-[21px] w-full lg:w-[528px] lg:max-w-[528px] lg:shrink-0 overflow-hidden">
                         <p className="text-[16px] font-normal leading-[27px] tracking-[0em] uppercase" style={{ color: '#4343F0' }}>
                             Our Company
                         </p>
@@ -126,7 +126,7 @@ export default function AboutUsPage() {
                 <div className="w-full flex flex-col lg:flex-row lg:items-center gap-6 lg:gap-8">
 
                     {/* Left text block */}
-                    <div className="flex flex-col gap-4 w-full lg:flex-1">
+                    <div className="flex flex-col gap-3 md:gap-4 w-full lg:flex-1">
                         <h2 className="text-[28px] sm:text-[36px] lg:text-[40px] font-semibold leading-[100%] tracking-[-0.03em]" style={{ color: '#363636' }}>
                             Leading the new generation of web companies.
                         </h2>
@@ -157,7 +157,7 @@ export default function AboutUsPage() {
                         </div>
 
                         {/* Text content — 411px, pt-37px, gap-18px */}
-                        <div className="flex flex-col gap-[18px] flex-1 pt-[37px] px-6 pb-6 lg:px-8 lg:pb-8">
+                        <div className="flex flex-col gap-3 md:gap-[18px] flex-1 pt-[37px] px-6 pb-6 lg:px-8 lg:pb-8">
                             <h3 className="text-[22px] font-bold leading-[27px] tracking-[0em]" style={{ color: '#363636' }}>
                                 As a strong foundational principal
                             </h3>

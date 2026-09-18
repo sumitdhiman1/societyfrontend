@@ -146,14 +146,14 @@ export default function MyAnalysesPage() {
 
   return (
     <div
-      className="bg-[#F3F4F6] flex-grow flex flex-col font-sans"
+      className="bg-[#F3F4F6] flex-grow flex flex-col font-sans w-full max-w-full overflow-x-hidden"
       style={{ fontFamily: "var(--font-inter), sans-serif" }}
     >
-      <main className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-6 md:pb-8 flex flex-col justify-between flex-grow">
+      <main className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-8 md:pb-12 flex flex-col justify-between flex-grow">
         {/* Top Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-6 md:gap-0">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-0 md:mb-6 gap-6 md:gap-0">
           <div className="w-full md:w-auto min-w-0 overflow-hidden">
-            <div className="flex items-center gap-6 mb-8 md:mb-12">
+            <div className="flex items-center gap-6 mb-5 md:mb-12">
               <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100">
                 My Analyses
               </h1>
@@ -196,7 +196,7 @@ export default function MyAnalysesPage() {
         </div>
 
         {/* Content List Section */}
-        <div className="space-y-6 mt-6 flex-grow flex flex-col">
+        <div className="space-y-6 mt-5 md:mt-8 flex-grow flex flex-col">
           {loading ? (
             Array.from({ length: 2 }).map((_, i) => (
               <div
@@ -267,16 +267,16 @@ export default function MyAnalysesPage() {
           )}
 
           {/* New Analysis Banner */}
-          <div className="border border-dashed border-[#717171] rounded-[8px] p-8 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 mt-8">
+          <div className="border border-dashed border-[#717171] rounded-[8px] p-6 sm:p-8 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 mt-8">
             <h3
-              className="text-[22px] font-bold text-gray-900 font-sans"
+              className="text-[20px] sm:text-[22px] font-bold text-gray-900 font-sans"
               style={{ fontFamily: "var(--font-inter), sans-serif" }}
             >
               New Analysis
             </h3>
             <button
               onClick={() => router.push("/dashboard/new-project/packages?categorycode=ANALYSIS&sortBy=order_asc")}
-              className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-[15px] font-bold py-3.5 px-8 rounded-[7px] transition-all shadow-sm whitespace-nowrap font-sans border-2 border-[#4343F0] cursor-pointer"
+              className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-[15px] font-bold py-3.5 px-8 rounded-[7px] transition-all shadow-sm whitespace-nowrap font-sans border-2 border-[#4343F0] cursor-pointer w-full sm:w-auto text-center"
             >
               Request a New Analysis
             </button>
@@ -284,8 +284,8 @@ export default function MyAnalysesPage() {
         </div>
 
         {/* Support & Newsletter Section */}
-        <div className="mt-10 md:mt-14 mb-2">
-          <SupportNewsletter noPadding />
+        <div className="mt-8 md:mt-16">
+          <SupportNewsletter noPadding gridClassName="mt-0 md:mt-12" />
         </div>
       </main>
     </div>

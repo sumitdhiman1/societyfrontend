@@ -198,12 +198,12 @@ export default function CompanyPage() {
         <section className="relative h-[420px] sm:h-[436px] bg-[#00102E] flex items-center overflow-hidden">
           <img src="/images/image.png" className="company-bg absolute right-0 top-[33%] h-full w-auto object-cover object-right opacity-90 z-0 scale-[2] origin-right translate-y-[5%]" alt="Hero background" />
           <div className="company-bg-overlay absolute inset-0 bg-gradient-to-b from-[#00102E] to-[#0E2549]/0 to-transparent z-0"></div>
-          <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] relative z-10 text-left w-full flex flex-col items-start gap-[16px]">
+          <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] relative z-10 text-left w-full flex flex-col items-start gap-3 md:gap-[16px]">
             <span className="text-[#FFFFFF] text-lg sm:text-[22px] font-bold leading-normal sm:leading-[30px]">About us</span>
             <h1 className="text-3xl sm:text-4xl md:text-[56px] font-bold text-white leading-tight sm:leading-[48px] md:leading-[64px]">
               World class websites and <br /> online marketing.
             </h1>
-            <p className="text-[#FFFFFF] text-base sm:text-[18px] font-normal leading-relaxed sm:leading-[26px] mt-2">
+            <p className="text-[#FFFFFF] text-base sm:text-[18px] font-normal leading-relaxed sm:leading-[26px] mt-0 md:mt-2">
               Society Web Solutions provides an all-in-one business class
               <br className="hidden sm:block" />
               service oriented around web presence success.
@@ -212,10 +212,10 @@ export default function CompanyPage() {
         </section>
 
         {/* ── Our Company Section ──────────────────────────────────────── */}
-        <section className="bg-[#f3f4f6] text-[#363636] py-12 md:py-[70px]">
+        <section className="bg-[#f3f4f6] text-[#363636] py-8 md:py-[70px]">
           <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] w-full flex flex-col gap-8 md:gap-[30px]">
             <div className="flex flex-col lg:flex-row w-full justify-between gap-8 lg:gap-12">
-              <div className="flex flex-col gap-[21px] w-full lg:w-[42%] lg:max-w-[530px] shrink-0">
+              <div className="flex flex-col gap-3 md:gap-[21px] w-full lg:w-[42%] lg:max-w-[530px] shrink-0">
                 <span className="text-[#4343F0] font-normal text-[16px] uppercase leading-[27px] tracking-[0em]">
                   Our Company
                 </span>
@@ -262,11 +262,11 @@ export default function CompanyPage() {
         </section>
 
         {/* ── Foundation Section ───────────────────────────────────────── */}
-        <section className="bg-[#EBE9FA] text-[#363636] py-12 md:py-[70px]">
+        <section className="bg-[#EBE9FA] text-[#363636] py-8 md:py-[70px]">
           <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] w-full">
             <div className="flex flex-col lg:flex-row lg:items-center w-full justify-between gap-8 lg:gap-8">
               {/* Left text block */}
-              <div className="w-full lg:flex-1 flex flex-col gap-4 shrink-0">
+              <div className="w-full lg:flex-1 flex flex-col gap-3 md:gap-4 shrink-0">
                 <h2 className="text-2xl sm:text-3xl md:text-[38px] lg:text-[42px] font-semibold text-[#363636] leading-tight md:leading-[48px] tracking-[-0.03em]">
                   Leading the new generation of web companies.
                 </h2>
@@ -292,7 +292,7 @@ export default function CompanyPage() {
                     className="object-cover"
                   />
                 </div>
-                <div className="flex-1 min-w-0 flex flex-col justify-center px-6 py-8 md:p-8 lg:pt-[37px] lg:px-8 lg:pb-8 gap-[18px]">
+                <div className="flex-1 min-w-0 flex flex-col justify-center px-6 py-8 md:p-8 lg:pt-[37px] lg:px-8 lg:pb-8 gap-3 md:gap-[18px]">
                   <h3 className="text-xl sm:text-[22px] font-bold text-[#363636] leading-snug sm:leading-[27px]">
                     As a strong foundational principal
                   </h3>
@@ -306,9 +306,9 @@ export default function CompanyPage() {
         </section>
 
         {/* ── Dynamic Testimonials & CTA Section ────────────────────────── */}
-        <section className="bg-[#f3f4f6] text-[#363636] pt-12 md:pt-[70px] pb-0 flex flex-col items-center">
-          <div className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] flex flex-col items-center gap-6 md:gap-[25px]">
-            <h2 className="w-full text-2xl sm:text-3xl md:text-[40px] lg:text-[50px] font-semibold leading-tight sm:leading-[44px] md:leading-[60px] text-center text-[#363636]">
+        <section className="bg-[#f3f4f6] text-[#363636] pt-8 md:pt-[70px] pb-0 flex flex-col items-center">
+          <div className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] flex flex-col items-center gap-0 md:gap-[25px]">
+            <h2 className="w-full text-2xl sm:text-3xl md:text-[40px] lg:text-[50px] font-semibold leading-tight sm:leading-[44px] md:leading-[60px] text-center text-[#363636] mb-5 md:mb-0">
               See what our business community has to say
             </h2>
 
@@ -319,7 +319,7 @@ export default function CompanyPage() {
                 onMouseLeave={handleMouseLeave}
                 onMouseUp={handleMouseUp}
                 onMouseMove={handleMouseMove}
-                className="w-full overflow-x-auto hide-scrollbar flex gap-4 md:gap-5 snap-x snap-mandatory cursor-grab active:cursor-grabbing select-none py-4 px-1"
+                className="w-full overflow-x-auto hide-scrollbar flex gap-4 md:gap-5 snap-x snap-mandatory cursor-grab active:cursor-grabbing select-none pt-0 pb-2 md:py-4 px-1"
               >
                 {testimonials.map((t, index) => (
                   <div
@@ -348,7 +348,7 @@ export default function CompanyPage() {
             </div>
 
             {/* Navigation arrows matching PDF */}
-            <div className="flex justify-center gap-4 mt-2">
+            <div className="flex justify-center gap-4 mt-3 md:mt-2">
               <button
                 type="button"
                 onClick={() => handleScroll("left")}
@@ -409,7 +409,7 @@ export default function CompanyPage() {
           </div>
 
           {/* CTA Section */}
-          <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] w-full text-center flex flex-col items-center gap-6 md:gap-[36px] pt-12 md:pt-16 pb-[80px]">
+          <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] w-full text-center flex flex-col items-center gap-6 md:gap-[36px] pt-8 md:pt-16 pb-8 md:pb-[80px]">
             <h2
               className="text-[32px] sm:text-[48px] md:text-[60px] lg:text-[70px] font-semibold leading-tight lg:leading-[82px] text-center text-[#363636]"
               style={{
@@ -432,12 +432,12 @@ export default function CompanyPage() {
         </section>
       </main>
 
-      <main className="flex-grow overflow-hidden bg-[#F4F5FA]">
+      <div className="flex-grow overflow-hidden bg-[#F4F5FA]">
         {/* ── Newsletter Section ───────────────────────────────────────── */}
-        <section className="relative z-20 pb-12">
+        <section className="relative z-20 pt-0 pb-8 md:pb-12">
           <SupportNewsletter gridClassName="!mt-0" />
         </section>
-      </main>
+      </div>
     </div>
   );
 }
