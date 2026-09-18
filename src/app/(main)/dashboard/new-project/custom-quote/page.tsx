@@ -46,10 +46,28 @@ export default function CustomQuotePage() {
     setUser(currentUser);
     if (!authService.isAuthenticated()) {
       router.push("/login?redirect=/dashboard/new-project/custom-quote");
+      return;
     }
+
+    authService.getProfile().then((freshUser) => {
+      if (freshUser) {
+        setUser(freshUser);
+      }
+    }).catch(() => {});
+
+    const handleUserUpdate = () => {
+      setUser(authService.getUser());
+    };
+    window.addEventListener("auth:user_update", handleUserUpdate);
+    return () => {
+      window.removeEventListener("auth:user_update", handleUserUpdate);
+    };
   }, [router]);
 
-  const requiresVerification = user && !user.isEmailVerified;
+  // Only require verification if user is loaded and explicitly unverified
+  const requiresVerification = Boolean(
+    user && (user.isEmailVerified === false || String(user.isEmailVerified) === "false")
+  );
   const [files, setFiles] = useState<FileItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 

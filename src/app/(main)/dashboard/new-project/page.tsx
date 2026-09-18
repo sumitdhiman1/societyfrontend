@@ -50,6 +50,17 @@ export default function NewProjectPage() {
   useEffect(() => {
     setUser(authService.getUser());
 
+    authService.getProfile().then((freshUser) => {
+      if (freshUser) {
+        setUser(freshUser);
+      }
+    }).catch(() => {});
+
+    const handleUserUpdate = () => {
+      setUser(authService.getUser());
+    };
+    window.addEventListener("auth:user_update", handleUserUpdate);
+
     const fetchPageData = async () => {
       try {
         let res = await httpClient.get<any>("/pages/getpagebyslug/new-project");
@@ -115,6 +126,10 @@ export default function NewProjectPage() {
     };
 
     fetchPageData();
+
+    return () => {
+      window.removeEventListener("auth:user_update", handleUserUpdate);
+    };
   }, []);
 
   const handleNavigation = (option: ProjectOption) => {
@@ -129,7 +144,7 @@ export default function NewProjectPage() {
         router.push(`/login?redirect=${encodeURIComponent(option.href)}`);
         return;
       }
-      if (user && !user.isEmailVerified) {
+      if (user && (user.isEmailVerified === false || String(user.isEmailVerified) === "false")) {
         setShowPopup(true);
         return;
       }

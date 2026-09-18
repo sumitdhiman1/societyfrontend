@@ -1081,7 +1081,9 @@ const CalculatorPaymentForm = ({
       if (authenticated) {
         const user = authService.getUser();
         if (user) {
-          setIsEmailVerified(!!user.isEmailVerified);
+          if (user.isEmailVerified !== undefined) {
+            setIsEmailVerified(user.isEmailVerified === true || String(user.isEmailVerified) === "true");
+          }
           const initialName = resolveUserName(user);
           if (initialName) {
             setCardholderName((prev) => (prev?.trim() ? prev : initialName));
@@ -1099,7 +1101,7 @@ const CalculatorPaymentForm = ({
               setCardholderName((prev) => (prev?.trim() ? prev : freshName));
             }
             if (freshUser.isEmailVerified !== undefined) {
-              setIsEmailVerified(!!freshUser.isEmailVerified);
+              setIsEmailVerified(freshUser.isEmailVerified === true || String(freshUser.isEmailVerified) === "true");
             }
             if (freshUser.country || freshUser.billingCountry) {
               setUserCountry(freshUser.country || freshUser.billingCountry);
@@ -1116,7 +1118,9 @@ const CalculatorPaymentForm = ({
       const u = authService.getUser();
       if (u) {
         setIsAuth(true);
-        setIsEmailVerified(!!u.isEmailVerified);
+        if (u.isEmailVerified !== undefined) {
+          setIsEmailVerified(u.isEmailVerified === true || String(u.isEmailVerified) === "true");
+        }
         const name = resolveUserName(u);
         if (name) setCardholderName(name);
         if (u.country || u.billingCountry) setUserCountry(u.country || u.billingCountry);
