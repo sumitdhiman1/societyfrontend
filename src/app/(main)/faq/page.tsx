@@ -45,9 +45,8 @@ function Accordion({ title, children }: { title: string; children: React.ReactNo
       >
         <span className="font-semibold text-gray-700 pr-4">{title}</span>
         <div
-          className={`w-8 h-8 rounded-full shrink-0 bg-[#4343F0] flex items-center justify-center text-white transition-transform duration-200 ${
-            isOpen ? "rotate-180" : ""
-          }`}
+          className={`w-8 h-8 rounded-full shrink-0 bg-[#4343F0] flex items-center justify-center text-white transition-transform duration-200 ${isOpen ? "rotate-180" : ""
+            }`}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
@@ -55,9 +54,8 @@ function Accordion({ title, children }: { title: string; children: React.ReactNo
         </div>
       </button>
       <div
-        className={`transition-all duration-300 ease-in-out overflow-hidden ${
-          isOpen ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
-        }`}
+        className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
+          }`}
       >
         <div className="px-6 pb-6 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-4 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1">
           {typeof children === "string" && (children.includes("<p>") || children.includes("<ul>") || children.includes("<ol>") || children.includes("<br")) ? (
@@ -145,7 +143,7 @@ export default function FAQPage() {
         </div>
       </div>
 
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:px-[54px] py-12 md:py-16">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:px-[54px] py-12 md:py-16 bg-[#F3F4F6]">
         {pageData.hero.subtitle && (
           <div className="text-gray-500 mb-10 text-base sm:text-lg leading-relaxed whitespace-pre-wrap [&_p]:mb-3 [&_p:last-child]:mb-0 [&_a]:underline [&_a]:text-[#4343F0]">
             {pageData.hero.subtitle.includes("<p>") || pageData.hero.subtitle.includes("<br") ? (

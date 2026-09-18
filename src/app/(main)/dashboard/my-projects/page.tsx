@@ -109,7 +109,7 @@ export default function MyProjectsPage() {
   ];
 
   return (
-    <div className="bg-[#F4F5FA] flex-grow flex flex-col">
+    <div className="bg-[#F3F4F6] flex-grow flex flex-col">
       <main className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-6 md:gap-0">
           <div className="w-full md:w-auto min-w-0 overflow-hidden">

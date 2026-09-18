@@ -53,7 +53,7 @@ export default function SupportHistoryPage() {
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen bg-white font-sans">
+    <div className="flex flex-col min-h-screen bg-[#F3F4F6] font-sans">
       {/* Hero Section */}
       <div className="bg-primary-100 border-[3px] border-gray-600">
         <div className="container mx-auto px-4 md:px-8 lg:px-[54px] py-10 md:py-16 max-w-[1536px]">
@@ -63,7 +63,7 @@ export default function SupportHistoryPage() {
         </div>
       </div>
 
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:px-[54px] py-12 md:py-20 lg:pb-40">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:px-[54px] py-12 md:py-20 lg:pb-40 bg-[#F3F4F6]">
         <div className="min-h-[300px]">
           {loading ? (
             <div className="flex justify-center items-center py-24">
@@ -103,8 +103,8 @@ export default function SupportHistoryPage() {
                         </span>
                         <span
                           className={`border px-4 py-1 rounded-md text-[11px] md:text-[13px] font-bold uppercase tracking-wider w-fit ${ticket.status === "open"
-                              ? "bg-blue-100 text-blue-600 border-blue-200"
-                              : "bg-gray-100 text-gray-600 border-gray-200"
+                            ? "bg-blue-100 text-blue-600 border-blue-200"
+                            : "bg-gray-100 text-gray-600 border-gray-200"
                             }`}
                         >
                           {ticket.status || "open"}

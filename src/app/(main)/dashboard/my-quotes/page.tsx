@@ -63,10 +63,10 @@ export default function MyQuotesPage() {
       const quoteList = Array.isArray(payload)
         ? payload
         : Array.isArray(payload?.quotes)
-        ? payload.quotes
-        : Array.isArray(payload?.data)
-        ? payload.data
-        : [];
+          ? payload.quotes
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
       setQuotes(quoteList);
 
       const pag = res?.pagination || payload?.pagination || {};
@@ -136,213 +136,208 @@ export default function MyQuotesPage() {
 
 
   return (
-    <div className="bg-[#F4F5FA] flex-grow flex flex-col font-sans">
+    <div className="bg-[#F3F4F6] flex-grow flex flex-col font-sans">
       <main className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-6 md:pb-8 flex flex-col">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-6 md:gap-0">
-        <div className="w-full md:w-auto min-w-0 overflow-hidden">
-          <div className="flex items-center gap-6 mb-8 md:mb-12">
-            <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100">
-              My Quotes
-            </h1>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-6 md:gap-0">
+          <div className="w-full md:w-auto min-w-0 overflow-hidden">
+            <div className="flex items-center gap-6 mb-8 md:mb-12">
+              <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100">
+                My Quotes
+              </h1>
+            </div>
+
+            <div
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              className="flex space-x-6 md:space-x-8 border-b border-gray-200 w-full overflow-x-auto"
+            >
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setCurrentPage(1);
+                  }}
+                  className={`pb-3 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 rounded-none cursor-pointer ${activeTab === tab.id
+                      ? "text-primary-300 border-b-2 border-primary-300"
+                      : "text-gray-500 hover:text-gray-700"
+                    }`}
+                >
+                  {tab.label} ({tab.count})
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-            className="flex space-x-6 md:space-x-8 border-b border-gray-200 w-full overflow-x-auto"
-          >
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  setCurrentPage(1);
-                }}
-                className={`pb-3 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 rounded-none cursor-pointer ${
-                  activeTab === tab.id
-                    ? "text-primary-300 border-b-2 border-primary-300"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                {tab.label} ({tab.count})
-              </button>
-            ))}
+          <div className="hidden md:flex flex-col justify-center border-2 border-[#707070] rounded-[8px] px-8 bg-[#EEEEEE] text-left w-[254px] h-[99px] shrink-0">
+            {currentTime ? (
+              <div className="flex flex-col justify-center">
+                <div className="text-[12px] font-semibold text-[#707070] mb-1.5 leading-none">
+                  {formatClockTime(currentTime)}
+                </div>
+                <div className="text-[15px] font-medium text-[#505050] leading-tight">
+                  {formatClockDate(currentTime)}
+                </div>
+              </div>
+            ) : (
+              <div className="h-full w-full bg-gray-200 rounded animate-pulse" />
+            )}
           </div>
         </div>
 
-        <div className="hidden md:flex flex-col justify-center border-2 border-[#707070] rounded-[8px] px-8 bg-[#EEEEEE] text-left w-[254px] h-[99px] shrink-0">
-          {currentTime ? (
-            <div className="flex flex-col justify-center">
-              <div className="text-[12px] font-semibold text-[#707070] mb-1.5 leading-none">
-                {formatClockTime(currentTime)}
+        <div
+          className={`space-y-6 mt-8 flex-grow flex flex-col transition-all duration-300 ${fetchingData ? "opacity-50 pointer-events-none" : "opacity-100"
+            }`}
+        >
+          {initialLoading && quotes.length === 0 ? (
+            [1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="border border-gray-200 rounded-[8px] p-6 h-40 animate-pulse bg-white"
+              />
+            ))
+          ) : quotes.length === 0 ? (
+            <div className="text-center py-16 bg-white rounded-lg border border-gray-200">
+              <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-8 w-8 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
               </div>
-              <div className="text-[15px] font-medium text-[#505050] leading-tight">
-                {formatClockDate(currentTime)}
-              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-1">
+                No quotes found
+              </h3>
+              <p className="text-gray-500 text-sm mb-6">
+                You don't have any quotes in this status yet.
+              </p>
+              <button
+                onClick={() => router.push("/dashboard/new-project/custom-quote")}
+                className="bg-[#4343F0] hover:bg-[#3232b7] text-white text-sm font-bold py-2.5 px-6 rounded-[6px] transition-colors cursor-pointer"
+              >
+                Request a Quote
+              </button>
             </div>
           ) : (
-            <div className="h-full w-full bg-gray-200 rounded animate-pulse" />
-          )}
-        </div>
-      </div>
-
-      <div
-        className={`space-y-6 mt-8 flex-grow flex flex-col transition-all duration-300 ${
-          fetchingData ? "opacity-50 pointer-events-none" : "opacity-100"
-        }`}
-      >
-        {initialLoading && quotes.length === 0 ? (
-          [1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="border border-gray-200 rounded-[8px] p-6 h-40 animate-pulse bg-white"
-            />
-          ))
-        ) : quotes.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-lg border border-gray-200">
-            <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-8 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+            quotes.map((quote) => (
+              <div
+                key={quote._id}
+                className="border border-gray-200 rounded-[8px] p-6 bg-white hover:shadow-sm transition-shadow"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-1">
-              No quotes found
-            </h3>
-            <p className="text-gray-500 text-sm mb-6">
-              You don't have any quotes in this status yet.
-            </p>
-            <button
-              onClick={() => router.push("/dashboard/new-project/custom-quote")}
-              className="bg-[#4343F0] hover:bg-[#3232b7] text-white text-sm font-bold py-2.5 px-6 rounded-[6px] transition-colors cursor-pointer"
-            >
-              Request a Quote
-            </button>
-          </div>
-        ) : (
-          quotes.map((quote) => (
-            <div
-              key={quote._id}
-              className="border border-gray-200 rounded-[8px] p-6 bg-white hover:shadow-sm transition-shadow"
-            >
-              <div className="flex flex-col gap-4">
-                <div className="flex-grow">
-                  {(quote.quoteNumber || quote.quoteId) && (
-                    <span className="text-xs font-mono text-gray-400 font-bold block mb-1">
-                      {quote.quoteNumber || quote.quoteId}
-                    </span>
-                  )}
-                  <h3 className="text-lg font-bold text-gray-800">
-                    {quote.projectTitle || "Custom Quote"}
-                  </h3>
-                  {quote.projectDescription && (
-                    <p className="text-sm text-gray-500 mt-1 line-clamp-1">
-                      {quote.projectDescription}
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
-                  <div className="flex items-center justify-between w-full sm:w-auto gap-4">
-                    <span className="text-sm text-gray-500 font-medium whitespace-nowrap">
-                      {formatSubmittedDate(quote.createdAt)}
-                    </span>
-                    <span
-                      className={`px-4 py-1 rounded-[4px] text-xs font-bold uppercase border whitespace-nowrap ${getStatusBadgeStyles(
-                        quote.status
-                      )}`}
-                    >
-                      {quote.status}
-                    </span>
+                <div className="flex flex-col gap-4">
+                  <div className="flex-grow">
+                    {(quote.quoteNumber || quote.quoteId) && (
+                      <span className="text-xs font-mono text-gray-400 font-bold block mb-1">
+                        {quote.quoteNumber || quote.quoteId}
+                      </span>
+                    )}
+                    <h3 className="text-lg font-bold text-gray-800">
+                      {quote.projectTitle || "Custom Quote"}
+                    </h3>
+                    {quote.projectDescription && (
+                      <p className="text-sm text-gray-500 mt-1 line-clamp-1">
+                        {quote.projectDescription}
+                      </p>
+                    )}
                   </div>
-                  <button
-                    onClick={() => {
-                      const id = quote.quoteId || quote._id;
-                      router.push(`/dashboard/my-quotes/${id}`);
-                    }}
-                    className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-sm font-bold py-2.5 px-6 rounded-[4px] transition-colors whitespace-nowrap cursor-pointer"
-                  >
-                    View details
-                  </button>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+                    <div className="flex items-center justify-between w-full sm:w-auto gap-4">
+                      <span className="text-sm text-gray-500 font-medium whitespace-nowrap">
+                        {formatSubmittedDate(quote.createdAt)}
+                      </span>
+                      <span
+                        className={`px-4 py-1 rounded-[4px] text-xs font-bold uppercase border whitespace-nowrap ${getStatusBadgeStyles(
+                          quote.status
+                        )}`}
+                      >
+                        {quote.status}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const id = quote.quoteId || quote._id;
+                        router.push(`/dashboard/my-quotes/${id}`);
+                      }}
+                      className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-sm font-bold py-2.5 px-6 rounded-[4px] transition-colors whitespace-nowrap cursor-pointer"
+                    >
+                      View details
+                    </button>
+                  </div>
                 </div>
               </div>
+            ))
+          )}
+
+          {/* New Quote Banner */}
+          <div className="border border-dashed border-[#717171] rounded-[8px] p-8 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 mt-8">
+            <h3
+              className="text-[22px] font-bold text-gray-900 font-sans"
+              style={{ fontFamily: "var(--font-inter), sans-serif" }}
+            >
+              New Quote
+            </h3>
+            <button
+              onClick={() => router.push("/dashboard/new-project/custom-quote")}
+              className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-[15px] font-bold py-3.5 px-8 rounded-[7px] transition-all shadow-sm whitespace-nowrap font-sans border-2 border-[#4343F0] cursor-pointer"
+            >
+              Create a New Quote
+            </button>
+          </div>
+        </div>
+
+        {!initialLoading && pagination.totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-12 py-4">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${currentPage === 1
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
+                }`}
+            >
+              Previous
+            </button>
+            <div className="flex items-center gap-1 mx-4">
+              {[...Array(pagination.totalPages)].map((_, i) => (
+                <button
+                  key={i + 1}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={`w-10 h-10 flex items-center justify-center rounded-[4px] text-sm font-bold transition-all cursor-pointer ${currentPage === i + 1
+                      ? "bg-primary-300 text-white shadow-lg shadow-blue-500/20"
+                      : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
+                    }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
             </div>
-          ))
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
+              disabled={currentPage === pagination.totalPages}
+              className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${currentPage === pagination.totalPages
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
+                }`}
+            >
+              Next
+            </button>
+          </div>
         )}
 
-        {/* New Quote Banner */}
-        <div className="border border-dashed border-[#717171] rounded-[8px] p-8 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 mt-8">
-          <h3
-            className="text-[22px] font-bold text-gray-900 font-sans"
-            style={{ fontFamily: "var(--font-inter), sans-serif" }}
-          >
-            New Quote
-          </h3>
-          <button
-            onClick={() => router.push("/dashboard/new-project/custom-quote")}
-            className="bg-[#4343F0] hover:bg-[#3333D0] text-white text-[15px] font-bold py-3.5 px-8 rounded-[7px] transition-all shadow-sm whitespace-nowrap font-sans border-2 border-[#4343F0] cursor-pointer"
-          >
-            Create a New Quote
-          </button>
+        <div className="mt-10 md:mt-14 mb-2">
+          <SupportNewsletter noPadding />
         </div>
-      </div>
-
-      {!initialLoading && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-12 py-4">
-          <button
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-            className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${
-              currentPage === 1
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
-            }`}
-          >
-            Previous
-          </button>
-          <div className="flex items-center gap-1 mx-4">
-            {[...Array(pagination.totalPages)].map((_, i) => (
-              <button
-                key={i + 1}
-                onClick={() => setCurrentPage(i + 1)}
-                className={`w-10 h-10 flex items-center justify-center rounded-[4px] text-sm font-bold transition-all cursor-pointer ${
-                  currentPage === i + 1
-                    ? "bg-primary-300 text-white shadow-lg shadow-blue-500/20"
-                    : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-50"
-                }`}
-              >
-                {i + 1}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
-            disabled={currentPage === pagination.totalPages}
-            className={`px-4 py-2 rounded-[4px] text-sm font-bold transition-all ${
-              currentPage === pagination.totalPages
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 cursor-pointer"
-            }`}
-          >
-            Next
-          </button>
-        </div>
-      )}
-
-      <div className="mt-10 md:mt-14 mb-2">
-        <SupportNewsletter noPadding />
-      </div>
-    </main>
-  </div>
-);
+      </main>
+    </div>
+  );
 }
 

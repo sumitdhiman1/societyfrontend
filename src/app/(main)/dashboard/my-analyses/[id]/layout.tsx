@@ -100,15 +100,15 @@ function AnalysisLayoutContent({ children }: { children: React.ReactNode }) {
     (analysis.expectedDeadline ? new Date(analysis.expectedDeadline) : null) ||
     (analysis.timelineInDays && (analysis.startDate || analysis.createdAt)
       ? (() => {
-          const d = new Date(analysis.startDate || analysis.createdAt);
-          d.setDate(d.getDate() + Number(analysis.timelineInDays));
-          return d;
-        })()
+        const d = new Date(analysis.startDate || analysis.createdAt);
+        d.setDate(d.getDate() + Number(analysis.timelineInDays));
+        return d;
+      })()
       : null);
 
   return (
     <div
-      className="bg-white flex-grow flex flex-col font-sans"
+      className="bg-[#F3F4F6] flex-grow flex flex-col font-sans"
       style={{ fontFamily: "var(--font-inter), sans-serif" }}
     >
       <main className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
@@ -178,11 +178,10 @@ function AnalysisLayoutContent({ children }: { children: React.ReactNode }) {
                 <Link
                   key={tab}
                   href={`/dashboard/my-analyses/${analysisId}/${tab}`}
-                  className={`pb-4 text-base sm:text-lg font-inter capitalize transition-colors relative whitespace-nowrap ${
-                    activeTab === tab
+                  className={`pb-4 text-base sm:text-lg font-inter capitalize transition-colors relative whitespace-nowrap ${activeTab === tab
                       ? "text-[#363636] font-bold"
                       : "text-[#88909D] font-normal hover:text-gray-600"
-                  }`}
+                    }`}
                 >
                   {tab.charAt(0).toUpperCase() + tab.slice(1)}
                   {activeTab === tab && (

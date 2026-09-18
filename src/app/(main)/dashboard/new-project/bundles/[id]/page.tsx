@@ -607,7 +607,7 @@ function BundleDetailsContent() {
   const recurringAmount = parsePrice(selectedTier?.recurringAmount ?? selectedTier?.recurringPrice);
 
   return (
-    <div className="bg-white min-h-screen flex flex-col font-sans text-[#404040]">
+    <div className="bg-[#f3f4f6] min-h-screen flex flex-col font-sans text-[#404040]">
       <StatusPopup
         isOpen={status.isOpen}
         onClose={() => setStatus({ ...status, isOpen: false })}
@@ -665,9 +665,8 @@ function BundleDetailsContent() {
                   return (
                     <div
                       key={idx}
-                      className={`px-2 md:px-6 py-4 md:py-8 text-center flex flex-col justify-center items-center ${
-                        isCustom ? "bg-[#D9D9D9]" : "bg-[#EAEAEA]"
-                      }`}
+                      className={`px-2 md:px-6 py-4 md:py-8 text-center flex flex-col justify-center items-center ${isCustom ? "bg-[#D9D9D9]" : "bg-[#EAEAEA]"
+                        }`}
                     >
                       <span className="text-[11px] md:text-[13px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-center">
                         {col.title}
@@ -753,11 +752,10 @@ function BundleDetailsContent() {
                         onClick={() =>
                           isPaid ? handleTierSelect(col) : router.push("/dashboard/new-project/custom-quote")
                         }
-                        className={`w-full max-w-[150px] py-3.5 px-3 rounded-xl font-extrabold text-[12px] md:text-[13px] uppercase tracking-wider transition-all duration-300 shadow-md hover:shadow-lg active:scale-95 ${
-                          isSelected
+                        className={`w-full max-w-[150px] py-3.5 px-3 rounded-xl font-extrabold text-[12px] md:text-[13px] uppercase tracking-wider transition-all duration-300 shadow-md hover:shadow-lg active:scale-95 ${isSelected
                             ? "bg-[#2D2DA3] text-white"
                             : "bg-[#EAEAEA] text-[#2D2DA3] hover:bg-[#D9D9D9]"
-                        }`}
+                          }`}
                       >
                         {isPaid ? "Buy Now" : "Get Quote"}
                       </button>
@@ -786,9 +784,8 @@ function BundleDetailsContent() {
                       return (
                         <div
                           key={idx}
-                          className={`px-2 md:px-6 py-4 md:py-8 text-center flex flex-col justify-center items-center ${
-                            isCustom ? "bg-[#D9D9D9]" : "bg-[#EAEAEA]"
-                          }`}
+                          className={`px-2 md:px-6 py-4 md:py-8 text-center flex flex-col justify-center items-center ${isCustom ? "bg-[#D9D9D9]" : "bg-[#EAEAEA]"
+                            }`}
                         >
                           <span className="text-[11px] md:text-[13px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-center">
                             {col.title}

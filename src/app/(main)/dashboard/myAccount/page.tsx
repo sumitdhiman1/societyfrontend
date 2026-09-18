@@ -271,8 +271,8 @@ export default function MyAccountPage() {
     } catch (err: any) {
       setEmailError(
         err?.response?.data?.message ||
-          err?.message ||
-          "Failed to send email change confirmation link."
+        err?.message ||
+        "Failed to send email change confirmation link."
       );
     } finally {
       setIsSendingEmailLink(false);
@@ -1162,11 +1162,9 @@ export default function MyAccountPage() {
                     handleSendEmailLink();
                   }
                 }}
-                className={`w-full bg-white border ${
-                  emailError ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-[#4545F0]"
-                } rounded-md px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 ${
-                  emailError ? "focus:ring-red-500" : "focus:ring-[#4545F0]"
-                } transition-all`}
+                className={`w-full bg-white border ${emailError ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-[#4545F0]"
+                  } rounded-md px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 ${emailError ? "focus:ring-red-500" : "focus:ring-[#4545F0]"
+                  } transition-all`}
                 autoFocus
               />
               {emailError && (

@@ -132,12 +132,12 @@ export default function CareersPage() {
                   idx === 0
                     ? "job-1786961518485"
                     : idx === 1
-                    ? "job-1786961835020"
-                    : idx === 2
-                    ? "job-1786964435776"
-                    : idx === 3
-                    ? "job-1786964436617"
-                    : `job-${idx + 1}`;
+                      ? "job-1786961835020"
+                      : idx === 2
+                        ? "job-1786964435776"
+                        : idx === 3
+                          ? "job-1786964436617"
+                          : `job-${idx + 1}`;
                 const jId = j.id || defaultId;
                 return {
                   id: jId,
@@ -171,7 +171,7 @@ export default function CareersPage() {
   }, []);
 
   return (
-    <div className="bg-white min-h-screen flex flex-col font-sans">
+    <div className="bg-[#F3F4F6] min-h-screen flex flex-col font-sans">
       {/* Hero Header */}
       <div className="bg-primary-100 border-[3px] border-gray-600">
         <div className="container mx-auto px-4 md:px-8 lg:px-[54px] py-10 md:py-16 max-w-[1536px]">

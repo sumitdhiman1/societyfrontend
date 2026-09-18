@@ -65,11 +65,11 @@ export default function MyAnalysesPage() {
               displayTarget: cleanTarget,
               submittedDate: item.createdAt
                 ? formatDateTime(item.createdAt, {
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })
                 : "Recently",
               status: normalizedStatus,
             };
@@ -146,7 +146,7 @@ export default function MyAnalysesPage() {
 
   return (
     <div
-      className="bg-[#F4F5FA] flex-grow flex flex-col font-sans"
+      className="bg-[#F3F4F6] flex-grow flex flex-col font-sans"
       style={{ fontFamily: "var(--font-inter), sans-serif" }}
     >
       <main className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-6 md:pb-8 flex flex-col justify-between flex-grow">
@@ -171,8 +171,8 @@ export default function MyAnalysesPage() {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`pb-3 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 rounded-none cursor-pointer ${isActive
-                        ? "text-primary-300 border-b-2 border-primary-300"
-                        : "text-gray-500 hover:text-gray-700"
+                      ? "text-primary-300 border-b-2 border-primary-300"
+                      : "text-gray-500 hover:text-gray-700"
                       }`}
                   >
                     {tab.label} ({tab.count})

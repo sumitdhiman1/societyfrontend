@@ -100,7 +100,7 @@ function UnifiedRenewalDetailsBox({
   });
 
   useEffect(() => {
-    countryService.getAllCountries().catch(() => {});
+    countryService.getAllCountries().catch(() => { });
     const user = authService.getUser();
     if (user) {
       setCardholderName(user.fullName || "");

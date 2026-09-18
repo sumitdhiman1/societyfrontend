@@ -237,7 +237,7 @@ function RegisterForm() {
 
   if (isSignupDisabled()) {
     return (
-      <div className="min-h-screen w-full flex bg-white">
+      <div className="min-h-screen w-full flex bg-[#f3f4f6]">
         {/* Left Panel */}
         <div className="hidden lg:block w-[40%] h-screen top-0 self-start overflow-hidden shrink-0 bg-[#060a12] relative">
           <img src="/images/worldpic.png" className="w-full h-full object-cover" alt="Panel" />
@@ -311,7 +311,7 @@ function RegisterForm() {
   }
 
   return (
-    <div className="min-h-screen w-full flex bg-white">
+    <div className="min-h-screen w-full flex bg-[#f3f4f6]">
       <StatusPopup
         isOpen={statusPopup.isOpen}
         onClose={() => setStatusPopup(p => ({ ...p, isOpen: false }))}

@@ -2,7 +2,7 @@
 @import "../theme.css";
 
 .login-container {
-  @apply min-h-screen w-full flex bg-white font-sans;
+  @apply min-h-screen w-full flex bg-[#f3f4f6] font-sans;
 }
 
 .login-left-panel {
