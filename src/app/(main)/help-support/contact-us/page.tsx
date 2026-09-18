@@ -119,7 +119,7 @@ export default function ContactUsPage() {
       };
 
       const res: any = await httpClient.post("/contact/submit", payload);
-      
+
       if (res?.isSuccessful || res?.statusCode === 201 || res?.data || res?.success) {
         setPopup({
           isOpen: true,
@@ -194,13 +194,13 @@ export default function ContactUsPage() {
         </div>
       </div>
 
-      <main className="flex-grow container mx-auto px-4 md:px-8 lg:px-[54px] py-12 max-w-[1536px]">
+      <main className="flex-grow container mx-auto px-4 md:px-8 lg:px-[54px] py-12 max-w-[1536px] bg-[#F3F4F6]">
         <div className="text-gray-500 mb-16 max-w-4xl text-sm leading-relaxed ql-editor-preview">
           {introContent.includes("<p>") || introContent.includes("<br") ? (
             <div dangerouslySetInnerHTML={{ __html: introContent }} />
           ) : (
             <p>
-              <span style={{ backgroundColor: "rgb(255, 255, 255)", color: "rgb(107, 114, 128)" }}>
+              <span style={{ color: "rgb(107, 114, 128)" }}>
                 {introContent}
               </span>
             </p>
