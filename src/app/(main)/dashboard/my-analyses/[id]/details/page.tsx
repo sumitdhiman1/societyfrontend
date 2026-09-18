@@ -825,8 +825,8 @@ export default function AnalysisDetailsPage() {
     rawVatAmount > 0
       ? rawVatAmount
       : vatRate > 0
-      ? Math.round((baseAmount * (vatRate / 100)) * 100) / 100
-      : 0;
+        ? Math.round((baseAmount * (vatRate / 100)) * 100) / 100
+        : 0;
 
   const totalCost = baseAmount + vatAmount;
 
@@ -880,15 +880,15 @@ export default function AnalysisDetailsPage() {
     (analysis.deliverableItems?.[0]?.details && !isGenericDesc(analysis.deliverableItems?.[0]?.details))
       ? analysis.deliverableItems?.[0]?.details
       : (matchedProduct?.shortDescription ||
-         matchedProduct?.description ||
-         matchedProduct?.longDescription ||
-         analysis.shortDescription ||
-         analysis.product?.shortDescription ||
-         analysis.product?.description ||
-         (analysis.description && !analysis.description.startsWith("Analysis for ") ? analysis.description : "") ||
-         (cleanItemTitle.toLowerCase().includes("check")
-           ? "An offer to check the completed work of any other web professionals, including your own in-house staff and/or partners. Fully custom and manual checking by our quality assurance team. Serves as a third, objective perspective on the quality of work completed."
-           : "Our classic analysis offer covering branding, UI/UX, functionalities, AI potentiality, tech stack, speed, and SEO. A manual review using a custom process created by Society Web Solutions, checking every important part of your website. Delivered as a custom PDF report within 5 days."));
+        matchedProduct?.description ||
+        matchedProduct?.longDescription ||
+        analysis.shortDescription ||
+        analysis.product?.shortDescription ||
+        analysis.product?.description ||
+        (analysis.description && !analysis.description.startsWith("Analysis for ") ? analysis.description : "") ||
+        (cleanItemTitle.toLowerCase().includes("check")
+          ? "An offer to check the completed work of any other web professionals, including your own in-house staff and/or partners. Fully custom and manual checking by our quality assurance team. Serves as a third, objective perspective on the quality of work completed."
+          : "Our classic analysis offer covering branding, UI/UX, functionalities, AI potentiality, tech stack, speed, and SEO. A manual review using a custom process created by Society Web Solutions, checking every important part of your website. Delivered as a custom PDF report within 5 days."));
 
   const rawUrls = (analysis.targetWebsiteUrl || analysis.websiteUrl || "").trim();
   const submittedUrls = rawUrls
@@ -948,8 +948,8 @@ export default function AnalysisDetailsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-8 w-full font-sans">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="flex flex-col gap-6 md:gap-8 w-full font-sans">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 detail-top-2-col-grid">
         {/* Left Column (col-span-2) */}
         <div className="lg:col-span-2 flex flex-col gap-6">
           {/* Analysis Details Card */}
@@ -1078,8 +1078,8 @@ export default function AnalysisDetailsPage() {
                       {getProjectEstimatedDeadline(analysis)
                         ? formatSubmittedDate(getProjectEstimatedDeadline(analysis))
                         : analysis.deadline
-                        ? formatSubmittedDate(analysis.deadline)
-                        : "Ongoing"}
+                          ? formatSubmittedDate(analysis.deadline)
+                          : "Ongoing"}
                     </span>
                     <DeadlineTooltip position="center" />
                   </div>
@@ -1257,7 +1257,7 @@ export default function AnalysisDetailsPage() {
       </div>
 
       {/* Section Divider Banner: Analysis Initiated */}
-      <div className="relative py-6 flex items-center justify-center w-full my-2">
+      <div className="relative py-0 my-0 flex items-center justify-center w-full">
         <div className="flex-grow border-t border-gray-300"></div>
         <span className="px-4 text-xs sm:text-sm font-medium text-gray-500 text-center whitespace-normal sm:whitespace-nowrap">
           Analysis Initiated {deliveryDueStr ? `| Delivery due on ${deliveryDueStr}` : ""}
@@ -1267,7 +1267,7 @@ export default function AnalysisDetailsPage() {
 
       {/* Messages & Delivery History if any */}
       {analysis.messages && analysis.messages.length > 0 && (
-        <div className="flex flex-col gap-6 w-full mb-4">
+        <div className="flex flex-col gap-6 w-full recieved-offer-heading-wrap mb-0 md:mb-4">
           {analysis.messages.map((msg: any, idx: number) => {
             const msgId = msg.id || msg._id || `msg-${idx}`;
             const textContent = `${msg.message || ""} ${msg.content?.text || ""} ${msg.text || ""}`.toLowerCase();
@@ -1301,7 +1301,7 @@ export default function AnalysisDetailsPage() {
               const displayText = isDuplicate ? "" : text;
 
               return (
-                <div key={msgId} className="text-center py-6 px-4 my-2">
+                <div key={msgId} className="text-center py-2 px-4 my-0 recieved-offer-heading pb-0 md:pb-8">
                   <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
                     {title}
                   </h3>
@@ -1568,9 +1568,9 @@ export default function AnalysisDetailsPage() {
                             Submitted - {formatSubmittedDate(msg.createdAt || msg.timestamp)}
                           </span>
                           <span className={`px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold border ${isAccepted ? "border-green-400 text-green-600 bg-green-50" :
-                              isDeclined ? "border-red-400 text-red-600 bg-red-50" :
-                                isModRequested ? "border-orange-400 text-orange-600 bg-orange-50" :
-                                  "border-blue-400 text-blue-600 bg-blue-50/60"
+                            isDeclined ? "border-red-400 text-red-600 bg-red-50" :
+                              isModRequested ? "border-orange-400 text-orange-600 bg-orange-50" :
+                                "border-blue-400 text-blue-600 bg-blue-50/60"
                             }`}>
                             {isAccepted ? "Accepted" :
                               isDeclined ? "Declined" :
@@ -1891,10 +1891,10 @@ export default function AnalysisDetailsPage() {
                                   }}
                                   disabled={isActionLoading || (actionModal.required && !actionComment.trim())}
                                   className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-lg text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer text-center ${isActionLoading
-                                      ? "bg-gray-400 cursor-not-allowed"
-                                      : actionModal.action === "decline"
-                                        ? "bg-[#C5221F] hover:bg-[#A91D1A]"
-                                        : "bg-[#3B4BEF] hover:bg-[#2F3EC4]"
+                                    ? "bg-gray-400 cursor-not-allowed"
+                                    : actionModal.action === "decline"
+                                      ? "bg-[#C5221F] hover:bg-[#A91D1A]"
+                                      : "bg-[#3B4BEF] hover:bg-[#2F3EC4]"
                                     }`}
                                 >
                                   {isActionLoading
@@ -2102,10 +2102,10 @@ export default function AnalysisDetailsPage() {
                                   onClick={handleActionSubmit}
                                   disabled={isActionLoading || (actionModal.required && !actionComment.trim())}
                                   className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-lg text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer text-center ${isActionLoading
-                                      ? "bg-gray-400 cursor-not-allowed"
-                                      : actionModal.action === "decline"
-                                        ? "bg-[#C5221F] hover:bg-[#A91D1A]"
-                                        : "bg-[#3B4BEF] hover:bg-[#2F3EC4]"
+                                    ? "bg-gray-400 cursor-not-allowed"
+                                    : actionModal.action === "decline"
+                                      ? "bg-[#C5221F] hover:bg-[#A91D1A]"
+                                      : "bg-[#3B4BEF] hover:bg-[#2F3EC4]"
                                     }`}
                                 >
                                   {isActionLoading
@@ -2290,7 +2290,7 @@ export default function AnalysisDetailsPage() {
                 </div>
 
                 {isDeliveryMsg && !hasSubsequentCompletionMsg && (
-                  <div className="text-center py-6 px-4 my-2">
+                  <div className="text-center py-2 px-4 my-0">
                     <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
                       Analysis completed!
                     </h3>
@@ -2316,7 +2316,7 @@ export default function AnalysisDetailsPage() {
             m.content?.systemText?.toLowerCase().includes("completed") ||
             m.content?.text?.toLowerCase().includes("completed")))
       ) && (
-          <div className="text-center py-6 px-4 my-2">
+          <div className="text-center py-2 px-4 my-0">
             <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
               Analysis completed!
             </h3>
@@ -2326,12 +2326,12 @@ export default function AnalysisDetailsPage() {
           </div>
         )}
 
-      <div ref={messagesEndRef} className="h-4 w-full shrink-0" />
+      <div ref={messagesEndRef} className="h-4 w-full shrink-0 hidden md:block" />
 
       {/* New Message Box Form */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden w-full">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden w-full detail-message-box-main">
         <form onSubmit={handleSendMessage}>
-          <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100 bg-gray-50/50">
+          <div className="flex items-center justify-between p-4 sm:p-6 pb-4 border-b border-gray-100 bg-gray-50/50">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-blue-900 flex items-center justify-center text-white font-bold text-base shadow-sm ring-2 ring-white">
                 {currentUser?.avatar ? (
@@ -2350,7 +2350,7 @@ export default function AnalysisDetailsPage() {
             <span className="text-xs text-gray-400 font-medium"></span>
           </div>
 
-          <div className="p-6 pb-2">
+          <div className="p-4 sm:p-6 pb-2">
             <textarea
               className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent cursor-pointer"
               placeholder={
@@ -2432,7 +2432,7 @@ export default function AnalysisDetailsPage() {
             </div>
           )}
 
-          <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="px-4 sm:px-6 pb-4 sm:pb-6 pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
               <button
                 type="button"
@@ -2512,7 +2512,7 @@ export default function AnalysisDetailsPage() {
 
       {/* Support & Newsletter Section */}
       <div className="w-full">
-        <SupportNewsletter noPadding />
+        <SupportNewsletter noPadding gridClassName="mt-0 md:mt-12" />
       </div>
 
     </div>

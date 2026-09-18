@@ -30,11 +30,15 @@ export class NotificationService {
     if (forceFresh) {
       CacheManager.getInstance().delete("unread_count");
     }
-    return CacheManager.getInstance().getOrFetch(
-      "unread_count",
-      () => new HttpClient(this.session).get("/notifications/getunreadcount"),
-      10000
-    );
+    try {
+      return await CacheManager.getInstance().getOrFetch(
+        "unread_count",
+        () => new HttpClient(this.session).get("/notifications/getunreadcount"),
+        10000
+      );
+    } catch (err) {
+      return { isSuccessful: false, data: { count: 0 } };
+    }
   }
 
   async getAllNotifications(options?: { page?: number; limit?: number; forceFresh?: boolean }) {
@@ -50,11 +54,15 @@ export class NotificationService {
       CacheManager.getInstance().delete(cacheKey);
     }
 
-    return CacheManager.getInstance().getOrFetch(
-      cacheKey,
-      () => client.get(`/notifications/getallnotifications${query}`),
-      15000
-    );
+    try {
+      return await CacheManager.getInstance().getOrFetch(
+        cacheKey,
+        () => client.get(`/notifications/getallnotifications${query}`),
+        15000
+      );
+    } catch (err) {
+      return { isSuccessful: false, data: { notifications: [], pagination: {} } };
+    }
   }
 
   async markAllRead() {

@@ -294,12 +294,17 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
     }
 
     const refreshCountFromServer = () => {
-      notificationService.getUnreadCount(true).then((res: any) => {
-        const count = res.data?.count ?? (typeof res.data === "number" ? res.data : null);
-        if (typeof count === "number") {
-          setUnreadCount(count);
-        }
-      });
+      notificationService
+        .getUnreadCount(true)
+        .then((res: any) => {
+          const count = res?.data?.count ?? (typeof res?.data === "number" ? res.data : null);
+          if (typeof count === "number") {
+            setUnreadCount(count);
+          }
+        })
+        .catch(() => {
+          // Gracefully ignore notification count fetch failures
+        });
     };
 
     const connectSocket = async () => {
@@ -453,10 +458,15 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
   useEffect(() => {
     if (isAuthenticated) {
       const fetchCount = () => {
-        notificationService.getUnreadCount(true).then((res: any) => {
-          const count = res.data?.count ?? (typeof res.data === "number" ? res.data : 0);
-          setUnreadCount(count);
-        });
+        notificationService
+          .getUnreadCount(true)
+          .then((res: any) => {
+            const count = res?.data?.count ?? (typeof res?.data === "number" ? res?.data : 0);
+            setUnreadCount(count);
+          })
+          .catch(() => {
+            // Gracefully ignore notification count fetch failures
+          });
       };
 
       fetchCount();

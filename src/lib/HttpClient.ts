@@ -73,14 +73,19 @@ export default class HttpClient {
 
   private handleFetchError(error: any) {
     if (error instanceof HttpError) {
+      const data =
+        typeof error.data === "object" && error.data !== null
+          ? error.data
+          : { message: String(error.data || "Unknown error") };
       return {
-        ...error.data,
-        message: error.data.message || "Unknown error",
+        ...data,
+        statusCode: error.status,
+        message: data.message || `HTTP ${error.status}`,
         isSuccessful: false,
       };
     }
     return {
-      message: "There is some error. Please try after sometime.",
+      message: error?.message || "There is some error. Please try after sometime.",
       isSuccessful: false,
     };
   }
@@ -169,10 +174,14 @@ export default class HttpClient {
         const newToken = await this.attemptTokenRefresh();
         if (newToken) {
           authToken = newToken;
-          return await execute();
+          try {
+            return await execute();
+          } catch (retryError) {
+            return this.handleFetchError(retryError);
+          }
         }
       }
-      throw error;
+      return this.handleFetchError(error);
     }
   }
 

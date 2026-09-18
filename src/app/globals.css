@@ -528,3 +528,17 @@ a[class*="bg-primary-"] {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+@media(max-width: 767px) {
+  .detail-message-box-main {
+    margin-top: 12px;
+  }
+
+  .grid.detail-top-2-col-grid {
+    margin-bottom: 12px;
+  }
+
+  .recieved-offer-heading {
+    padding-top: 0;
+  }
+}

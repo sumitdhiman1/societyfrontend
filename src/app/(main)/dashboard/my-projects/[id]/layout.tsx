@@ -87,9 +87,9 @@ function ProjectLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="bg-[#F3F4F6] flex-grow flex flex-col font-sans" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
-      <main className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12 overflow-x-hidden ">
-        <div className="mb-10">
-          <div className="flex items-center gap-3 group mb-8 md:mb-12">
+      <main className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-8 md:pb-12 overflow-x-hidden ">
+        <div className="mb-6 md:mb-10">
+          <div className="flex items-center gap-3 group mb-5 md:mb-12">
             {isEditingTitle ? (
               <div className="flex items-center gap-2 w-full max-w-xl">
                 <input
@@ -189,7 +189,7 @@ function ProjectLayoutContent({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <div className="mt-8">
+        <div className="mt-5 md:mt-8">
           {children}
         </div>
       </main>

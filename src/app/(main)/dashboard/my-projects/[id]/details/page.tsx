@@ -892,7 +892,7 @@ export default function ProjectDetailsPage() {
   });
 
   return (
-    <div className="flex flex-col gap-8 w-full font-sans">
+    <div className="flex flex-col gap-6 md:gap-8 w-full font-sans">
       {/* Paused/Completed Status Banners */}
       {project.status === "paused" && (
         <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
@@ -932,7 +932,7 @@ export default function ProjectDetailsPage() {
       )}
 
       {/* Top 2-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
         {/* Left Column: Project Details Card */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white border border-gray-300 rounded-[12px] shadow-sm p-4 sm:p-6 md:p-8">
@@ -1399,7 +1399,7 @@ export default function ProjectDetailsPage() {
       </div>
 
       {/* Horizontal Divider Banner */}
-      <div id="messages" ref={messagesContainerRef} className="relative py-8 flex items-center justify-center w-full my-2 scroll-mt-6">
+      <div id="messages" ref={messagesContainerRef} className="relative py-0 my-0 flex items-center justify-center w-full scroll-mt-6">
         <div className="flex-grow border-t border-gray-200"></div>
         <span className="px-4 text-xs sm:text-sm font-medium text-gray-500 text-center whitespace-normal sm:whitespace-nowrap">
           Project Started {deliveryDueStr ? `| Delivery due on ${deliveryDueStr}` : ""}
@@ -1577,7 +1577,7 @@ export default function ProjectDetailsPage() {
                 const rawText = isDuplicate ? "" : rawTextCandidate;
 
                 return (
-                  <div key={msgId} ref={isLast ? lastMessageRef : null} className="text-center py-6 px-4 my-2">
+                  <div key={msgId} ref={isLast ? lastMessageRef : null} className="text-center py-2 px-4 my-0">
                     <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
                       {cleanTitle}
                     </h3>
@@ -2109,7 +2109,7 @@ export default function ProjectDetailsPage() {
 
         {/* Full-Width New Message Box (matching Screenshot 2 UI) */}
         <div ref={messageInputRef} id="new-message" className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden w-full scroll-mt-6">
-          <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100 bg-white">
+          <div className="flex items-center justify-between p-4 sm:p-6 pb-4 border-b border-gray-100 bg-white">
             <div className="flex items-center gap-3">
               {currentUser?.avatar ? (
                 <img src={currentUser.avatar} alt="You" className="w-10 h-10 rounded-full object-cover shadow-sm" />
@@ -2125,7 +2125,7 @@ export default function ProjectDetailsPage() {
             </div>
             <span className="text-xs text-gray-400 font-medium">{formatChatDate(new Date())}</span>
           </div>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <textarea
               className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent cursor-pointer"
               placeholder={isLoggedIn ? "Type a message..." : "Please log in or register to message our team..."}
@@ -2203,7 +2203,7 @@ export default function ProjectDetailsPage() {
             </div>
           )}
 
-          <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="px-4 sm:px-6 pb-4 sm:pb-6 pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
             <button
               onClick={() => {
                 if (!requireAuth()) return;
@@ -2278,7 +2278,7 @@ export default function ProjectDetailsPage() {
       />
 
       {/* Help & Support / Newsletter Section */}
-      <SupportNewsletter noPadding />
+      <SupportNewsletter noPadding gridClassName="mt-0 md:mt-12" />
     </div>
   );
 }
