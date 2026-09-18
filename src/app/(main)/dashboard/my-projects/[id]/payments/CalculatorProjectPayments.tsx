@@ -299,17 +299,23 @@ export default function CalculatorProjectPayments({
         Number(activeProject.amountPaid || 0) + Number(activeProject.amountDue || 0)
       );
 
-  const baseSubtotal = Number(
-    activeProject.subtotal ??
-    linkedQuote.subtotal ??
-    specs.subtotal ??
-    specs.calculatedPrice ??
-    linkedQuote.requirements?.subtotal ??
-    linkedQuote.requirements?.calculatedPrice ??
-    (vatRate > 0 && rawTotalCost > 0
-      ? Math.round((rawTotalCost / (1 + vatRate / 100)) * 100) / 100
-      : rawTotalCost)
-  );
+  const regularItemsSum = (activeProject.deliverableItems && activeProject.deliverableItems.length > 0)
+    ? activeProject.deliverableItems.reduce((sum: number, it: any) => sum + (Number(it.amount ?? it.cost) || 0), 0)
+    : 0;
+
+  const baseSubtotal = regularItemsSum > 0
+    ? regularItemsSum
+    : Number(
+        activeProject.subtotal ??
+        linkedQuote.subtotal ??
+        specs.subtotal ??
+        specs.calculatedPrice ??
+        linkedQuote.requirements?.subtotal ??
+        linkedQuote.requirements?.calculatedPrice ??
+        (vatRate > 0 && rawTotalCost > 0
+          ? Math.round((rawTotalCost / (1 + vatRate / 100)) * 100) / 100
+          : rawTotalCost)
+      );
 
   const primaryItemTitle =
     itemTitle ||
@@ -326,17 +332,52 @@ export default function CalculatorProjectPayments({
     },
   ];
 
-  const deliverableItems = allAddonItems.length > 0
-    ? [...primaryItems, ...allAddonItems]
+  // 2. Addon items from activeProject.addons
+  const addonItemsFromAddons = (activeProject.addons || []).flatMap((addon: any) =>
+    (addon.deliverableItems || []).map((item: any) => ({
+      description: item.description || item.title || item.name || "Add-On Deliverable",
+      details: item.details || "",
+      duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
+      amount: Number(item.amount ?? 0),
+      isAddOn: true,
+    }))
+  );
+
+  // 3. Addon items from activeProject.messages (fallback if activeProject.addons is empty)
+  const addonItemsFromMessages = (activeProject.messages || [])
+    .filter((m: any) => {
+      const isQuote = m.type === "quote_proposal" || m.content?.type === "quote_proposal";
+      const isAccepted =
+        m.content?.proposalStatus === "accepted" ||
+        m.proposalStatus === "accepted" ||
+        m.content?.status === "accepted" ||
+        m.status === "accepted";
+      return isQuote && isAccepted;
+    })
+    .flatMap((m: any) => {
+      const items = m.deliverableItems || m.content?.deliverableItems || m.content?.items || [];
+      return items.map((item: any) => ({
+        description: item.description || item.title || item.name || "Add-On Deliverable",
+        details: item.details || "",
+        duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
+        amount: Number(item.amount ?? 0),
+        isAddOn: true,
+      }));
+    });
+
+  const resolvedAddonItems = (allAddonItems && allAddonItems.length > 0)
+    ? allAddonItems
+    : (addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages);
+
+  const deliverableItems = resolvedAddonItems.length > 0
+    ? [...primaryItems, ...resolvedAddonItems]
     : primaryItems;
 
-  const addonsTotal = allAddonItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
+  const addonsTotal = resolvedAddonItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
   const totalSubtotal = baseSubtotal + addonsTotal;
-  const effectiveVatAmount = Number(
-    activeProject.vatAmount ??
-    linkedQuote.vatAmount ??
-    (vatRate > 0 ? Math.round((totalSubtotal * (vatRate / 100)) * 100) / 100 : 0)
-  );
+  const effectiveVatAmount = vatRate > 0 && totalSubtotal > 0
+    ? Math.round((totalSubtotal * (vatRate / 100)) * 100) / 100
+    : Number(activeProject.vatAmount ?? linkedQuote.vatAmount ?? 0);
   const totalProjectCost = totalSubtotal + effectiveVatAmount;
 
   const totalPaidFromTransactions = (payments || [])
@@ -344,15 +385,14 @@ export default function CalculatorProjectPayments({
     .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
 
   const amountPaid = Math.max(Number(activeProject.amountPaid || 0), totalPaidFromTransactions);
-  const explicitAmountDue = activeProject.amountDue != null && !isNaN(Number(activeProject.amountDue)) ? Number(activeProject.amountDue) : null;
   const calculatedPending = Math.max(0, totalProjectCost - amountPaid);
 
   const isActuallyPaidInFull = totalProjectCost > 0 && amountPaid >= totalProjectCost - 0.009;
 
   const pendingBalance = isActuallyPaidInFull
     ? 0
-    : explicitAmountDue !== null && explicitAmountDue > 0
-    ? explicitAmountDue
+    : amountPaid === 0
+    ? totalProjectCost
     : calculatedPending;
 
   const isPartiallyPaid = !isActuallyPaidInFull && amountPaid > 0.009 && pendingBalance > 0.009;
@@ -406,7 +446,7 @@ export default function CalculatorProjectPayments({
   const depositAmount = Number(
     activeProject.depositAmount ||
     linkedQuote.depositAmount ||
-    (baseSubtotal > 0 ? baseSubtotal / 2 : (totalProjectCost > 0 ? totalProjectCost / 2 : 0))
+    (totalSubtotal > 0 ? totalSubtotal / 2 : (totalProjectCost > 0 ? totalProjectCost / 2 : 0))
   );
 
   const currency = (
@@ -503,7 +543,7 @@ export default function CalculatorProjectPayments({
     const searchMessageId = searchParams?.get("messageId") || undefined;
     const searchDescription = searchParams?.get("description") || undefined;
     const targetCost = amountPaid === 0
-      ? baseSubtotal
+      ? totalSubtotal
       : (vatRate > 0 ? Math.round((pendingBalance / (1 + vatRate / 100)) * 100) / 100 : pendingBalance);
 
     return (
@@ -526,7 +566,7 @@ export default function CalculatorProjectPayments({
               description={
                 searchDescription
                   ? `Payment for ${searchDescription}`
-                  : (allAddonItems.length > 0
+                  : (resolvedAddonItems.length > 0
                     ? "Payment for accepted add-on project deliverables"
                     : (activeProject.description && !activeProject.description.includes("Selected Options:") && activeProject.description.length < 250
                       ? activeProject.description
@@ -790,7 +830,7 @@ export default function CalculatorProjectPayments({
                       {formatCurrency(baseSubtotal)}
                     </td>
                   </tr>
-                  {allAddonItems.map((addon: any, idx: number) => (
+                  {resolvedAddonItems.map((addon: any, idx: number) => (
                     <tr key={idx}>
                       <td className="py-4 px-6 text-sm">
                         <div className="font-semibold text-[#0d1939]">{addon.description}</div>

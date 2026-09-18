@@ -211,7 +211,7 @@ export function formatClockDate(date: Date = new Date(), customTz?: string): str
 }
 
 /**
- * Formats submitted date string (e.g. "Submitted on Sep 17, 7:35 PM")
+ * Formats date string to month day, time (e.g. "Sep 17, 7:35 PM")
  */
 export function formatSubmittedDate(date: string | Date | number, customTz?: string): string {
   if (!date) return "";
@@ -223,17 +223,17 @@ export function formatSubmittedDate(date: string | Date | number, customTz?: str
     const month = d.toLocaleString("en-US", { month: "short", timeZone });
     const day = d.toLocaleDateString("en-US", { day: "numeric", timeZone });
     const time = d.toLocaleString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone });
-    return `Submitted on ${month} ${day}, ${time}`;
+    return `${month} ${day}, ${time}`;
   } catch {
     const month = d.toLocaleString("en-US", { month: "short" });
     const day = d.getDate();
     const time = d.toLocaleString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-    return `Submitted on ${month} ${day}, ${time}`;
+    return `${month} ${day}, ${time}`;
   }
 }
 
 /**
- * Formats message timestamp string (e.g. "7:35 PM - Submitted on Sep 17, 2026")
+ * Formats message timestamp string (e.g. "Sep 17, 2026, 7:35 PM")
  */
 export function formatMessageTimestamp(date: string | Date | number, customTz?: string): string {
   if (!date) return "";
@@ -242,13 +242,24 @@ export function formatMessageTimestamp(date: string | Date | number, customTz?: 
 
   const timeZone = customTz ? getIanaTimeZone(customTz) : getActiveUserTimeZone();
   try {
-    const time = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone });
-    const formattedDate = formatSubmittedDate(date, customTz);
-    return `${time} - ${formattedDate}`;
+    return d.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone,
+    });
   } catch {
-    const time = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-    const formattedDate = formatSubmittedDate(date);
-    return `${time} - ${formattedDate}`;
+    return d.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
   }
 }
 

@@ -254,7 +254,12 @@ export default function AnalysisPaymentsPage() {
       hasRefreshedRef.current = true;
       refreshAnalysis();
       fetchPayments();
-      window.history.replaceState(null, "", `/dashboard/my-analyses/${analysisId}/payments`);
+      const timer = setTimeout(() => {
+        try {
+          window.history.replaceState(null, "", `/dashboard/my-analyses/${analysisId}/payments`);
+        } catch {}
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [searchParams, analysisId, refreshAnalysis, fetchPayments]);
 

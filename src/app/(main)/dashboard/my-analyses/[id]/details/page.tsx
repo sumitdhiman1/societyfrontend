@@ -1517,9 +1517,17 @@ export default function AnalysisDetailsPage() {
               };
               const totalOfferDuration = formatOfferDuration(rawDuration);
 
-              const expiresStr = content.expires && content.expires !== "Not specified"
-                ? (isNaN(new Date(content.expires).getTime()) ? content.expires : formatSubmittedDate(content.expires))
-                : "N/A";
+              const cleanExpires = (val: any) => {
+                if (!val || val === "Not specified" || val === "N/A" || val === "-") return "N/A";
+                const rawStr = String(val).trim();
+                const strippedStr = rawStr.replace(/^(submitted\s*(on|-)?|expires\s*(on|-)?)\s*/i, "").trim();
+                const d = new Date(strippedStr);
+                if (!isNaN(d.getTime())) {
+                  return formatSubmittedDate(d);
+                }
+                return strippedStr || rawStr;
+              };
+              const expiresStr = cleanExpires(content.expires);
 
               const isLast = idx === (analysis.messages?.length || 0) - 1;
 
@@ -1551,7 +1559,7 @@ export default function AnalysisDetailsPage() {
                           </span>
                         ) : expiresStr && expiresStr !== "N/A" ? (
                           <span className="text-xs sm:text-sm text-gray-500 font-medium">
-                            Expires - {expiresStr}
+                            Expires on {expiresStr}
                           </span>
                         ) : null}
                       </div>

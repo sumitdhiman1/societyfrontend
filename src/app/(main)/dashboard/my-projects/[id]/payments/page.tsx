@@ -84,7 +84,12 @@ export default function ProjectPaymentsPage() {
       hasRefreshedRef.current = true;
       refreshProject();
       fetchPayments();
-      window.history.replaceState(null, "", `/dashboard/my-projects/${projectId}/payments`);
+      const timer = setTimeout(() => {
+        try {
+          window.history.replaceState(null, "", `/dashboard/my-projects/${projectId}/payments`);
+        } catch {}
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [searchParams, projectId, refreshProject, fetchPayments]);
 
@@ -147,19 +152,37 @@ export default function ProjectPaymentsPage() {
     ? formatDateTimeTz(activeProject.createdAt, { month: "short", day: "numeric", year: "numeric" })
     : "Sep 7, 2026";
 
-  const vatRate = Number(
-    activeProject.vatRate ??
-    activeProject.vatPercentage ??
-    (activeProject.taxPercentage != null ? activeProject.taxPercentage : 0)
+  const isEstoniaClient = (c?: string) => {
+    if (!c) return false;
+    const upper = c.trim().toUpperCase();
+    return upper === "EE" || upper === "EST" || upper === "ESTONIA";
+  };
+  const linkedQuote = fetchedQuote || (typeof activeProject.quoteId === "object" ? activeProject.quoteId : activeProject.quote) || {};
+  const countryStr = String(
+    activeProject.clientCountry ||
+    activeProject.country ||
+    activeProject.client?.country ||
+    activeProject.client?.clientCountry ||
+    activeProject.client?.billingCountry ||
+    activeProject.billingCountry ||
+    linkedQuote.clientCountry ||
+    linkedQuote.country ||
+    (typeof linkedQuote.client === "object" ? (linkedQuote.client?.country || linkedQuote.client?.clientCountry || linkedQuote.client?.billingCountry) : "") ||
+    currentUser?.country ||
+    currentUser?.clientCountry ||
+    ""
   );
 
+  const explicitVatRate = Number(
+    activeProject.vatRate ??
+    activeProject.vatPercentage ??
+    linkedQuote.vatRate ??
+    linkedQuote.vatPercentage ??
+    (activeProject.taxPercentage != null ? activeProject.taxPercentage : 0)
+  ) || 0;
+  const vatRate = explicitVatRate > 0 ? explicitVatRate : (isEstoniaClient(countryStr) ? 24 : 0);
+
   const rawBaseCost = Number(activeProject.price ?? activeProject.totalPrice ?? activeProject.totalCost ?? 0);
-  const baseSubtotal = Number(
-    activeProject.subtotal ??
-    (vatRate > 0 && rawBaseCost > 0
-      ? Math.round((rawBaseCost / (1 + vatRate / 100)) * 100) / 100
-      : rawBaseCost)
-  );
 
   // 1. Regular items
   const regularItems = (activeProject.deliverableItems && activeProject.deliverableItems.length > 0)
@@ -174,10 +197,27 @@ export default function ProjectPaymentsPage() {
       ? [{
         description: activeProject.title,
         duration: activeProject.timelineInDays ? `${activeProject.timelineInDays} Days` : "30 Days",
-        amount: baseSubtotal,
+        amount: Number(
+          activeProject.subtotal ??
+          linkedQuote.subtotal ??
+          (vatRate > 0 && rawBaseCost > 0
+            ? Math.round((rawBaseCost / (1 + vatRate / 100)) * 100) / 100
+            : rawBaseCost)
+        ),
         isAddOn: false,
       }]
       : [];
+
+  const regularItemsSum = regularItems.reduce((sum: number, it: any) => sum + (Number(it.amount) || 0), 0);
+  const baseSubtotal = regularItemsSum > 0
+    ? regularItemsSum
+    : Number(
+        activeProject.subtotal ??
+        linkedQuote.subtotal ??
+        (vatRate > 0 && rawBaseCost > 0
+          ? Math.round((rawBaseCost / (1 + vatRate / 100)) * 100) / 100
+          : rawBaseCost)
+      );
 
   // 2. Addon items from activeProject.addons
   const addonItemsFromAddons = (activeProject.addons || []).flatMap((addon: any) =>
@@ -190,11 +230,19 @@ export default function ProjectPaymentsPage() {
     }))
   );
 
-  // 3. Addon items from activeProject.messages
+  // 3. Addon items from activeProject.messages (fallback if activeProject.addons is empty)
   const addonItemsFromMessages = (activeProject.messages || [])
-    .filter((m: any) => m.type === "quote_proposal" || m.content?.proposalStatus === "accepted" || m.proposalStatus === "accepted")
+    .filter((m: any) => {
+      const isQuote = m.type === "quote_proposal" || m.content?.type === "quote_proposal";
+      const isAccepted =
+        m.content?.proposalStatus === "accepted" ||
+        m.proposalStatus === "accepted" ||
+        m.content?.status === "accepted" ||
+        m.status === "accepted";
+      return isQuote && isAccepted;
+    })
     .flatMap((m: any) => {
-      const items = m.deliverableItems || m.content?.deliverableItems || [];
+      const items = m.deliverableItems || m.content?.deliverableItems || m.content?.items || [];
       return items.map((item: any) => ({
         description: item.description || item.title || item.name || "Add-On Deliverable",
         details: item.details || "",
@@ -216,20 +264,18 @@ export default function ProjectPaymentsPage() {
   const amountPaid = Math.max(Number(activeProject.amountPaid || 0), totalPaidFromTransactions);
   const addonsTotal = allAddonItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
   const totalSubtotal = baseSubtotal + addonsTotal;
-  const effectiveVatAmount = Number(
-    activeProject.vatAmount ??
-    (vatRate > 0 ? Math.round((totalSubtotal * (vatRate / 100)) * 100) / 100 : 0)
-  );
+  const effectiveVatAmount = vatRate > 0 && totalSubtotal > 0
+    ? Math.round((totalSubtotal * (vatRate / 100)) * 100) / 100
+    : Number(activeProject.vatAmount ?? linkedQuote.vatAmount ?? 0);
   const totalProjectCost = totalSubtotal + effectiveVatAmount;
 
-  const explicitAmountDue = activeProject.amountDue != null && !isNaN(Number(activeProject.amountDue)) ? Number(activeProject.amountDue) : null;
   const calculatedPending = Math.max(0, totalProjectCost - amountPaid);
   const isActuallyPaidInFull = totalProjectCost > 0 && amountPaid >= totalProjectCost - 0.009;
 
   const pendingBalance = isActuallyPaidInFull
     ? 0
-    : explicitAmountDue !== null && explicitAmountDue > 0
-    ? explicitAmountDue
+    : amountPaid === 0
+    ? totalProjectCost
     : calculatedPending;
 
   const isPartiallyPaid = !isActuallyPaidInFull && amountPaid > 0.009 && pendingBalance > 0.009;
@@ -348,7 +394,7 @@ export default function ProjectPaymentsPage() {
 
   const depositAmount = Number(
     activeProject.depositAmount ||
-    (baseSubtotal > 0 ? baseSubtotal / 2 : (totalProjectCost > 0 ? totalProjectCost / 2 : 0))
+    (totalSubtotal > 0 ? totalSubtotal / 2 : (totalProjectCost > 0 ? totalProjectCost / 2 : 0))
   );
 
   // -------------------------------------------------------------------------
@@ -360,7 +406,7 @@ export default function ProjectPaymentsPage() {
     const searchMessageId = searchParams?.get("messageId") || undefined;
     const searchDescription = searchParams?.get("description") || undefined;
     const targetCost = amountPaid === 0
-      ? baseSubtotal
+      ? totalSubtotal
       : (vatRate > 0 ? Math.round((pendingBalance / (1 + vatRate / 100)) * 100) / 100 : pendingBalance);
 
     return (

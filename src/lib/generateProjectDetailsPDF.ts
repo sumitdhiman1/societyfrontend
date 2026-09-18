@@ -480,29 +480,31 @@ export function extractProjectDetails(data: any): ProjectPDFData {
     });
   }
 
-  // Also check messages for accepted quote proposals
-  if (Array.isArray(data.messages)) {
+  // Also check messages for accepted quote proposals only if addons is empty
+  if (addons.length === 0 && Array.isArray(data.messages)) {
     data.messages
-      .filter((m: any) => m.type === "quote_proposal" || m.content?.proposalStatus === "accepted" || m.proposalStatus === "accepted")
+      .filter((m: any) => {
+        const isQuote = m.type === "quote_proposal" || m.content?.type === "quote_proposal";
+        const isAccepted =
+          m.content?.proposalStatus === "accepted" ||
+          m.proposalStatus === "accepted" ||
+          m.content?.status === "accepted" ||
+          m.status === "accepted";
+        return isQuote && isAccepted;
+      })
       .forEach((m: any) => {
         const items = m.deliverableItems || m.content?.deliverableItems || [];
         items.forEach((item: any) => {
-          // Avoid duplicate add-on items
-          const exists = addons.some(
-            (a) => a.name === (item.description || item.name || item.title) && a.amount === Number(item.amount ?? item.cost ?? 0)
-          );
-          if (!exists) {
-            addons.push({
-              name: item.description || item.name || item.title || "Add-on Task",
-              details: item.details || "",
-              duration: item.duration
-                ? String(item.duration).toLowerCase().includes("day") || String(item.duration).toLowerCase().includes("week") || String(item.duration).toLowerCase().includes("month")
-                  ? String(item.duration)
-                  : `${item.duration} ${item.unit || "Days"}`
-                : "-",
-              amount: Number(item.amount ?? item.cost ?? 0),
-            });
-          }
+          addons.push({
+            name: item.description || item.name || item.title || "Add-on Task",
+            details: item.details || "",
+            duration: item.duration
+              ? String(item.duration).toLowerCase().includes("day") || String(item.duration).toLowerCase().includes("week") || String(item.duration).toLowerCase().includes("month")
+                ? String(item.duration)
+                : `${item.duration} ${item.unit || "Days"}`
+              : "-",
+            amount: Number(item.amount ?? item.cost ?? 0),
+          });
         });
       });
   }
@@ -573,23 +575,24 @@ export function extractProjectDetails(data: any): ProjectPDFData {
   const deliverablesSum = deliverables.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
   const addonsSum = addons.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
 
-  const baseAmount =
-    rawBaseAmount > 0
+  const initialSubtotal =
+    deliverablesSum > 0
+      ? deliverablesSum
+      : rawBaseAmount > 0
       ? rawBaseAmount
       : vatRate > 0 && rawTotalCost > 0
       ? Math.round((rawTotalCost / (1 + vatRate / 100)) * 100) / 100
-      : (deliverablesSum > 0 ? deliverablesSum + addonsSum : (rawTotalCost > 0 ? rawTotalCost : 0));
+      : (rawTotalCost > 0 ? rawTotalCost : 0);
+
+  const totalBaseSubtotal = initialSubtotal + addonsSum;
+  const baseAmount = totalBaseSubtotal;
 
   const vatAmount =
-    rawVatAmount > 0
-      ? rawVatAmount
-      : vatRate > 0
+    vatRate > 0
       ? Math.round((baseAmount * (vatRate / 100)) * 100) / 100
-      : 0;
+      : (rawVatAmount > 0 ? rawVatAmount : 0);
 
-  const totalPrice = rawTotalCost > 0
-    ? rawTotalCost
-    : (baseAmount + vatAmount > 0 ? baseAmount + vatAmount : (deliverablesSum + addonsSum > 0 ? deliverablesSum + addonsSum : Number(data.amountPaid || 0)));
+  const totalPrice = baseAmount + vatAmount;
 
   // If there's only 1 deliverable item and its amount is 0, set it to baseAmount or totalPrice
   if (deliverables.length === 1 && deliverables[0].amount === 0 && (baseAmount > 0 || totalPrice > 0)) {
