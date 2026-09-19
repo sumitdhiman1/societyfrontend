@@ -160,8 +160,8 @@ export default function ProjectFilesPage() {
   const projectId = project?._id
     ? project._id.toString()
     : project?.id
-    ? project.id.toString()
-    : "";
+      ? project.id.toString()
+      : "";
 
   const loadFiles = useCallback(async () => {
     if (projectId) {
@@ -171,8 +171,8 @@ export default function ProjectFilesPage() {
         const data = Array.isArray(res?.data)
           ? res.data
           : Array.isArray(res?.data?.files)
-          ? res.data.files
-          : [];
+            ? res.data.files
+            : [];
         setUploadedFiles(data || []);
       } catch (e) {
         // Fallback to project.files if direct endpoint fails or user is guest
@@ -256,10 +256,10 @@ export default function ProjectFilesPage() {
         const mimeType = isImg
           ? "image/png"
           : isDoc
-          ? "application/pdf"
-          : isVid
-          ? "video/mp4"
-          : file.type || "application/octet-stream";
+            ? "application/pdf"
+            : isVid
+              ? "video/mp4"
+              : file.type || "application/octet-stream";
 
         registerFile({
           _id: `msg-${url}`,
@@ -487,19 +487,17 @@ export default function ProjectFilesPage() {
                     key={value}
                     type="button"
                     onClick={() => setActiveCategory(value)}
-                    className={`flex-shrink-0 lg:w-full rounded-lg px-3 py-2 text-sm flex justify-between items-center transition-all cursor-pointer ${
-                      activeCategory === value
+                    className={`flex-shrink-0 lg:w-full rounded-lg px-3 py-2 text-sm flex justify-between items-center transition-all cursor-pointer ${activeCategory === value
                         ? "bg-[#4343F0] text-white font-semibold shadow-sm"
                         : "text-[#6B7280] hover:bg-gray-100"
-                    }`}
+                      }`}
                   >
                     <span>{label}</span>
                     <span
-                      className={`text-xs font-mono rounded-full px-2 py-0.5 ${
-                        activeCategory === value
+                      className={`text-xs font-mono rounded-full px-2 py-0.5 ${activeCategory === value
                           ? "bg-white/20 text-white font-bold"
                           : "bg-gray-100 text-gray-500"
-                      }`}
+                        }`}
                     >
                       {count}
                     </span>
@@ -510,7 +508,7 @@ export default function ProjectFilesPage() {
           </div>
 
           {/* Sources */}
-          <div className="border border-gray-200 rounded-xl p-4 sm:p-5">
+          <div className="border border-gray-200 rounded-xl p-4 sm:p-5 bg-white">
             <h3 className="text-xs sm:text-sm font-bold text-[#363636] uppercase tracking-wider mb-3">
               Sources
             </h3>
@@ -586,11 +584,10 @@ export default function ProjectFilesPage() {
                 if (e.dataTransfer.files?.length) handleUploadFiles(e.dataTransfer.files);
               }}
               onClick={handleTriggerUpload}
-              className={`w-full border-2 border-dashed rounded-xl h-[130px] flex flex-col items-center justify-center text-sm cursor-pointer transition-all ${
-                isDragging
+              className={`w-full border-2 border-dashed rounded-xl h-[130px] flex flex-col items-center justify-center text-sm cursor-pointer transition-all ${isDragging
                   ? "border-[#4343F0] bg-blue-50/50"
                   : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/40 text-gray-400"
-              }`}
+                }`}
             >
               <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center mb-1.5 text-gray-400">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -623,17 +620,15 @@ export default function ProjectFilesPage() {
                 <div className="flex border border-gray-200 rounded-lg overflow-hidden">
                   <button
                     onClick={() => setViewMode("list")}
-                    className={`px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
-                      viewMode === "list" ? "bg-[#4343F0] text-white" : "text-gray-500 hover:bg-gray-50"
-                    }`}
+                    className={`px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${viewMode === "list" ? "bg-[#4343F0] text-white" : "text-gray-500 hover:bg-gray-50"
+                      }`}
                   >
                     <span>=</span> List
                   </button>
                   <button
                     onClick={() => setViewMode("grid")}
-                    className={`px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
-                      viewMode === "grid" ? "bg-[#4343F0] text-white" : "text-gray-500 hover:bg-gray-50"
-                    }`}
+                    className={`px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${viewMode === "grid" ? "bg-[#4343F0] text-white" : "text-gray-500 hover:bg-gray-50"
+                      }`}
                   >
                     <span>::</span> Grid
                   </button>
@@ -689,11 +684,10 @@ export default function ProjectFilesPage() {
                       <img
                         src={ensureHttps(file.url)}
                         alt={file.name}
-                        className={`w-full h-full ${
-                          file.url?.toLowerCase().includes(".svg")
+                        className={`w-full h-full ${file.url?.toLowerCase().includes(".svg")
                             ? "object-contain p-2"
                             : "object-cover"
-                        }`}
+                          }`}
                         onError={(e) => {
                           const target = e.currentTarget;
                           if (
