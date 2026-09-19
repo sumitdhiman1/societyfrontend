@@ -685,7 +685,7 @@ export default function ProjectPaymentsPage() {
               <div>
                 <div className="flex items-center gap-3 flex-wrap mb-3">
                   <h3 className="text-lg font-bold text-[#0d1939]">
-                    {(activeProject.title || `Project Development - ${activeProject.clientName || activeProject.client?.fullName || "Client"}`)
+                    {(activeProject.title || "Project Development")
                       .replace(/<br\s*\/?>/gi, " ")
                       .replace(/\s+/g, " ")
                       .trim()}
