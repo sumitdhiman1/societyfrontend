@@ -264,17 +264,24 @@ export default function MyAccountPage() {
 
   const updateName = (type: "first" | "last", value: string) => {
     if (!user) return;
-    const parts = (user.fullName || "").split(" ");
-    const firstName = parts[0] || "";
-    const lastName = parts.slice(1).join(" ") || "";
+    const cleanFull = (user.fullName || "").replace(/\bundefined\b/gi, "").replace(/\s+/g, " ").trim();
+    const parts = cleanFull.split(" ").filter(Boolean);
+    const currentFirst = (user.firstName && user.firstName !== "undefined" && !user.firstName.includes("undefined"))
+      ? user.firstName
+      : (parts[0] || "");
+    const currentLast = (user.lastName && user.lastName !== "undefined" && !user.lastName.includes("undefined"))
+      ? user.lastName
+      : (parts.slice(1).join(" ") || "");
 
-    let newFullName = "";
+    let newFirst = currentFirst;
+    let newLast = currentLast;
     if (type === "first") {
-      newFullName = `${value} ${lastName}`.trim();
+      newFirst = value;
     } else {
-      newFullName = `${firstName} ${value}`.trim();
+      newLast = value;
     }
-    setUser({ ...user, fullName: newFullName });
+    const newFullName = `${newFirst} ${newLast}`.trim();
+    setUser({ ...user, firstName: newFirst, lastName: newLast, fullName: newFullName });
   };
 
   const handleSaveProfile = async () => {
@@ -682,14 +689,22 @@ export default function MyAccountPage() {
                 {/* First Name */}
                 <InputField
                   label="First Name"
-                  value={(user?.fullName || "").split(" ")[0] || ""}
+                  value={
+                    user?.firstName && user?.firstName !== "undefined"
+                      ? user.firstName
+                      : ((user?.fullName || "").replace(/\bundefined\b/gi, "").trim().split(" ")[0] || "")
+                  }
                   onChange={(e: any) => updateName("first", e.target.value)}
                 />
 
                 {/* Last Name */}
                 <InputField
                   label="Last Name"
-                  value={(user?.fullName || "").split(" ").slice(1).join(" ") || ""}
+                  value={
+                    user?.lastName && user?.lastName !== "undefined"
+                      ? user.lastName
+                      : ((user?.fullName || "").replace(/\bundefined\b/gi, "").trim().split(" ").slice(1).join(" ") || "")
+                  }
                   onChange={(e: any) => updateName("last", e.target.value)}
                 />
 
