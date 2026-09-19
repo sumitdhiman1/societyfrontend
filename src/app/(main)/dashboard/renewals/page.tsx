@@ -15,6 +15,7 @@ import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import { projectService } from "@/lib/projectService";
 import { paymentService } from "@/lib/paymentService";
 import { authService } from "@/lib/authService";
+import { profileService } from "@/lib/profileService";
 import { countryService } from "@/lib/countryService";
 import { getVatRateForCountry } from "@/lib/vatHelper";
 import { formatDateTimeWithUserTz } from "@/lib/dateUtils";
@@ -23,6 +24,8 @@ import VisaIcon from "@/components/icons/visa";
 import MastercardIcon from "@/components/icons/mastercard";
 import AmexIcon from "@/components/icons/amex";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
+import { useCurrency } from "@/context/CurrencyContext";
+import { formatPriceWithCurrency } from "@/lib/currencyUtils";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""
@@ -43,7 +46,11 @@ const CARD_ELEMENT_OPTIONS = {
 };
 
 const GlobeIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" className="text-primary-300"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary-300">
+    <circle cx="12" cy="12" r="10"></circle>
+    <line x1="2" y1="12" x2="22" y2="12"></line>
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+  </svg>
 );
 
 const formatExpiryDate = (dateString?: string) => {
@@ -64,24 +71,15 @@ const formatExpiryDate = (dateString?: string) => {
   }
 };
 
-const formatPrice = (amount: number, currency: string = "USD") => {
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency.toUpperCase(),
-    }).format(amount);
-  } catch {
-    return `$${amount.toFixed(2)}`;
-  }
-};
-
 // Unified Details Box containing Payment Summary, Terms, and Payment Method under ONE box with shadow
 function UnifiedRenewalDetailsBox({
   project,
+  userProfile,
   onToggleAutoRenew,
   onPaymentSuccess,
 }: {
   project: any;
+  userProfile?: any;
   onToggleAutoRenew: (project: any) => void;
   onPaymentSuccess: () => void;
 }) {
@@ -89,6 +87,7 @@ function UnifiedRenewalDetailsBox({
   const elements = useElements();
 
   const [processing, setProcessing] = useState(false);
+  const [countriesList, setCountriesList] = useState<any[]>([]);
   const [termsAccepted, setTermsAccepted] = useState(true);
   const [cardholderName, setCardholderName] = useState("");
   const [userEmail, setUserEmail] = useState("");
@@ -101,28 +100,24 @@ function UnifiedRenewalDetailsBox({
   });
 
   useEffect(() => {
-    countryService.getAllCountries().catch(() => { });
-    const user = authService.getUser();
+    countryService.getAllCountries().then((list) => {
+      if (list && list.length > 0) setCountriesList(list);
+    }).catch(() => { });
+    const user = userProfile || authService.getUser();
     if (user) {
-      setCardholderName(user.fullName || "");
+      setCardholderName(user.fullName || user.name || "");
       setUserEmail(user.email || "");
     }
-  }, []);
+  }, [userProfile]);
 
-  const isEstoniaClient = (country?: string) => {
-    if (!country) return false;
-    const c = country.trim().toUpperCase();
-    return c === "EE" || c === "EST" || c === "ESTONIA";
-  };
-  const clientCountryStr = String(
-    project.clientCountry ||
-    project.country ||
-    project.client?.country ||
-    project.client?.clientCountry ||
-    ""
-  );
-  // VAT only applies for Estonian clients (24%); all other countries are 0%
-  const vatRate = getVatRateForCountry(clientCountryStr);
+  const user = userProfile || authService.getUser();
+  const activeCountry = String(
+    billingSameAsBusiness
+      ? (userProfile?.country || userProfile?.billingCountry || userProfile?.clientCountry || user?.country || user?.billingCountry || project.clientCountry || project.country || "EE")
+      : (userProfile?.billingCountry || userProfile?.country || user?.country || "EE")
+  ).trim();
+
+  const vatRate = getVatRateForCountry(activeCountry);
 
   const renewalPrice =
     typeof project.price === "number"
@@ -131,19 +126,22 @@ function UnifiedRenewalDetailsBox({
         ? project.renewalPrice
         : parseFloat(String(project.price || project.renewalPrice || 100).replace(/[^0-9.]/g, "")) || 100;
 
-  const baseSubtotal = Number(
-    project.subtotal ??
-    (vatRate > 0 && renewalPrice > 0
-      ? Math.round((renewalPrice / (1 + vatRate / 100)) * 100) / 100
-      : renewalPrice)
-  );
-  const vatAmount = vatRate > 0 ? Math.round((baseSubtotal * (vatRate / 100)) * 100) / 100 : 0;
+  // The renewal item price is EXCL. TAX, so subtotal is the base renewal price
+  const baseSubtotal = project.subtotal !== undefined && Number(project.subtotal) > 0
+    ? Number(project.subtotal)
+    : renewalPrice;
+
+  const vatAmount = vatRate > 0
+    ? Math.round(baseSubtotal * (vatRate / 100) * 100) / 100
+    : 0;
+
   const totalDueAmount = Math.round((baseSubtotal + vatAmount) * 100) / 100;
 
+  const { currency, conversionRate } = useCurrency();
   const projectCurrency = (project.currency || "USD").toUpperCase();
-  const formattedSubtotal = formatPrice(baseSubtotal, projectCurrency);
-  const formattedVat = formatPrice(vatAmount, projectCurrency);
-  const formattedTotal = formatPrice(totalDueAmount > 0 ? totalDueAmount : renewalPrice, projectCurrency);
+  const formattedSubtotal = formatPriceWithCurrency(baseSubtotal, currency, projectCurrency, conversionRate);
+  const formattedVat = formatPriceWithCurrency(vatAmount, currency, projectCurrency, conversionRate);
+  const formattedTotal = formatPriceWithCurrency(totalDueAmount > 0 ? totalDueAmount : renewalPrice, currency, projectCurrency, conversionRate);
 
   const handleProcessPayment = async () => {
     if (!termsAccepted) {
@@ -171,7 +169,7 @@ function UnifiedRenewalDetailsBox({
           vatRate,
           vatAmount,
           subtotal: baseSubtotal,
-          clientCountry: clientCountryStr,
+          clientCountry: activeCountry,
         },
       });
 
@@ -221,7 +219,7 @@ function UnifiedRenewalDetailsBox({
   };
 
   return (
-    <div className="bg-white border border-gray-200/90 rounded-2xl shadow-[0_6px_28px_rgba(0,0,0,0.06)] p-6 md:p-8 mb-10 animate-in fade-in slide-in-from-top-2 duration-300">
+    <div className="bg-white border border-gray-200/90 rounded-2xl shadow-[0_6px_28px_rgba(0,0,0,0.06)] p-6 md:p-8 my-2 animate-in fade-in slide-in-from-top-2 duration-300">
       <StatusPopup
         isOpen={modal.isOpen}
         onClose={() => setModal({ ...modal, isOpen: false })}
@@ -258,7 +256,7 @@ function UnifiedRenewalDetailsBox({
         <div className="flex justify-between items-start mb-4">
           <div>
             <h4 className="text-base md:text-lg font-bold text-gray-900 mb-0.5">
-              {project.packageName || project.package?.name || "Maintenance Service"}
+              {project.packageName || project.package?.name || project.title || "Maintenance Service"}
             </h4>
             <p className="text-xs text-gray-400">
               1 month: {formattedTotal} / mo
@@ -279,12 +277,10 @@ function UnifiedRenewalDetailsBox({
             <span>Subtotal</span>
             <span>{formattedSubtotal}</span>
           </div>
-          {vatRate > 0 && (
-            <div className="flex justify-between text-xs font-semibold text-gray-600">
-              <span>VAT ({vatRate}%)</span>
-              <span>{formattedVat}</span>
-            </div>
-          )}
+          <div className="flex justify-between text-xs font-semibold text-gray-600">
+            <span>VAT ({vatRate}%)</span>
+            <span>{formattedVat}</span>
+          </div>
         </div>
 
         <div className="border-t border-gray-200/60 my-6" />
@@ -297,7 +293,7 @@ function UnifiedRenewalDetailsBox({
         </div>
       </div>
 
-      {/* 4. Terms & Agreement Box (Inside same container!) */}
+      {/* 4. Terms & Agreement Box */}
       <div className="bg-[#F9FAFB] border border-gray-200/80 rounded-xl p-4 flex items-start gap-3 mb-8">
         <input
           type="checkbox"
@@ -324,7 +320,7 @@ function UnifiedRenewalDetailsBox({
         </label>
       </div>
 
-      {/* 5. Payment Method Section (Inside same container!) */}
+      {/* 5. Payment Method Section */}
       <div>
         {/* Card brand icons */}
         <div className="flex items-center gap-3 mb-6">
@@ -438,9 +434,11 @@ function UnifiedRenewalDetailsBox({
 }
 
 export default function RenewalsPage() {
+  const { currency, conversionRate } = useCurrency();
   const [renewals, setRenewals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   const fetchRenewalsData = async () => {
     setIsLoading(true);
@@ -465,6 +463,13 @@ export default function RenewalsPage() {
 
   useEffect(() => {
     fetchRenewalsData();
+    profileService.getMyProfile().then((res) => {
+      if (res?.data) {
+        setUserProfile(res.data);
+      }
+    }).catch((e) => {
+      console.error("Failed to fetch profile in renewals:", e);
+    });
   }, []);
 
   const handleToggleAutoRenew = async (project: any) => {
@@ -484,10 +489,6 @@ export default function RenewalsPage() {
       alert("Failed to update auto-renewal settings. Please try again.");
     }
   };
-
-  const selectedProject = selectedId
-    ? renewals.find((p) => p._id === selectedId) || null
-    : null;
 
   return (
     <div className="bg-white min-h-screen flex flex-col font-sans">
@@ -532,119 +533,121 @@ export default function RenewalsPage() {
                     : parseFloat(String(project.price || project.renewalPrice || 100).replace(/[^0-9.]/g, "")) || 100;
 
               const isAutoRenewOn = project.autoRenewal !== false;
-              const formattedItemPrice = formatPrice(priceNum, project.currency || "USD");
+              const formattedItemPrice = formatPriceWithCurrency(priceNum, currency, project.currency || "USD", conversionRate);
 
               return (
-                <div
-                  key={project._id}
-                  onClick={() =>
-                    setSelectedId((prev) => (prev === project._id ? null : project._id))
-                  }
-                  className={`bg-white rounded-xl p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-0 cursor-pointer transition-all ${isSelected
-                    ? "border border-primary-300 bg-primary-400/20 rounded-[6px] hover:border-gray-300 shadow-sm"
-                    : "border border-gray-200 bg-white rounded-[6px] shadow-sm hover:border-gray-300"
-                    }`}
-                >
-                  {/* Left Side: Checkbox + Globe + Info */}
-                  <div className="flex items-start md:items-center gap-4 md:gap-6">
-                    {/* Checkbox */}
-                    <div
-                      className={`mt-1 md:mt-0 w-5 h-5 rounded-[4px] flex-shrink-0 
-                        flex items-center justify-center overflow-hidden transition-colors flex-shrink-0 ${isSelected
-                          ? "bg-[#4343f0] border-primary-300 border text-white"
-                          : "border border-gray-300 bg-white"
-                        }`}
-                    >
-                      {isSelected && (
-                        <svg
-                          width="10"
-                          height="10"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
-                    </div>
-
-                    {/* Globe Icon */}
-                    <div className="text-primary-300 flex-shrink-0">
-                      <GlobeIcon />
-                    </div>
-
-                    {/* Title and Metadata */}
-                    <div>
-                      <div className="text-[15px] font-bold text-gray-900 leading-tight flex items-center gap-2">
-                        {project.title}
-                        {/* Auto-renew badge */}
-                        {isAutoRenewOn ? (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase border bg-green-50 text-green-700 border-green-200">
-                            AUTO-RENEW ON
-                          </span>
-                        ) : (
-                          <span className="bg-gray-100 text-gray-500 border border-gray-200 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                            AUTO-RENEW OFF
-                          </span>
+                <div key={project._id} className="flex flex-col gap-3">
+                  <div
+                    onClick={() =>
+                      setSelectedId((prev) => (prev === project._id ? null : project._id))
+                    }
+                    className={`bg-white rounded-xl p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-0 cursor-pointer transition-all ${isSelected
+                      ? "border border-primary-300 bg-primary-400/20 rounded-[6px] hover:border-gray-300 shadow-sm"
+                      : "border border-gray-200 bg-white rounded-[6px] shadow-sm hover:border-gray-300"
+                      }`}
+                  >
+                    {/* Left Side: Checkbox + Globe + Info */}
+                    <div className="flex items-start md:items-center gap-4 md:gap-6">
+                      {/* Checkbox */}
+                      <div
+                        className={`mt-1 md:mt-0 w-5 h-5 rounded-[4px] flex-shrink-0 
+                          flex items-center justify-center overflow-hidden transition-colors ${isSelected
+                            ? "bg-[#4343f0] border-primary-300 border text-white"
+                            : "border border-gray-300 bg-white"
+                          }`}
+                      >
+                        {isSelected && (
+                          <svg
+                            width="10"
+                            height="10"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
                         )}
                       </div>
-                      <div className="text-[13px] text-gray-500 mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span>
-                          {project.packageName || project.package?.name || "Maintenance Service"}
-                        </span>
-                        <span className="hidden sm:inline text-gray-300">•</span>
-                        <span className="text-gray-400 font-medium">
-                          Expires {formatExpiryDate(project.nextRenewalDate)}
+
+                      {/* Globe Icon */}
+                      <div className="text-primary-300 flex-shrink-0">
+                        <GlobeIcon />
+                      </div>
+
+                      {/* Title and Metadata */}
+                      <div>
+                        <div className="text-[15px] font-bold text-gray-900 leading-tight flex items-center gap-2">
+                          {project.title}
+                          {/* Auto-renew badge */}
+                          {isAutoRenewOn ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase border bg-green-50 text-green-700 border-green-200">
+                              AUTO-RENEW ON
+                            </span>
+                          ) : (
+                            <span className="bg-gray-100 text-gray-500 border border-gray-200 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                              AUTO-RENEW OFF
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[13px] text-gray-500 mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span>
+                            {project.packageName || project.package?.name || "Maintenance Service"}
+                          </span>
+                          <span className="hidden sm:inline text-gray-300">•</span>
+                          <span className="text-gray-400 font-medium">
+                            Expires {formatExpiryDate(project.nextRenewalDate)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Side: Stop Auto-Renewal + Rate + Price */}
+                    <div className="flex items-center md:items-center gap-4 md:gap-6 justify-between md:justify-end md:text-right pr-0 md:pr-4 pl-9 md:pl-0 ">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleAutoRenew(project);
+                        }}
+                        className="text-xs font-bold px-3 py-1.5 rounded transition-colors border bg-red-50 text-red-700 hover:bg-red-100 border-red-200"
+                      >
+                        {isAutoRenewOn ? "Stop Auto-Renewal" : "Enable Auto-Renewal"}
+                      </button>
+
+                      <span className="text-[13px] text-gray-500 font-medium hidden lg:block">
+                        1 month: {formattedItemPrice} / mo
+                      </span>
+
+                      <div className="text-base font-bold text-gray-900 min-w-0 md:min-w-[120px]">
+                        {formattedItemPrice}
+                        <span className="text-[10px] font-normal text-gray-400 ml-2 uppercase">
+                          EXCL. TAX
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Right Side: Stop Auto-Renewal + Rate + Price */}
-                  <div className="flex items-center md:items-center gap-4 md:gap-6 justify-between md:justify-end md:text-right pr-0 md:pr-4 pl-9 md:pl-0 ">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleAutoRenew(project);
-                      }}
-                      className="text-xs font-bold px-3 py-1.5 rounded transition-colors border bg-red-50 text-red-700 hover:bg-red-100 border-red-200"
-                    >
-                      {isAutoRenewOn ? "Stop Auto-Renewal" : "Enable Auto-Renewal"}
-                    </button>
-
-                    <span className="text-[13px] text-gray-500 font-medium hidden lg:block">
-                      1 month: {formattedItemPrice} / mo
-                    </span>
-
-                    <div className="text-base font-bold text-gray-900 min-w-0 md:min-w-[120px]">
-                      {formattedItemPrice}
-                      <span className="text-[10px] font-normal text-gray-400 ml-2 uppercase">
-                        EXCL. TAX
-                      </span>
-                    </div>
-                  </div>
+                  {/* Render details box directly below this selected item */}
+                  {isSelected && (
+                    <Elements stripe={stripePromise}>
+                      <UnifiedRenewalDetailsBox
+                        project={project}
+                        userProfile={userProfile}
+                        onToggleAutoRenew={handleToggleAutoRenew}
+                        onPaymentSuccess={fetchRenewalsData}
+                      />
+                    </Elements>
+                  )}
                 </div>
               );
             })}
           </div>
         )}
 
-        {/* ONE Unified Details Box with shadow (Payment Summary + Terms + Payment Form) */}
-        {!isLoading && selectedProject && (
-          <Elements stripe={stripePromise}>
-            <UnifiedRenewalDetailsBox
-              project={selectedProject}
-              onToggleAutoRenew={handleToggleAutoRenew}
-              onPaymentSuccess={fetchRenewalsData}
-            />
-          </Elements>
-        )}
-
-        <div className="">
+        <div className="mt-8">
           <SupportNewsletter noPadding />
         </div>
       </main>

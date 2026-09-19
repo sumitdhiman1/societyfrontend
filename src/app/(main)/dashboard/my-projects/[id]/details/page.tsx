@@ -17,13 +17,12 @@ import RecommendedSolutions from "@/components/common/RecommendedSolutions";
 import CalculatorSpecsCard from "@/components/common/CalculatorSpecsCard";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import { getMainCalculatorCategory, getProjectEstimatedDeadline, isCalculatorProject } from "@/lib/calculatorUtils";
-import { capitalizeCurrencyInText, formatPriceWithCurrency, convertCurrencyAmount } from "@/lib/currencyUtils";
+import { capitalizeCurrencyInText, formatPriceWithCurrency } from "@/lib/currencyUtils";
 import { useCurrency } from "@/context/CurrencyContext";
 import { useTimezone } from "@/context/TimezoneContext";
 import { toast } from "sonner";
 import { paymentService } from "@/lib/paymentService";
 import { quoteService } from "@/lib/quoteService";
-import CalculatorProjectDetails from "./CalculatorProjectDetails";
 
 const renderStatusMessageText = (rawText: string, attachments?: any[]) => {
   const text = capitalizeCurrencyInText(rawText);
@@ -408,18 +407,6 @@ export default function ProjectDetailsPage() {
 
   if (!project) return null;
 
-  const isCalc = isCalculatorProject(project, fetchedQuote);
-  if (isCalc) {
-    return (
-      <CalculatorProjectDetails
-        project={project}
-        quote={fetchedQuote || (typeof project?.quoteId === "object" ? project.quoteId : project?.quote)}
-        payments={projectPayments}
-        onRefreshProject={refreshProject}
-      />
-    );
-  }
-
   const formatSubmittedDate = (date: any) => {
     return formatSubmittedDateTz(date);
   };
@@ -438,24 +425,11 @@ export default function ProjectDetailsPage() {
     return formatMessageTimestampTz(date);
   };
 
-  const projectNativeCurrency = (
-    project?.currency ||
-    projectPayments[0]?.currency ||
-    (project?.currencySymbol === "€" ? "EUR" : project?.currencySymbol === "$" ? "USD" : "USD")
-  ).toLowerCase();
-
-  const activeDisplayCurrency = (
-    contextCurrency ||
-    currentUser?.currency ||
-    currentUser?.preferredCurrency ||
-    projectNativeCurrency ||
-    "usd"
-  ).toLowerCase();
-
-  const formatCurrency = (amt: any, customCurrency?: string) => {
+  const formatCurrency = (amt: any, customSourceCurrency?: string) => {
     const num = Number(amt || 0);
-    const targetCurr = (customCurrency || activeDisplayCurrency).toLowerCase();
-    return formatPriceWithCurrency(num, targetCurr, projectNativeCurrency, conversionRate);
+    const srcCurrency = (customSourceCurrency || project?.currency || "USD").toUpperCase();
+    const targetCurrency = (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || "USD").toUpperCase();
+    return formatPriceWithCurrency(num, targetCurrency, srcCurrency, conversionRate);
   };
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -828,8 +802,16 @@ export default function ProjectDetailsPage() {
   const regularItems = nonAddonDeliverableItems.length > 0
     ? nonAddonDeliverableItems.map((item: any) => {
         let itemAmount = Number(item.amount ?? item.cost ?? 0);
-        if (itemAmount === 0 && nonAddonDeliverableItems.length === 1 && rawQuoteSubtotal > 0) {
-          itemAmount = rawQuoteSubtotal;
+        if (nonAddonDeliverableItems.length === 1) {
+          if (itemAmount === 0 && rawQuoteSubtotal > 0) {
+            itemAmount = rawQuoteSubtotal;
+          } else if (
+            vatRate > 0 &&
+            rawQuoteSubtotal > 0 &&
+            (Math.abs(itemAmount - rawBaseCost) <= 0.05 || (itemAmount > rawQuoteSubtotal && Math.abs(itemAmount - Math.round(rawQuoteSubtotal * (1 + vatRate / 100) * 100) / 100) <= 0.05))
+          ) {
+            itemAmount = rawQuoteSubtotal;
+          }
         }
         return {
           description: item.description || item.title || item.name || "Deliverable",
@@ -1536,8 +1518,7 @@ export default function ProjectDetailsPage() {
                           <p className="text-xs sm:text-sm text-[#3B82F6] font-medium mb-1.5">{description}</p>
                         ) : null}
                         <div className="flex items-baseline gap-1">
-                          <span className="text-xl sm:text-2xl font-black text-[#1E3A8A]">{currency === "EUR" ? "€" : "$"}{amount.toFixed(0)}</span>
-                          <span className="text-[11px] font-bold text-[#3B82F6] uppercase">{currency}</span>
+                          <span className="text-xl sm:text-2xl font-black text-[#1E3A8A]">{formatCurrency(amount)}</span>
                         </div>
                       </div>
                     </div>

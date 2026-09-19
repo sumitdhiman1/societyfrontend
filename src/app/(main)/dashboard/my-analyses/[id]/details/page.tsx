@@ -17,6 +17,8 @@ import RecommendedSolutions, { PackageCard } from "@/components/common/Recommend
 import DeadlineTooltip from "@/components/common/DeadlineTooltip";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
 import { getProjectEstimatedDeadline } from "@/lib/calculatorUtils";
+import { useCurrency } from "@/context/CurrencyContext";
+import { formatPriceWithCurrency } from "@/lib/currencyUtils";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
 
@@ -285,6 +287,7 @@ const formatCategoryName = (cat: any, title?: string): string => {
 export default function AnalysisDetailsPage() {
   const params = useParams();
   const { analysis, refreshAnalysis } = useAnalysis();
+  const { currency: contextCurrency, conversionRate } = useCurrency();
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -510,13 +513,12 @@ export default function AnalysisDetailsPage() {
     });
   };
 
-  const formatCurrency = (amt: any, customCurrency?: string) => {
+  const formatCurrency = (amt: any, customSourceCurrency?: string) => {
     const val = Number(amt);
     if (isNaN(val)) return "$0.00";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: customCurrency || analysis?.currency || "USD",
-    }).format(val);
+    const srcCurrency = (customSourceCurrency || analysis?.currency || "USD").toUpperCase();
+    const targetCurrency = (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || "USD").toUpperCase();
+    return formatPriceWithCurrency(val, targetCurrency, srcCurrency, conversionRate);
   };
 
   const formatSubmittedDate = (date: any) => {
@@ -1249,7 +1251,7 @@ export default function AnalysisDetailsPage() {
               </div>
               <h4 className="text-lg font-bold text-gray-800 mb-1">{managerName}</h4>
               <p className="text-sm text-gray-500 mb-4 font-medium uppercase tracking-wider text-[10px]">
-                Manager
+                Project Manager
               </p>
             </div>
           </div>

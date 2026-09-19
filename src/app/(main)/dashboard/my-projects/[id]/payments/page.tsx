@@ -10,12 +10,12 @@ import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generatePr
 import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "@/lib/generateCalculatorProjectPDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { useCurrency } from "@/context/CurrencyContext";
-import { useTimezone } from "@/context/TimezoneContext";
 import { formatPriceWithCurrency } from "@/lib/currencyUtils";
+import { useTimezone } from "@/context/TimezoneContext";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 import CalculatorProjectPayments, { ReceiptModal } from "./CalculatorProjectPayments";
 
-export function isCalculatorProject(project: any, quote?: any): boolean {
+function isCalculatorProject(project: any, quote?: any): boolean {
   if (!project) return false;
   if (project.isCalculator) return true;
   if (project.calculatorSpecs && Object.keys(project.calculatorSpecs).length > 0) return true;
@@ -49,7 +49,7 @@ export default function ProjectPaymentsPage() {
   const searchParams = useSearchParams();
   const projectId = (params?.id as string) || "";
   const { project, isLoading: projectLoading, refreshProject } = useProject();
-  const { currency: contextCurrency, setCurrency, conversionRate } = useCurrency();
+  const { currency: contextCurrency, conversionRate } = useCurrency();
   const { formatDateTime: formatDateTimeTz } = useTimezone();
   const [payments, setPayments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -267,8 +267,16 @@ export default function ProjectPaymentsPage() {
   const regularItems = nonAddonDeliverableItems.length > 0
     ? nonAddonDeliverableItems.map((item: any) => {
         let itemAmount = Number(item.amount ?? 0);
-        if (itemAmount === 0 && nonAddonDeliverableItems.length === 1 && rawQuoteSubtotal > 0) {
-          itemAmount = rawQuoteSubtotal;
+        if (nonAddonDeliverableItems.length === 1) {
+          if (itemAmount === 0 && rawQuoteSubtotal > 0) {
+            itemAmount = rawQuoteSubtotal;
+          } else if (
+            vatRate > 0 &&
+            rawQuoteSubtotal > 0 &&
+            (Math.abs(itemAmount - rawBaseCost) <= 0.05 || (itemAmount > rawQuoteSubtotal && Math.abs(itemAmount - Math.round(rawQuoteSubtotal * (1 + vatRate / 100) * 100) / 100) <= 0.05))
+          ) {
+            itemAmount = rawQuoteSubtotal;
+          }
         }
         return {
           description: item.description || item.title || item.name || "Deliverable",
@@ -334,22 +342,11 @@ export default function ProjectPaymentsPage() {
 
   const paymentStatus = resolvedPaymentStatus;
 
-  const projectNativeCurrency = (
-    activeProject.currency ||
-    payments[0]?.currency ||
-    (activeProject?.currencySymbol === "€" ? "EUR" : activeProject?.currencySymbol === "$" ? "USD" : "USD")
-  ).toLowerCase();
-
-  const currency = (
-    contextCurrency ||
-    currentUser?.currency ||
-    currentUser?.preferredCurrency ||
-    projectNativeCurrency ||
-    "usd"
-  ).toUpperCase();
-
-  const formatCurrency = (amt: number) =>
-    formatPriceWithCurrency(amt, currency.toLowerCase(), projectNativeCurrency, conversionRate);
+  const formatCurrency = (amt: number, customSourceCurrency?: string) => {
+    const src = (customSourceCurrency || activeProject.currency || payments[0]?.currency || "USD").toUpperCase();
+    const target = (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || "USD").toUpperCase();
+    return formatPriceWithCurrency(amt, target, src, conversionRate);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -524,7 +521,7 @@ export default function ProjectPaymentsPage() {
               successRedirectUrl={`/dashboard/my-projects/${projectId}/payments?success=true`}
               amountPaid={amountPaid}
               isFullyPaid={isFullyPaid}
-              nativeCurrency={projectNativeCurrency || "USD"}
+              nativeCurrency={(activeProject.currency || payments[0]?.currency || "USD").toUpperCase()}
               vatRate={vatRate}
               invoiceId={searchInvoiceId}
               onDownloadInvoice={handleViewInvoice}

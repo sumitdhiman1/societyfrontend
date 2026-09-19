@@ -4,8 +4,11 @@ import React, { useState, useEffect } from "react";
 import DashboardSubNav from "@/components/dashboard/DashboardSubNav";
 import { authService } from "@/lib/authService";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
+import { useCurrency } from "@/context/CurrencyContext";
+import { formatPriceWithCurrency } from "@/lib/currencyUtils";
 
 export default function CreditsPage() {
+  const { currency, conversionRate } = useCurrency();
   const [credits, setCredits] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -48,7 +51,7 @@ export default function CreditsPage() {
               Credits Available To Use
             </h3>
             <div className="text-5xl font-medium text-primary-300">
-              {isLoading ? "$---" : `$${credits.toFixed(0)}`}
+              {isLoading ? (currency === "eur" ? "€---" : "$---") : formatPriceWithCurrency(credits, currency, "USD", conversionRate)}
             </div>
           </div>
 

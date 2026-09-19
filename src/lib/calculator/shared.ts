@@ -678,11 +678,12 @@ export function parseDurationToDays(durationStr: string): number {
   if (!durationStr) return 0;
   if (/monthly\s*service/i.test(durationStr)) return 30;
   const trimmed = durationStr.trim();
+  if (/^\d+$/.test(trimmed)) return parseInt(trimmed, 10);
   if (/^3\s*days?$/i.test(trimmed)) return 3;
   if (/^10\s*days?$/i.test(trimmed)) return 10;
   const rangeMatch = /(\d+)\s*-\s*(\d+)/.exec(durationStr);
   if (rangeMatch) return parseInt(rangeMatch[2], 10);
-  const weeksMatch = /(\d+)\s*week/i.exec(durationStr);
+  const weeksMatch = /(\d+)\s*(?:business\s*)?week/i.exec(durationStr);
   if (weeksMatch) return parseInt(weeksMatch[1], 10) * 7;
   const monthsMatch = /(\d+)\s*month/i.exec(durationStr);
   if (monthsMatch) return parseInt(monthsMatch[1], 10) * 30;
@@ -715,27 +716,31 @@ export function getProjectEstimatedDeadline(project: any): Date | null {
     project.requirements?.estimatedTimeline ||
     project.requirements?.timeline ||
     project.estimatedTimeline ||
-    project.totalDuration ||
-    project.timeline ||
-    project.duration ||
+    (project.totalDuration && project.totalDuration !== "-" ? project.totalDuration : "") ||
+    (project.timeline && project.timeline !== "-" ? project.timeline : "") ||
+    (project.duration && project.duration !== "-" ? project.duration : "") ||
     "";
 
   let durationDays = parseDurationToDays(timelineStr);
 
-  // 3. Sum item durations if no top-level timeline
-  if (durationDays === 0 && Array.isArray(project.items) && project.items.length > 0) {
-    let sumDays = 0;
-    for (const item of project.items) {
+  // 3. Sum item durations or deliverable items if no top-level timeline
+  const items = Array.isArray(project.deliverableItems) && project.deliverableItems.length > 0
+    ? project.deliverableItems
+    : (Array.isArray(project.items) && project.items.length > 0 ? project.items : []);
+
+  if (durationDays === 0 && items.length > 0) {
+    let maxDays = 0;
+    for (const item of items) {
       if (item.duration) {
         const itemDays =
           typeof item.duration === "number"
             ? item.duration
             : parseDurationToDays(String(item.duration));
-        sumDays += itemDays;
+        maxDays = Math.max(maxDays, itemDays);
       }
     }
-    if (sumDays > 0) {
-      durationDays = sumDays;
+    if (maxDays > 0) {
+      durationDays = maxDays;
     }
   }
 

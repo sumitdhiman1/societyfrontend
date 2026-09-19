@@ -250,27 +250,66 @@ function PackageDetailsContent() {
     return rate > 0 ? (amount * rate) / 100 : 0;
   };
 
+  const formatDurationText = (daysOrObj: any): string => {
+    if (daysOrObj === undefined || daysOrObj === null || daysOrObj === "" || daysOrObj === "-") return "-";
+    if (typeof daysOrObj === "object") {
+      const val = Number(daysOrObj.value);
+      if (isNaN(val) || val <= 0) return "-";
+      const unit = (daysOrObj.type || daysOrObj.unit || "days").toLowerCase();
+      if (unit.startsWith("month")) return `${val} ${val === 1 ? "Month" : "Months"}`;
+      if (unit.startsWith("week")) return `${val} ${val === 1 ? "Week" : "Weeks"}`;
+      return `${val} ${val === 1 ? "Day" : "Days"}`;
+    }
+
+    if (typeof daysOrObj === "string" && !/^\d+$/.test(daysOrObj.trim())) {
+      return daysOrObj;
+    }
+
+    const days = typeof daysOrObj === "number" ? daysOrObj : parseInt(String(daysOrObj).trim(), 10);
+    if (isNaN(days) || days <= 0) return "-";
+
+    if (days % 30 === 0) {
+      const months = days / 30;
+      return `${months} ${months === 1 ? "Month" : "Months"}`;
+    }
+    if (days % 7 === 0) {
+      const weeks = days / 7;
+      return `${weeks} ${weeks === 1 ? "Week" : "Weeks"}`;
+    }
+    return `${days} ${days === 1 ? "Day" : "Days"}`;
+  };
+
+  const getTimelineDays = (col: any): number => {
+    if (!col) return 7;
+    const t = col.timeline ?? col.recurringTimeline;
+    if (typeof t === "number" && t > 0) return t;
+    if (typeof t === "object" && t?.value) {
+      const val = Number(t.value);
+      const unit = (t.type || t.unit || "days").toLowerCase();
+      if (unit.startsWith("month")) return val * 30;
+      if (unit.startsWith("week")) return val * 7;
+      return val;
+    }
+    if (typeof t === "string") {
+      if (/^\d+$/.test(t.trim())) return parseInt(t.trim(), 10) || 7;
+      const weeksMatch = /(\d+)\s*Week/i.exec(t);
+      if (weeksMatch) return parseInt(weeksMatch[1], 10) * 7;
+      const monthMatch = /(\d+)\s*Month/i.exec(t);
+      if (monthMatch) return parseInt(monthMatch[1], 10) * 30;
+      const daysMatch = /(\d+)\s*Day/i.exec(t);
+      if (daysMatch) return parseInt(daysMatch[1], 10);
+    }
+    return 7;
+  };
+
   const getTimelineDisplay = (col: any, featureList: any[] = [], idx: number = 0) => {
     if (!col) return "-";
 
     // 1. Direct col.timeline or recurringTimeline
     const t = col.timeline ?? col.recurringTimeline;
     if (t !== undefined && t !== null && t !== "") {
-      if (typeof t === "object" && t.value !== undefined) {
-        const val = t.value;
-        const type = t.type || "weeks";
-        return `${val} ${val === 1 ? type.replace(/s$/, "") : type}`;
-      }
-      if (typeof t === "number" && t > 0) {
-        return `${t} week${t > 1 ? "s" : ""}`;
-      }
-      if (typeof t === "string" && t.trim() !== "" && t !== "0" && t !== "-") {
-        if (/^\d+$/.test(t.trim())) {
-          const num = parseInt(t.trim(), 10);
-          return `${num} week${num > 1 ? "s" : ""}`;
-        }
-        return t;
-      }
+      const formatted = formatDurationText(t);
+      if (formatted !== "-") return formatted;
     }
 
     // 2. Look in features for a feature with key/name 'timeline'
@@ -279,16 +318,8 @@ function PackageDetailsContent() {
     );
     if (timelineFeature && timelineFeature.values?.[col.id] != null) {
       const fVal = timelineFeature.values[col.id];
-      if (typeof fVal === "number" && fVal > 0) {
-        return `${fVal} week${fVal > 1 ? "s" : ""}`;
-      }
-      if (typeof fVal === "string" && fVal.trim() !== "" && fVal !== "-") {
-        if (/^\d+$/.test(fVal.trim())) {
-          const num = parseInt(fVal.trim(), 10);
-          return `${num} week${num > 1 ? "s" : ""}`;
-        }
-        return fVal;
-      }
+      const formatted = formatDurationText(fVal);
+      if (formatted !== "-") return formatted;
     }
 
     // 3. Fallback to period if available
@@ -392,16 +423,53 @@ function PackageDetailsContent() {
                   </div>
                   
                   <div className="divide-y divide-gray-100">
-                    {features.map((feature: any, fIdx: number) => (
+                    {/* Timeline Row */}
+                    <div className="grid divide-x divide-gray-50 bg-gray-50/40 border-b border-gray-100" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
+                      <div className="p-4 md:p-5 px-6 md:px-8 font-bold text-[#808080] text-[13px] md:text-[15px] flex items-center uppercase tracking-wider">Timeline</div>
+                      {columns.map((col: any, idx: number) => (
+                        <div key={idx} className="p-5 flex items-center justify-center text-center">
+                          <span className="text-[15px] font-bold text-[#646464]">{getTimelineDisplay(col, features, idx)}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {features
+                      .filter((f: any) => f.key !== "timeline" && f.name?.toLowerCase().trim() !== "timeline")
+                      .map((feature: any, fIdx: number) => (
                       <div key={fIdx} className="grid divide-x divide-gray-50 hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
                         <div className="p-4 md:p-5 px-6 md:px-8 font-bold text-[#808080] text-[13px] md:text-[15px] flex items-center">{feature.name}</div>
                         {columns.map((col: any, cIdx: number) => {
-                          const val = feature.values?.[col.id];
+                          let val = feature.values?.[col.id];
+                          if (val === undefined && feature.values) {
+                            const match = Object.keys(feature.values).find(k => k.toLowerCase() === String(col.id).toLowerCase());
+                            if (match) val = feature.values[match];
+                          }
+
+                          let isLink = false;
+                          let linkData = { label: '', url: '' };
+                          if (typeof val === 'string' && val.startsWith('__LINK__:')) {
+                            isLink = true;
+                            const parts = val.replace('__LINK__:', '').split('|');
+                            linkData = { label: parts[0] || '', url: parts[1] || '' };
+                          }
+
+                          const isBool = typeof val === "boolean" || val === "true" || val === "false";
+                          const boolVal = typeof val === "boolean" ? val : (val === "true");
+
                           return (
                             <div key={cIdx} className="p-5 flex items-center justify-center">
-                              {typeof val === "boolean" ? (
-                                val ? <CheckIcon /> : <CrossIcon />
-                              ) : val == null ? (
+                              {isLink ? (
+                                <a
+                                  href={linkData.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[13px] font-bold text-[#3535b8] hover:underline"
+                                >
+                                  {linkData.label}
+                                </a>
+                              ) : isBool ? (
+                                boolVal ? <CheckIcon /> : <CrossIcon />
+                              ) : val == null || val === "" || val === "-" ? (
                                 <span className="text-gray-300">-</span>
                               ) : (
                                 <span className="text-[15px] font-bold text-[#646464]">{String(val)}</span>
@@ -411,15 +479,6 @@ function PackageDetailsContent() {
                         })}
                       </div>
                     ))}
-                    {/* Timeline Row */}
-                    <div className="grid divide-x divide-gray-50 bg-gray-50/30 border-t border-gray-100" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
-                      <div className="p-4 md:p-5 px-6 md:px-8 font-bold text-[#808080] text-[13px] md:text-[15px] flex items-center">Timeline</div>
-                      {columns.map((col: any, idx: number) => (
-                        <div key={idx} className="p-5 flex items-center justify-center text-center">
-                          <span className="text-[15px] font-bold text-[#646464]">{getTimelineDisplay(col, features, idx)}</span>
-                        </div>
-                      ))}
-                    </div>
                   </div>
 
                   <div className="grid divide-x divide-gray-100 border-t border-gray-100 bg-white" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
@@ -458,9 +517,9 @@ function PackageDetailsContent() {
                         <div className="bg-[#e0e0e0] px-4 py-1.5 rounded-full w-fit flex items-center gap-2">
                           <span className="text-[11px] text-[#808080] font-bold uppercase tracking-wider">
                             Estimated Deadline: {(() => {
-                              const weeks = Number(selectedTier?.timeline) || 1;
+                              const days = getTimelineDays(selectedTier);
                               const d = new Date();
-                              d.setDate(d.getDate() + (weeks * 7));
+                              d.setDate(d.getDate() + days);
                               return d.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
                             })()}
                           </span>
@@ -538,8 +597,8 @@ function PackageDetailsContent() {
                       depositAmount={parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0) > 0 ? parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0) / 2 : undefined}
                       deliverableItems={[
                         {
-                          description: "Service Delivery",
-                          details: `${pkg.name} - ${selectedTier?.title}`,
+                          description: `${pkg.name}${selectedTier?.title ? ` - ${selectedTier.title}` : ""}`,
+                          details: pkg.description || "",
                           amount: parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0),
                           duration: getDurationLabel(selectedTier),
                           unit: "",
@@ -551,9 +610,9 @@ function PackageDetailsContent() {
                       amountPaid={0}
                       startDate={new Date().toISOString()}
                       deadline={(() => {
-                        const weeks = Number(selectedTier?.timeline) || 1;
+                        const days = getTimelineDays(selectedTier);
                         const d = new Date();
-                        d.setDate(d.getDate() + (weeks * 7));
+                        d.setDate(d.getDate() + days);
                         return d.toISOString();
                       })()}
                       nativeCurrency="USD"
@@ -564,6 +623,7 @@ function PackageDetailsContent() {
                         tierId: selectedTier?.id,
                         tierTitle: selectedTier?.title,
                         projectNo,
+                        duration: getDurationLabel(selectedTier),
                         billingType: selectedTier?.billingType || (pkg.paymentType?.toLowerCase().includes("month") ? "monthly" : "fixed"),
                         recurringAmount: parsePrice(selectedTier?.recurringAmount || selectedTier?.recurringPrice || selectedTier?.price || 0),
                         recurringDuration: selectedTier?.period || "month",

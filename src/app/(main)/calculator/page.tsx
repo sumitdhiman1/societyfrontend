@@ -1194,7 +1194,7 @@ const CalculatorPaymentForm = ({
     if (!isAuth) return 0;
     const codeOrName = userCountry?.trim() || "";
     if (!codeOrName) return 0;
-    return getVatRateForCountry(codeOrName);
+    return countryService.getVatRateSync(codeOrName);
   }, [isAuth, userCountry]);
 
   const vatMultiplier = vatRate > 0 ? vatRate / 100 : 0;
@@ -1692,7 +1692,7 @@ export default function CalculatorPage() {
     if (!authService.isAuthenticated()) return 0;
     const codeOrName = userCountry?.trim() || "";
     if (!codeOrName) return 0;
-    return getVatRateForCountry(codeOrName);
+    return countryService.getVatRateSync(codeOrName);
   }, [userCountry]);
 
   const vatMultiplier = vatRate > 0 ? vatRate / 100 : 0;
