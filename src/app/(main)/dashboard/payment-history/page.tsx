@@ -227,24 +227,59 @@ export default function PaymentHistoryPage() {
     const getDesc = (p: any) => {
       const meta = p?.metadata || {};
       if (meta.type === "QUOTE" || meta.quoteNumber || meta.invoiceNumber) {
-        const num = meta.quoteNumber || meta.invoiceNumber;
-        return `Payment for Quote ${num ? `#${num}` : ""}`;
+        const num = meta.quoteNumber || meta.invoiceNumber || meta.quoteId;
+        const cleanNum = num ? (String(num).startsWith("#") ? num : `#${num}`) : "";
+        return `Payment for Quote ${cleanNum}`.trim();
       }
       return meta.title ? `Payment for ${meta.title}` : "Payment Transaction";
     };
+
+    const getPaymentMethod = (pm?: string) => {
+      if (!pm) return "card payment";
+      const lower = pm.toLowerCase().trim();
+      if (
+        lower === "stripe" ||
+        lower === "card" ||
+        lower === "credit_card" ||
+        lower === "debit_card" ||
+        lower === "card_payment"
+      ) {
+        return "card payment";
+      }
+      return pm;
+    };
+
+    const getTransactionId = (p: any) => {
+      return (
+        p.externalTransactionId ||
+        p.transactionId ||
+        p.metadata?.paymentIntentId ||
+        p.metadata?.stripePaymentIntentId ||
+        p.metadata?.transactionId ||
+        p._id ||
+        p.id ||
+        ""
+      );
+    };
+
     const rows = [
       "Date,Transaction,Amount,Currency,Status,Payment Method,Transaction ID",
       ...payments.map((p) => {
-        const date = new Date(p.createdAt).toLocaleDateString();
-        const desc = getDesc(p);
+        const date = p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "";
+        const desc = getDesc(p).replace(/"/g, '""');
+        const amount = p.amount != null ? Number(p.amount).toFixed(2) : "0.00";
+        const currency = (p.currency || "USD").toUpperCase();
+        const status = p.status || "succeeded";
+        const method = getPaymentMethod(p.paymentMethod);
+        const txId = getTransactionId(p);
         return [
           date,
           `"${desc}"`,
-          p.amount,
-          (p.currency || "USD").toUpperCase(),
-          p.status,
-          p.paymentMethod,
-          p.externalTransactionId,
+          amount,
+          currency,
+          status,
+          method,
+          txId,
         ].join(",");
       }),
     ].join("\n");
