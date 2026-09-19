@@ -200,8 +200,8 @@ export default function CompanyPage() {
           <div className="company-bg-overlay absolute inset-0 bg-gradient-to-b from-[#00102E] to-[#0E2549]/0 to-transparent z-0"></div>
           <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] relative z-10 text-left w-full flex flex-col items-start gap-3 md:gap-[16px]">
             <span className="text-[#FFFFFF] text-lg sm:text-[22px] font-bold leading-normal sm:leading-[30px]">About us</span>
-            <h1 className="text-3xl sm:text-4xl md:text-[56px] font-bold text-white leading-tight sm:leading-[48px] md:leading-[64px]">
-              World class websites and <br /> online marketing.
+            <h1 className="text-3xl sm:text-4xl md:text-[56px] font-bold text-white leading-tight sm:leading-[48px] md:leading-[64px] max-w-[720px]">
+              World class websites and online marketing.
             </h1>
             <p className="text-[#FFFFFF] text-base sm:text-[18px] font-normal leading-relaxed sm:leading-[26px] mt-0 md:mt-2">
               Society Web Solutions provides an all-in-one business class

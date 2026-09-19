@@ -147,9 +147,9 @@ function PackagesContent() {
   const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   // Accordion sections
-  const [showCategories, setShowCategories] = useState(true);
-  const [showPriceFilter, setShowPriceFilter] = useState(true);
-  const [showTimelineFilter, setShowTimelineFilter] = useState(true);
+  const [showCategories, setShowCategories] = useState(false);
+  const [showPriceFilter, setShowPriceFilter] = useState(false);
+  const [showTimelineFilter, setShowTimelineFilter] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
 
   // Derive active category directly from searchParams (Single Source of Truth)

@@ -217,24 +217,25 @@ export default function ProjectTabs() {
       className="font-sans"
       style={{ fontFamily: "var(--font-inter), sans-serif" }}
     >
-      <div className="flex flex-row justify-between items-center w-full">
+      <div className="flex flex-row justify-between items-center w-full gap-2">
         <h2 className="text-[24px] md:text-3xl lg:text-[42px] leading-[38px] md:leading-normal lg:leading-[51px] font-bold text-[#434343] capitalize font-inter text-left">
           My Projects
         </h2>
-        <div className="relative md:hidden text-[14px]">
+        <div className="relative md:hidden shrink-0">
           <select
             value={activeTab}
             onChange={(e) => setActiveTab(e.target.value)}
-            className="appearance-none bg-[#4343F0] text-white font-semibold py-2.5 px-6 pr-10 rounded-[6px] text-[14px] focus:outline-none shadow-md"
+            style={{ color: "#ffffff" }}
+            className="appearance-none bg-[#4343F0] text-white font-semibold py-1.5 sm:py-2 px-3 sm:px-4 pr-7 sm:pr-8 rounded-[6px] text-xs sm:text-[13px] focus:outline-none shadow-md cursor-pointer"
           >
-            <option value="active">Active</option>
-            <option value="paused">Paused</option>
-            <option value="completed">Completed</option>
-            <option value="canceled">Canceled</option>
+            <option value="active" className="text-gray-900 bg-white">Active</option>
+            <option value="paused" className="text-gray-900 bg-white">Paused</option>
+            <option value="completed" className="text-gray-900 bg-white">Completed</option>
+            <option value="canceled" className="text-gray-900 bg-white">Canceled</option>
           </select>
-          <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+          <div className="pointer-events-none absolute inset-y-0 right-2 sm:right-2.5 flex items-center">
             <svg
-              className="h-4 w-4 text-white"
+              className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
