@@ -52,9 +52,9 @@ export class AuthService {
     return await client.post("/auth/resend-verification-email", { email });
   }
 
-  async changePassword(token: string, oldPassword: string, newPassword: string) {
+  async changePassword(oldPassword?: string, newPassword?: string) {
     const client = new HttpClient(this.session);
-    return await client.post("/auth/change-password", { token, oldPassword, newPassword });
+    return await client.post("/auth/change-password", { oldPassword, newPassword });
   }
 
   async refreshToken() {
@@ -340,6 +340,7 @@ export class AuthService {
       this.setTokens(accessToken, refreshToken || "");
     }
     if (user) {
+      this.inMemoryUser = user;
       try {
         const userData = this.encodeUserData(user);
         document.cookie = `user_data=${userData}; path=/; max-age=604800; SameSite=Lax;`;

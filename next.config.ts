@@ -41,6 +41,14 @@ const nextConfig: NextConfig = {
         protocol: "http",
         hostname: "societywebsolutions.s3.ap-south-1.amazonaws.com",
       },
+      {
+        protocol: "https",
+        hostname: "*.googleusercontent.com",
+      },
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
     ],
   },
 };
