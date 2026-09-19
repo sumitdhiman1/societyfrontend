@@ -44,6 +44,14 @@ function ReceiptModal({
       maximumFractionDigits: 2,
     }).format(amt);
 
+  const vatRate = Number(payment?.vatRate ?? payment?.metadata?.vatRate ?? analysis?.vatRate ?? 0);
+  const vatAmount = vatRate > 0
+    ? Number(payment?.vatAmount ?? payment?.metadata?.vatAmount ?? (totalPrice - Math.round((totalPrice / (1 + vatRate / 100)) * 100) / 100))
+    : 0;
+  const subtotal = vatRate > 0
+    ? Number(payment?.subtotal ?? payment?.metadata?.subtotal ?? (totalPrice - vatAmount))
+    : totalPrice;
+
   const dateFormatted = (payment?.createdAt || analysis.createdAt)
     ? new Date(payment?.createdAt || analysis.createdAt).toLocaleDateString("en-GB", {
         day: "numeric",
@@ -88,50 +96,42 @@ function ReceiptModal({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+              className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
             >
-              ✕
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
         </div>
 
-        <div className="flex-grow overflow-y-auto p-6 sm:p-10 bg-white" id="receipt-print-area">
-          <div className="flex justify-between items-start mb-8">
+        <div className="p-6 space-y-6 overflow-y-auto" id="receipt-print-area">
+          <div className="flex justify-between items-start border-b border-gray-100 pb-5">
             <div>
-              <div className="text-2xl font-extrabold text-[#4343F0] mb-1 tracking-tight">SOCIETY</div>
-              <p className="text-[11px] text-gray-500 font-bold uppercase tracking-widest">
-                Web Solutions &amp; Digital Marketing
-              </p>
+              <p className="text-xs uppercase font-extrabold tracking-wider text-blue-600 mb-1">Receipt Number</p>
+              <p className="text-base font-black text-gray-900">{projectNumber}</p>
             </div>
             <div className="text-right">
-              <h3 className="text-xl font-bold text-gray-800 mb-0.5">PAYMENT RECEIPT</h3>
-              <p className="text-xs text-gray-500 font-semibold">Analysis No: {projectNumber}</p>
-              <p className="text-xs text-gray-500 font-semibold">Date: {dateFormatted}</p>
+              <p className="text-xs uppercase font-extrabold tracking-wider text-gray-400 mb-1">Payment Date</p>
+              <p className="text-sm font-bold text-gray-700">{dateFormatted}</p>
             </div>
           </div>
 
-          <div className="border-t border-b border-gray-100 py-4 mb-6">
-            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
-              Service / Analysis
-            </span>
-            <h4 className="text-base font-bold text-gray-900">{analysis.title || "Website Analysis"}</h4>
-          </div>
-
-          <div className="border border-gray-200 rounded-xl overflow-hidden mb-6 shadow-2xs">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-gray-50 border-b border-gray-200">
+          <div className="rounded-xl border border-gray-100 overflow-hidden shadow-2xs">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-gray-50 border-b border-gray-100 text-gray-400 font-bold uppercase tracking-wider">
                 <tr>
-                  <th className="px-5 py-3 font-bold text-gray-700">Item</th>
-                  <th className="px-5 py-3 text-center font-bold text-gray-700">Duration</th>
-                  <th className="px-5 py-3 text-right font-bold text-gray-700">Amount</th>
+                  <th className="px-5 py-3">Description</th>
+                  <th className="px-5 py-3 text-center">Duration</th>
+                  <th className="px-5 py-3 text-right">Amount</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {deliverableItems.length > 0 ? (
                   deliverableItems.map((item: any, idx: number) => (
-                    <tr key={idx}>
+                    <tr key={idx} className="hover:bg-gray-50/50">
                       <td className="px-5 py-3.5 text-gray-800 font-semibold">
-                        {item.description}
+                        {item.description || item.title}
                         {item.isAddOn && (
                           <span className="ml-2 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200">
                             Add-on
@@ -155,7 +155,7 @@ function ReceiptModal({
                       {analysis.timelineInDays ? `${analysis.timelineInDays} Days` : "7 Days"}
                     </td>
                     <td className="px-5 py-3.5 text-right text-gray-900 font-bold">
-                      {formatCurrency(totalPrice)}
+                      {formatCurrency(subtotal)}
                     </td>
                   </tr>
                 )}
@@ -167,12 +167,19 @@ function ReceiptModal({
             <div className="w-full max-w-xs space-y-2">
               <div className="flex justify-between items-center text-xs">
                 <span className="text-gray-500 font-semibold">Subtotal:</span>
-                <span className="text-gray-800 font-bold">{formatCurrency(totalPrice)}</span>
+                <span className="text-gray-800 font-bold">{formatCurrency(subtotal)}</span>
               </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-gray-500 font-semibold">Tax (0%):</span>
-                <span className="text-gray-800 font-bold">$0.00</span>
-              </div>
+              {vatRate > 0 ? (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-500 font-semibold">VAT ({vatRate}%):</span>
+                  <span className="text-gray-800 font-bold">{formatCurrency(vatAmount)}</span>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-500 font-semibold">Tax (0%):</span>
+                  <span className="text-gray-800 font-bold">{formatCurrency(0)}</span>
+                </div>
+              )}
               <div className="h-px bg-gray-200 w-full pt-0.5" />
               <div className="flex justify-between items-center pt-1">
                 <span className="text-sm font-extrabold text-gray-900 uppercase">Total Paid:</span>

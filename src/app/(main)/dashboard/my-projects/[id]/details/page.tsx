@@ -17,12 +17,13 @@ import RecommendedSolutions from "@/components/common/RecommendedSolutions";
 import CalculatorSpecsCard from "@/components/common/CalculatorSpecsCard";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import { getMainCalculatorCategory, getProjectEstimatedDeadline, isCalculatorProject } from "@/lib/calculatorUtils";
-import { capitalizeCurrencyInText } from "@/lib/currencyUtils";
+import { capitalizeCurrencyInText, formatPriceWithCurrency, convertCurrencyAmount } from "@/lib/currencyUtils";
 import { useCurrency } from "@/context/CurrencyContext";
 import { useTimezone } from "@/context/TimezoneContext";
 import { toast } from "sonner";
 import { paymentService } from "@/lib/paymentService";
 import { quoteService } from "@/lib/quoteService";
+import CalculatorProjectDetails from "./CalculatorProjectDetails";
 
 const renderStatusMessageText = (rawText: string, attachments?: any[]) => {
   const text = capitalizeCurrencyInText(rawText);
@@ -223,7 +224,7 @@ function isExactPaymentRequestPaid(msg: any, project: any, payments: any[]): boo
 
 export default function ProjectDetailsPage() {
   const { project, setProject, refreshProject } = useProject();
-  const { currency: contextCurrency } = useCurrency();
+  const { currency: contextCurrency, conversionRate } = useCurrency();
   const {
     formatSubmittedDate: formatSubmittedDateTz,
     formatMessageTimestamp: formatMessageTimestampTz,
@@ -407,6 +408,18 @@ export default function ProjectDetailsPage() {
 
   if (!project) return null;
 
+  const isCalc = isCalculatorProject(project, fetchedQuote);
+  if (isCalc) {
+    return (
+      <CalculatorProjectDetails
+        project={project}
+        quote={fetchedQuote || (typeof project?.quoteId === "object" ? project.quoteId : project?.quote)}
+        payments={projectPayments}
+        onRefreshProject={refreshProject}
+      />
+    );
+  }
+
   const formatSubmittedDate = (date: any) => {
     return formatSubmittedDateTz(date);
   };
@@ -425,24 +438,24 @@ export default function ProjectDetailsPage() {
     return formatMessageTimestampTz(date);
   };
 
+  const projectNativeCurrency = (
+    project?.currency ||
+    projectPayments[0]?.currency ||
+    (project?.currencySymbol === "€" ? "EUR" : project?.currencySymbol === "$" ? "USD" : "USD")
+  ).toLowerCase();
+
+  const activeDisplayCurrency = (
+    contextCurrency ||
+    currentUser?.currency ||
+    currentUser?.preferredCurrency ||
+    projectNativeCurrency ||
+    "usd"
+  ).toLowerCase();
+
   const formatCurrency = (amt: any, customCurrency?: string) => {
     const num = Number(amt || 0);
-    const curr = (
-      customCurrency ||
-      project?.currency ||
-      projectPayments[0]?.currency ||
-      (project?.currencySymbol === "€" ? "EUR" : project?.currencySymbol === "$" ? "USD" : currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || "USD")
-    ).toUpperCase();
-    try {
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: curr,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(num);
-    } catch {
-      return curr === "EUR" ? `€${num.toFixed(2)}` : `$${num.toFixed(2)}`;
-    }
+    const targetCurr = (customCurrency || activeDisplayCurrency).toLowerCase();
+    return formatPriceWithCurrency(num, targetCurr, projectNativeCurrency, conversionRate);
   };
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB

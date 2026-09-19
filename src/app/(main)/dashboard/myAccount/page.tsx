@@ -333,10 +333,27 @@ export default function MyAccountPage() {
   const localUser = authService.getUser();
   const effectiveProvider = (user?.provider || localUser?.provider || "").toLowerCase();
   const avatarUrl = user?.avatar || localUser?.avatar || "";
+
+  const isFacebook =
+    effectiveProvider === "facebook" ||
+    avatarUrl.includes("fbsbx.com") ||
+    avatarUrl.includes("facebook.com") ||
+    avatarUrl.includes("fbcdn.net");
+
+  const isGoogle =
+    effectiveProvider === "google" ||
+    (!isFacebook && avatarUrl.includes("googleusercontent.com")) ||
+    (!isFacebook && effectiveProvider !== "local" && (effectiveProvider === "google" || (!effectiveProvider && Boolean(user?.providerId))));
+
   const isSocialUser =
     effectiveProvider === "google" ||
     effectiveProvider === "facebook" ||
+    isGoogle ||
+    isFacebook ||
     avatarUrl.includes("googleusercontent.com") ||
+    avatarUrl.includes("fbsbx.com") ||
+    avatarUrl.includes("facebook.com") ||
+    avatarUrl.includes("fbcdn.net") ||
     Boolean(user?.providerId || localUser?.providerId) ||
     Boolean(user?.provider && user.provider !== "local");
 
@@ -427,7 +444,11 @@ export default function MyAccountPage() {
                     <label className="text-sm font-bold text-gray-700">Authentication Method</label>
                     <div className="w-full rounded-[4px] px-4 py-2.5 text-sm bg-gray-50/80 border border-gray-200 flex items-center justify-between min-h-[46px]">
                       <div className="flex items-center gap-2.5">
-                        {effectiveProvider === "google" || avatarUrl.includes("googleusercontent.com") || user?.providerId ? (
+                        {isFacebook ? (
+                          <svg className="w-4 h-4 shrink-0 text-[#1877F2]" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                          </svg>
+                        ) : isGoogle || avatarUrl.includes("googleusercontent.com") ? (
                           <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                             <path
                               fill="#4285F4"
@@ -450,7 +471,9 @@ export default function MyAccountPage() {
                           <span className="w-2 h-2 rounded-full bg-blue-500" />
                         )}
                         <span className="font-medium text-gray-800 text-sm">
-                          {effectiveProvider === "google" || avatarUrl.includes("googleusercontent.com") || user?.providerId
+                          {isFacebook
+                            ? "Facebook"
+                            : isGoogle || avatarUrl.includes("googleusercontent.com")
                             ? "Google"
                             : "Social Login"}
                         </span>
@@ -509,7 +532,11 @@ export default function MyAccountPage() {
                       <label className="text-sm font-bold text-gray-700">Authentication Method</label>
                       <div className="w-full rounded-[4px] px-4 py-2.5 text-sm bg-gray-50/80 border border-gray-200 flex items-center justify-between min-h-[46px]">
                         <div className="flex items-center gap-2.5">
-                          {effectiveProvider === "google" || avatarUrl.includes("googleusercontent.com") || user?.providerId ? (
+                          {isFacebook ? (
+                            <svg className="w-4 h-4 shrink-0 text-[#1877F2]" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                            </svg>
+                          ) : isGoogle || avatarUrl.includes("googleusercontent.com") ? (
                             <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                               <path
                                 fill="#4285F4"
@@ -532,7 +559,9 @@ export default function MyAccountPage() {
                             <span className="w-2 h-2 rounded-full bg-blue-500" />
                           )}
                           <span className="font-medium text-gray-800 text-sm">
-                            {effectiveProvider === "google" || avatarUrl.includes("googleusercontent.com") || user?.providerId
+                            {isFacebook
+                              ? "Facebook"
+                              : isGoogle || avatarUrl.includes("googleusercontent.com")
                               ? "Google"
                               : "Social Login"}
                           </span>
@@ -618,6 +647,9 @@ export default function MyAccountPage() {
                     <img
                       src={user?.avatar || "/images/loggedoutaccount.svg"}
                       alt="User Avatar"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = "/images/loggedoutaccount.svg";
+                      }}
                       className={`w-full h-full object-cover rounded-full ${isUploading ? "opacity-40" : ""
                         }`}
                     />

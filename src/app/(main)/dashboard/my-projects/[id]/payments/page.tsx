@@ -11,6 +11,7 @@ import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "@/lib/g
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { useCurrency } from "@/context/CurrencyContext";
 import { useTimezone } from "@/context/TimezoneContext";
+import { formatPriceWithCurrency } from "@/lib/currencyUtils";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 import CalculatorProjectPayments, { ReceiptModal } from "./CalculatorProjectPayments";
 
@@ -48,7 +49,7 @@ export default function ProjectPaymentsPage() {
   const searchParams = useSearchParams();
   const projectId = (params?.id as string) || "";
   const { project, isLoading: projectLoading, refreshProject } = useProject();
-  const { currency: contextCurrency } = useCurrency();
+  const { currency: contextCurrency, setCurrency, conversionRate } = useCurrency();
   const { formatDateTime: formatDateTimeTz } = useTimezone();
   const [payments, setPayments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -333,19 +334,22 @@ export default function ProjectPaymentsPage() {
 
   const paymentStatus = resolvedPaymentStatus;
 
-  const currency = (
+  const projectNativeCurrency = (
     activeProject.currency ||
     payments[0]?.currency ||
-    (activeProject?.currencySymbol === "€" ? "EUR" : activeProject?.currencySymbol === "$" ? "USD" : currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || "USD")
+    (activeProject?.currencySymbol === "€" ? "EUR" : activeProject?.currencySymbol === "$" ? "USD" : "USD")
+  ).toLowerCase();
+
+  const currency = (
+    contextCurrency ||
+    currentUser?.currency ||
+    currentUser?.preferredCurrency ||
+    projectNativeCurrency ||
+    "usd"
   ).toUpperCase();
 
   const formatCurrency = (amt: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amt);
+    formatPriceWithCurrency(amt, currency.toLowerCase(), projectNativeCurrency, conversionRate);
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -520,7 +524,7 @@ export default function ProjectPaymentsPage() {
               successRedirectUrl={`/dashboard/my-projects/${projectId}/payments?success=true`}
               amountPaid={amountPaid}
               isFullyPaid={isFullyPaid}
-              nativeCurrency={currency}
+              nativeCurrency={projectNativeCurrency || "USD"}
               vatRate={vatRate}
               invoiceId={searchInvoiceId}
               onDownloadInvoice={handleViewInvoice}
