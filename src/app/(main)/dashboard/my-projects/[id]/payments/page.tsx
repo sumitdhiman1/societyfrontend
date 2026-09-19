@@ -267,8 +267,16 @@ export default function ProjectPaymentsPage() {
   const regularItems = nonAddonDeliverableItems.length > 0
     ? nonAddonDeliverableItems.map((item: any) => {
         let itemAmount = Number(item.amount ?? 0);
-        if (itemAmount === 0 && nonAddonDeliverableItems.length === 1 && rawQuoteSubtotal > 0) {
-          itemAmount = rawQuoteSubtotal;
+        if (nonAddonDeliverableItems.length === 1) {
+          if (itemAmount === 0 && rawQuoteSubtotal > 0) {
+            itemAmount = rawQuoteSubtotal;
+          } else if (
+            vatRate > 0 &&
+            rawQuoteSubtotal > 0 &&
+            (Math.abs(itemAmount - rawBaseCost) <= 0.05 || (itemAmount > rawQuoteSubtotal && Math.abs(itemAmount - Math.round(rawQuoteSubtotal * (1 + vatRate / 100) * 100) / 100) <= 0.05))
+          ) {
+            itemAmount = rawQuoteSubtotal;
+          }
         }
         return {
           description: item.description || item.title || item.name || "Deliverable",

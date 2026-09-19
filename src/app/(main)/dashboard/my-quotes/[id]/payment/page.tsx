@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import { useQuote } from "../layout";
+import { useQuote } from "@/context/QuoteContext";
 import { authService } from "@/lib/authService";
 import { paymentService } from "@/lib/paymentService";
 import { useCurrency } from "@/context/CurrencyContext";

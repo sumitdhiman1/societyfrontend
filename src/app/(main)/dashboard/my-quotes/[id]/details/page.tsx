@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useQuote } from "../layout";
+import { useQuote } from "@/context/QuoteContext";
 import { authService } from "@/lib/authService";
 import { profileService } from "@/lib/profileService";
 import { quoteService } from "@/lib/quoteService";

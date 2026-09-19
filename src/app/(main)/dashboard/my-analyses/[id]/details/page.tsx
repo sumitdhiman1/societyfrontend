@@ -1251,7 +1251,7 @@ export default function AnalysisDetailsPage() {
               </div>
               <h4 className="text-lg font-bold text-gray-800 mb-1">{managerName}</h4>
               <p className="text-sm text-gray-500 mb-4 font-medium uppercase tracking-wider text-[10px]">
-                Manager
+                Project Manager
               </p>
             </div>
           </div>

@@ -67,10 +67,12 @@ export function formatActiveCurrency(
 
 export function capitalizeCurrencyInText(text?: string): string {
   if (!text) return "";
-  const cleaned = text.replace(/(\d+\.\d{3,})/g, (match) => {
-    const num = parseFloat(match);
-    return Number.isFinite(num) ? num.toFixed(2) : match;
-  });
+  let cleaned = text
+    .replace(/\s*for\s+["']Payment for accepted(?: add-on)? project deliverables["']/gi, "")
+    .replace(/(\d+\.\d{3,})/g, (match) => {
+      const num = parseFloat(match);
+      return Number.isFinite(num) ? num.toFixed(2) : match;
+    });
   return cleaned.replace(/\b(eur|usd|gbp|cad|aud)\b/gi, (match) => match.toUpperCase());
 }
 

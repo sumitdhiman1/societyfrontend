@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
-import { useQuote } from "../layout";
+import { useQuote } from "@/context/QuoteContext";
 import { quoteService } from "@/lib/quoteService";
 import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";

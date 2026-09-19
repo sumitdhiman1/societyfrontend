@@ -193,7 +193,7 @@ function AnalysisLayoutContent({ children }: { children: React.ReactNode }) {
 
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-8 mb-4 sm:mb-3 text-[11px] sm:text-sm font-medium text-[#363636] mt-4 md:mt-0">
               <div className="flex items-center">
-                <span className="text-[#88909D] mr-2">Start date:</span>
+                <span className="text-[#88909D] mr-2">Start Date:</span>
                 <span className="font-bold">
                   {analysis.startDate || analysis.createdAt
                     ? formatDate(analysis.startDate || analysis.createdAt)
