@@ -1053,7 +1053,7 @@ export default function CalculatorProjectDetails({
                   else if (activeProject?.amountDue) rawAmount = activeProject.amountDue;
                 }
                 const reqAmount = Number(rawAmount || 0);
-                const reqCurrency = (content.currency || msg.currency || currency).toUpperCase();
+                const reqCurrency = (content.currency || msg.currency || activeDisplayCurrency || projectNativeCurrency || "USD").toUpperCase();
                 const description = content.description || msg.description || content.note || content.message || content.text;
                 const invId = asId(content.invoiceId || msg.invoiceId);
                 const invNum = content.invoiceNumber || msg.invoiceNumber;
