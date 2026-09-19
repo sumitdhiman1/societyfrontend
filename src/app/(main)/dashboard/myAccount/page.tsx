@@ -338,31 +338,29 @@ export default function MyAccountPage() {
   };
 
   const localUser = authService.getUser();
-  const effectiveProvider = (user?.provider || localUser?.provider || "").toLowerCase();
-  const avatarUrl = user?.avatar || localUser?.avatar || "";
+  const rawProvider = String(user?.provider || localUser?.provider || "").toLowerCase().trim();
+  const avatarUrl = String(user?.avatar || localUser?.avatar || "");
+  const providerId = String(user?.providerId || localUser?.providerId || "");
 
   const isFacebook =
-    effectiveProvider === "facebook" ||
+    rawProvider === "facebook" ||
     avatarUrl.includes("fbsbx.com") ||
     avatarUrl.includes("facebook.com") ||
     avatarUrl.includes("fbcdn.net");
 
   const isGoogle =
-    effectiveProvider === "google" ||
-    (!isFacebook && avatarUrl.includes("googleusercontent.com")) ||
-    (!isFacebook && effectiveProvider !== "local" && (effectiveProvider === "google" || (!effectiveProvider && Boolean(user?.providerId))));
+    rawProvider === "google" ||
+    avatarUrl.includes("googleusercontent.com") ||
+    avatarUrl.includes("google.com") ||
+    (!isFacebook && rawProvider !== "local" && (rawProvider === "google" || (!rawProvider && Boolean(providerId))));
 
   const isSocialUser =
-    effectiveProvider === "google" ||
-    effectiveProvider === "facebook" ||
     isGoogle ||
     isFacebook ||
-    avatarUrl.includes("googleusercontent.com") ||
-    avatarUrl.includes("fbsbx.com") ||
-    avatarUrl.includes("facebook.com") ||
-    avatarUrl.includes("fbcdn.net") ||
-    Boolean(user?.providerId || localUser?.providerId) ||
-    Boolean(user?.provider && user.provider !== "local");
+    rawProvider === "google" ||
+    rawProvider === "facebook" ||
+    (rawProvider !== "local" && rawProvider !== "" && Boolean(providerId)) ||
+    (!user?.hasPassword && (Boolean(providerId) || avatarUrl.includes("googleusercontent.com") || avatarUrl.includes("fbsbx.com")));
 
   const handleChangePassword = async () => {
     setPasswordError("");
