@@ -262,10 +262,31 @@ export default function PaymentHistoryPage() {
       );
     };
 
+    const getProjectNumber = (p: any) => {
+      const meta = p?.metadata || {};
+      const raw =
+        p.projectNumber ||
+        meta.projectNumber ||
+        meta.quoteNumber ||
+        meta.invoiceNumber ||
+        "";
+      if (raw) {
+        const str = String(raw).trim();
+        return str.startsWith("#") ? str : `#${str}`;
+      }
+      const desc = meta.description || meta.title || meta.quoteTitle || "";
+      const match = desc.match(/#(SOC-[\w-]+|QU-[\w-]+|[\w-]+)/i);
+      if (match) return match[0];
+      if (meta.quoteId) return `#${meta.quoteId}`;
+      if (meta.projectId) return `#${meta.projectId}`;
+      return "-";
+    };
+
     const rows = [
-      "Date,Transaction,Amount,Currency,Status,Payment Method,Transaction ID",
+      "Date,Project #,Transaction,Amount,Currency,Status,Payment Method,Transaction ID",
       ...payments.map((p) => {
         const date = p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "";
+        const projNum = getProjectNumber(p);
         const desc = getDesc(p).replace(/"/g, '""');
         const amount = p.amount != null ? Number(p.amount).toFixed(2) : "0.00";
         const currency = (p.currency || "USD").toUpperCase();
@@ -274,6 +295,7 @@ export default function PaymentHistoryPage() {
         const txId = getTransactionId(p);
         return [
           date,
+          `"${projNum}"`,
           `"${desc}"`,
           amount,
           currency,
@@ -316,6 +338,26 @@ export default function PaymentHistoryPage() {
     }
   };
 
+  const getProjectNumber = (p: any) => {
+    const meta = p?.metadata || {};
+    const raw =
+      p.projectNumber ||
+      meta.projectNumber ||
+      meta.quoteNumber ||
+      meta.invoiceNumber ||
+      "";
+    if (raw) {
+      const str = String(raw).trim();
+      return str.startsWith("#") ? str : `#${str}`;
+    }
+    const desc = meta.description || meta.title || meta.quoteTitle || "";
+    const match = desc.match(/#(SOC-[\w-]+|QU-[\w-]+|[\w-]+)/i);
+    if (match) return match[0];
+    if (meta.quoteId) return `#${meta.quoteId}`;
+    if (meta.projectId) return `#${meta.projectId}`;
+    return "-";
+  };
+
   const getTransactionDesc = (p: any) => {
     const meta = p?.metadata || {};
     if (meta.type === "QUOTE" || meta.quoteNumber || meta.invoiceNumber) {
@@ -326,7 +368,7 @@ export default function PaymentHistoryPage() {
       }
       return "Payment for Quote";
     }
-    return "Payment Transaction";
+    return meta.title ? `Payment for ${meta.title}` : "Payment Transaction";
   };
 
   const formatAmount = (amount: number, curr?: string) => {
@@ -386,7 +428,7 @@ export default function PaymentHistoryPage() {
         </div>
 
         {/* Table Container */}
-        <div className="border border-gray-300 rounded-[4px] overflow-x-auto min-h-[350px] hide-scrollbar cursor-grab">
+        <div className="border border-gray-300 rounded-[4px] overflow-x-auto hide-scrollbar bg-white">
           <div className="min-w-[800px] md:min-w-full">
             {loading ? (
               <div className="flex items-center justify-center h-64">
@@ -405,16 +447,19 @@ export default function PaymentHistoryPage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-white border-b border-gray-300">
-                    <th className="px-4 md:px-8 py-5 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider w-[20%] md:w-[15%] border-r border-gray-300">
+                    <th className="px-4 md:px-8 py-5 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider w-[15%] md:w-[15%] border-r border-gray-300">
                       DATE
                     </th>
-                    <th className="px-4 md:px-8 py-5 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider w-[40%] md:w-[55%] border-r border-gray-300">
+                    <th className="px-4 md:px-8 py-5 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider w-[15%] md:w-[18%] border-r border-gray-300">
+                      PROJECT #
+                    </th>
+                    <th className="px-4 md:px-8 py-5 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider w-[35%] md:w-[37%] border-r border-gray-300">
                       TRANSACTION
                     </th>
-                    <th className="px-4 md:px-8 py-5 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider w-[20%] md:w-[15%] border-r border-gray-300">
+                    <th className="px-4 md:px-8 py-5 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider w-[18%] md:w-[15%] border-r border-gray-300">
                       AMOUNT
                     </th>
-                    <th className="px-4 md:px-8 py-5 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider w-[20%] md:w-[15%]">
+                    <th className="px-4 md:px-8 py-5 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider w-[17%] md:w-[15%]">
                       DOCUMENTS
                     </th>
                   </tr>
@@ -429,6 +474,11 @@ export default function PaymentHistoryPage() {
                       {/* DATE */}
                       <td className="px-4 md:px-8 py-6 text-gray-600 font-medium whitespace-nowrap border-r border-gray-300">
                         {formatRowDate(p.createdAt)}
+                      </td>
+
+                      {/* PROJECT # */}
+                      <td className="px-4 md:px-8 py-6 text-gray-800 font-bold whitespace-nowrap border-r border-gray-300">
+                        {getProjectNumber(p)}
                       </td>
 
                       {/* TRANSACTION */}
