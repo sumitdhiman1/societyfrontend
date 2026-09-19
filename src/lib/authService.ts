@@ -340,9 +340,26 @@ export class AuthService {
       this.setTokens(accessToken, refreshToken || "");
     }
     if (user) {
-      this.inMemoryUser = user;
+      const rawFullName = (user.fullName || "").replace(/\bundefined\b/gi, "").replace(/\s+/g, " ").trim();
+      const parts = rawFullName.split(" ").filter(Boolean);
+      const cleanFirst = (user.firstName && user.firstName !== "undefined" && !user.firstName.includes("undefined"))
+        ? user.firstName
+        : (parts[0] || (user.email || "").split("@")[0] || "");
+      const cleanLast = (user.lastName && user.lastName !== "undefined" && !user.lastName.includes("undefined"))
+        ? user.lastName
+        : (parts.slice(1).join(" ") || "");
+      const cleanFull = rawFullName || [cleanFirst, cleanLast].filter(Boolean).join(" ") || (user.email || "").split("@")[0] || "";
+
+      const cleanUser = {
+        ...user,
+        fullName: cleanFull,
+        firstName: cleanFirst,
+        lastName: cleanLast,
+      };
+
+      this.inMemoryUser = cleanUser;
       try {
-        const userData = this.encodeUserData(user);
+        const userData = this.encodeUserData(cleanUser);
         document.cookie = `user_data=${userData}; path=/; max-age=604800; SameSite=Lax;`;
       } catch (e) {
         console.error("Failed to encode user data in social callback:", e);

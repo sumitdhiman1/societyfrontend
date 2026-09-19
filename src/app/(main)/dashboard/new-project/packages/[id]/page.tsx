@@ -597,8 +597,8 @@ function PackageDetailsContent() {
                       depositAmount={parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0) > 0 ? parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0) / 2 : undefined}
                       deliverableItems={[
                         {
-                          description: "Service Delivery",
-                          details: `${pkg.name} - ${selectedTier?.title}`,
+                          description: `${pkg.name}${selectedTier?.title ? ` - ${selectedTier.title}` : ""}`,
+                          details: pkg.description || "",
                           amount: parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0),
                           duration: getDurationLabel(selectedTier),
                           unit: "",

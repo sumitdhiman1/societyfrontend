@@ -10,11 +10,12 @@ import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generatePr
 import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "@/lib/generateCalculatorProjectPDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { useCurrency } from "@/context/CurrencyContext";
+import { formatPriceWithCurrency, formatActiveCurrency } from "@/lib/currencyUtils";
 import { useTimezone } from "@/context/TimezoneContext";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 import CalculatorProjectPayments, { ReceiptModal } from "./CalculatorProjectPayments";
 
-export function isCalculatorProject(project: any, quote?: any): boolean {
+function isCalculatorProject(project: any, quote?: any): boolean {
   if (!project) return false;
   if (project.isCalculator) return true;
   if (project.calculatorSpecs && Object.keys(project.calculatorSpecs).length > 0) return true;
@@ -48,7 +49,7 @@ export default function ProjectPaymentsPage() {
   const searchParams = useSearchParams();
   const projectId = (params?.id as string) || "";
   const { project, isLoading: projectLoading, refreshProject } = useProject();
-  const { currency: contextCurrency } = useCurrency();
+  const { currency: contextCurrency, conversionRate } = useCurrency();
   const { formatDateTime: formatDateTimeTz } = useTimezone();
   const [payments, setPayments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -266,8 +267,16 @@ export default function ProjectPaymentsPage() {
   const regularItems = nonAddonDeliverableItems.length > 0
     ? nonAddonDeliverableItems.map((item: any) => {
         let itemAmount = Number(item.amount ?? 0);
-        if (itemAmount === 0 && nonAddonDeliverableItems.length === 1 && rawQuoteSubtotal > 0) {
-          itemAmount = rawQuoteSubtotal;
+        if (nonAddonDeliverableItems.length === 1) {
+          if (itemAmount === 0 && rawQuoteSubtotal > 0) {
+            itemAmount = rawQuoteSubtotal;
+          } else if (
+            vatRate > 0 &&
+            rawQuoteSubtotal > 0 &&
+            (Math.abs(itemAmount - rawBaseCost) <= 0.05 || (itemAmount > rawQuoteSubtotal && Math.abs(itemAmount - Math.round(rawQuoteSubtotal * (1 + vatRate / 100) * 100) / 100) <= 0.05))
+          ) {
+            itemAmount = rawQuoteSubtotal;
+          }
         }
         return {
           description: item.description || item.title || item.name || "Deliverable",
@@ -333,19 +342,23 @@ export default function ProjectPaymentsPage() {
 
   const paymentStatus = resolvedPaymentStatus;
 
-  const currency = (
-    activeProject.currency ||
-    payments[0]?.currency ||
-    (activeProject?.currencySymbol === "€" ? "EUR" : activeProject?.currencySymbol === "$" ? "USD" : currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || "USD")
-  ).toUpperCase();
+  const formatCurrency = (amt: number, customSourceCurrency?: string) => {
+    const src = (customSourceCurrency || activeProject.currency || payments[0]?.currency || "USD").toUpperCase();
+    const target = (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || "USD").toUpperCase();
+    return formatPriceWithCurrency(amt, target, src, conversionRate);
+  };
 
-  const formatCurrency = (amt: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amt);
+  const formatPaymentAmount = (payment: any) => {
+    const pCurr = (
+      payment.currency ||
+      payment.chargedCurrency ||
+      payment.metadata?.paymentCurrency ||
+      activeProject.currency ||
+      "USD"
+    ).toUpperCase();
+    const rawAmt = Number(payment.amount ?? payment.chargedAmount ?? payment.amountPaid ?? 0);
+    return formatActiveCurrency(rawAmt, pCurr);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -520,7 +533,7 @@ export default function ProjectPaymentsPage() {
               successRedirectUrl={`/dashboard/my-projects/${projectId}/payments?success=true`}
               amountPaid={amountPaid}
               isFullyPaid={isFullyPaid}
-              nativeCurrency={currency}
+              nativeCurrency={(activeProject.currency || payments[0]?.currency || "USD").toUpperCase()}
               vatRate={vatRate}
               invoiceId={searchInvoiceId}
               onDownloadInvoice={handleViewInvoice}
@@ -612,7 +625,7 @@ export default function ProjectPaymentsPage() {
                         {payment.description || "Project Payment"}
                       </td>
                       <td className="px-6 py-4 font-bold text-gray-900">
-                        {formatCurrency(payment.amount ?? 0)}
+                        {formatPaymentAmount(payment)}
                       </td>
                       <td className="px-6 py-4 text-gray-500">
                         {payment.createdAt ? formatDateTimeTz(payment.createdAt, { month: "short", day: "numeric", year: "numeric" }) : "—"}
@@ -949,7 +962,7 @@ export default function ProjectPaymentsPage() {
                       {payment.description || "Project Payment"}
                     </td>
                     <td className="px-6 py-4 font-bold text-gray-900">
-                      {formatCurrency(payment.amount ?? 0)}
+                      {formatPaymentAmount(payment)}
                     </td>
                     <td className="px-6 py-4 text-gray-500">
                       {payment.createdAt ? formatDateTimeTz(payment.createdAt, { month: "short", day: "numeric", year: "numeric" }) : "—"}

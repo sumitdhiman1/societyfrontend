@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useRef } from "react";
+import { useCurrency } from "@/context/CurrencyContext";
+import { formatPriceWithCurrency } from "@/lib/currencyUtils";
 
 interface DeliverableItem {
   description: string;
@@ -44,7 +46,12 @@ export default function InvoicePreviewModal({
   vatRate = 0,
 }: InvoicePreviewModalProps) {
   const invoiceRef = useRef<HTMLDivElement>(null);
+  const { currency, conversionRate } = useCurrency();
   const isPackageBased = !!packageData && !!selectedColumn;
+
+  const formatPrice = (amount: number) => {
+    return formatPriceWithCurrency(amount, currency, "USD", conversionRate);
+  };
 
   if (!isOpen) return null;
 
@@ -183,7 +190,7 @@ export default function InvoicePreviewModal({
                         {item.description}
                         {item.details && <p className="text-[10px] text-gray-400 font-normal">{item.details}</p>}
                       </td>
-                      <td className="px-6 py-4 text-right text-gray-800 font-bold">${item.amount?.toFixed(2)}</td>
+                      <td className="px-6 py-4 text-right text-gray-800 font-bold">{formatPrice(item.amount || 0)}</td>
                     </tr>
                   ))
                 )}
@@ -196,16 +203,16 @@ export default function InvoicePreviewModal({
             <div className="w-full max-w-xs space-y-4">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500 font-bold uppercase tracking-wider">Subtotal:</span>
-                <span className="text-gray-800 font-bold">${totalCost.toFixed(2)}</span>
+                <span className="text-gray-800 font-bold">{formatPrice(totalCost)}</span>
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500 font-bold uppercase tracking-wider">Tax ({vatRate > 0 ? (vatRate * 100).toFixed(0) : "0"}%):</span>
-                <span className="text-gray-800 font-bold">${vatAmount.toFixed(2)}</span>
+                <span className="text-gray-800 font-bold">{formatPrice(vatAmount)}</span>
               </div>
               <div className="h-px bg-gray-200 w-full pt-1" />
               <div className="flex justify-between items-center pt-2">
                 <span className="text-lg font-extrabold text-gray-800 uppercase tracking-tighter">Total Due:</span>
-                <span className="text-2xl font-black text-gray-900 tracking-tight">${(totalCost + vatAmount).toFixed(2)}</span>
+                <span className="text-2xl font-black text-gray-900 tracking-tight">{formatPrice(totalCost + vatAmount)}</span>
               </div>
             </div>
           </div>

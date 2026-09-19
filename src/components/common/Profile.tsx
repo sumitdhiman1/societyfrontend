@@ -2,7 +2,7 @@ import { authService } from "@/lib/authService";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Dispatch, RefObject, SetStateAction } from "react";
+import { Dispatch, RefObject, SetStateAction, useState, useEffect } from "react";
 
 interface Props {
   profileRef: RefObject<HTMLDivElement | null>;
@@ -20,6 +20,11 @@ export const Profile = ({
   setIsAuthenticated,
 }: Props) => {
   const router = useRouter();
+  const [imgSrc, setImgSrc] = useState(avatar || "/images/loggedoutaccount.svg");
+
+  useEffect(() => {
+    setImgSrc(avatar || "/images/loggedoutaccount.svg");
+  }, [avatar]);
 
   return (
     <div className="relative flex items-center justify-center shrink-0" ref={profileRef}>
@@ -28,10 +33,12 @@ export const Profile = ({
         onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
       >
         <Image
-          src={avatar || "/images/loggedoutaccount.svg"}
+          src={imgSrc}
           alt="User"
           width={50}
           height={50}
+          unoptimized={typeof imgSrc === "string" && imgSrc.startsWith("http")}
+          onError={() => setImgSrc("/images/loggedoutaccount.svg")}
           className="w-full h-full object-cover"
         />
       </button>

@@ -93,6 +93,11 @@ class CountryService {
   }
 
   getVatRateSync(countryCodeOrName: string): number {
+    if (!countryCodeOrName) return 0;
+    const cached = this.findCachedCountry(countryCodeOrName);
+    if (cached && typeof cached.vatRate === "number") {
+      return cached.vatRate;
+    }
     return getVatRateForCountry(countryCodeOrName);
   }
 }
