@@ -23,6 +23,8 @@ import VisaIcon from "@/components/icons/visa";
 import MastercardIcon from "@/components/icons/mastercard";
 import AmexIcon from "@/components/icons/amex";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
+import { useCurrency } from "@/context/CurrencyContext";
+import { formatPriceWithCurrency } from "@/lib/currencyUtils";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""
@@ -140,10 +142,11 @@ function UnifiedRenewalDetailsBox({
   const vatAmount = vatRate > 0 ? Math.round((baseSubtotal * (vatRate / 100)) * 100) / 100 : 0;
   const totalDueAmount = Math.round((baseSubtotal + vatAmount) * 100) / 100;
 
+  const { currency, conversionRate } = useCurrency();
   const projectCurrency = (project.currency || "USD").toUpperCase();
-  const formattedSubtotal = formatPrice(baseSubtotal, projectCurrency);
-  const formattedVat = formatPrice(vatAmount, projectCurrency);
-  const formattedTotal = formatPrice(totalDueAmount > 0 ? totalDueAmount : renewalPrice, projectCurrency);
+  const formattedSubtotal = formatPriceWithCurrency(baseSubtotal, currency, projectCurrency, conversionRate);
+  const formattedVat = formatPriceWithCurrency(vatAmount, currency, projectCurrency, conversionRate);
+  const formattedTotal = formatPriceWithCurrency(totalDueAmount > 0 ? totalDueAmount : renewalPrice, currency, projectCurrency, conversionRate);
 
   const handleProcessPayment = async () => {
     if (!termsAccepted) {
@@ -438,6 +441,7 @@ function UnifiedRenewalDetailsBox({
 }
 
 export default function RenewalsPage() {
+  const { currency, conversionRate } = useCurrency();
   const [renewals, setRenewals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -532,7 +536,7 @@ export default function RenewalsPage() {
                     : parseFloat(String(project.price || project.renewalPrice || 100).replace(/[^0-9.]/g, "")) || 100;
 
               const isAutoRenewOn = project.autoRenewal !== false;
-              const formattedItemPrice = formatPrice(priceNum, project.currency || "USD");
+              const formattedItemPrice = formatPriceWithCurrency(priceNum, currency, project.currency || "USD", conversionRate);
 
               return (
                 <div

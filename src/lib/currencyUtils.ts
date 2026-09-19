@@ -74,4 +74,34 @@ export function capitalizeCurrencyInText(text?: string): string {
   return cleaned.replace(/\b(eur|usd|gbp|cad|aud)\b/gi, (match) => match.toUpperCase());
 }
 
+export function formatPriceStringWithCurrency(
+  text: string,
+  targetCurrency: string = "usd",
+  sourceCurrency: string = "usd",
+  conversionRate: number = 1.08
+): string {
+  if (!text || typeof text !== "string") return "";
+  const trimmed = text.trim();
+  if (trimmed.toUpperCase() === "FREE" || trimmed.toLowerCase() === "get a quote" || !/\d/.test(trimmed)) {
+    return text;
+  }
+
+  const targetCurr = (targetCurrency || "usd").toLowerCase();
+  const sourceCurr = (sourceCurrency || "usd").toLowerCase();
+  const symbol = targetCurr === "eur" ? "€" : "$";
+
+  // Replace monetary figures (e.g. $2200, 2200, $2200.00, €2000)
+  return text.replace(/(?:[\$€£])?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/g, (match, numStr) => {
+    const cleanNum = parseFloat(numStr.replace(/,/g, ""));
+    if (isNaN(cleanNum)) return match;
+    const converted = convertCurrencyAmount(cleanNum, targetCurr, sourceCurr, conversionRate);
+    const hasCents = converted % 1 !== 0;
+    const formattedNum = hasCents
+      ? converted.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : converted.toLocaleString("en-US", { maximumFractionDigits: 0 });
+    return `${symbol}${formattedNum}`;
+  });
+}
+
+
 

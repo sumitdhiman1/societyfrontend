@@ -11,6 +11,7 @@ import { downloadFile } from "@/lib/utils";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { useCurrency } from "@/context/CurrencyContext";
+import { formatPriceWithCurrency } from "@/lib/currencyUtils";
 import { useTimezone } from "@/context/TimezoneContext";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 
@@ -34,15 +35,12 @@ function ReceiptModal({
     (analysis.quoteNumber || (analysis._id ? `INV-2026-${analysis._id.slice(-3).toUpperCase()}` : "INV-2026-150"));
   const isFree = (analysis.isFree !== false && (!analysis.price || Number(analysis.price) === 0)) && !payment && deliverableItems.length === 0;
   const totalPrice = isFree ? 0 : Number(payment?.amount ?? analysis.amountPaid ?? analysis.price ?? analysis.totalCost ?? 0);
-  const currency = (payment?.currency || analysis.currency || "USD").toUpperCase();
-
-  const formatCurrency = (amt: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amt);
+  const { currency: contextCurrency, conversionRate } = useCurrency();
+  const formatCurrency = (amt: number, customSourceCurrency?: string) => {
+    const src = (customSourceCurrency || payment?.currency || analysis.currency || "USD").toUpperCase();
+    const target = (contextCurrency || "USD").toUpperCase();
+    return formatPriceWithCurrency(amt, target, src, conversionRate);
+  };
 
   const dateFormatted = (payment?.createdAt || analysis.createdAt)
     ? new Date(payment?.createdAt || analysis.createdAt).toLocaleDateString("en-GB", {
