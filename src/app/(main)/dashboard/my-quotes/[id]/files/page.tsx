@@ -106,7 +106,7 @@ function ImageModal({ file, onClose }: { file: any; onClose: () => void }) {
 export default function QuoteFilesPage() {
   const { quote } = useQuote();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -153,10 +153,10 @@ export default function QuoteFilesPage() {
       const isDoc = file.type === "document" || cleanUrl.endsWith(".pdf") || cleanUrl.match(/\.(pdf|doc|docx|txt|xls|xlsx)$/i);
       const isVid = file.type === "video" || cleanUrl.match(/\.(mp4|webm|mov|avi)$/i);
 
-      const mimeType = isImg ? "image/png" 
+      const mimeType = isImg ? "image/png"
         : isDoc ? "application/pdf"
-        : isVid ? "video/mp4" : "application/octet-stream";
-      
+          : isVid ? "video/mp4" : "application/octet-stream";
+
       chatFiles.push({
         _id: `chat-${url}`,
         url,
@@ -203,19 +203,19 @@ export default function QuoteFilesPage() {
       toast.error("To protect your data, file uploads are restricted for unverified accounts. Please verify your email.");
       return;
     }
-    
+
     setIsUploading(true);
     let successCount = 0;
 
     for (const file of fileArray) {
       try {
-        const res: any = await mediaService.uploadImage({ 
-          file, 
-          folder: `quotes/${quote._id}/files` 
+        const res: any = await mediaService.uploadImage({
+          file,
+          folder: `quotes/${quote._id}/files`
         });
         const url = res?.data?.secure_url || res?.data?.url || res?.secure_url || res?.url;
         if (!url) throw new Error(res?.message || "No URL returned from upload");
-        
+
         await quoteService.addQuoteFile(quote._id, {
           url,
           name: file.name,
@@ -259,7 +259,7 @@ export default function QuoteFilesPage() {
     <div className="flex flex-col gap-10">
       <ImageModal file={previewFile} onClose={() => setPreviewFile(null)} />
       <input type="file" ref={fileInputRef} className="hidden" multiple onChange={e => { if (e.target.files?.length) handleUploadFiles(e.target.files); }} />
-      
+
       <div className="flex flex-col lg:grid lg:grid-cols-4 gap-6">
         <div className="space-y-4 lg:col-span-1">
           <div className="border border-gray-200 rounded-xl p-4 sm:p-5 bg-white shadow-sm">

@@ -115,7 +115,7 @@ function renderAnswerValue(sel: CalculatorSelection): React.ReactNode {
   }
 
   return (
-    <ul style={{ margin: "6px 0 0 0", paddingLeft: "28px", listStyleType: "disc", color: "#334155", fontSize: "13px", fontWeight: 500, lineHeight: 1.6 }}>
+    <ul style={{ margin: "6px 0 0 0", paddingLeft: "28px", listStyleType: "disc", color: "#2563eb", fontSize: "13.5px", fontWeight: 600, lineHeight: 1.6 }}>
       {displayTexts.map((t, i) => (
         <li key={i} style={{ marginBottom: "4px" }}>{t}</li>
       ))}

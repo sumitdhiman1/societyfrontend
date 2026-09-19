@@ -382,8 +382,8 @@ export default function MyAccountPage() {
       console.error("Password change error:", error);
       setPasswordError(
         error?.response?.data?.message ||
-          error?.message ||
-          "An error occurred. Please try again."
+        error?.message ||
+        "An error occurred. Please try again."
       );
     }
   };
@@ -963,7 +963,8 @@ export default function MyAccountPage() {
       {/* Password Change Modal */}
       {showPasswordModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8 animate-in fade-in zoom-in-95 duration-200">
+          <div className="company-bg-overlay absolute inset-0 bg-gradient-to-b from-[#00102E] to-[#0E2549]/0 to-transparent z-0"></div>
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8 animate-in fade-in zoom-in-95 duration-200 z-9">
             <h2 className="text-xl font-bold text-gray-800 mb-4">
               {isSocialUser ? "Set Account Password" : "Change Password"}
             </h2>
