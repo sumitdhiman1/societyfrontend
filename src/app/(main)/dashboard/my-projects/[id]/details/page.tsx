@@ -2233,7 +2233,7 @@ export default function ProjectDetailsPage() {
                   setMessageText("");
                   setAttachments([]);
                 }}
-                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#7A1C1C] hover:bg-[#631616] text-white font-bold text-xs rounded-lg transition-colors shadow-sm cursor-pointer"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#7A1C1C] hover:bg-[#631616] text-white font-bold text-xs rounded-lg transition-colors shadow-sm cursor-pointer whitespace-nowrap"
                 disabled={isSending}
               >
                 Cancel
@@ -2253,7 +2253,7 @@ export default function ProjectDetailsPage() {
                     isUploading ||
                     (!messageText.trim() && attachments.length === 0))
                 }
-                className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg text-xs font-bold transition-all shadow-sm whitespace-nowrap ${
                   isLoggedIn &&
                   (isSending ||
                     isUploading ||
