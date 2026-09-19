@@ -391,27 +391,66 @@ function BundleDetailsContent() {
     return formatPriceWithCurrency(amount, currency || "USD", "USD", conversionRate);
   };
 
+  const formatDurationText = (daysOrObj: any): string => {
+    if (daysOrObj === undefined || daysOrObj === null || daysOrObj === "" || daysOrObj === "-") return "-";
+    if (typeof daysOrObj === "object") {
+      const val = Number(daysOrObj.value);
+      if (isNaN(val) || val <= 0) return "-";
+      const unit = (daysOrObj.type || daysOrObj.unit || "days").toLowerCase();
+      if (unit.startsWith("month")) return `${val} ${val === 1 ? "Month" : "Months"}`;
+      if (unit.startsWith("week")) return `${val} ${val === 1 ? "Week" : "Weeks"}`;
+      return `${val} ${val === 1 ? "Day" : "Days"}`;
+    }
+
+    if (typeof daysOrObj === "string" && !/^\d+$/.test(daysOrObj.trim())) {
+      return daysOrObj;
+    }
+
+    const days = typeof daysOrObj === "number" ? daysOrObj : parseInt(String(daysOrObj).trim(), 10);
+    if (isNaN(days) || days <= 0) return "-";
+
+    if (days % 30 === 0) {
+      const months = days / 30;
+      return `${months} ${months === 1 ? "Month" : "Months"}`;
+    }
+    if (days % 7 === 0) {
+      const weeks = days / 7;
+      return `${weeks} ${weeks === 1 ? "Week" : "Weeks"}`;
+    }
+    return `${days} ${days === 1 ? "Day" : "Days"}`;
+  };
+
+  const getTimelineDays = (col: any): number => {
+    if (!col) return 14;
+    const t = col.timeline ?? col.recurringTimeline;
+    if (typeof t === "number" && t > 0) return t;
+    if (typeof t === "object" && t?.value) {
+      const val = Number(t.value);
+      const unit = (t.type || t.unit || "days").toLowerCase();
+      if (unit.startsWith("month")) return val * 30;
+      if (unit.startsWith("week")) return val * 7;
+      return val;
+    }
+    if (typeof t === "string") {
+      if (/^\d+$/.test(t.trim())) return parseInt(t.trim(), 10) || 14;
+      const weeksMatch = /(\d+)\s*Week/i.exec(t);
+      if (weeksMatch) return parseInt(weeksMatch[1], 10) * 7;
+      const monthMatch = /(\d+)\s*Month/i.exec(t);
+      if (monthMatch) return parseInt(monthMatch[1], 10) * 30;
+      const daysMatch = /(\d+)\s*Day/i.exec(t);
+      if (daysMatch) return parseInt(daysMatch[1], 10);
+    }
+    return 14;
+  };
+
   const getTimelineDisplay = (col: any, featureList: any[] = [], idx: number = 0) => {
     if (!col) return "-";
 
     // 1. Direct col.timeline or recurringTimeline
     const t = col.timeline ?? col.recurringTimeline;
     if (t !== undefined && t !== null && t !== "") {
-      if (typeof t === "object" && t.value !== undefined) {
-        const val = t.value;
-        const type = t.type || "weeks";
-        return `${val} ${val === 1 ? type.replace(/s$/, "") : type}`;
-      }
-      if (typeof t === "number" && t > 0) {
-        return `${t} week${t > 1 ? "s" : ""}`;
-      }
-      if (typeof t === "string" && t.trim() !== "" && t !== "0" && t !== "-") {
-        if (/^\d+$/.test(t.trim())) {
-          const num = parseInt(t.trim(), 10);
-          return `${num} week${num > 1 ? "s" : ""}`;
-        }
-        return t;
-      }
+      const formatted = formatDurationText(t);
+      if (formatted !== "-") return formatted;
     }
 
     // 2. Look in features for a feature with key/name 'timeline'
@@ -421,34 +460,26 @@ function BundleDetailsContent() {
     if (timelineFeature) {
       const fVal = getFeatureValue(timelineFeature, col, idx);
       if (fVal) {
-        if (typeof fVal === "number" && fVal > 0) {
-          return `${fVal} week${fVal > 1 ? "s" : ""}`;
-        }
-        if (typeof fVal === "string" && fVal.trim() !== "" && fVal !== "-") {
-          if (/^\d+$/.test(fVal.trim())) {
-            const num = parseInt(fVal.trim(), 10);
-            return `${num} week${num > 1 ? "s" : ""}`;
-          }
-          return fVal;
-        }
+        const formatted = formatDurationText(fVal);
+        if (formatted !== "-") return formatted;
       }
     }
 
     // 3. Fallback for Digital Starter Bundle tiers
     const title = (col.title || col.label || "").toLowerCase();
-    if (title.includes("starter") || col.id === "col_starter" || col.id === "starter" || idx === 0) return "2 weeks";
-    if (title.includes("standard") || col.id === "col_standard" || col.id === "professional" || idx === 1) return "6 weeks";
-    if (title.includes("premium") || col.id === "col_premium" || col.id === "premium" || idx === 2) return "12 weeks";
+    if (title.includes("starter") || col.id === "col_starter" || col.id === "starter" || idx === 0) return "2 Weeks";
+    if (title.includes("standard") || col.id === "col_standard" || col.id === "professional" || idx === 1) return "6 Weeks";
+    if (title.includes("premium") || col.id === "col_premium" || col.id === "premium" || idx === 2) return "12 Weeks";
 
     return "-";
   };
 
   const getDurationLabel = (tier?: any) => {
     const t = tier || selectedTier;
-    if (!t) return "6 weeks";
+    if (!t) return "6 Weeks";
     const display = getTimelineDisplay(t, features);
     if (display && display !== "-") return display;
-    return t?.period || "6 weeks";
+    return t?.period || "6 Weeks";
   };
 
   const handleTierSelect = (tier: any) => {
@@ -589,9 +620,9 @@ function BundleDetailsContent() {
 
   const getDeadlineDate = (tier?: any) => {
     const t = tier || selectedTier;
-    const weeks = Number(t?.timeline) || 6;
+    const days = getTimelineDays(t);
     const d = new Date(mountedDate || Date.now());
-    d.setDate(d.getDate() + weeks * 7);
+    d.setDate(d.getDate() + days);
     return d;
   };
 

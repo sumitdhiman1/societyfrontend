@@ -36,12 +36,12 @@ export class PackagesService {
 
   async getPackageById(id: string) {
     const client = new HttpClient(this.session);
-    return await client.get(`/packages/getpackagebyid/${id}`, {}, 60000);
+    return await client.get(`/packages/getpackagebyid/${id}`);
   }
 
   async getBundleById(id: string) {
     const client = new HttpClient(this.session);
-    return await client.get(`/bundles/getbundlebyid/${id}`, {}, 60000);
+    return await client.get(`/bundles/getbundlebyid/${id}`);
   }
 
   async listCategories(options: { page: number; limit: number }) {
