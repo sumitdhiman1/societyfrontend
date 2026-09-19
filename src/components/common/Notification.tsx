@@ -149,10 +149,10 @@ const Notification = ({
 
       {notificationsOpen && (
         <div
-          className="absolute top-[100%] mt-[15px] right-[120px] rounded-[16px] w-[500px] bg-white shadow-2xl z-50 text-left overflow-hidden formobile-cs pointer-events-auto"
+          className="fixed left-3 right-3 sm:left-auto sm:right-4 xl:right-[120px] top-[92px] sm:top-[100%] sm:mt-[15px] w-auto sm:w-[480px] xl:w-[500px] rounded-[16px] bg-white shadow-2xl z-50 text-left overflow-hidden pointer-events-auto border border-gray-100"
           onMouseDown={(e) => e.stopPropagation()}
         >
-          <div className="px-6 sm:px-8 py-5 sm:py-6 border-b border-gray-100 bg-white flex justify-between items-center">
+          <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-100 bg-white flex justify-between items-center">
             <h3 className="font-bold text-gray-700 text-base sm:text-lg">Notifications</h3>
             <div className="flex items-center gap-3 sm:gap-4">
               {unreadCount > 0 && (
@@ -180,7 +180,7 @@ const Notification = ({
             </div>
           </div>
           <div
-            className="max-h-[263px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent"
+            className="max-h-[320px] sm:max-h-[360px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent"
             onScroll={handleScroll}
           >
             {notifications.length === 0 ? (
@@ -191,14 +191,14 @@ const Notification = ({
               notifications.map((n) => (
                 <div
                   key={n._id}
-                  className={`px-5 sm:px-8 py-4 sm:py-6 order-b border-gray-100 flex items-center gap-5 transition-colors ${n.isRead ? "bg-white" : "bg-[#f7faff]  hover:bg-blue-100/50"}`}
+                  className={`px-4 sm:px-8 py-3.5 sm:py-5 border-b border-gray-100 flex items-center gap-3.5 sm:gap-5 transition-colors ${n.isRead ? "bg-white" : "bg-[#f7faff] hover:bg-blue-100/50"}`}
                 >
                   <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-500 flex items-center justify-center shrink-0">
                     <BellIcon />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p
-                      className={`text-base sm:text-base font-bold truncate mb-1 ${n.isRead ? "text-gray-600" : "text-gray-700"}`}
+                      className={`text-sm sm:text-base font-bold truncate mb-0.5 sm:mb-1 ${n.isRead ? "text-gray-600" : "text-gray-700"}`}
                     >
                       {capitalizeCurrencyInText(n.title)}
                     </p>
@@ -212,7 +212,7 @@ const Notification = ({
                       e.stopPropagation();
                       handleNotificationClick(n);
                     }}
-                    className="flex items-center gap-1.5 sm:gap-2 bg-[#4343f0] hover:bg-[#5c5cf2] text-white text-xs font-bold px-3 sm:px-6 py-2 sm:py-3 rounded-[4px] shadow-sm transition-colors shrink-0"
+                    className="flex items-center gap-1.5 sm:gap-2 bg-[#4343f0] hover:bg-[#5c5cf2] text-white text-xs font-bold px-3 sm:px-5 py-2 sm:py-2.5 rounded-[6px] shadow-sm transition-colors shrink-0"
                   >
                     <EyeIcon className="w-4 h-4 pointer-events-none" />
                     View
@@ -226,14 +226,14 @@ const Notification = ({
               </div>
             )}
           </div>
-          <div className="px-8 py-5 border-t border-gray-100 bg-white text-center">
+          <div className="px-4 sm:px-8 py-3.5 sm:py-5 border-t border-gray-100 bg-white text-center">
             <button
               type="button"
               onClick={() => {
                 router.push("/dashboard/notifications");
                 setNotificationsOpen(false);
               }}
-              className="text-[#5356ff] hover:text-[#3232b7] font-bold flex items-center justify-center gap-2 mx-auto transition-all hover:gap-3"
+              className="text-[#5356ff] hover:text-[#3232b7] font-bold text-sm sm:text-base flex items-center justify-center gap-2 mx-auto transition-all hover:gap-3"
             >
               See all notifications <span className="text-lg">→</span>
             </button>

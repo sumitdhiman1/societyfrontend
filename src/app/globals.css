@@ -348,15 +348,6 @@ img.object-cover.company-set {
   }
 }
 
-@media screen and (max-width: 920px) {
-  .formobile-cs {
-    right: 55px;
-    width: calc(100vw - 70px);
-    max-width: 360px;
-    top: 100%;
-    margin-top: 10px;
-  }
-}
 
 /* Animations */
 @keyframes marquee {
