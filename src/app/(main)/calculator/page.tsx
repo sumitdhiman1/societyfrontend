@@ -1339,8 +1339,6 @@ const CalculatorPaymentForm = ({
         useCredits: false,
         metadata: {
           type: "QUOTE",
-          isCalculator: "true",
-          source: "calculator",
           quoteId,
           quoteNumber: quoteNum,
           billingType: isMonthlyBilling ? "monthly" : "fixed",
