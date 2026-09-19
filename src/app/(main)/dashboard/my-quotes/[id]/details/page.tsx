@@ -1253,6 +1253,26 @@ export default function QuoteDetailsPage() {
 
                   const canAct = !hasLaterProposal && !isAccepted && !isDeclined;
 
+                  const cleanExpires = (val: any) => {
+                    if (!val || val === "Not specified" || val === "N/A" || val === "-") return "N/A";
+                    const rawStr = String(val).trim();
+                    const strippedStr = rawStr.replace(/^(submitted\s*(on|-)?|expires\s*(on|-)?)\s*/i, "").trim();
+                    const d = new Date(strippedStr);
+                    if (!isNaN(d.getTime())) {
+                      return formatQuoteDate(d);
+                    }
+                    return strippedStr || rawStr;
+                  };
+                  const rawExpiry =
+                    content.expires ||
+                    content.expiresAt ||
+                    content.expirationDate ||
+                    (msg as any).expiresAt ||
+                    (msg as any).expirationDate ||
+                    (quote as any).expirationDate ||
+                    (quote as any).expiresAt;
+                  const expiresStr = cleanExpires(rawExpiry);
+
                   return (
                     <div key={msgId} ref={isLast ? messagesEndRef : null} className="w-full recieved-offer-heading-wrap">
                       {/* Header above offer card */}
@@ -1269,7 +1289,7 @@ export default function QuoteDetailsPage() {
                       <div className="flex flex-col gap-4">
                         <div className="bg-white rounded-xl shadow-sm border border-gray-300 overflow-hidden transition-all duration-300 hover:shadow-md">
                           <div className="p-4 sm:p-6 md:p-8">
-                            {/* Card Header: SUBMITTED - Date & Status Badge */}
+                            {/* Card Header: SUBMITTED - Date & Status Badge on Left; Expires / Resolution on Right */}
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                               <div className="flex flex-wrap items-center gap-3">
                                 <span className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-tight">
@@ -1293,6 +1313,17 @@ export default function QuoteDetailsPage() {
                                   </span>
                                 ) : null}
                               </div>
+
+                              {content.status && content.status !== "pending" ? (
+                                <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">
+                                  {isAccepted && content.acceptedAt ? `Accepted on ${formatQuoteDate(content.acceptedAt)}` :
+                                    isDeclined && content.declinedAt ? `Declined on ${formatQuoteDate(content.declinedAt)}` : ""}
+                                </span>
+                              ) : expiresStr && expiresStr !== "N/A" ? (
+                                <span className="text-xs sm:text-sm text-gray-500 font-medium">
+                                  Expires on {expiresStr}
+                                </span>
+                              ) : null}
                             </div>
 
                             <div className="border-t border-gray-200 mb-6 sm:mb-8"></div>
