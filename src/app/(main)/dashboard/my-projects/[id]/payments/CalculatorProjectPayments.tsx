@@ -10,7 +10,7 @@ import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { getMainCalculatorCategory } from "@/lib/calculatorUtils";
 import { useTimezone } from "@/context/TimezoneContext";
 import { useCurrency } from "@/context/CurrencyContext";
-import { formatPriceWithCurrency } from "@/lib/currencyUtils";
+import { formatPriceWithCurrency, formatActiveCurrency } from "@/lib/currencyUtils";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 
 const isEstoniaClient = (c?: string) => {
@@ -541,8 +541,15 @@ export default function CalculatorProjectPayments({
     formatPriceWithCurrency(amt, currency.toLowerCase(), projectNativeCurrency, conversionRate);
 
   const formatPaymentAmount = (payment: any) => {
-    const pCurr = (payment.currency || payment.chargedCurrency || projectNativeCurrency || "USD").toLowerCase();
-    return formatPriceWithCurrency(Number(payment.amount ?? 0), currency.toLowerCase(), pCurr, conversionRate);
+    const pCurr = (
+      payment.currency ||
+      payment.chargedCurrency ||
+      payment.metadata?.paymentCurrency ||
+      projectNativeCurrency ||
+      "USD"
+    ).toUpperCase();
+    const rawAmt = Number(payment.amount ?? payment.chargedAmount ?? payment.amountPaid ?? 0);
+    return formatActiveCurrency(rawAmt, pCurr);
   };
 
   const ledgerPayments = (activeProject.paymentLedger || []).map((entry: any, index: number) => ({

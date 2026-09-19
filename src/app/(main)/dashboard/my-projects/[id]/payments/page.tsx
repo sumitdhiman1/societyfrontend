@@ -10,7 +10,7 @@ import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generatePr
 import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "@/lib/generateCalculatorProjectPDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { useCurrency } from "@/context/CurrencyContext";
-import { formatPriceWithCurrency } from "@/lib/currencyUtils";
+import { formatPriceWithCurrency, formatActiveCurrency } from "@/lib/currencyUtils";
 import { useTimezone } from "@/context/TimezoneContext";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 import CalculatorProjectPayments, { ReceiptModal } from "./CalculatorProjectPayments";
@@ -348,6 +348,18 @@ export default function ProjectPaymentsPage() {
     return formatPriceWithCurrency(amt, target, src, conversionRate);
   };
 
+  const formatPaymentAmount = (payment: any) => {
+    const pCurr = (
+      payment.currency ||
+      payment.chargedCurrency ||
+      payment.metadata?.paymentCurrency ||
+      activeProject.currency ||
+      "USD"
+    ).toUpperCase();
+    const rawAmt = Number(payment.amount ?? payment.chargedAmount ?? payment.amountPaid ?? 0);
+    return formatActiveCurrency(rawAmt, pCurr);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case "succeeded":
@@ -613,7 +625,7 @@ export default function ProjectPaymentsPage() {
                         {payment.description || "Project Payment"}
                       </td>
                       <td className="px-6 py-4 font-bold text-gray-900">
-                        {formatCurrency(payment.amount ?? 0)}
+                        {formatPaymentAmount(payment)}
                       </td>
                       <td className="px-6 py-4 text-gray-500">
                         {payment.createdAt ? formatDateTimeTz(payment.createdAt, { month: "short", day: "numeric", year: "numeric" }) : "—"}
@@ -950,7 +962,7 @@ export default function ProjectPaymentsPage() {
                       {payment.description || "Project Payment"}
                     </td>
                     <td className="px-6 py-4 font-bold text-gray-900">
-                      {formatCurrency(payment.amount ?? 0)}
+                      {formatPaymentAmount(payment)}
                     </td>
                     <td className="px-6 py-4 text-gray-500">
                       {payment.createdAt ? formatDateTimeTz(payment.createdAt, { month: "short", day: "numeric", year: "numeric" }) : "—"}
