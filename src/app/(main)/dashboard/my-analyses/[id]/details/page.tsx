@@ -1133,9 +1133,9 @@ export default function AnalysisDetailsPage() {
                 <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">
                   Submitted Information &amp; Requirements
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
+                <div className="flex flex-col gap-4 text-xs sm:text-sm">
                   {submittedUrls.length > 0 && (
-                    <div className="bg-gray-50 p-3 rounded border border-gray-200">
+                    <div className="w-full bg-gray-50 p-3 rounded border border-gray-200">
                       <span className="block font-bold text-gray-700 text-xs uppercase mb-1">
                         URL(s) to check
                       </span>
@@ -1160,7 +1160,7 @@ export default function AnalysisDetailsPage() {
                   )}
 
                   {submittedAdditionalComments && (
-                    <div className="bg-gray-50 p-3 rounded border border-gray-200 sm:col-span-2">
+                    <div className="w-full bg-gray-50 p-3 rounded border border-gray-200">
                       <span className="block font-bold text-gray-700 text-xs uppercase mb-1">
                         Provide any additional required information
                       </span>
@@ -1171,7 +1171,7 @@ export default function AnalysisDetailsPage() {
                   )}
 
                   {submittedScopeOfWork && (
-                    <div className="bg-gray-50 p-3 rounded border border-gray-200 sm:col-span-2">
+                    <div className="w-full bg-gray-50 p-3 rounded border border-gray-200">
                       <span className="block font-bold text-gray-700 text-xs uppercase mb-1">
                         What specifically do you want us to look at?
                       </span>
@@ -1182,7 +1182,7 @@ export default function AnalysisDetailsPage() {
                   )}
 
                   {submittedWhoCompletedWork && (
-                    <div className="bg-gray-50 p-3 rounded border border-gray-200">
+                    <div className="w-full bg-gray-50 p-3 rounded border border-gray-200">
                       <span className="block font-bold text-gray-700 text-xs uppercase mb-1">
                         Who was the work completed by?
                       </span>
@@ -1193,7 +1193,7 @@ export default function AnalysisDetailsPage() {
                   )}
 
                   {submittedAgreementDetails && (
-                    <div className="bg-gray-50 p-3 rounded border border-gray-200 sm:col-span-2">
+                    <div className="w-full bg-gray-50 p-3 rounded border border-gray-200">
                       <span className="block font-bold text-gray-700 text-xs uppercase mb-1">
                         What was the agreement for this work?
                       </span>
@@ -1204,7 +1204,7 @@ export default function AnalysisDetailsPage() {
                   )}
 
                   {submittedLoginsDetails && (
-                    <div className="bg-gray-50 p-3 rounded border border-gray-200 sm:col-span-2">
+                    <div className="w-full bg-gray-50 p-3 rounded border border-gray-200">
                       <span className="block font-bold text-gray-700 text-xs uppercase mb-1">
                         Please share required access with our email
                       </span>
@@ -1215,7 +1215,7 @@ export default function AnalysisDetailsPage() {
                   )}
 
                   {extraMetadata.map(([k, v]: [string, any], idx: number) => (
-                    <div key={idx} className="bg-gray-50 p-3 rounded border border-gray-200">
+                    <div key={idx} className="w-full bg-gray-50 p-3 rounded border border-gray-200">
                       <span className="block font-bold text-gray-700 text-xs uppercase mb-1">
                         {k.replace(/([A-Z])/g, " $1").replace(/_/g, " ").trim()}
                       </span>

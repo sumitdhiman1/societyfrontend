@@ -535,6 +535,7 @@ function PackageDetailsContent() {
                       description={pkg.description}
                       date={new Date().toISOString()}
                       totalCost={parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0)}
+                      depositAmount={parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0) > 0 ? parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0) / 2 : undefined}
                       deliverableItems={[
                         {
                           description: "Service Delivery",

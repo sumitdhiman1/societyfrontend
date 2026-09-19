@@ -235,9 +235,13 @@ function PaymentForm({
     return Math.max(0, currentSubtotal + getVatAmount(currentSubtotal) - amountPaid);
   };
 
-  const getDepositWithVat = () => depositAmount * (1 + getActiveVatRate() / 100);
+  const effectiveDepositAmount = Number(depositAmount) > 0 
+    ? Number(depositAmount) 
+    : (totalCost > 0 && amountPaid <= 0 ? totalCost / 2 : 0);
 
-  const canPayDepositHalf = amountPaid <= 0 && depositAmount > 0 && getDepositWithVat() < getPendingWithVat() - 0.009;
+  const getDepositWithVat = () => effectiveDepositAmount * (1 + getActiveVatRate() / 100);
+
+  const canPayDepositHalf = amountPaid <= 0 && effectiveDepositAmount > 0 && getDepositWithVat() < getPendingWithVat() - 0.009;
 
   useEffect(() => {
     const currentDeliverablesSum = getPayableDeliverablesSum();
@@ -307,7 +311,7 @@ function PaymentForm({
 
   const getPayableAmount = () => {
     let amount = totalCost;
-    if (paymentOption === "half") amount = depositAmount;
+    if (paymentOption === "half") amount = effectiveDepositAmount;
     else if (paymentOption === "custom" && customAmount) amount = parseFloat(customAmount);
     
     if (paymentOption !== "custom") {
@@ -801,7 +805,7 @@ function PaymentForm({
                   onChange={() => setPaymentOption("half")}
                 />
                 <span className="text-gray-600 text-sm">
-                  Deposit half: <span className="font-medium">{formatPrice(depositAmount * (1 + getActiveVatRate() / 100))}</span>
+                  Deposit half: <span className="font-medium">{formatPrice(effectiveDepositAmount * (1 + getActiveVatRate() / 100))}</span>
                 </span>
               </label>
             )}

@@ -10,7 +10,6 @@ const navItems = [
   { name: "Saved Cards", href: "/dashboard/billing" },
   { name: "Payment History", href: "/dashboard/payment-history" },
   { name: "Renewals", href: "/dashboard/renewals" },
-  { name: "Credits", href: "/dashboard/credits" },
   { name: "Notification Settings", href: "/dashboard/settings" },
 ];
 

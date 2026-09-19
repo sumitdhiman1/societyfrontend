@@ -799,7 +799,7 @@ export default function CalculatorProjectPayments({
               <div>
                 <div className="flex items-center gap-3 flex-wrap mb-3">
                   <h3 className="text-lg font-bold text-[#0d1939]">
-                    {(activeProject.title || `Website Price Calculator - ${activeProject.clientName || activeProject.client?.fullName || "Client"}`)
+                    {(activeProject.title || "Website Price Calculator")
                       .replace(/<br\s*\/?>/gi, " ")
                       .replace(/\s+/g, " ")
                       .trim()}
