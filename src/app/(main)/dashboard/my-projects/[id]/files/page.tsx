@@ -508,7 +508,7 @@ export default function ProjectFilesPage() {
           </div>
 
           {/* Sources */}
-          <div className="border border-gray-200 rounded-xl p-4 sm:p-5 bg-white shadow-xs">
+          <div className="border border-gray-200 rounded-xl p-4 sm:p-5 bg-white">
             <h3 className="text-xs sm:text-sm font-bold text-[#363636] uppercase tracking-wider mb-3">
               Sources
             </h3>

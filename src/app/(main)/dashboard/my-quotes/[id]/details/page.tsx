@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useQuote } from "../layout";
+import { useQuote } from "@/context/QuoteContext";
 import { authService } from "@/lib/authService";
 import { profileService } from "@/lib/profileService";
 import { quoteService } from "@/lib/quoteService";
@@ -11,7 +11,7 @@ import { projectService } from "@/lib/projectService";
 import { mediaService } from "@/lib/mediaService";
 import { packagesService } from "@/lib/packagesService";
 import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
-import { capitalizeCurrencyInText } from "@/lib/currencyUtils";
+import { capitalizeCurrencyInText, formatPriceWithCurrency } from "@/lib/currencyUtils";
 import { useCurrency } from "@/context/CurrencyContext";
 import { useTimezone } from "@/context/TimezoneContext";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
@@ -261,7 +261,7 @@ const extractProjectId = (quoteObj: any, msgObj?: any, contentObj?: any): string
 
 export default function QuoteDetailsPage() {
   const { quote, setQuote, refreshQuote } = useQuote();
-  const { currency: contextCurrency } = useCurrency();
+  const { currency: contextCurrency, conversionRate } = useCurrency();
   const { formatDateTime: formatDateTimeTz } = useTimezone();
   const router = useRouter();
 
@@ -450,20 +450,12 @@ export default function QuoteDetailsPage() {
   if (!quote) return null;
 
   // Format Helpers
-  const currency = (quote.currency || user?.currency || user?.preferredCurrency || contextCurrency || "USD").toUpperCase();
-  const formatCurrency = (amt: any, customCurrency?: string) => {
+  const currency = (user?.currency || user?.preferredCurrency || contextCurrency || quote.currency || "USD").toUpperCase();
+  const formatCurrency = (amt: any, customSourceCurrency?: string) => {
     const num = Number(amt || 0);
-    const curr = (customCurrency || quote.currency || user?.currency || user?.preferredCurrency || contextCurrency || "USD").toUpperCase();
-    try {
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: curr,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(num);
-    } catch {
-      return curr === "EUR" ? `€${num.toFixed(2)}` : `$${num.toFixed(2)}`;
-    }
+    const srcCurrency = (customSourceCurrency || quote.currency || "USD").toUpperCase();
+    const targetCurrency = (user?.currency || user?.preferredCurrency || contextCurrency || "USD").toUpperCase();
+    return formatPriceWithCurrency(num, targetCurrency, srcCurrency, conversionRate);
   };
 
   const formatDateTime = (date: string | Date) => {

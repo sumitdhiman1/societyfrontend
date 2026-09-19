@@ -324,12 +324,13 @@ function PaymentForm({
       if (paymentOption === "full") {
         return pendingWithVat;
       }
+      if (paymentOption === "half") {
+        const halfAmount = Math.round((pendingWithVat / 2) * 100) / 100;
+        return Math.min(halfAmount, pendingWithVat);
+      }
       amount = convertCurrencyAmount(amount, currency, nativeCurrency || "USD", conversionRate);
       const vatRate = getActiveVatRate();
       const withVat = vatRate > 0 ? amount * (1 + vatRate / 100) : amount;
-      if (paymentOption === "half") {
-        return Math.min(withVat, pendingWithVat);
-      }
       return withVat;
     }
     

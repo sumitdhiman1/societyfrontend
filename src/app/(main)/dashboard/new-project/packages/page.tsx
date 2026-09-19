@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { packagesService } from "@/lib/packagesService";
 import { requestAnalysisService } from "@/lib/requestAnalysisService";
 import { useCurrency } from "@/context/CurrencyContext";
+import { formatPriceStringWithCurrency } from "@/lib/currencyUtils";
 
 const ORDER_ASC = "order_asc";
 const NAME_ASC = "name_asc";
@@ -137,7 +138,7 @@ const extractPackageTimelineInWeeks = (pkg: any): number => {
 function PackagesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { currency } = useCurrency();
+  const { currency, conversionRate } = useCurrency();
   const currencySymbol = currency === "eur" ? "€" : "$";
 
   const [packages, setPackages] = useState<any[]>([]);
@@ -798,7 +799,7 @@ function PackagesContent() {
                     ? "ANALYSIS"
                     : sidebarCategories.find(c => (c.categorycode || "").toUpperCase() === (pkg.categorycode || "").toUpperCase())?.name?.toUpperCase() || (pkg.isBundle ? "BUNDLES" : "PACKAGE");
 
-                  const displayAmount = pkg.amount ? String(pkg.amount).replace(/\.00(?!\d)/g, "") : "";
+                  const displayAmount = pkg.amount ? formatPriceStringWithCurrency(String(pkg.amount), currency, "usd", conversionRate) : "";
 
                   return (
                     <div

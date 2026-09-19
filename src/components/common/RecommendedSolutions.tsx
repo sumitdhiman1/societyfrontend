@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { getSafeUrl } from "@/lib/utils";
 import { packagesService } from "@/lib/packagesService";
+import { useCurrency } from "@/context/CurrencyContext";
+import { formatPriceWithCurrency, formatPriceStringWithCurrency } from "@/lib/currencyUtils";
 
 const categoryMap: Record<string, string> = {
   // Short auto-generated codes
@@ -149,7 +151,12 @@ export const findMatchingPackage = (sol: any, availablePackages: any[] = package
   );
 };
 
-export const formatPriceDisplay = (sol: any, availablePackages: any[] = packagesCache): string => {
+export const formatPriceDisplay = (
+  sol: any,
+  availablePackages: any[] = packagesCache,
+  targetCurrency: string = "usd",
+  conversionRate: number = 1.08
+): string => {
   if (!sol) return "";
 
   const match = findMatchingPackage(sol, availablePackages);
@@ -189,6 +196,11 @@ export const formatPriceDisplay = (sol: any, availablePackages: any[] = packages
 
   const suffix = isMonthly ? "/month" : "";
 
+  // Helper to format a single amount
+  const fmt = (num: number) => {
+    return formatPriceWithCurrency(num, targetCurrency, "usd", conversionRate).replace(/\.00(?!\d)/g, "") + suffix;
+  };
+
   // 1. Dynamic range check from pre-calculated amount / priceText
   const candidateRange =
     (match?.amount && String(match.amount).includes("-") ? String(match.amount) : null) ||
@@ -196,7 +208,7 @@ export const formatPriceDisplay = (sol: any, availablePackages: any[] = packages
     (sol.priceText && String(sol.priceText).includes("-") ? String(sol.priceText) : null);
 
   if (candidateRange) {
-    let clean = candidateRange.replace(/\s*-\s*/, " - ").trim();
+    let clean = formatPriceStringWithCurrency(candidateRange, targetCurrency, "usd", conversionRate).replace(/\s*-\s*/, " - ").trim();
     if (isMonthly && !clean.toLowerCase().includes("month")) {
       clean = `${clean}/month`;
     }
@@ -210,9 +222,11 @@ export const formatPriceDisplay = (sol: any, availablePackages: any[] = packages
     const minNum = Number(min);
     const maxNum = Number(max);
     if (minNum === maxNum) {
-      return `$${minNum.toLocaleString("en-US")}${suffix}`;
+      return fmt(minNum);
     }
-    return `$${minNum.toLocaleString("en-US")} - $${maxNum.toLocaleString("en-US")}${suffix}`;
+    const minFmt = formatPriceWithCurrency(minNum, targetCurrency, "usd", conversionRate).replace(/\.00(?!\d)/g, "");
+    const maxFmt = formatPriceWithCurrency(maxNum, targetCurrency, "usd", conversionRate).replace(/\.00(?!\d)/g, "");
+    return `${minFmt} - ${maxFmt}${suffix}`;
   }
 
   // 3. Dynamic columns check (calculate min/max across columns)
@@ -232,9 +246,11 @@ export const formatPriceDisplay = (sol: any, availablePackages: any[] = packages
       const colMin = Math.min(...numericPrices);
       const colMax = Math.max(...numericPrices);
       if (colMin === colMax) {
-        return `$${colMin.toLocaleString("en-US")}${suffix}`;
+        return fmt(colMin);
       }
-      return `$${colMin.toLocaleString("en-US")} - $${colMax.toLocaleString("en-US")}${suffix}`;
+      const minFmt = formatPriceWithCurrency(colMin, targetCurrency, "usd", conversionRate).replace(/\.00(?!\d)/g, "");
+      const maxFmt = formatPriceWithCurrency(colMax, targetCurrency, "usd", conversionRate).replace(/\.00(?!\d)/g, "");
+      return `${minFmt} - ${maxFmt}${suffix}`;
     }
   }
 
@@ -242,15 +258,17 @@ export const formatPriceDisplay = (sol: any, availablePackages: any[] = packages
   const singleVal = match?.amount ?? sol.priceText ?? sol.amount ?? sol.price ?? sol.cost;
   if (singleVal !== undefined && singleVal !== null && singleVal !== "") {
     if (typeof singleVal === "number") {
-      return `$${singleVal.toLocaleString("en-US")}${suffix}`;
+      return fmt(singleVal);
     }
     const str = String(singleVal).trim();
+    if (str.toUpperCase() === "FREE") return "FREE";
     if (str.startsWith("$") || str.startsWith("€") || str.startsWith("£")) {
-      return isMonthly && !str.toLowerCase().includes("month") ? `${str}/month` : str;
+      const convertedStr = formatPriceStringWithCurrency(str, targetCurrency, "usd", conversionRate);
+      return isMonthly && !convertedStr.toLowerCase().includes("month") ? `${convertedStr}/month` : convertedStr;
     }
     const num = Number(str);
     if (!isNaN(num) && num > 0) {
-      return `$${num.toLocaleString("en-US")}${suffix}`;
+      return fmt(num);
     }
     return isMonthly && !str.toLowerCase().includes("month") ? `${str}/month` : str;
   }
@@ -269,6 +287,7 @@ export const PackageCard = ({
   rawSol,
   availablePackages,
 }: any) => {
+  const { currency, conversionRate } = useCurrency();
   const match = findMatchingPackage(rawSol || { packageId, title, price }, availablePackages);
 
   const itemTitle = title || rawSol?.title || rawSol?.name || match?.name || match?.title || rawSol?.description || "Package Solution";
@@ -277,7 +296,7 @@ export const PackageCard = ({
   const safeImg = rawImage ? getSafeUrl(rawImage) : getFallbackPackageImage(itemTitle);
   const isSvg = safeImg ? safeImg.toLowerCase().includes(".svg") : false;
 
-  const displayPrice = formatPriceDisplay(rawSol || { price, title: itemTitle, packageId }, availablePackages);
+  const displayPrice = formatPriceDisplay(rawSol || { price, title: itemTitle, packageId }, availablePackages, currency, conversionRate);
   const resolvedCat = formatCategoryName(category || rawSol?.category || rawSol?.categorycode || match?.categorycode || match?.category, itemTitle);
   const targetId = packageId || rawSol?._id || rawSol?.id || match?._id;
   const targetLink = link || (targetId ? `/dashboard/new-project/packages/${targetId}` : "#");

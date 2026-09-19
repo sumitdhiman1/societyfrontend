@@ -1014,13 +1014,13 @@ const ProposalPreview = ({
 
 const resolveUserName = (u: any): string => {
   if (!u) return "";
-  if (typeof u.fullName === "string" && u.fullName.trim()) return u.fullName.trim();
-  if (typeof u.name === "string" && u.name.trim()) return u.name.trim();
-  const first = u.firstName || u.first_name || "";
-  const last = u.lastName || u.last_name || "";
-  const combined = `${first} ${last}`.trim();
+  if (typeof u.fullName === "string" && u.fullName.trim() && !u.fullName.includes("undefined")) return u.fullName.trim();
+  if (typeof u.name === "string" && u.name.trim() && !u.name.includes("undefined")) return u.name.trim();
+  const first = (u.firstName && u.firstName !== "undefined") ? u.firstName : (u.first_name || "");
+  const last = (u.lastName && u.lastName !== "undefined") ? u.lastName : (u.last_name || "");
+  const combined = `${first} ${last}`.replace(/\bundefined\b/gi, "").trim();
   if (combined) return combined;
-  if (typeof u.displayName === "string" && u.displayName.trim()) return u.displayName.trim();
+  if (typeof u.displayName === "string" && u.displayName.trim() && !u.displayName.includes("undefined")) return u.displayName.trim();
   return "";
 };
 
@@ -1194,7 +1194,7 @@ const CalculatorPaymentForm = ({
     if (!isAuth) return 0;
     const codeOrName = userCountry?.trim() || "";
     if (!codeOrName) return 0;
-    return getVatRateForCountry(codeOrName);
+    return countryService.getVatRateSync(codeOrName);
   }, [isAuth, userCountry]);
 
   const vatMultiplier = vatRate > 0 ? vatRate / 100 : 0;
@@ -1692,7 +1692,7 @@ export default function CalculatorPage() {
     if (!authService.isAuthenticated()) return 0;
     const codeOrName = userCountry?.trim() || "";
     if (!codeOrName) return 0;
-    return getVatRateForCountry(codeOrName);
+    return countryService.getVatRateSync(codeOrName);
   }, [userCountry]);
 
   const vatMultiplier = vatRate > 0 ? vatRate / 100 : 0;

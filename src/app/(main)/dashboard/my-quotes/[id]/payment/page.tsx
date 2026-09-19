@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import { useQuote } from "../layout";
+import { useQuote } from "@/context/QuoteContext";
 import { authService } from "@/lib/authService";
 import { paymentService } from "@/lib/paymentService";
 import { useCurrency } from "@/context/CurrencyContext";
@@ -225,11 +225,20 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
     if (user?.fullName) setCardHolderName(user.fullName);
   }, []);
 
+  const getConvertedTotalCost = () => {
+    return convertCurrencyAmount(totalCost, currency || "USD", quoteSourceCurrency, conversionRate);
+  };
+
+  const getDepositHalfAmount = () => {
+    const total = getConvertedTotalCost();
+    return Math.round((total / 2) * 100) / 100;
+  };
+
   const getAmountToPay = () => {
-    let amt = totalCost;
-    if (paymentOption === "half") amt = depositAmount;
+    const convertedTotal = getConvertedTotalCost();
+    if (paymentOption === "half") return getDepositHalfAmount();
     else if (paymentOption === "other" && customAmount) return Number.parseFloat(customAmount);
-    return convertCurrencyAmount(amt, currency || "USD", quoteSourceCurrency, conversionRate);
+    return convertedTotal;
   };
 
   const handlePayment = async () => {
@@ -237,11 +246,11 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
     
     const errs: any = {};
     if (paymentOption === "other") {
-      const convertedTotal = convertCurrencyAmount(totalCost, currency || "USD", quoteSourceCurrency, conversionRate);
-      const convertedDeposit = convertCurrencyAmount(depositAmount, currency || "USD", quoteSourceCurrency, conversionRate);
+      const convertedTotal = getConvertedTotalCost();
+      const convertedDeposit = getDepositHalfAmount();
       if (!customAmount || Number.parseFloat(customAmount) <= 0) errs.amount = "Enter a valid amount.";
       else if (Number.parseFloat(customAmount) > convertedTotal + 0.01) errs.amount = "Cannot exceed total cost.";
-      else if (Number.parseFloat(customAmount) < convertedDeposit - 0.01) errs.amount = `Min ${formatCurrency(depositAmount)}.`;
+      else if (Number.parseFloat(customAmount) < convertedDeposit - 0.01) errs.amount = `Min ${formatCurrency(convertedDeposit)}.`;
     }
     
     if (!cardHolderName.trim()) errs.cardHolderName = "Cardholder name is required.";
@@ -413,14 +422,14 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
                   {paymentOption === "half" && <div className="w-3 h-3 rounded-full bg-gray-600" />}
                 </div>
                 <input type="radio" className="hidden" checked={paymentOption === "half"} onChange={() => setPaymentOption("half")} />
-                <span className="text-gray-600 text-sm">Deposit half: <span className="font-medium">{formatCurrency(depositAmount)}</span></span>
+                <span className="text-gray-600 text-sm">Deposit half: <span className="font-medium">{formatCurrency(getDepositHalfAmount())}</span></span>
               </label>
               <label className="flex items-center gap-3 cursor-pointer">
                 <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${paymentOption === "full" ? "border-gray-800" : "border-gray-300"}`}>
                   {paymentOption === "full" && <div className="w-3 h-3 rounded-full bg-gray-600" />}
                 </div>
                 <input type="radio" className="hidden" checked={paymentOption === "full"} onChange={() => setPaymentOption("full")} />
-                <span className="text-gray-600 text-sm">Pay full: <span className="font-medium">{formatCurrency(totalCost)}</span></span>
+                <span className="text-gray-600 text-sm">Pay full: <span className="font-medium">{formatCurrency(getConvertedTotalCost())}</span></span>
               </label>
             </div>
             

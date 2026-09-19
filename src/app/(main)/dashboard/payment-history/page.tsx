@@ -270,15 +270,13 @@ export default function PaymentHistoryPage() {
         meta.quoteNumber ||
         meta.invoiceNumber ||
         "";
-      if (raw) {
+      if (raw && !/^[0-9a-fA-F]{24}$/.test(String(raw).trim())) {
         const str = String(raw).trim();
         return str.startsWith("#") ? str : `#${str}`;
       }
       const desc = meta.description || meta.title || meta.quoteTitle || "";
       const match = desc.match(/#(SOC-[\w-]+|QU-[\w-]+|[\w-]+)/i);
       if (match) return match[0];
-      if (meta.quoteId) return `#${meta.quoteId}`;
-      if (meta.projectId) return `#${meta.projectId}`;
       return "-";
     };
 
@@ -346,15 +344,13 @@ export default function PaymentHistoryPage() {
       meta.quoteNumber ||
       meta.invoiceNumber ||
       "";
-    if (raw) {
+    if (raw && !/^[0-9a-fA-F]{24}$/.test(String(raw).trim())) {
       const str = String(raw).trim();
       return str.startsWith("#") ? str : `#${str}`;
     }
     const desc = meta.description || meta.title || meta.quoteTitle || "";
     const match = desc.match(/#(SOC-[\w-]+|QU-[\w-]+|[\w-]+)/i);
     if (match) return match[0];
-    if (meta.quoteId) return `#${meta.quoteId}`;
-    if (meta.projectId) return `#${meta.projectId}`;
     return "-";
   };
 
