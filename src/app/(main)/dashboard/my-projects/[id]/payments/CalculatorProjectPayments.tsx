@@ -449,7 +449,30 @@ export default function CalculatorProjectPayments({
     "usd"
   ).toUpperCase();
 
-  const totalPaidFromTransactions = (payments || [])
+  const ledgerPayments = (activeProject.paymentLedger || []).map((entry: any, index: number) => ({
+    _id: entry.transactionId || `ledger-${index}`,
+    id: entry.transactionId || `ledger-${index}`,
+    transactionNumber: entry.transactionNumber || (entry.transactionId ? entry.transactionId.slice(-8).toUpperCase() : `LEDGER-${index + 1}`),
+    amount: entry.chargedAmount || entry.amount,
+    currency: entry.chargedCurrency || entry.currency,
+    description: entry.type === 'deposit' ? 'Initial Deposit Payment' : (entry.type === 'final' ? 'Final Payment' : 'Project Payment'),
+    status: entry.status || 'succeeded',
+    createdAt: entry.date,
+  }));
+
+  const combinedPayments = [...(payments || [])];
+  const seenTxnIds = new Set(
+    combinedPayments.map((p: any) => String(p._id || p.id || p.transactionId || '')).filter(Boolean)
+  );
+  for (const lp of ledgerPayments) {
+    const id = String(lp._id || lp.id || '');
+    if (!seenTxnIds.has(id)) {
+      combinedPayments.push(lp);
+      seenTxnIds.add(id);
+    }
+  }
+
+  const totalPaidFromTransactions = (combinedPayments || [])
     .filter((p: any) => ["succeeded", "paid", "completed"].includes(p.status?.toLowerCase()))
     .reduce((sum: number, p: any) => {
       const pCurr = (p?.currency || projectNativeCurrency || "USD").toLowerCase();
@@ -458,15 +481,16 @@ export default function CalculatorProjectPayments({
       return sum + convertCurrencyAmount(pAmt, projectNativeCurrency, pCurr, pRate);
     }, 0);
 
-  const amountPaid = totalPaidFromTransactions > 0
-    ? totalPaidFromTransactions
-    : Number(activeProject.amountPaid || 0);
+  const amountPaid = Math.max(
+    totalPaidFromTransactions,
+    Number(activeProject.amountPaid || 0)
+  );
 
   const isDepositHalf =
     activeProject.paymentOption === "half" ||
     activeProject.paymentOption === "deposit" ||
     linkedQuote?.paymentOption === "half" ||
-    (payments || []).some((p: any) => p?.metadata?.isDeposit === "true" || p?.metadata?.paymentOption === "half");
+    (combinedPayments || []).some((p: any) => p?.metadata?.isDeposit === "true" || p?.metadata?.paymentOption === "half");
 
   if (isDepositHalf && amountPaid > 0 && Math.abs(computedTotalCost - (amountPaid * 2)) <= 15) {
     computedTotalCost = Math.round(amountPaid * 2 * 100) / 100;
@@ -528,7 +552,11 @@ export default function CalculatorProjectPayments({
       activeProject.paymentOption === "half" ||
       activeProject.paymentOption === "deposit" ||
       activeProject.paymentOption === "part" ||
+      activeProject.paymentOption === "custom" ||
+      activeProject.paymentOption === "other" ||
       linkedQuote.paymentOption === "half" ||
+      linkedQuote.paymentOption === "custom" ||
+      linkedQuote.paymentOption === "other" ||
       Number(activeProject.depositAmount) > 0 ||
       Number(linkedQuote.depositAmount) > 0 ||
       Number(activeProject.depositPercentage) > 0 ||
@@ -558,29 +586,6 @@ export default function CalculatorProjectPayments({
     const rawAmt = Number(payment.amount ?? payment.chargedAmount ?? payment.amountPaid ?? 0);
     return formatActiveCurrency(rawAmt, pCurr);
   };
-
-  const ledgerPayments = (activeProject.paymentLedger || []).map((entry: any, index: number) => ({
-    _id: entry.transactionId || `ledger-${index}`,
-    id: entry.transactionId || `ledger-${index}`,
-    transactionNumber: entry.transactionNumber || (entry.transactionId ? entry.transactionId.slice(-8).toUpperCase() : `LEDGER-${index + 1}`),
-    amount: entry.chargedAmount || entry.amount,
-    currency: entry.chargedCurrency || entry.currency,
-    description: entry.type === 'deposit' ? 'Initial Deposit Payment' : (entry.type === 'final' ? 'Final Payment' : 'Project Payment'),
-    status: entry.status || 'succeeded',
-    createdAt: entry.date,
-  }));
-
-  const combinedPayments = [...(payments || [])];
-  const seenTxnIds = new Set(
-    combinedPayments.map((p: any) => String(p._id || p.id || p.transactionId || '')).filter(Boolean)
-  );
-  for (const lp of ledgerPayments) {
-    const id = String(lp._id || lp.id || '');
-    if (!seenTxnIds.has(id)) {
-      combinedPayments.push(lp);
-      seenTxnIds.add(id);
-    }
-  }
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {

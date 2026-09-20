@@ -95,6 +95,25 @@ export default function ProjectPaymentsPage() {
     }
   }, [searchParams, projectId, refreshProject, fetchPayments]);
 
+  useEffect(() => {
+    const onFocus = () => {
+      refreshProject(true);
+      fetchPayments();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        refreshProject(true);
+        fetchPayments();
+      }
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [refreshProject, fetchPayments]);
+
   const activeProject = project || {};
 
   useEffect(() => {
@@ -123,12 +142,35 @@ export default function ProjectPaymentsPage() {
 
   const isCalc = isCalculatorProject(activeProject, fetchedQuote);
 
+  const ledgerPayments = (activeProject.paymentLedger || []).map((entry: any, index: number) => ({
+    _id: entry.transactionId || `ledger-${index}`,
+    id: entry.transactionId || `ledger-${index}`,
+    transactionNumber: entry.transactionNumber || (entry.transactionId ? entry.transactionId.slice(-8).toUpperCase() : `LEDGER-${index + 1}`),
+    amount: entry.chargedAmount || entry.amount,
+    currency: entry.chargedCurrency || entry.currency,
+    description: entry.type === "deposit" ? "Initial Deposit Payment" : (entry.type === "final" ? "Final Payment" : "Project Payment"),
+    status: entry.status || "succeeded",
+    createdAt: entry.date,
+  }));
+
+  const combinedPayments = [...(payments || [])];
+  const seenTxnIds = new Set(
+    combinedPayments.map((p: any) => String(p._id || p.id || p.transactionId || "")).filter(Boolean)
+  );
+  for (const lp of ledgerPayments) {
+    const id = String(lp._id || lp.id || "");
+    if (!seenTxnIds.has(id)) {
+      combinedPayments.push(lp);
+      seenTxnIds.add(id);
+    }
+  }
+
   if (isCalc) {
     return (
       <CalculatorProjectPayments
         project={activeProject}
         quote={fetchedQuote || (typeof activeProject.quoteId === "object" ? activeProject.quoteId : activeProject.quote)}
-        payments={payments}
+        payments={combinedPayments}
         isLoadingPayments={isLoading}
         refreshPayments={fetchPayments}
       />
@@ -318,7 +360,7 @@ export default function ProjectPaymentsPage() {
     "USD"
   ).toLowerCase();
 
-  const totalPaidFromTransactions = (payments || [])
+  const totalPaidFromTransactions = (combinedPayments || [])
     .filter((p: any) => ["succeeded", "paid", "completed"].includes(p.status?.toLowerCase()))
     .reduce((sum: number, p: any) => {
       const pCurr = (p?.currency || projectNativeCurrency || "USD").toLowerCase();
@@ -327,9 +369,10 @@ export default function ProjectPaymentsPage() {
       return sum + convertCurrencyAmount(pAmt, projectNativeCurrency, pCurr, pRate);
     }, 0);
 
-  const amountPaid = totalPaidFromTransactions > 0
-    ? totalPaidFromTransactions
-    : Number(activeProject.amountPaid || 0);
+  const amountPaid = Math.max(
+    totalPaidFromTransactions,
+    Number(activeProject.amountPaid || 0)
+  );
   const totalSubtotal = baseSubtotal + addonsTotal;
   const effectiveVatAmount = vatRate > 0 && totalSubtotal > 0
     ? Math.round((totalSubtotal * (vatRate / 100)) * 100) / 100
@@ -487,6 +530,8 @@ export default function ProjectPaymentsPage() {
       activeProject.paymentOption === "half" ||
       activeProject.paymentOption === "deposit" ||
       activeProject.paymentOption === "part" ||
+      activeProject.paymentOption === "custom" ||
+      activeProject.paymentOption === "other" ||
       Number(activeProject.depositAmount) > 0 ||
       Number(activeProject.depositPercentage) > 0
     ) ||

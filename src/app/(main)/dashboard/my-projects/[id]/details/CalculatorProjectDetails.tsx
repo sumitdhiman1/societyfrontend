@@ -262,20 +262,34 @@ export default function CalculatorProjectDetails({
   // their sum can drift from the true project subtotal by up to ±€5.
   // Use activeProject.subtotal as primary source; fall back to regularItemsSum only when absent.
   const storedSubtotal = Number(activeProject.subtotal || 0);
-  const baseSubtotal = storedSubtotal > 0
-    ? storedSubtotal
+  const quoteExpectedSubtotal = Number(
+    linkedQuote.subtotal ??
+    specs.subtotal ??
+    specs.calculatedPrice ??
+    linkedQuote.requirements?.subtotal ??
+    linkedQuote.requirements?.calculatedPrice ??
+    0
+  );
+  const isPartialProject =
+    activeProject.paymentOption === "custom" ||
+    activeProject.paymentOption === "other" ||
+    activeProject.paymentOption === "half" ||
+    activeProject.paymentOption === "deposit";
+
+  const effectiveStoredSubtotal =
+    storedSubtotal > 0 && !(isPartialProject && quoteExpectedSubtotal > storedSubtotal + 10)
+      ? storedSubtotal
+      : (quoteExpectedSubtotal > 0
+          ? quoteExpectedSubtotal
+          : (storedSubtotal > 0 ? storedSubtotal : regularItemsSum));
+
+  const baseSubtotal = effectiveStoredSubtotal > 0
+    ? effectiveStoredSubtotal
     : (regularItemsSum > 0
         ? regularItemsSum
-        : Number(
-            linkedQuote.subtotal ??
-            specs.subtotal ??
-            specs.calculatedPrice ??
-            linkedQuote.requirements?.subtotal ??
-            linkedQuote.requirements?.calculatedPrice ??
-            (vatRate > 0 && rawTotalCost > 0
-              ? Math.round((rawTotalCost / (1 + vatRate / 100)) * 100) / 100
-              : rawTotalCost)
-          ));
+        : (vatRate > 0 && rawTotalCost > 0
+            ? Math.round((rawTotalCost / (1 + vatRate / 100)) * 100) / 100
+            : rawTotalCost));
 
   const primaryItemTitle =
     itemTitle ||
@@ -365,7 +379,30 @@ export default function CalculatorProjectDetails({
     : Number(activeProject.vatAmount ?? linkedQuote.vatAmount ?? 0);
   let computedTotalCost = totalSubtotal + effectiveVatAmount;
 
-  const totalPaidFromTransactions = (payments || [])
+  const ledgerPayments = (activeProject.paymentLedger || []).map((entry: any, index: number) => ({
+    _id: entry.transactionId || `ledger-${index}`,
+    id: entry.transactionId || `ledger-${index}`,
+    amount: entry.chargedAmount || entry.amount,
+    currency: entry.chargedCurrency || entry.currency,
+    status: entry.status || "succeeded",
+    exchangeRate: entry.exchangeRate,
+    metadata: { exchangeRate: entry.exchangeRate },
+    createdAt: entry.date,
+  }));
+
+  const combinedPayments = [...(payments || [])];
+  const seenTxnIds = new Set(
+    combinedPayments.map((p: any) => String(p._id || p.id || p.transactionId || "")).filter(Boolean)
+  );
+  for (const lp of ledgerPayments) {
+    const id = String(lp._id || lp.id || "");
+    if (!seenTxnIds.has(id)) {
+      combinedPayments.push(lp);
+      seenTxnIds.add(id);
+    }
+  }
+
+  const totalPaidFromTransactions = combinedPayments
     .filter((p: any) => ["succeeded", "paid", "completed"].includes(String(p?.status || "").toLowerCase()))
     .reduce((sum: number, p: any) => {
       const pCurr = (p?.currency || projectNativeCurrency || "USD").toLowerCase();
@@ -374,15 +411,16 @@ export default function CalculatorProjectDetails({
       return sum + convertCurrencyAmount(pAmt, projectNativeCurrency, pCurr, pRate);
     }, 0);
 
-  const amountPaid = totalPaidFromTransactions > 0
-    ? totalPaidFromTransactions
-    : Number(activeProject.amountPaid || 0);
+  const amountPaid = Math.max(
+    totalPaidFromTransactions,
+    Number(activeProject.amountPaid || 0)
+  );
 
   const isDepositHalf =
     activeProject.paymentOption === "half" ||
     activeProject.paymentOption === "deposit" ||
     linkedQuote?.paymentOption === "half" ||
-    (payments || []).some((p: any) => p?.metadata?.isDeposit === "true" || p?.metadata?.paymentOption === "half");
+    combinedPayments.some((p: any) => p?.metadata?.isDeposit === "true" || p?.metadata?.paymentOption === "half");
 
   if (isDepositHalf && amountPaid > 0 && Math.abs(computedTotalCost - (amountPaid * 2)) <= 15) {
     computedTotalCost = Math.round(amountPaid * 2 * 100) / 100;
@@ -390,7 +428,7 @@ export default function CalculatorProjectDetails({
 
   const totalCost = computedTotalCost;
   const calculatedPending = Math.max(0, Math.round((totalCost - amountPaid) * 100) / 100);
-  const isActuallyPaidInFull = totalCost > 0 && amountPaid >= totalCost - 0.009;
+  const isActuallyPaidInFull = (totalCost > 0 && amountPaid >= totalCost - 0.009) || (activeProject.paymentStatus === "paid" && calculatedPending <= 0.05);
   const pendingBalance = isActuallyPaidInFull
     ? 0
     : amountPaid === 0

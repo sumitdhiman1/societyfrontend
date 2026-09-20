@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useProject } from "@/context/ProjectContext";
 import { projectService } from "@/lib/projectService";
 import { mediaService } from "@/lib/mediaService";
@@ -230,6 +230,7 @@ export default function ProjectDetailsPage() {
     formatDateTime: formatDateTimeTz,
   } = useTimezone();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -298,10 +299,67 @@ export default function ProjectDetailsPage() {
 
   const isLoggedIn = Boolean(currentUser) || authService.isAuthenticated();
 
+  const syncFinancialsAndProject = React.useCallback(async (silent = true) => {
+    try {
+      const refreshed = await refreshProject(silent);
+      const targetId =
+        refreshed?._id ||
+        refreshed?.id ||
+        project?._id ||
+        project?.id ||
+        project?.projectId;
+      if (targetId) {
+        const res = await paymentService.getTransactionsByProject(String(targetId));
+        const rows = Array.isArray(res?.data) ? res.data : [];
+        setProjectPayments(rows);
+      }
+    } catch (e) {
+      console.warn("Failed syncFinancialsAndProject:", e);
+    }
+  }, [refreshProject, project?._id, project?.id, project?.projectId]);
+
   useEffect(() => {
     setCurrentUser(authService.getUser());
-    refreshProject(true);
-  }, [refreshProject]);
+    syncFinancialsAndProject(true);
+    const t1 = setTimeout(() => syncFinancialsAndProject(true), 1500);
+    const t2 = setTimeout(() => syncFinancialsAndProject(true), 3500);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [syncFinancialsAndProject]);
+
+  // Handle URL success param (e.g. returning from checkout)
+  useEffect(() => {
+    if (searchParams?.get("success") === "true") {
+      syncFinancialsAndProject(true);
+      const t = setTimeout(() => {
+        syncFinancialsAndProject(true);
+        try {
+          const currentUrl = new URL(window.location.href);
+          currentUrl.searchParams.delete("success");
+          window.history.replaceState(null, "", currentUrl.toString());
+        } catch {}
+      }, 1500);
+      return () => clearTimeout(t);
+    }
+  }, [searchParams, syncFinancialsAndProject]);
+
+  // Refresh whenever tab gains focus or becomes visible
+  useEffect(() => {
+    const onFocus = () => syncFinancialsAndProject(true);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        syncFinancialsAndProject(true);
+      }
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [syncFinancialsAndProject]);
 
   useEffect(() => {
     const projectId =
@@ -317,9 +375,9 @@ export default function ProjectDetailsPage() {
         setProjectPayments(rows);
       })
       .catch(() => {
-        setProjectPayments([]);
+        // Keep existing projectPayments
       });
-  }, [project?._id, project?.id, project?.projectId, project?.amountPaid]);
+  }, [project?._id, project?.id, project?.projectId, project?.amountPaid, project?.paymentStatus, project?.updatedAt, project?.paymentLedger?.length]);
 
   useEffect(() => {
     const projectId = project?._id || project?.id || project?.projectId || project?.project_id || project?.orderId || project?.uuid || project?.uid || project?.project?._id || project?.project?.id;
@@ -857,7 +915,30 @@ export default function ProjectDetailsPage() {
     "USD"
   ).toLowerCase();
 
-  const totalPaidFromTransactions = (projectPayments || [])
+  const ledgerPayments = (project?.paymentLedger || []).map((entry: any, index: number) => ({
+    _id: entry.transactionId || `ledger-${index}`,
+    id: entry.transactionId || `ledger-${index}`,
+    amount: entry.chargedAmount || entry.amount,
+    currency: entry.chargedCurrency || entry.currency,
+    status: entry.status || "succeeded",
+    exchangeRate: entry.exchangeRate,
+    metadata: { exchangeRate: entry.exchangeRate },
+    createdAt: entry.date,
+  }));
+
+  const combinedPayments = [...(projectPayments || [])];
+  const seenTxnIds = new Set(
+    combinedPayments.map((p: any) => String(p._id || p.id || p.transactionId || "")).filter(Boolean)
+  );
+  for (const lp of ledgerPayments) {
+    const id = String(lp._id || lp.id || "");
+    if (!seenTxnIds.has(id)) {
+      combinedPayments.push(lp);
+      seenTxnIds.add(id);
+    }
+  }
+
+  const totalPaidFromTransactions = combinedPayments
     .filter((p: any) => ["succeeded", "paid", "completed"].includes(String(p?.status || "").toLowerCase()))
     .reduce((sum: number, p: any) => {
       const pCurr = (p?.currency || projectNativeCurrency || "USD").toLowerCase();
@@ -866,15 +947,28 @@ export default function ProjectDetailsPage() {
       return sum + convertCurrencyAmount(pAmt, projectNativeCurrency, pCurr, pRate);
     }, 0);
 
-  const amountPaid = totalPaidFromTransactions > 0
-    ? totalPaidFromTransactions
-    : Number(project?.amountPaid || 0);
-  const calculatedPending = Math.max(0, totalCost - amountPaid);
-  const isActuallyPaidInFull = totalCost > 0 && amountPaid >= totalCost - 0.009;
+  const amountPaid = Math.max(
+    totalPaidFromTransactions,
+    Number(project?.amountPaid || 0)
+  );
+
+  const isDepositHalf =
+    project?.paymentOption === "half" ||
+    project?.paymentOption === "deposit" ||
+    linkedQuote?.paymentOption === "half" ||
+    combinedPayments.some((p: any) => p?.metadata?.isDeposit === "true" || p?.metadata?.paymentOption === "half");
+
+  let resolvedTotalCost = totalCost;
+  if (isDepositHalf && amountPaid > 0 && Math.abs(resolvedTotalCost - (amountPaid * 2)) <= 15) {
+    resolvedTotalCost = Math.round(amountPaid * 2 * 100) / 100;
+  }
+
+  const calculatedPending = Math.max(0, Math.round((resolvedTotalCost - amountPaid) * 100) / 100);
+  const isActuallyPaidInFull = (resolvedTotalCost > 0 && amountPaid >= resolvedTotalCost - 0.009) || (project?.paymentStatus === "paid" && calculatedPending <= 0.05);
   const pendingBalance = isActuallyPaidInFull
     ? 0
     : amountPaid === 0
-    ? totalCost
+    ? resolvedTotalCost
     : calculatedPending;
 
   // Date for delivery due divider
@@ -968,7 +1062,7 @@ export default function ProjectDetailsPage() {
                 <div className="flex justify-between items-center font-semibold">
                   <span className="text-gray-900">Total Cost</span>
                   <span className="text-gray-900 font-bold">
-                    {formatCurrency(totalCost)}
+                    {formatCurrency(resolvedTotalCost)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-green-600">
@@ -1507,10 +1601,11 @@ export default function ProjectDetailsPage() {
                 const invId = asId(content.invoiceId || msg.invoiceId);
                 const invNum = content.invoiceNumber || msg.invoiceNumber;
                 const currentMsgId = asId(msg.id || msg._id || msgId);
-                const isPaid = isExactPaymentRequestPaid(msg, project, projectPayments);
+                const isPaid = isExactPaymentRequestPaid(msg, project, combinedPayments);
 
                 const payParams = new URLSearchParams();
                 if (amount > 0) payParams.set("amount", String(amount));
+                if (currency) payParams.set("currency", currency);
                 if (invId) payParams.set("invoiceId", invId);
                 if (invNum) payParams.set("invoiceNumber", String(invNum));
                 if (currentMsgId) payParams.set("messageId", currentMsgId);
@@ -1537,7 +1632,10 @@ export default function ProjectDetailsPage() {
                           <p className="text-xs sm:text-sm text-[#3B82F6] font-medium mb-1.5">{description}</p>
                         ) : null}
                         <div className="flex items-baseline gap-1">
-                          <span className="text-xl sm:text-2xl font-black text-[#1E3A8A]">{formatCurrency(amount)}</span>
+                          <span className="text-xl sm:text-2xl font-black text-[#1E3A8A]">
+                            {currency === "EUR" ? "€" : "$"}{amount.toFixed(0)}
+                          </span>
+                          <span className="text-[11px] font-bold text-[#3B82F6] uppercase">{currency}</span>
                         </div>
                       </div>
                     </div>

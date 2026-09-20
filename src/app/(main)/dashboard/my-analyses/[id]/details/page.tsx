@@ -1378,6 +1378,7 @@ export default function AnalysisDetailsPage() {
 
               const payParams = new URLSearchParams();
               if (amount > 0) payParams.set("amount", String(amount));
+              if (currency) payParams.set("currency", currency);
               if (invId) payParams.set("invoiceId", String(invId));
               if (invNum) payParams.set("invoiceNumber", String(invNum));
               if (currentMsgId) payParams.set("messageId", String(currentMsgId));
