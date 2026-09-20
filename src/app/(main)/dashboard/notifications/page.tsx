@@ -177,7 +177,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="bg-white min-h-screen flex flex-col font-sans">
+    <div className="bbg-[#f3f4f6] min-h-screen flex flex-col font-sans">
       <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 md:mb-12 gap-4">
           <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100">

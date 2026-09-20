@@ -30,16 +30,15 @@ export default function DashboardSubNav({ hideMenu = false }: { hideMenu?: boole
 
   return (
     <div className="w-full bg-gray-100 font-sans">
-      <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:px-0 lg:pl-[54px] lg:pr-[62px] py-4 flex overflow-x-auto hide-scrollbar flex-nowrap md:flex-wrap gap-8">
+      <div className="bg-white max-w-[1536px] mx-auto px-4 md:px-8 lg:px-0 lg:pl-[54px] lg:pr-[62px] py-4 flex overflow-x-auto hide-scrollbar flex-nowrap md:flex-wrap gap-8">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`text-base font-medium transition-colors relative flex-shrink-0 whitespace-nowrap ${
-                isActive ? "text-black font-bold" : "text-gray-600 hover:text-black"
-              }`}
+              className={`text-base font-medium transition-colors relative flex-shrink-0 whitespace-nowrap ${isActive ? "text-black font-bold" : "text-gray-600 hover:text-black"
+                }`}
             >
               {item.name}
             </Link>

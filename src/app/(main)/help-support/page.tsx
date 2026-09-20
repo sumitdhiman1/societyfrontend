@@ -89,7 +89,7 @@ export default function HelpSupportPage() {
         </div>
 
         {/* Secondary Options */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 mb-3 md:mb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
           <div className="lg:col-span-3 border border-[#B0B0B0] rounded-lg overflow-hidden hover:shadow-md transition-shadow bg-white">
             <Link href="/faq" className="block h-full group">
               <div className="h-32 bg-[#f5f5f5] overflow-hidden">

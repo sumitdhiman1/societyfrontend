@@ -385,7 +385,7 @@ export default function CareerSinglePage() {
   }
 
   return (
-    <div className="bg-white min-h-screen flex flex-col font-sans">
+    <div className="bg-[#F3F4F6] min-h-screen flex flex-col font-sans">
       <StatusPopup
         isOpen={popup.isOpen}
         onClose={() => setPopup({ ...popup, isOpen: false })}
@@ -404,7 +404,7 @@ export default function CareerSinglePage() {
       </div>
 
       {/* Main Single Job Content */}
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-10 md:pt-14 pb-28 md:pb-40 lg:pb-52 bg-[#F3F4F6]">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-10 md:pt-14 pb-28 md:pb-14 bg-[#F3F4F6]">
         {/* Description */}
         <div className="mb-10 md:mb-14">
           <h2 className="text-lg font-bold text-gray-600 mb-4">Description</h2>

@@ -176,7 +176,7 @@ export default function ContactUsPage() {
   };
 
   return (
-    <div className="bg-white min-h-screen flex flex-col font-sans">
+    <div className="bg-[#F3F4F6] min-h-screen flex flex-col font-sans">
       <StatusPopup
         isOpen={popup.isOpen}
         onClose={() => setPopup({ ...popup, isOpen: false })}
