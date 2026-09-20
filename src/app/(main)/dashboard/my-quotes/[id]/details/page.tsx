@@ -322,11 +322,10 @@ export default function QuoteDetailsPage() {
       const existing = authService.getUser();
       if (existing) {
         setUser(existing);
-        return;
       }
       if (!authService.isAuthenticated()) return;
       try {
-        const profileRes = await profileService.getMyProfile();
+        const profileRes = await profileService.getMyProfile(true);
         const profile = profileRes?.data;
         if (profile && typeof profile === "object") {
           authService.updateInternalUser(profile);
@@ -338,9 +337,13 @@ export default function QuoteDetailsPage() {
     };
 
     hydrateUser();
-    const onLogin = () => setUser(authService.getUser());
-    window.addEventListener("auth:login", onLogin);
-    return () => window.removeEventListener("auth:login", onLogin);
+    const onUserSync = () => setUser(authService.getUser());
+    window.addEventListener("auth:login", onUserSync);
+    window.addEventListener("auth:user_update", onUserSync);
+    return () => {
+      window.removeEventListener("auth:login", onUserSync);
+      window.removeEventListener("auth:user_update", onUserSync);
+    };
   }, []);
 
   const requireAuth = () => {
@@ -454,11 +457,51 @@ export default function QuoteDetailsPage() {
   if (!quote) return null;
 
   // Format Helpers
-  const currency = (user?.currency || user?.preferredCurrency || contextCurrency || quote.currency || "USD").toUpperCase();
+  const currency = (
+    contextCurrency ||
+    (typeof window !== "undefined" ? localStorage.getItem("app-currency") : "") ||
+    user?.currency ||
+    user?.preferredCurrency ||
+    (typeof quote?.client === "object" ? (quote.client?.currency || quote.client?.preferredCurrency) : "") ||
+    quote?.clientCurrency ||
+    quote?.currency ||
+    "USD"
+  ).toUpperCase();
+
+  const latestProposalFromQuote = Array.isArray(quote?.messages)
+    ? [...quote.messages].reverse().find((m: any) =>
+        m?.type === "quote_proposal" ||
+        m?.type === "proposal" ||
+        m?.type === "offer" ||
+        m?.content?.type === "quote_proposal" ||
+        m?.content?.type === "proposal" ||
+        m?.content?.type === "offer" ||
+        Boolean(m?.content?.lineItems?.length || m?.content?.deliverableItems?.length)
+      )
+    : null;
+
+  const effectiveQuoteSourceCurrency = (
+    latestProposalFromQuote?.content?.currency ||
+    quote.currency ||
+    (typeof quote?.client === "object" ? (quote.client?.currency || quote.client?.preferredCurrency) : "") ||
+    quote.clientCurrency ||
+    currency ||
+    "USD"
+  ).toUpperCase();
+
   const formatCurrency = (amt: any, customSourceCurrency?: string) => {
     const num = Number(amt || 0);
-    const srcCurrency = (customSourceCurrency || quote.currency || "USD").toUpperCase();
-    const targetCurrency = (user?.currency || user?.preferredCurrency || contextCurrency || "USD").toUpperCase();
+    const srcCurrency = (customSourceCurrency || effectiveQuoteSourceCurrency || "USD").toUpperCase();
+    const targetCurrency = (
+      contextCurrency ||
+      (typeof window !== "undefined" ? localStorage.getItem("app-currency") : "") ||
+      user?.currency ||
+      user?.preferredCurrency ||
+      (typeof quote?.client === "object" ? (quote.client?.currency || quote.client?.preferredCurrency) : "") ||
+      quote?.clientCurrency ||
+      quote?.currency ||
+      "USD"
+    ).toUpperCase();
     return formatPriceWithCurrency(num, targetCurrency, srcCurrency, conversionRate);
   };
 
@@ -1090,10 +1133,17 @@ export default function QuoteDetailsPage() {
       : "30 Days");
 
   const getQuotePayloadForPdf = () => {
+    const activeTitle = quote?.projectTitle || quote?.title || "Custom Quote";
+    const activeDesc = quote?.projectDescription || quote?.description || quote?.requirements?.projectDescription || "";
     return {
       ...quote,
       isQuote: true,
       isProject: false,
+      title: activeTitle,
+      projectTitle: activeTitle,
+      description: activeDesc,
+      projectDescription: activeDesc,
+      currency: effectiveQuoteSourceCurrency || currency || quote?.currency || "USD",
       quoteNumber: quote?.quoteNumber || quote?.proposalNumber || quoteNumber,
       deliverables: quoteDeliverableItems && quoteDeliverableItems.length > 0 ? quoteDeliverableItems : (quote?.deliverables || quote?.lineItems),
       lineItems: quoteDeliverableItems && quoteDeliverableItems.length > 0 ? quoteDeliverableItems : (quote?.lineItems || quote?.deliverables),
@@ -1103,7 +1153,7 @@ export default function QuoteDetailsPage() {
       vatAmount: quoteVatAmount,
       totalCost: quoteResolvedTotalCost > 0 ? quoteResolvedTotalCost : (quote?.totalCost || quoteSubtotal),
       calculatorSpecs: quote?.calculatorSpecs || quote?.requirements,
-      user: quote?.user || (user ? { name: user.name, email: user.email } : undefined),
+      user: quote?.user || (user ? { name: user.fullName || user.name, fullName: user.fullName || user.name, email: user.email } : undefined),
     };
   };
 
@@ -1207,39 +1257,6 @@ export default function QuoteDetailsPage() {
                 </>
               )}
             </div>
-          </div>
-
-          <div className="flex flex-row items-center gap-3 w-full sm:w-auto">
-            <button
-              type="button"
-              disabled={isDownloadingPdf}
-              onClick={handleDownloadQuotePDF}
-              className="flex-1 sm:flex-initial px-5 py-2.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold rounded-[8px] shadow-sm transition-colors cursor-pointer whitespace-nowrap disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isDownloadingPdf ? (
-                <>
-                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Downloading...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  <span>Download Quote (.PDF)</span>
-                </>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={handlePrintQuote}
-              className="flex-1 sm:flex-initial px-5 py-2.5 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-xs sm:text-sm font-bold rounded-[8px] shadow-sm transition-colors cursor-pointer whitespace-nowrap flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-              <span>Print Details</span>
-            </button>
           </div>
         </div>
       </div>
@@ -1596,7 +1613,7 @@ export default function QuoteDetailsPage() {
                                   : [];
                   const senderName = msg.username || msg.senderName || managerName;
                   const proposalDesc = content.projectDescription || content.text || msg.message || quote.projectDescription || "";
-                  const proposalCurrency = (content.currency || quote.currency || user?.currency || user?.preferredCurrency || contextCurrency || "USD").toUpperCase();
+                  const proposalCurrency = (content.currency || effectiveQuoteSourceCurrency || currency || "USD").toUpperCase();
                   const calculatedDurationDays = propItems.reduce((sum: number, it: any) => {
                     const dur = String(it.duration || "").toLowerCase();
                     const match = dur.match(/(\d+(\.\d+)?)/);

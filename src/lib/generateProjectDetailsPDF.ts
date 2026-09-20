@@ -269,7 +269,11 @@ export function extractProjectDetails(data: any): ProjectPDFData {
     "Client";
 
   const title =
+    data.projectTitle ||
     data.title ||
+    data.requirements?.projectTitle ||
+    data.requirements?.customQuoteProjectTitle ||
+    data.calculatorSpecs?.projectTitle ||
     data.calculatorSpecs?.categoryName ||
     data.serviceType ||
     data.projectType ||
@@ -663,7 +667,14 @@ export function extractProjectDetails(data: any): ProjectPDFData {
     formattedPrice = `${formattedPrice} /month`;
   }
 
-  let description = data.description || "";
+  let description =
+    data.projectDescription ||
+    data.description ||
+    data.requirements?.projectDescription ||
+    data.requirements?.description ||
+    data.calculatorSpecs?.projectDescription ||
+    data.calculatorSpecs?.description ||
+    "";
   if (!description && data.calculatorSpecs) {
     description = isMarketing
       ? `Marketing campaign project for ${clientName}.`
