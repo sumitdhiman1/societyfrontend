@@ -1834,7 +1834,21 @@ export default function ProjectDetailsPage() {
                   if (dur.includes("month")) return sum + val * 30;
                   return sum + val;
                 }, 0);
-                const rawDuration = content.totalDuration || content.duration || (calculatedDurationDays > 0 ? `${calculatedDurationDays} Day${calculatedDurationDays > 1 ? "s" : ""}` : "");
+                const cleanRawDur = (val: any) => {
+                  if (!val) return "";
+                  const str = String(val).trim();
+                  if (["not specified", "n/a", "-", "undefined", "null"].includes(str.toLowerCase())) return "";
+                  return str;
+                };
+
+                const rawDuration =
+                  (calculatedDurationDays > 0
+                    ? (calculatedDurationDays >= 30 && calculatedDurationDays % 30 === 0
+                        ? `${calculatedDurationDays / 30} Month${calculatedDurationDays / 30 > 1 ? 's' : ''}`
+                        : calculatedDurationDays >= 7 && calculatedDurationDays % 7 === 0
+                          ? `${calculatedDurationDays / 7} Week${calculatedDurationDays / 7 > 1 ? 's' : ''}`
+                          : `${calculatedDurationDays} Day${calculatedDurationDays > 1 ? "s" : ""}`)
+                    : (cleanRawDur(content.totalDuration) || cleanRawDur(content.duration) || ""));
                 const formatOfferDuration = (val: any) => {
                   if (!val) return "";
                   const str = String(val).trim();
