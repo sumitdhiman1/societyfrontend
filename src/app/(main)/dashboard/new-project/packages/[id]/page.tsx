@@ -33,7 +33,7 @@ const CrossIcon = () => (
 const Tooltip = ({ className = "", text = "Timeline is an estimate based on average project delivery." }) => {
   const [show, setShow] = useState(false);
   return (
-    <div className={`relative inline-block ml-1 ${className}`}>
+    <div className={`relative inline-flex items-center ${className}`}>
       <button
         type="button"
         onMouseEnter={() => setShow(true)}
@@ -357,7 +357,7 @@ function PackageDetailsContent() {
         {/* Hero Section */}
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-8 md:gap-12 mb-8 md:mb-16">
           <div className="lg:w-[50%] flex flex-col">
-            <h1 className="text-[28px] md:text-[48px] lg:text-[64px] font-bold text-[#363636] leading-[1.1] mb-4 md:mb-6 tracking-tight">{pkg.name}</h1>
+            <h1 className="text-[28px] md:text-[48px] lg:text-[64px] font-bold text-gray-800 leading-[1.1] mb-4 md:mb-6 tracking-tight">{pkg.name}</h1>
             <p className="text-[#808080] leading-relaxed text-base md:text-lg max-w-xl font-medium">{pkg.description || "Professional standalone services designed for quick turnaround and high-quality results."}</p>
           </div>
           <div className="lg:w-[50%] flex items-center justify-center lg:justify-end">
@@ -390,7 +390,7 @@ function PackageDetailsContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
             </div>
-            <h2 className="text-2xl md:text-3xl font-bold text-[#363636] mb-4">Custom Scope Service</h2>
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Custom Scope Service</h2>
             <p className="text-[#808080] text-base leading-relaxed mb-8 max-w-lg mx-auto">
               This service is tailored specifically to your unique business goals, requirements, and budget. Request a custom quote today and our expert team will deliver a personalized plan for you.
             </p>
@@ -417,7 +417,7 @@ function PackageDetailsContent() {
                 <div className="min-w-[1000px]">
                   <div className="grid divide-x divide-gray-100 border-b border-gray-100" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
                     <div className="p-6 md:p-8 flex items-center bg-white">
-                      <h3 className="text-xl md:text-[32px] font-bold text-[#646464] leading-[1.1]">What&apos;s<br className="hidden md:block" /> Included?</h3>
+                      <h3 className="text-xl md:text-[32px] font-bold text-gray-800 leading-[1.1]">What&apos;s<br className="hidden md:block" /> Included?</h3>
                     </div>
                     {columns.map((col: any, idx: number) => {
                       const isPaid = parsePrice(col.price) > 0 || parsePrice(col.recurringAmount) > 0;
@@ -523,7 +523,7 @@ function PackageDetailsContent() {
             {selectedTier && (
               <div className="animate-in slide-in-from-bottom duration-700" id="payment-section">
                 <div className="text-center mb-[20px] md:mb-12">
-                  <h1 className="text-[32px] md:text-[42px] font-bold text-[#363636] mb-3">Complete Your Purchase Securely</h1>
+                  <h1 className="text-[32px] md:text-[42px] font-bold text-gray-800 mb-3">Complete Your Purchase Securely</h1>
                   <p className="text-[#808080] text-lg">Your information is protected and your project starts immediately.</p>
                 </div>
 
@@ -532,11 +532,13 @@ function PackageDetailsContent() {
                     {/* Project Summary Card */}
                     <div className="bg-white border border-gray-200 rounded-[10px] shadow-[0px_5px_25px_#0000000D] p-4 sm:p-6 md:p-8 mb-6 md:mb-8 relative">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-8">
-                        <div className="bg-[#e0e0e0] px-4 py-1.5 rounded-full w-fit">
-                          <span className="text-[11px] text-[#808080] font-bold uppercase tracking-wider">Start Date: {new Date().toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}</span>
+                        <div className="bg-[#e0e0e0] px-4 h-7 rounded-full w-fit flex items-center">
+                          <span className="text-[11px] text-[#808080] font-bold uppercase tracking-wider leading-none">
+                            Start Date: {new Date().toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}
+                          </span>
                         </div>
-                        <div className="bg-[#e0e0e0] px-4 py-1.5 rounded-full w-fit flex items-center gap-2">
-                          <span className="text-[11px] text-[#808080] font-bold uppercase tracking-wider">
+                        <div className="bg-[#e0e0e0] px-4 h-7 rounded-full w-fit flex items-center gap-1.5">
+                          <span className="text-[11px] text-[#808080] font-bold uppercase tracking-wider leading-none">
                             Estimated Deadline: {(() => {
                               const days = getTimelineDays(selectedTier);
                               const d = new Date();

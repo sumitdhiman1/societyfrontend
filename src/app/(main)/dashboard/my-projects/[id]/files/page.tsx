@@ -473,7 +473,7 @@ export default function ProjectFilesPage() {
         <div className="space-y-4 lg:col-span-1">
           {/* Filter by Type */}
           <div className="border border-gray-200 rounded-xl p-4 sm:p-5 bg-white shadow-xs">
-            <h3 className="text-xs sm:text-sm font-bold text-[#363636] uppercase tracking-wider mb-3">
+            <h3 className="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">
               Filter by Type
             </h3>
             <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 scrollbar-hide">
@@ -509,7 +509,7 @@ export default function ProjectFilesPage() {
 
           {/* Sources */}
           <div className="border border-gray-200 rounded-xl p-4 sm:p-5 bg-white">
-            <h3 className="text-xs sm:text-sm font-bold text-[#363636] uppercase tracking-wider mb-3">
+            <h3 className="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">
               Sources
             </h3>
             <div className="flex lg:flex-col gap-4 lg:gap-2.5 text-[10px] sm:text-xs text-[#6B7280]">
@@ -541,7 +541,7 @@ export default function ProjectFilesPage() {
           <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-5">
               <div>
-                <h3 className="text-base sm:text-lg font-bold text-[#363636]">Upload Files</h3>
+                <h3 className="text-base sm:text-lg font-bold text-gray-800">Upload Files</h3>
                 <p className="text-xs text-gray-400 mt-0.5">Any file type • Multiple files at once</p>
               </div>
               <button
@@ -613,7 +613,7 @@ export default function ProjectFilesPage() {
           <div className="bg-white border border-gray-200 rounded-xl shadow-xs">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-bold text-[#363636]">Files</h3>
+                <h3 className="text-base sm:text-lg font-bold text-gray-800">Files</h3>
                 <span className="text-xs text-gray-400">({filteredFiles.length})</span>
               </div>
               <div className="flex items-center gap-3">
