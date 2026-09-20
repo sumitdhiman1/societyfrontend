@@ -347,7 +347,7 @@ export function getReceiptHTML(d: ReceiptData): string {
       background-color: #FFFFFF;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       color: #202124;
-      padding: 56px 64px 44px;
+      padding: 64px 78px 48px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -365,7 +365,7 @@ export function getReceiptHTML(d: ReceiptData): string {
         .receipt-page .proposal-header.invoice-header {
           display: flex;
           justify-content: space-between;
-          align-items: center;
+          align-items: flex-start;
           width: 100%;
           padding-bottom: 24px;
           border-bottom: 1.5px solid #D9D9D9;
@@ -374,9 +374,10 @@ export function getReceiptHTML(d: ReceiptData): string {
 
         .receipt-page .header-logo {
           display: flex;
-          align-items: center;
+          flex-direction: column;
+          align-items: flex-start;
           margin: 0;
-          padding: 0;
+          padding-top: 10px;
         }
 
         .receipt-page .header-details.invoice-header-details {
@@ -570,8 +571,8 @@ export function getReceiptHTML(d: ReceiptData): string {
       <div style="width: 100%; display: flex; flex-direction: column;">
         
         <!-- Header Section -->
-        <header class="proposal-header invoice-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding-bottom: 24px; border-bottom: 1.5px solid #D9D9D9; margin: 0;">
-          <div class="header-logo" style="display: flex; align-items: center; margin: 0; padding: 0;">
+        <header class="proposal-header invoice-header" style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%; padding-bottom: 24px; border-bottom: 1.5px solid #D9D9D9; margin: 0;">
+          <div class="header-logo" style="display: flex; flex-direction: column; align-items: flex-start; margin: 0; padding-top: 10px;">
             ${LOGO_SVG}
           </div>
 

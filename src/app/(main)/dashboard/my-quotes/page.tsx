@@ -60,13 +60,19 @@ export default function MyQuotesPage() {
       const statusParam = STATUS_MAPPING[tab];
       const res = await quoteService.getAllQuotes(statusParam, page, 10);
       const payload = res?.data;
-      const quoteList = Array.isArray(payload)
+      const rawQuoteList = Array.isArray(payload)
         ? payload
         : Array.isArray(payload?.quotes)
           ? payload.quotes
           : Array.isArray(payload?.data)
             ? payload.data
             : [];
+      const quoteList = rawQuoteList.filter((q: any) => {
+        if (q.isCalculator === true) return false;
+        if (q.source === "calculator") return false;
+        if (q.requirements?.categoryKey || q.requirements?.calculatedPrice) return false;
+        return true;
+      });
       setQuotes(quoteList);
 
       const pag = res?.pagination || payload?.pagination || {};
