@@ -34,12 +34,12 @@ export class AuthService {
 
   async forgotPassword(email: string) {
     const client = new HttpClient(this.session);
-    return await client.post("/auth/forgot-password", { email });
+    return await client.post("/auth/forgot-password", { email: email.trim().toLowerCase() });
   }
 
   async resetPassword(token: string, password: string) {
     const client = new HttpClient(this.session);
-    return await client.post("/auth/reset-password", { token, password });
+    return await client.post("/auth/reset-password", { token: token.trim(), password, newPassword: password });
   }
 
   async verifyEmail(token: string) {

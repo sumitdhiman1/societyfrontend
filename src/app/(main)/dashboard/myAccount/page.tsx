@@ -416,8 +416,8 @@ export default function MyAccountPage() {
       console.error("Password change error:", error);
       setPasswordError(
         error?.response?.data?.message ||
-          error?.message ||
-          "An error occurred. Please try again."
+        error?.message ||
+        "An error occurred. Please try again."
       );
     }
   };
@@ -431,7 +431,7 @@ export default function MyAccountPage() {
   }
 
   return (
-    <div className="bg-white min-h-screen flex flex-col font-sans">
+    <div className="bg-[#f3f4f6] min-h-screen flex flex-col font-sans">
       <DashboardSubNav />
       <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
         {/* Page Title */}
@@ -491,8 +491,8 @@ export default function MyAccountPage() {
                           {isFacebook
                             ? "Facebook"
                             : isGoogle || avatarUrl.includes("googleusercontent.com")
-                            ? "Google"
-                            : "Social Login"}
+                              ? "Google"
+                              : "Social Login"}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-full">
@@ -579,8 +579,8 @@ export default function MyAccountPage() {
                             {isFacebook
                               ? "Facebook"
                               : isGoogle || avatarUrl.includes("googleusercontent.com")
-                              ? "Google"
-                              : "Social Login"}
+                                ? "Google"
+                                : "Social Login"}
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-full">

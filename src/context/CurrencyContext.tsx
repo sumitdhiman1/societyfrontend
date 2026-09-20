@@ -16,7 +16,13 @@ const CurrencyContext = createContext<CurrencyContextType>({
 });
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
-  const [currency, setCurrencyState] = useState("usd");
+  const [currency, setCurrencyState] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("app-currency");
+      if (saved === "usd" || saved === "eur") return saved;
+    }
+    return "usd";
+  });
   const [conversionRate, setConversionRate] = useState<number>(() => {
     if (typeof window !== "undefined") {
       const cachedRate = localStorage.getItem("app-conversion-rate");
@@ -67,22 +73,31 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
       });
 
     // Sync from profile if logged in
-    if (authService.isAuthenticated()) {
-      profileService.getMyProfile().then(res => {
-        if (res?.data?.currency && (res.data.currency === "usd" || res.data.currency === "eur")) {
-          setCurrencyState(res.data.currency);
-          localStorage.setItem("app-currency", res.data.currency);
-        }
-      }).catch(err => console.error("Failed to sync currency from profile", err));
-    }
+    const syncProfileCurrency = () => {
+      if (authService.isAuthenticated()) {
+        profileService.getMyProfile().then(res => {
+          if (res?.data?.currency && (res.data.currency === "usd" || res.data.currency === "eur")) {
+            setCurrencyState(res.data.currency);
+            localStorage.setItem("app-currency", res.data.currency);
+            authService.updateInternalUser({ currency: res.data.currency });
+          }
+        }).catch(err => console.error("Failed to sync currency from profile", err));
+      }
+    };
+
+    syncProfileCurrency();
+    window.addEventListener("auth:login", syncProfileCurrency);
+    return () => window.removeEventListener("auth:login", syncProfileCurrency);
   }, []);
 
   const setCurrency = (newCurrency: string) => {
-    setCurrencyState(newCurrency);
-    localStorage.setItem("app-currency", newCurrency);
+    const norm = newCurrency?.toLowerCase() === "eur" ? "eur" : "usd";
+    setCurrencyState(norm);
+    localStorage.setItem("app-currency", norm);
+    authService.updateInternalUser({ currency: norm });
     
     if (authService.isAuthenticated()) {
-      profileService.updateProfile({ currency: newCurrency })
+      profileService.updateProfile({ currency: norm })
         .catch(err => console.error("Failed to sync currency to backend", err));
     }
   };

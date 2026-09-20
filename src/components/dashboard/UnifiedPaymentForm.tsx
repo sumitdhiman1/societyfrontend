@@ -71,6 +71,7 @@ interface UnifiedPaymentFormProps {
   containerClassName?: string;
   onDownloadInvoice?: () => void | Promise<void>;
   isDownloadingInvoice?: boolean;
+  onPaymentSuccess?: () => void | Promise<void>;
 }
 
 function PaymentForm({
@@ -99,6 +100,7 @@ function PaymentForm({
   containerClassName,
   onDownloadInvoice,
   isDownloadingInvoice: propIsDownloadingInvoice,
+  onPaymentSuccess,
 }: UnifiedPaymentFormProps & { hideHeader?: boolean }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -520,7 +522,16 @@ function PaymentForm({
         });
       }
     }
-    setTimeout(() => router.push(successRedirectUrl), 2000);
+    if (onPaymentSuccess) {
+      try {
+        onPaymentSuccess();
+      } catch (err) {
+        console.error("Failed to execute onPaymentSuccess callback:", err);
+      }
+    }
+    if (successRedirectUrl) {
+      setTimeout(() => router.push(successRedirectUrl), 2000);
+    }
   };
 
   const confirmStripePayment = async (clientSecret: string, transactionId: string, creditsUsed: number) => {

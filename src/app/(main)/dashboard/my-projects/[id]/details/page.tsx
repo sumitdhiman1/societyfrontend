@@ -763,11 +763,15 @@ export default function ProjectDetailsPage() {
   const isMonthlyProject = Boolean(
     project.billingType === "monthly" ||
     project.calculatorSpecs?.billingType === "monthly" ||
-    project.calculatorSpecs?.categoryKey === "marketing" ||
-    project.categoryKey === "marketing" ||
-    /marketing|campaign/i.test(project.title || "") ||
-    /marketing|campaign/i.test(project.calculatorSpecs?.categoryName || "") ||
-    (project.calculatorSpecs?.categoryKey === "seo" && project.calculatorSpecs?.seoServiceMode === "monthly")
+    (project.billingType !== "fixed" &&
+      project.billingType !== "onetime" &&
+      project.billingType !== "milestone" &&
+      project.billingType !== "installment" &&
+      project.type !== "bundle" &&
+      project.type !== "analysis" &&
+      (project.calculatorSpecs?.categoryKey === "marketing" ||
+        project.categoryKey === "marketing" ||
+        (project.calculatorSpecs?.categoryKey === "seo" && project.calculatorSpecs?.seoServiceMode === "monthly")))
   );
 
   const linkedQuote = fetchedQuote || (typeof project?.quoteId === "object" && project?.quoteId ? project.quoteId : null) || project?.quote || {};
@@ -907,7 +911,7 @@ export default function ProjectDetailsPage() {
     : project?.title
       ? [{
         description: project.title,
-        details: project.description || "",
+        details: (project.description && project.description.trim().toLowerCase() !== project.title.trim().toLowerCase()) ? project.description : "",
         duration: project.timelineInDays ? `${project.timelineInDays} Days` : (project.totalDuration || project.duration || project.timeline || "30 Days"),
         amount: rawQuoteSubtotal,
         isAddOn: false,
@@ -1028,6 +1032,47 @@ export default function ProjectDetailsPage() {
     return true;
   });
 
+  const cleanProjectDescription = (() => {
+    const rawTitle = String(project?.title || "").trim().toLowerCase();
+    const candidateDescriptions: any[] = [
+      linkedQuote?.projectDescription,
+      linkedQuote?.requirements?.projectDescription,
+      project?.requirements?.projectDescription,
+      linkedQuote?.description,
+      project?.description,
+    ];
+
+    if (Array.isArray(linkedQuote?.messages)) {
+      for (const m of linkedQuote.messages) {
+        if (m?.content?.projectDescription) candidateDescriptions.push(m.content.projectDescription);
+        if (m?.content?.description) candidateDescriptions.push(m.content.description);
+        if (m?.content?.requirements?.projectDescription) candidateDescriptions.push(m.content.requirements.projectDescription);
+      }
+    }
+
+    for (const cand of candidateDescriptions) {
+      if (!cand || typeof cand !== "string") continue;
+      const rawDesc = cand.trim();
+      if (!rawDesc) continue;
+
+      // If it's literally just the title, skip to the next candidate
+      if (rawTitle && rawDesc.toLowerCase() === rawTitle) {
+        continue;
+      }
+
+      // If it starts with the title, strip the title prefix
+      if (rawTitle && rawDesc.toLowerCase().startsWith(rawTitle)) {
+        const stripped = rawDesc.slice(rawTitle.length).replace(/^[\s:\-–—\n\r]+/, "").trim();
+        if (stripped) return stripped;
+        continue;
+      }
+
+      return rawDesc;
+    }
+
+    return "";
+  })();
+
   return (
     <div className="flex flex-col gap-6 md:gap-8 w-full font-sans">
       {/* Paused/Completed Status Banners */}
@@ -1116,38 +1161,23 @@ export default function ProjectDetailsPage() {
 
             <div className="border-t border-gray-200 mb-6 sm:mb-8" />
 
-            {/* Title & Project Number */}
-            <div className="pb-4 sm:pb-6 flex flex-col sm:flex-row justify-between items-start gap-2">
-              <div className="flex flex-col gap-1">
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-700">
-                  {project.title && project.title !== "Package Purchase"
-                    ? project.title
-                    : project.package?.name
-                    ? `${project.package.name}${project.tierTitle ? ` - ${project.tierTitle}` : ""}`
-                    : project.type === "analysis"
-                    ? "Analysis Report Details"
-                    : project.type === "bundle"
-                    ? `Bundle Project (${project.billingType === "fixed" ? "Setup Phase" : "Maintenance Phase"})`
-                    : project.type === "custom"
-                    ? "Custom Project Details"
-                    : "Package Details"}
-                </h2>
-                {(project.type === "bundle" || project.type === "package" || isMonthlyProject) && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {project.type === "bundle" && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded uppercase border border-purple-200">Bundle</span>}
-                    {project.type === "package" && (
-                      <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase border border-green-200">
-                        {project.tierTitle ? `${project.tierTitle} Plan` : project.billingType === "monthly" ? "Monthly Subscription Plan" : "Standard Package"}
-                      </span>
-                    )}
-                    {isMonthlyProject && project.type !== "package" && (
-                      <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded uppercase border border-indigo-200">
-                        Monthly Subscription
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
+            {/* Badges & Project Number */}
+            <div className="pb-4 sm:pb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              {(project.type === "bundle" || project.type === "package" || isMonthlyProject) ? (
+                <div className="flex flex-wrap gap-2">
+                  {project.type === "bundle" && <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded uppercase border border-purple-200">Bundle</span>}
+                  {project.type === "package" && (
+                    <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase border border-green-200">
+                      {project.tierTitle ? `${project.tierTitle} Plan` : project.billingType === "monthly" ? "Monthly Subscription Plan" : "Standard Package"}
+                    </span>
+                  )}
+                  {isMonthlyProject && project.type !== "package" && (
+                    <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded uppercase border border-indigo-200">
+                      Monthly Subscription
+                    </span>
+                  )}
+                </div>
+              ) : <div />}
               <span className="text-[10px] sm:text-xs text-gray-400 font-medium whitespace-nowrap">
                 Project #{project.projectNumber || ((project._id || project.id || project.projectId || project.project_id || project.orderId || project.uuid || project.uid || project.project?._id || project.project?.id || "XXXXXXXX").slice(-8).toUpperCase())}
               </span>
@@ -1190,15 +1220,15 @@ export default function ProjectDetailsPage() {
                   <CalculatorSpecsCard specs={project.calculatorSpecs} currency={targetCurrency} />
                 </div>
               </div>
-            ) : (
+            ) : cleanProjectDescription ? (
               <div className="mb-10">
                 <div className="text-sm text-gray-700 leading-relaxed font-medium">
                   <p style={{ color: '#334155', fontSize: '13.5px', lineHeight: '1.6', margin: '0 0 12px 0', fontWeight: 400, whiteSpace: 'pre-line' }}>
-                    {project.description}
+                    {cleanProjectDescription}
                   </p>
                 </div>
               </div>
-            )}
+            ) : null}
 
             {/* Deliverables Table — hidden for calculator projects (specs card covers it) */}
             {!project.calculatorSpecs && (
@@ -1375,7 +1405,7 @@ export default function ProjectDetailsPage() {
                         };
                         await downloadCalculatorProjectPDF(projectPayloadForPdf);
                       } else {
-                        await downloadProjectDetailsPDF(project);
+                        await downloadProjectDetailsPDF({ ...project, isProject: true });
                       }
                     } catch (err) {
                       console.error("Failed to download PDF", err);

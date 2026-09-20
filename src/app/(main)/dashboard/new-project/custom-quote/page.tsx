@@ -53,7 +53,7 @@ export default function CustomQuotePage() {
       if (freshUser) {
         setUser(freshUser);
       }
-    }).catch(() => {});
+    }).catch(() => { });
 
     const handleUserUpdate = () => {
       setUser(authService.getUser());
@@ -261,346 +261,340 @@ export default function CustomQuotePage() {
   };
 
   return (
-    <div className="bg-white min-h-screen flex flex-col font-sans">
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-10 pb-8 md:pb-12">
+    <div className="min-h-screen flex flex-col font-sans">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-10 pb-12">
         <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100 mb-8 md:mb-12">New Quote</h1>
 
-      {/* Tell us about your project box */}
-      <div className="border border-gray-400 rounded-[10px] p-4 sm:p-6 md:p-8 pb-8 md:pb-12 mb-8 md:mb-12 bg-white">
-        <div className="mb-8">
-          <h2 className="text-[22px] font-bold text-gray-800 mb-3">Tell us about your project</h2>
-          <p className="text-xs text-gray-600 leading-relaxed max-w-4xl">
-            We'd love to hear more about your specific needs. Please fill out the form below with as much detail as possible so we can provide an accurate and tailored quote for your project. Our team reviews every request carefully to ensure we understand your vision before getting back to you.
-          </p>
-        </div>
-
-        <div className="flex flex-col md:flex-row justify-between items-stretch">
-          {/* Step 1 */}
-          <div className="w-full md:w-1/3 border-r-0 md:border-r border-gray-300 last:border-r-0 py-4">
-            <div className="flex flex-col items-center text-center px-4 h-full justify-between">
-              <div className="flex items-center gap-4 mb-4">
-                <h3 className="font-normal text-3xl text-gray-500">1</h3>
-                <div className="w-14 h-14 bg-primary-300 rounded-full flex items-center justify-center text-white shadow-md">
-                  <img
-                    alt="Submit project details"
-                    loading="lazy"
-                    width="24"
-                    height="24"
-                    decoding="async"
-                    data-nimg="1"
-                    className="w-6 h-6 object-contain"
-                    style={{ color: "transparent" }}
-                    src="/assets/mail-01.svg"
-                  />
-                </div>
-              </div>
-              <h4 className="font-semibold text-lg text-gray-600 mb-2 truncate px-2">Submit project details</h4>
-              <p className="text-xs text-gray-500 max-w-[250px] leading-relaxed mx-auto">
-                Submit any relevant materials about your project through the form below. The more details we get the more accurate quotations will be.
-              </p>
-            </div>
+        {/* Tell us about your project box */}
+        <div className="border border-gray-400 rounded-sm p-8 pb-12 mb-12 bg-white">
+          <div className="mb-8">
+            <h2 className="text-[22px] font-bold text-gray-800 mb-3">Tell us about your project</h2>
+            <p className="text-xs text-gray-600 leading-relaxed max-w-4xl">
+              We'd love to hear more about your specific needs. Please fill out the form below with as much detail as possible so we can provide an accurate and tailored quote for your project. Our team reviews every request carefully to ensure we understand your vision before getting back to you.
+            </p>
           </div>
 
-          {/* Step 2 */}
-          <div className="w-full md:w-1/3 border-r-0 md:border-r border-gray-300 last:border-r-0 py-4">
-            <div className="flex flex-col items-center text-center px-4 h-full justify-between">
-              <div className="flex items-center gap-4 mb-4">
-                <h3 className="font-normal text-3xl text-gray-500">2</h3>
-                <div className="w-14 h-14 bg-primary-300 rounded-full flex items-center justify-center text-white shadow-md">
-                  <img
-                    alt="Our team will review"
-                    loading="lazy"
-                    width="24"
-                    height="24"
-                    decoding="async"
-                    data-nimg="1"
-                    className="w-6 h-6 object-contain"
-                    style={{ color: "transparent" }}
-                    src="/assets/users-02.svg"
-                  />
-                </div>
-              </div>
-              <h4 className="font-semibold text-lg text-gray-600 mb-2 truncate px-2">Our team will review</h4>
-              <p className="text-xs text-gray-500 max-w-[250px] leading-relaxed mx-auto">
-                After submitting project details, our team will internally review them. We may contact you with questions.
-              </p>
-            </div>
-          </div>
-
-          {/* Step 3 */}
-          <div className="w-full md:w-1/3 py-4">
-            <div className="flex flex-col items-center text-center px-4 h-full justify-between">
-              <div className="flex items-center gap-4 mb-4">
-                <h3 className="font-normal text-3xl text-gray-500">3</h3>
-                <div className="w-14 h-14 bg-primary-300 rounded-full flex items-center justify-center text-white shadow-md">
-                  <img
-                    alt="Receive your quote"
-                    loading="lazy"
-                    width="24"
-                    height="24"
-                    decoding="async"
-                    data-nimg="1"
-                    className="w-6 h-6 object-contain"
-                    style={{ color: "transparent" }}
-                    src="/assets/message-notification-circle.svg"
-                  />
-                </div>
-              </div>
-              <h4 className="font-semibold text-lg text-gray-600 mb-2 truncate px-2">Receive your quote</h4>
-              <p className="text-xs text-gray-500 max-w-[250px] leading-relaxed mx-auto">
-                You'll usually receive the quote within 1-3 business days. More complex projects may require more time, in which case you'll be notified.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Form Fields */}
-      <div className="mb-12 max-w-5xl">
-        <div className="flex flex-col md:flex-row gap-6 mb-8 items-start w-full">
-          {/* Project Title */}
-          <div className="flex-1 w-full">
-            <label className="text-sm font-bold text-gray-600 mb-2 block">
-              Project title <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              placeholder="Enter your project Title"
-              className={`w-full border ${
-                projectTitleError ? "border-red-500" : "border-gray-400"
-              } rounded-[4px] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 h-[42px]`}
-              value={projectTitle}
-              onChange={(e) => {
-                setProjectTitle(e.target.value);
-                if (projectTitleError) setProjectTitleError("");
-              }}
-            />
-            {projectTitleError && <p className="text-red-500 text-xs mt-1">{projectTitleError}</p>}
-          </div>
-
-          {/* Attach Files */}
-          <div
-            className={`w-full md:w-[45%] flex flex-col ${
-              isDragging ? "bg-blue-50/60 rounded-[4px] ring-1 ring-primary-300" : ""
-            }`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            <label className="text-sm font-bold text-gray-600 mb-2 block">
-              Attach files
-            </label>
-            <div className="flex items-center gap-3 rounded-[4px]">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                className="hidden"
-                accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z,.json,.xml,.ai,.psd,audio/*,video/*,application/*,*/*"
-                multiple
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center justify-center gap-2 bg-primary-300 hover:bg-primary-350 text-white text-sm font-medium px-8 h-[42px] rounded-[4px] transition-colors shadow-sm shrink-0"
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                </svg>
-                Attach
-              </button>
-              <p className="text-xs text-gray-400 leading-tight max-w-xs">
-                Drag &amp; drop any images or documents that might be helpful in explaining your project (Max 10 MB per file).
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Attached Files Preview Grid */}
-        {files.length > 0 && (
-          <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-            {files.map((fileItem) => {
-              const ext = (fileItem.name.split(".").pop() || "FILE").toUpperCase();
-              const isPdf =
-                fileItem.type === "application/pdf" || ext === "PDF";
-              const isWord =
-                fileItem.type === "application/msword" ||
-                fileItem.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-                ["DOC", "DOCX"].includes(ext);
-              const isExcel =
-                fileItem.type.includes("sheet") ||
-                fileItem.type.includes("excel") ||
-                fileItem.type === "text/csv" ||
-                ["XLS", "XLSX", "CSV"].includes(ext);
-              const isPpt =
-                fileItem.type.includes("presentation") ||
-                fileItem.type.includes("powerpoint") ||
-                ["PPT", "PPTX"].includes(ext);
-              const isArchive = ["ZIP", "RAR", "7Z", "TAR", "GZ"].includes(ext);
-              const isImage =
-                fileItem.type.startsWith("image/") ||
-                ["PNG", "JPG", "JPEG", "WEBP", "GIF", "BMP", "SVG", "ICO"].includes(ext);
-              const previewSrc =
-                fileItem.url || (fileItem.file ? URL.createObjectURL(fileItem.file) : "");
-
-              return (
-                <div
-                  key={fileItem.id}
-                  className={`relative flex items-center gap-3 p-2.5 bg-white rounded-md border shadow-sm transition-all group ${
-                    fileItem.status === "error"
-                      ? "border-red-300 bg-red-50/50"
-                      : "border-gray-200 hover:border-gray-400"
-                  }`}
-                >
-                  <div className="h-9 w-9 flex-shrink-0 rounded bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200 relative">
-                    {isPdf ? (
-                      <span className="text-red-600 font-extrabold text-[9px] uppercase tracking-wider">
-                        PDF
-                      </span>
-                    ) : isWord ? (
-                      <span className="text-blue-600 font-extrabold text-[9px] uppercase tracking-wider">
-                        {ext === "DOCX" ? "DOCX" : "DOC"}
-                      </span>
-                    ) : isExcel ? (
-                      <span className="text-emerald-600 font-extrabold text-[9px] uppercase tracking-wider">
-                        {ext}
-                      </span>
-                    ) : isPpt ? (
-                      <span className="text-amber-600 font-extrabold text-[9px] uppercase tracking-wider">
-                        {ext}
-                      </span>
-                    ) : isArchive ? (
-                      <span className="text-purple-600 font-extrabold text-[9px] uppercase tracking-wider">
-                        {ext}
-                      </span>
-                    ) : isImage && previewSrc ? (
-                      <img
-                        src={previewSrc}
-                        alt={fileItem.name}
-                        className={`h-full w-full object-cover ${
-                          fileItem.status === "uploading" ? "opacity-50" : ""
-                        }`}
-                      />
-                    ) : (
-                      <span className="text-gray-600 font-extrabold text-[9px] uppercase tracking-wider">
-                        {ext.slice(0, 4)}
-                      </span>
-                    )}
-                    {fileItem.status === "uploading" && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary-300" />
-                      </div>
-                    )}
+          <div className="flex flex-col md:flex-row justify-between items-stretch">
+            {/* Step 1 */}
+            <div className="w-full md:w-1/3 border-r-0 md:border-r border-gray-300 last:border-r-0 py-4">
+              <div className="flex flex-col items-center text-center px-4 h-full justify-between">
+                <div className="flex items-center gap-4 mb-4">
+                  <h3 className="font-normal text-3xl text-gray-500">1</h3>
+                  <div className="w-14 h-14 bg-primary-300 rounded-full flex items-center justify-center text-white shadow-md">
+                    <img
+                      alt="Submit project details"
+                      loading="lazy"
+                      width="24"
+                      height="24"
+                      decoding="async"
+                      data-nimg="1"
+                      className="w-6 h-6 object-contain"
+                      style={{ color: "transparent" }}
+                      src="/assets/mail-01.svg"
+                    />
                   </div>
+                </div>
+                <h4 className="font-semibold text-lg text-gray-600 mb-2 truncate px-2">Submit project details</h4>
+                <p className="text-xs text-gray-500 max-w-[250px] leading-relaxed mx-auto">
+                  Submit any relevant materials about your project through the form below. The more details we get the more accurate quotations will be.
+                </p>
+              </div>
+            </div>
 
-                  <div className="flex-1 min-w-0 pr-6">
-                    <p className="text-xs font-medium text-gray-700 truncate" title={fileItem.name}>
-                      {fileItem.name}
-                    </p>
-                    <p className="text-[11px] text-gray-400 font-normal flex items-center gap-1">
-                      <span>{formatFileSize(fileItem.size)}</span>
-                      {fileItem.status === "error" && (
-                        <span className="text-red-500 font-medium truncate" title={fileItem.errorMessage || "Upload failed"}>
-                          • {fileItem.errorMessage || "Upload failed"}
+            {/* Step 2 */}
+            <div className="w-full md:w-1/3 border-r-0 md:border-r border-gray-300 last:border-r-0 py-4">
+              <div className="flex flex-col items-center text-center px-4 h-full justify-between">
+                <div className="flex items-center gap-4 mb-4">
+                  <h3 className="font-normal text-3xl text-gray-500">2</h3>
+                  <div className="w-14 h-14 bg-primary-300 rounded-full flex items-center justify-center text-white shadow-md">
+                    <img
+                      alt="Our team will review"
+                      loading="lazy"
+                      width="24"
+                      height="24"
+                      decoding="async"
+                      data-nimg="1"
+                      className="w-6 h-6 object-contain"
+                      style={{ color: "transparent" }}
+                      src="/assets/users-02.svg"
+                    />
+                  </div>
+                </div>
+                <h4 className="font-semibold text-lg text-gray-600 mb-2 truncate px-2">Our team will review</h4>
+                <p className="text-xs text-gray-500 max-w-[250px] leading-relaxed mx-auto">
+                  After submitting project details, our team will internally review them. We may contact you with questions.
+                </p>
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div className="w-full md:w-1/3 py-4">
+              <div className="flex flex-col items-center text-center px-4 h-full justify-between">
+                <div className="flex items-center gap-4 mb-4">
+                  <h3 className="font-normal text-3xl text-gray-500">3</h3>
+                  <div className="w-14 h-14 bg-primary-300 rounded-full flex items-center justify-center text-white shadow-md">
+                    <img
+                      alt="Receive your quote"
+                      loading="lazy"
+                      width="24"
+                      height="24"
+                      decoding="async"
+                      data-nimg="1"
+                      className="w-6 h-6 object-contain"
+                      style={{ color: "transparent" }}
+                      src="/assets/message-notification-circle.svg"
+                    />
+                  </div>
+                </div>
+                <h4 className="font-semibold text-lg text-gray-600 mb-2 truncate px-2">Receive your quote</h4>
+                <p className="text-xs text-gray-500 max-w-[250px] leading-relaxed mx-auto">
+                  You'll usually receive the quote within 1-3 business days. More complex projects may require more time, in which case you'll be notified.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Form Fields */}
+        <div className="mb-12 max-w-5xl">
+          <div className="flex flex-col md:flex-row gap-6 mb-8 items-start w-full">
+            {/* Project Title */}
+            <div className="flex-1 w-full">
+              <label className="text-sm font-bold text-gray-600 mb-2 block">
+                Project title <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Enter your project Title"
+                className={`w-full border ${projectTitleError ? "border-red-500" : "border-gray-400"
+                  } rounded-[4px] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 h-[42px]`}
+                value={projectTitle}
+                onChange={(e) => {
+                  setProjectTitle(e.target.value);
+                  if (projectTitleError) setProjectTitleError("");
+                }}
+              />
+              {projectTitleError && <p className="text-red-500 text-xs mt-1">{projectTitleError}</p>}
+            </div>
+
+            {/* Attach Files */}
+            <div
+              className={`w-full md:w-[45%] flex flex-col ${isDragging ? "bg-blue-50/60 rounded-[4px] ring-1 ring-primary-300" : ""
+                }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <label className="text-sm font-bold text-gray-600 mb-2 block">
+                Attach files
+              </label>
+              <div className="flex items-center gap-3 rounded-[4px]">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                  accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z,.json,.xml,.ai,.psd,audio/*,video/*,application/*,*/*"
+                  multiple
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center justify-center gap-2 bg-primary-300 hover:bg-primary-350 text-white text-sm font-medium px-8 h-[42px] rounded-[4px] transition-colors shadow-sm shrink-0"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                  </svg>
+                  Attach
+                </button>
+                <p className="text-xs text-gray-400 leading-tight max-w-xs">
+                  Drag &amp; drop any images or documents that might be helpful in explaining your project (Max 10 MB per file).
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Attached Files Preview Grid */}
+          {files.length > 0 && (
+            <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+              {files.map((fileItem) => {
+                const ext = (fileItem.name.split(".").pop() || "FILE").toUpperCase();
+                const isPdf =
+                  fileItem.type === "application/pdf" || ext === "PDF";
+                const isWord =
+                  fileItem.type === "application/msword" ||
+                  fileItem.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+                  ["DOC", "DOCX"].includes(ext);
+                const isExcel =
+                  fileItem.type.includes("sheet") ||
+                  fileItem.type.includes("excel") ||
+                  fileItem.type === "text/csv" ||
+                  ["XLS", "XLSX", "CSV"].includes(ext);
+                const isPpt =
+                  fileItem.type.includes("presentation") ||
+                  fileItem.type.includes("powerpoint") ||
+                  ["PPT", "PPTX"].includes(ext);
+                const isArchive = ["ZIP", "RAR", "7Z", "TAR", "GZ"].includes(ext);
+                const isImage =
+                  fileItem.type.startsWith("image/") ||
+                  ["PNG", "JPG", "JPEG", "WEBP", "GIF", "BMP", "SVG", "ICO"].includes(ext);
+                const previewSrc =
+                  fileItem.url || (fileItem.file ? URL.createObjectURL(fileItem.file) : "");
+
+                return (
+                  <div
+                    key={fileItem.id}
+                    className={`relative flex items-center gap-3 p-2.5 bg-white rounded-md border shadow-sm transition-all group ${fileItem.status === "error"
+                        ? "border-red-300 bg-red-50/50"
+                        : "border-gray-200 hover:border-gray-400"
+                      }`}
+                  >
+                    <div className="h-9 w-9 flex-shrink-0 rounded bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200 relative">
+                      {isPdf ? (
+                        <span className="text-red-600 font-extrabold text-[9px] uppercase tracking-wider">
+                          PDF
+                        </span>
+                      ) : isWord ? (
+                        <span className="text-blue-600 font-extrabold text-[9px] uppercase tracking-wider">
+                          {ext === "DOCX" ? "DOCX" : "DOC"}
+                        </span>
+                      ) : isExcel ? (
+                        <span className="text-emerald-600 font-extrabold text-[9px] uppercase tracking-wider">
+                          {ext}
+                        </span>
+                      ) : isPpt ? (
+                        <span className="text-amber-600 font-extrabold text-[9px] uppercase tracking-wider">
+                          {ext}
+                        </span>
+                      ) : isArchive ? (
+                        <span className="text-purple-600 font-extrabold text-[9px] uppercase tracking-wider">
+                          {ext}
+                        </span>
+                      ) : isImage && previewSrc ? (
+                        <img
+                          src={previewSrc}
+                          alt={fileItem.name}
+                          className={`h-full w-full object-cover ${fileItem.status === "uploading" ? "opacity-50" : ""
+                            }`}
+                        />
+                      ) : (
+                        <span className="text-gray-600 font-extrabold text-[9px] uppercase tracking-wider">
+                          {ext.slice(0, 4)}
                         </span>
                       )}
-                    </p>
-                  </div>
+                      {fileItem.status === "uploading" && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary-300" />
+                        </div>
+                      )}
+                    </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setFiles((prev) => prev.filter((f) => f.id !== fileItem.id))}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 hover:text-red-600 hover:bg-gray-100 transition-colors cursor-pointer"
-                    title="Remove file"
-                  >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                    <div className="flex-1 min-w-0 pr-6">
+                      <p className="text-xs font-medium text-gray-700 truncate" title={fileItem.name}>
+                        {fileItem.name}
+                      </p>
+                      <p className="text-[11px] text-gray-400 font-normal flex items-center gap-1">
+                        <span>{formatFileSize(fileItem.size)}</span>
+                        {fileItem.status === "error" && (
+                          <span className="text-red-500 font-medium truncate" title={fileItem.errorMessage || "Upload failed"}>
+                            • {fileItem.errorMessage || "Upload failed"}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setFiles((prev) => prev.filter((f) => f.id !== fileItem.id))}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 hover:text-red-600 hover:bg-gray-100 transition-colors cursor-pointer"
+                      title="Remove file"
                     >
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
-        {/* Project Description */}
-        <div className="mb-8 w-full">
-          <label className="text-sm font-bold text-gray-600 mb-2 block">
-            Project description <span className="text-red-500">*</span>
-          </label>
-          <textarea
-            className={`w-full border ${
-              projectDescriptionError ? "border-red-500" : "border-gray-400"
-            } rounded-[4px] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 h-32 resize-none`}
-            value={projectDescription}
-            onChange={(e) => {
-              setProjectDescription(e.target.value);
-              if (projectDescriptionError) setProjectDescriptionError("");
-            }}
-          />
-          {projectDescriptionError && <p className="text-red-500 text-xs mt-1">{projectDescriptionError}</p>}
+          {/* Project Description */}
+          <div className="mb-8 w-full">
+            <label className="text-sm font-bold text-gray-600 mb-2 block">
+              Project description <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              className={`w-full border ${projectDescriptionError ? "border-red-500" : "border-gray-400"
+                } rounded-[4px] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 h-32 resize-none`}
+              value={projectDescription}
+              onChange={(e) => {
+                setProjectDescription(e.target.value);
+                if (projectDescriptionError) setProjectDescriptionError("");
+              }}
+            />
+            {projectDescriptionError && <p className="text-red-500 text-xs mt-1">{projectDescriptionError}</p>}
+          </div>
+
+          {/* Submit Button */}
+          <div className="mt-8">
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting || files.some((f) => f.status === "uploading") || requiresVerification}
+              className={`bg-primary-300 hover:bg-primary-350 text-white font-medium py-2.5 px-6 rounded-[4px] text-sm w-auto flex justify-center items-center transition-colors shadow-sm ${isSubmitting || files.some((f) => f.status === "uploading") || requiresVerification
+                  ? "opacity-75 cursor-not-allowed"
+                  : "active:scale-[0.98] cursor-pointer"
+                }`}
+            >
+              {isSubmitting ? (
+                <span className="inline-flex items-center">
+                  Submitting
+                  <span className="inline-flex items-center ml-1 gap-0.5" style={{ transform: "translateY(-1px)" }}>
+                    <span className="w-1 h-1 bg-current rounded-full animate-bounce"></span>
+                    <span className="w-1 h-1 bg-current rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
+                    <span className="w-1 h-1 bg-current rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
+                  </span>
+                </span>
+              ) : requiresVerification ? (
+                "Verification Required"
+              ) : (
+                "Request a quote for this project"
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* Submit Button */}
-        <div className="mt-8">
+        {/* Bottom My Quotes Banner */}
+        <div className="flex flex-col items-center mt-12 pt-8">
+          <h3 className="text-gray-500 font-bold mb-6 text-[18px]">Find all of your custom quotes on the My Quotes page</h3>
           <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isSubmitting || files.some((f) => f.status === "uploading") || requiresVerification}
-            className={`bg-primary-300 hover:bg-primary-350 text-white font-medium py-2.5 px-6 rounded-[4px] text-sm w-auto flex justify-center items-center transition-colors shadow-sm ${
-              isSubmitting || files.some((f) => f.status === "uploading") || requiresVerification
-                ? "opacity-75 cursor-not-allowed"
-                : "active:scale-[0.98] cursor-pointer"
-            }`}
+            onClick={() => router.push("/dashboard/my-quotes")}
+            className="px-12 py-2.5 bg-primary-300 hover:bg-primary-350 rounded-[4px] text-sm text-white font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
           >
-            {isSubmitting ? (
-              <span className="inline-flex items-center">
-                Submitting
-                <span className="inline-flex items-center ml-1 gap-0.5" style={{ transform: "translateY(-1px)" }}>
-                  <span className="w-1 h-1 bg-current rounded-full animate-bounce"></span>
-                  <span className="w-1 h-1 bg-current rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
-                  <span className="w-1 h-1 bg-current rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
-                </span>
-              </span>
-            ) : requiresVerification ? (
-              "Verification Required"
-            ) : (
-              "Request a quote for this project"
-            )}
+            My Quotes
           </button>
         </div>
-      </div>
-
-      {/* Bottom My Quotes Banner */}
-      <div className="flex flex-col items-center mt-12 pt-8">
-        <h3 className="text-gray-500 font-bold mb-6 text-[18px]">Find all of your custom quotes on the My Quotes page</h3>
-        <button
-          onClick={() => router.push("/dashboard/my-quotes")}
-          className="px-12 py-2.5 bg-primary-300 hover:bg-primary-350 rounded-[4px] text-sm text-white font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-        >
-          My Quotes
-        </button>
-      </div>
-    </main>
+      </main>
     </div>
   );
 }

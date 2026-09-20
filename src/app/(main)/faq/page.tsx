@@ -103,7 +103,7 @@ export default function FAQPage() {
 
   if (isLoading) {
     return (
-      <div className="bg-white min-h-screen flex flex-col font-sans text-gray-600">
+      <div className="bg-[#F3F4F6] min-h-screen flex flex-col font-sans text-gray-600">
         <div className="flex-grow flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4343F0] mx-auto mb-4"></div>
@@ -116,7 +116,7 @@ export default function FAQPage() {
 
   if (error || !pageData) {
     return (
-      <div className="bg-white min-h-screen flex flex-col font-sans text-gray-600">
+      <div className="bg-[#F3F4F6]min-h-screen flex flex-col font-sans text-gray-600">
         <div className="flex-grow flex items-center justify-center">
           <div className="text-center px-4">
             <p className="text-red-500 mb-4">{error || "Failed to load FAQ data"}</p>
@@ -133,7 +133,7 @@ export default function FAQPage() {
   }
 
   return (
-    <div className="bg-white min-h-screen flex flex-col font-sans text-gray-600">
+    <div className="bg-[#F3F4F6] min-h-screen flex flex-col font-sans text-gray-600">
       {/* Header Banner */}
       <div className="bg-primary-100">
         <div className="container mx-auto px-4 md:px-8 lg:px-[54px] py-10 md:py-16 max-w-[1536px]">

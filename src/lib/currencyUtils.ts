@@ -68,6 +68,9 @@ export function formatActiveCurrency(
 export function capitalizeCurrencyInText(text?: string): string {
   if (!text) return "";
   let cleaned = text
+    .replace(/(Great!\s+We've received your payment of\s+[\d.,]+(?:\s+[A-Z]{3})?)(?:\s+for\s+"[^"]*")?(?:\.?\s+Your (?:project|analysis) financials have been updated\.?)/gi, "$1.")
+    .replace(/(Great!\s+We've received your payment of\s+[\d.,]+(?:\s+[A-Z]{3})?)\s+for\s+"[^"]*"\.?/gi, "$1.")
+    .replace(/\.?\s+Your (?:project|analysis) financials have been updated\.?/gi, "")
     .replace(/\s*for\s+["']Payment for accepted(?: add-on)? project deliverables["']/gi, "")
     .replace(/(\d+\.\d{3,})/g, (match) => {
       const num = parseFloat(match);

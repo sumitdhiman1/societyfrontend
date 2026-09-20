@@ -61,8 +61,8 @@ export default function ProjectPaymentsPage() {
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const hasRefreshedRef = useRef(false);
 
-  const fetchPayments = useCallback(async () => {
-    setIsLoading(true);
+  const fetchPayments = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const res = await paymentService.getTransactionsByProject(projectId);
       if (res?.data) {
@@ -71,39 +71,71 @@ export default function ProjectPaymentsPage() {
     } catch (error) {
       console.error("Failed to fetch project payments:", error);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   }, [projectId]);
 
   useEffect(() => {
     if (projectId) {
-      fetchPayments();
+      fetchPayments(false);
     }
   }, [projectId, fetchPayments]);
 
   useEffect(() => {
-    if (searchParams?.get("success") === "true" && !hasRefreshedRef.current) {
+    const isSuccess =
+      searchParams?.get("success") === "true" ||
+      searchParams?.get("redirect_status") === "succeeded" ||
+      Boolean(searchParams?.get("payment_intent") && searchParams?.get("payment_intent_client_secret"));
+
+    if (isSuccess && !hasRefreshedRef.current) {
       hasRefreshedRef.current = true;
-      refreshProject();
-      fetchPayments();
-      const timer = setTimeout(() => {
+      refreshProject(true);
+      fetchPayments(true);
+
+      // Staged background polls to capture transaction & updated financials without requiring manual page refresh
+      const pollDelays = [400, 1000, 2200, 4000, 6500];
+      const timers = pollDelays.map((delay) =>
+        setTimeout(() => {
+          refreshProject(true);
+          fetchPayments(true);
+        }, delay)
+      );
+
+      const cleanupTimer = setTimeout(() => {
         try {
           window.history.replaceState(null, "", `/dashboard/my-projects/${projectId}/payments`);
         } catch {}
-      }, 100);
-      return () => clearTimeout(timer);
+      }, 5000);
+
+      return () => {
+        timers.forEach((t) => clearTimeout(t));
+        clearTimeout(cleanupTimer);
+      };
     }
   }, [searchParams, projectId, refreshProject, fetchPayments]);
 
   useEffect(() => {
+    if (projectId && project) {
+      fetchPayments(true);
+    }
+  }, [
+    projectId,
+    project?.amountPaid,
+    project?.paymentStatus,
+    project?.paymentLedger?.length,
+    project?.status,
+    fetchPayments,
+  ]);
+
+  useEffect(() => {
     const onFocus = () => {
       refreshProject(true);
-      fetchPayments();
+      fetchPayments(true);
     };
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
         refreshProject(true);
-        fetchPayments();
+        fetchPayments(true);
       }
     };
     window.addEventListener("focus", onFocus);
@@ -597,6 +629,14 @@ export default function ProjectPaymentsPage() {
               invoiceId={searchInvoiceId}
               onDownloadInvoice={handleViewInvoice}
               isDownloadingInvoice={isDownloadingInvoice}
+              onPaymentSuccess={() => {
+                refreshProject(true);
+                fetchPayments(true);
+                setTimeout(() => {
+                  refreshProject(true);
+                  fetchPayments(true);
+                }, 1000);
+              }}
               metadata={{
                 invoiceId: searchInvoiceId,
                 invoiceNumber: searchInvoiceNumber,

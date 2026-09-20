@@ -15,9 +15,12 @@ import { capitalizeCurrencyInText, formatPriceWithCurrency } from "@/lib/currenc
 import { useCurrency } from "@/context/CurrencyContext";
 import { useTimezone } from "@/context/TimezoneContext";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
+import RecommendedSolutions from "@/components/common/RecommendedSolutions";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
-import RecommendedSolutions, { PackageCard } from "@/components/common/RecommendedSolutions";
 import { getVatRateForCountry } from "@/lib/vatHelper";
+import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
+import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "@/lib/generateCalculatorProjectPDF";
+import { isCalculatorProject } from "@/lib/calculatorUtils";
 import { io, Socket } from "socket.io-client";
 
 // Helper components
@@ -280,6 +283,7 @@ export default function QuoteDetailsPage() {
   const [attachments, setAttachments] = useState<
     Array<{ id: string; name: string; status: "uploading" | "done" | "error"; url?: string; file?: File; size?: number }>
   >([]);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLDivElement>(null);
@@ -318,11 +322,10 @@ export default function QuoteDetailsPage() {
       const existing = authService.getUser();
       if (existing) {
         setUser(existing);
-        return;
       }
       if (!authService.isAuthenticated()) return;
       try {
-        const profileRes = await profileService.getMyProfile();
+        const profileRes = await profileService.getMyProfile(true);
         const profile = profileRes?.data;
         if (profile && typeof profile === "object") {
           authService.updateInternalUser(profile);
@@ -334,9 +337,13 @@ export default function QuoteDetailsPage() {
     };
 
     hydrateUser();
-    const onLogin = () => setUser(authService.getUser());
-    window.addEventListener("auth:login", onLogin);
-    return () => window.removeEventListener("auth:login", onLogin);
+    const onUserSync = () => setUser(authService.getUser());
+    window.addEventListener("auth:login", onUserSync);
+    window.addEventListener("auth:user_update", onUserSync);
+    return () => {
+      window.removeEventListener("auth:login", onUserSync);
+      window.removeEventListener("auth:user_update", onUserSync);
+    };
   }, []);
 
   const requireAuth = () => {
@@ -450,11 +457,51 @@ export default function QuoteDetailsPage() {
   if (!quote) return null;
 
   // Format Helpers
-  const currency = (user?.currency || user?.preferredCurrency || contextCurrency || quote.currency || "USD").toUpperCase();
+  const currency = (
+    contextCurrency ||
+    (typeof window !== "undefined" ? localStorage.getItem("app-currency") : "") ||
+    user?.currency ||
+    user?.preferredCurrency ||
+    (typeof quote?.client === "object" ? (quote.client?.currency || quote.client?.preferredCurrency) : "") ||
+    quote?.clientCurrency ||
+    quote?.currency ||
+    "USD"
+  ).toUpperCase();
+
+  const latestProposalFromQuote = Array.isArray(quote?.messages)
+    ? [...quote.messages].reverse().find((m: any) =>
+        m?.type === "quote_proposal" ||
+        m?.type === "proposal" ||
+        m?.type === "offer" ||
+        m?.content?.type === "quote_proposal" ||
+        m?.content?.type === "proposal" ||
+        m?.content?.type === "offer" ||
+        Boolean(m?.content?.lineItems?.length || m?.content?.deliverableItems?.length)
+      )
+    : null;
+
+  const effectiveQuoteSourceCurrency = (
+    latestProposalFromQuote?.content?.currency ||
+    quote.currency ||
+    (typeof quote?.client === "object" ? (quote.client?.currency || quote.client?.preferredCurrency) : "") ||
+    quote.clientCurrency ||
+    currency ||
+    "USD"
+  ).toUpperCase();
+
   const formatCurrency = (amt: any, customSourceCurrency?: string) => {
     const num = Number(amt || 0);
-    const srcCurrency = (customSourceCurrency || quote.currency || "USD").toUpperCase();
-    const targetCurrency = (user?.currency || user?.preferredCurrency || contextCurrency || "USD").toUpperCase();
+    const srcCurrency = (customSourceCurrency || effectiveQuoteSourceCurrency || "USD").toUpperCase();
+    const targetCurrency = (
+      contextCurrency ||
+      (typeof window !== "undefined" ? localStorage.getItem("app-currency") : "") ||
+      user?.currency ||
+      user?.preferredCurrency ||
+      (typeof quote?.client === "object" ? (quote.client?.currency || quote.client?.preferredCurrency) : "") ||
+      quote?.clientCurrency ||
+      quote?.currency ||
+      "USD"
+    ).toUpperCase();
     return formatPriceWithCurrency(num, targetCurrency, srcCurrency, conversionRate);
   };
 
@@ -861,18 +908,297 @@ export default function QuoteDetailsPage() {
   const userInitial = (user?.fullName || clientName || "S").charAt(0).toUpperCase();
   const nowFormatted = formatDateTime(new Date());
 
+  const isProposalMessage = (msg: any) => {
+    if (!msg) return false;
+    return (
+      msg.type === "quote_proposal" ||
+      msg.type === "proposal" ||
+      msg.type === "offer" ||
+      msg.content?.type === "quote_proposal" ||
+      msg.content?.type === "proposal" ||
+      msg.content?.type === "offer" ||
+      (Boolean(msg.content?.lineItems?.length || msg.content?.deliverableItems?.length || msg.lineItems?.length || msg.deliverableItems?.length) && !msg.isSystemMessage)
+    );
+  };
+
   // Messages list excluding the initial quote request if it's already shown in the top card
-  const allMessages = (quote.messages && quote.messages.length > 0)
+  const rawMessages = (quote.messages && quote.messages.length > 0)
     ? quote.messages.filter((m: any, idx: number) => !(idx === 0 && (m.type === "quote_request" || m.type === "initial_request")))
     : (quote.conversations && quote.conversations.length > 0)
       ? quote.conversations.filter((m: any, idx: number) => !(idx === 0 && (m.type === "quote_request" || m.type === "initial_request")))
       : [];
 
+  const hasProposalInMessages = rawMessages.some(isProposalMessage);
+  const isApprovedOrActiveQuote =
+    quote.status?.toLowerCase() === "approved" ||
+    quote.status?.toLowerCase() === "active" ||
+    Boolean(quote.acceptedProposalMessageId) ||
+    hasAcceptedLocally;
+
+  const quoteHasDeliverables =
+    (Array.isArray(quote.lineItems) && quote.lineItems.length > 0) ||
+    (Array.isArray(quote.deliverableItems) && quote.deliverableItems.length > 0) ||
+    (Array.isArray(quote.requirements?.breakdown) && quote.requirements.breakdown.length > 0) ||
+    (Number(quote.totalCost) > 0 && quote.status?.toLowerCase() !== "rejected");
+
+  let allMessages = [...rawMessages];
+
+  // If quote is approved/active (or has deliverables) but no proposal message exists in the feed, synthesize the accepted proposal message
+  if (!hasProposalInMessages && (isApprovedOrActiveQuote || quoteHasDeliverables)) {
+    const fallbackProposalMsg = {
+      id: quote.acceptedProposalMessageId || `synth-proposal-${quote._id}`,
+      type: "quote_proposal",
+      timestamp: quote.updatedAt || quote.createdAt || new Date().toISOString(),
+      senderName: managerName || "Project Manager",
+      userAvatar: manager?.avatar || "",
+      content: {
+        type: "quote_proposal",
+        status: isApprovedOrActiveQuote ? "accepted" : "pending",
+        acceptedAt: quote.updatedAt || quote.createdAt,
+        projectDescription: quote.projectDescription || quote.requirements?.projectDescription || "",
+        lineItems: (quote.lineItems && quote.lineItems.length > 0)
+          ? quote.lineItems
+          : (quote.deliverableItems && quote.deliverableItems.length > 0)
+            ? quote.deliverableItems
+            : (quote.requirements?.breakdown && quote.requirements.breakdown.length > 0)
+              ? quote.requirements.breakdown.map((it: any) => ({
+                  description: it.item || it.description || "Deliverable",
+                  duration: it.duration || "-",
+                  amount: Number(it.amount ?? it.cost ?? 0) || 0,
+                }))
+              : [{
+                  description: quote.projectTitle || "Custom Project Deliverable",
+                  duration: quote.totalDuration || "30 Days",
+                  amount: Number(quote.subtotal || quote.totalCost || 0),
+                }],
+        totalCost: quote.totalCost,
+        subtotal: quote.subtotal,
+        subtotalCost: quote.subtotal,
+        vatRate: quote.vatRate,
+        vatAmount: quote.vatAmount,
+        totalDuration: quote.totalDuration,
+        currency: quote.currency,
+        attachedFiles: quoteAttachedFiles,
+        isSynthetic: true,
+      },
+    };
+
+    // Insert synthetic proposal before any project created notification / action
+    const actionIdx = allMessages.findIndex((m: any) =>
+      m.type === "quote_action" ||
+      (m.type === "system_notification" && String(m.content?.systemText || m.text || "").toLowerCase().includes("project created"))
+    );
+    if (actionIdx >= 0) {
+      allMessages.splice(actionIdx, 0, fallbackProposalMsg);
+    } else {
+      allMessages.push(fallbackProposalMsg);
+    }
+  }
+
+  // Financial and Deliverable extraction for the accepted quote / proposal overview
+  const rawProposalItems =
+    (Array.isArray(quote.lineItems) && quote.lineItems.length > 0 && quote.lineItems) ||
+    (Array.isArray(quote.deliverableItems) && quote.deliverableItems.length > 0 && quote.deliverableItems) ||
+    (Array.isArray(quote.requirements?.breakdown) && quote.requirements.breakdown.length > 0 && quote.requirements.breakdown.map((it: any) => ({
+      description: it.item || it.description || "Deliverable",
+      details: it.details || "",
+      duration: it.duration || "-",
+      amount: Number(it.amount ?? it.cost ?? 0) || 0,
+    }))) ||
+    [];
+
+  const proposalFromMessages = Array.isArray(quote.messages)
+    ? [...quote.messages].reverse().find(isProposalMessage)
+    : null;
+
+  const itemsFromMessage =
+    proposalFromMessages?.content?.lineItems ||
+    proposalFromMessages?.content?.deliverableItems ||
+    proposalFromMessages?.lineItems ||
+    proposalFromMessages?.deliverableItems ||
+    [];
+
+  const quoteDeliverableItems = rawProposalItems.length > 0
+    ? rawProposalItems
+    : itemsFromMessage.length > 0
+      ? itemsFromMessage
+      : (quote.totalCost || quote.subtotal)
+        ? [{
+            description: quote.projectTitle || "Custom Project Deliverable",
+            details: quote.projectDescription || quote.requirements?.projectDescription || "",
+            duration: quote.totalDuration || "30 Days",
+            amount: Number(quote.subtotal || quote.totalCost || 0),
+          }]
+        : [];
+
+  const countryStr = String(
+    quote.clientCountry ||
+    quote.country ||
+    (typeof quote.client === "object" ? (quote.client?.country || quote.client?.clientCountry || quote.client?.billingCountry) : "") ||
+    user?.country ||
+    user?.clientCountry ||
+    ""
+  );
+
+  const explicitVatRate = Number(
+    quote.vatRate ??
+    quote.vatPercentage ??
+    proposalFromMessages?.content?.vatRate ??
+    (quote.taxPercentage != null ? quote.taxPercentage : 0)
+  ) || 0;
+
+  const quoteVatRate = explicitVatRate > 0 ? explicitVatRate : getVatRateForCountry(countryStr);
+  const itemsSum = quoteDeliverableItems.reduce((sum: number, it: any) => sum + (Number(it.amount ?? it.cost) || 0), 0);
+  const rawQuoteTotalCost = Number(
+    quote.totalCost ??
+    quote.price ??
+    proposalFromMessages?.content?.totalCost ??
+    (itemsSum > 0 ? itemsSum : 0)
+  );
+
+  const rawQuoteSubtotal = Number(
+    quote.subtotal ??
+    proposalFromMessages?.content?.subtotalCost ??
+    proposalFromMessages?.content?.subtotal ??
+    (itemsSum > 0 ? itemsSum : 0)
+  );
+
+  const quoteSubtotal = rawQuoteSubtotal > 0
+    ? rawQuoteSubtotal
+    : (quoteVatRate > 0 && rawQuoteTotalCost > 0
+      ? Math.round((rawQuoteTotalCost / (1 + quoteVatRate / 100)) * 100) / 100
+      : rawQuoteTotalCost);
+
+  const quoteVatAmount = Number(
+    quote.vatAmount ??
+    proposalFromMessages?.content?.vatAmount ??
+    (quoteVatRate > 0 && quoteSubtotal > 0
+      ? Math.round(quoteSubtotal * (quoteVatRate / 100) * 100) / 100
+      : 0)
+  );
+
+  const quoteResolvedTotalCost = quoteVatRate > 0 && quoteVatAmount > 0
+    ? (rawQuoteTotalCost >= quoteSubtotal + quoteVatAmount - 0.05 ? rawQuoteTotalCost : Math.round((quoteSubtotal + quoteVatAmount) * 100) / 100)
+    : (rawQuoteTotalCost > 0 ? rawQuoteTotalCost : quoteSubtotal);
+
+  const formatDisplayDate = (dateString?: string | Date) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return String(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const rawQuoteExpiry =
+    proposalFromMessages?.content?.expires ||
+    proposalFromMessages?.content?.expiresAt ||
+    proposalFromMessages?.content?.expirationDate ||
+    (quote as any)?.expirationDate ||
+    (quote as any)?.expiresAt ||
+    (quote as any)?.expires;
+
+  const quoteExpiryDate = (() => {
+    if (rawQuoteExpiry) {
+      const strippedStr = String(rawQuoteExpiry).replace(/^(submitted\s*(on|-)?|expires\s*(on|-)?)\s*/i, "").trim();
+      const d = new Date(strippedStr);
+      if (!isNaN(d.getTime())) return formatDisplayDate(d);
+      return strippedStr || "N/A";
+    }
+    const base = quote.createdAt || quote.dateSubmitted;
+    if (base) {
+      const d = new Date(base);
+      if (!isNaN(d.getTime())) {
+        d.setDate(d.getDate() + 60);
+        return formatDisplayDate(d);
+      }
+    }
+    return "N/A";
+  })();
+
+  const quoteTotalDuration =
+    quote.totalDuration ||
+    proposalFromMessages?.content?.totalDuration ||
+    (quoteDeliverableItems.length > 0
+      ? `${quoteDeliverableItems.reduce((sum: number, it: any) => {
+          const dur = String(it.duration || "").toLowerCase();
+          const match = dur.match(/(\d+(\.\d+)?)/);
+          const val = match ? parseFloat(match[0]) : 0;
+          if (dur.includes("week")) return sum + val * 7;
+          if (dur.includes("month")) return sum + val * 30;
+          return sum + val;
+        }, 0) || 30} Days`
+      : "30 Days");
+
+  const getQuotePayloadForPdf = () => {
+    const activeTitle = quote?.projectTitle || quote?.title || "Custom Quote";
+    const activeDesc = quote?.projectDescription || quote?.description || quote?.requirements?.projectDescription || "";
+    return {
+      ...quote,
+      isQuote: true,
+      isProject: false,
+      title: activeTitle,
+      projectTitle: activeTitle,
+      description: activeDesc,
+      projectDescription: activeDesc,
+      currency: effectiveQuoteSourceCurrency || currency || quote?.currency || "USD",
+      quoteNumber: quote?.quoteNumber || quote?.proposalNumber || quoteNumber,
+      deliverables: quoteDeliverableItems && quoteDeliverableItems.length > 0 ? quoteDeliverableItems : (quote?.deliverables || quote?.lineItems),
+      lineItems: quoteDeliverableItems && quoteDeliverableItems.length > 0 ? quoteDeliverableItems : (quote?.lineItems || quote?.deliverables),
+      totalDuration: quoteTotalDuration || quote?.totalDuration || quote?.duration,
+      subtotal: quoteSubtotal > 0 ? quoteSubtotal : (quote?.subtotal || quote?.totalCost || quoteResolvedTotalCost),
+      vatRate: quoteVatRate,
+      vatAmount: quoteVatAmount,
+      totalCost: quoteResolvedTotalCost > 0 ? quoteResolvedTotalCost : (quote?.totalCost || quoteSubtotal),
+      calculatorSpecs: quote?.calculatorSpecs || quote?.requirements,
+      user: quote?.user || (user ? { name: user.fullName || user.name, fullName: user.fullName || user.name, email: user.email } : undefined),
+    };
+  };
+
+  const handleDownloadQuotePDF = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    if (isDownloadingPdf || !quote) return;
+    setIsDownloadingPdf(true);
+    try {
+      const payload = getQuotePayloadForPdf();
+      const isCalc = isCalculatorProject(payload);
+      if (isCalc) {
+        await downloadCalculatorProjectPDF(payload);
+      } else {
+        await downloadProjectDetailsPDF({ ...payload, isQuote: true });
+      }
+    } catch (err) {
+      console.error("Failed to download quote PDF", err);
+      toast.error("Failed to download quote PDF. Please try again.");
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
+  const handlePrintQuote = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    if (!quote) return;
+    try {
+      const payload = getQuotePayloadForPdf();
+      const isCalc = isCalculatorProject(payload);
+      if (isCalc) {
+        printCalculatorProjectPDF(payload);
+      } else {
+        printProjectDetails({ ...payload, isQuote: true });
+      }
+    } catch (err) {
+      console.error("Failed to print quote", err);
+      toast.error("Failed to print quote. Please try again.");
+    }
+  };
+
   return (
     <div className="w-full font-sans">
-      {/* Top Header Title & Description */}
+      {/* Top Header Title & Action Buttons */}
       <div className="mb-6 md:mb-10">
-        <div className="flex flex-col gap-3 mb-5 md:mb-12">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 md:mb-12">
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3 group">
               {isEditingTitle ? (
@@ -938,7 +1264,7 @@ export default function QuoteDetailsPage() {
       <div className="mt-5 md:mt-8">
         <div className="flex flex-col gap-6 md:gap-10">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 items-start detail-top-2-col-grid">
-            {/* Left Card: Quote Request Summary Card (col-span-2) */}
+            {/* Left Card: Quote Request Summary & Proposal Overview Card (col-span-2) */}
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-white rounded-xl shadow-sm border border-gray-300 overflow-hidden w-full">
                 <div className="p-4 sm:p-6 md:p-8">
@@ -957,13 +1283,23 @@ export default function QuoteDetailsPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <span className={`w-fit px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border uppercase ${getStatusBadgeClass(quoteStatus)}`}>
-                        {quoteStatus}
-                      </span>
-                      <span className="text-[10px] sm:text-sm text-gray-500 font-bold uppercase tracking-wide whitespace-nowrap">
-                        {submittedTimestamp}
-                      </span>
+                    <div className="flex flex-col sm:items-end gap-2">
+                      <div className="flex items-center gap-3">
+                        <span className={`w-fit px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border uppercase ${getStatusBadgeClass(quoteStatus)}`}>
+                          {quoteStatus}
+                        </span>
+                        <span className="text-[10px] sm:text-sm text-gray-500 font-bold uppercase tracking-wide whitespace-nowrap">
+                          {submittedTimestamp}
+                        </span>
+                      </div>
+                      {isApprovedOrActiveQuote && quoteResolvedTotalCost > 0 && (
+                        <div className="text-xs sm:text-sm font-semibold text-gray-900 mt-1">
+                          <span className="text-gray-500 font-medium">Total: </span>
+                          <span className="font-bold text-[#4343F0] text-sm sm:text-base">
+                            {formatCurrency(quoteResolvedTotalCost)}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -973,7 +1309,7 @@ export default function QuoteDetailsPage() {
                         Project Description
                       </span>
                       <p className="text-gray-600 text-sm whitespace-pre-wrap leading-relaxed">
-                        {quote.projectDescription || "No description provided."}
+                        {quote.projectDescription || quote.requirements?.projectDescription || "No description provided."}
                       </p>
                     </div>
 
@@ -1019,6 +1355,127 @@ export default function QuoteDetailsPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* When Quote Proposal is Accepted / Approved: Show the Proposal Overview Breakdown right here in the Card */}
+                  {isApprovedOrActiveQuote && (
+                    <div className="mt-8 pt-6 border-t border-gray-200">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Proposal Overview & Scope</h3>
+                        <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+                          Proposal Accepted
+                        </span>
+                      </div>
+
+                      {/* Deliverables Table */}
+                      <div className="border border-gray-300 rounded-[10px] overflow-hidden overflow-x-auto mb-6">
+                        <table className="w-full min-w-[480px] sm:min-w-0">
+                          <thead>
+                            <tr className="border-b border-gray-300 bg-gray-50/70">
+                              <th className="px-4 sm:px-6 py-3 text-left text-xs font-bold text-gray-600 w-1/2">Deliverable Item</th>
+                              <th className="px-4 sm:px-6 py-3 text-center text-xs font-bold text-gray-600">Duration</th>
+                              <th className="px-4 sm:px-6 py-3 text-right text-xs font-bold text-gray-600">Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {quoteDeliverableItems.length > 0 ? (
+                              quoteDeliverableItems.map((item: any, idx: number) => (
+                                <tr key={idx} className="border-b border-gray-200 last:border-0 hover:bg-gray-50/50 transition-colors">
+                                  <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-700 align-top">
+                                    <div className="font-semibold text-gray-800">{item.description || item.name || item.title || "Deliverable"}</div>
+                                    {item.details && <div className="text-[11px] text-gray-400 mt-0.5">{item.details}</div>}
+                                  </td>
+                                  <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 text-center align-top whitespace-nowrap">
+                                    {formatDuration(item.duration)}
+                                  </td>
+                                  <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
+                                    {formatCurrency(item.amount ?? item.cost ?? 0)}
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-700 font-semibold">{quote.projectTitle || "Project Deliverable"}</td>
+                                <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 text-center">{formatDuration(quoteTotalDuration)}</td>
+                                <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold">{formatCurrency(quoteSubtotal)}</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Totals & Duration Breakdown */}
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 text-xs sm:text-sm mb-6 pt-2">
+                        <div>
+                          <span className="text-gray-500 font-bold block mb-1">Total Duration</span>
+                          <span className="font-semibold text-gray-800">{formatDuration(quoteTotalDuration)}</span>
+                        </div>
+                        <div className="flex flex-col items-end gap-1.5 w-full sm:w-auto min-w-[220px]">
+                          {quoteVatRate > 0 && quoteVatAmount > 0 ? (
+                            <>
+                              <div className="flex justify-between w-full gap-6">
+                                <span className="text-gray-500 font-medium">Subtotal:</span>
+                                <span className="font-bold text-gray-700">{formatCurrency(quoteSubtotal)}</span>
+                              </div>
+                              <div className="flex justify-between w-full gap-6">
+                                <span className="text-gray-500 font-medium">VAT ({quoteVatRate}%):</span>
+                                <span className="font-bold text-gray-700">{formatCurrency(quoteVatAmount)}</span>
+                              </div>
+                              <div className="border-t border-gray-200 w-full my-1" />
+                              <div className="flex justify-between w-full gap-6">
+                                <span className="text-gray-800 font-bold">Total (incl. VAT):</span>
+                                <span className="font-extrabold text-gray-900 text-sm sm:text-base">{formatCurrency(quoteResolvedTotalCost)}</span>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="flex justify-between w-full gap-6">
+                              <span className="text-gray-800 font-bold">Total Cost:</span>
+                              <span className="font-extrabold text-gray-900 text-sm sm:text-base">{formatCurrency(quoteResolvedTotalCost)}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Quote Actions Button Row */}
+                      <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div className="text-xs text-gray-500 flex flex-wrap items-center gap-1.5">
+                          <span className="font-bold text-gray-800 mr-1">Expires on:</span>
+                          <span className="font-medium text-gray-700">{quoteExpiryDate}</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                          <button
+                            type="button"
+                            disabled={isDownloadingPdf}
+                            onClick={handleDownloadQuotePDF}
+                            className="flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold rounded-[8px] shadow-sm transition-colors cursor-pointer whitespace-nowrap disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          >
+                            {isDownloadingPdf ? (
+                              <>
+                                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                <span>Downloading...</span>
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                <span>Download Quote (.PDF)</span>
+                              </>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handlePrintQuote}
+                            className="flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-xs sm:text-sm font-bold rounded-[8px] shadow-sm transition-colors cursor-pointer whitespace-nowrap flex items-center justify-center gap-2"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            <span>Print Details</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1071,7 +1528,7 @@ export default function QuoteDetailsPage() {
                 const msgDate = msg.timestamp || msg.createdAt || msg.sentAt;
 
                 // System Notification
-                if (msg.type === "system_notification" || msg.isSystemMessage) {
+                if ((msg.type === "system_notification" || msg.isSystemMessage) && !isProposalMessage(msg)) {
                   const title = msg.content?.systemText || msg.systemText || msg.message || "System Notification";
                   const text = msg.content?.text || msg.text || "";
 
@@ -1132,17 +1589,31 @@ export default function QuoteDetailsPage() {
                 }
 
                 // Quote Proposal / Offer Message
-                if (msg.type === "quote_proposal") {
+                if (isProposalMessage(msg)) {
                   const content = msg.content || {};
                   const propItems =
                     content.lineItems && content.lineItems.length > 0
                       ? content.lineItems
                       : content.deliverableItems && content.deliverableItems.length > 0
                         ? content.deliverableItems
-                        : [];
+                        : msg.lineItems && msg.lineItems.length > 0
+                          ? msg.lineItems
+                          : msg.deliverableItems && msg.deliverableItems.length > 0
+                            ? msg.deliverableItems
+                            : quote.lineItems && quote.lineItems.length > 0
+                              ? quote.lineItems
+                              : quote.deliverableItems && quote.deliverableItems.length > 0
+                                ? quote.deliverableItems
+                                : quote.requirements?.breakdown && quote.requirements.breakdown.length > 0
+                                  ? quote.requirements.breakdown.map((item: any) => ({
+                                      description: item.item || item.description || "Deliverable",
+                                      duration: item.duration || "-",
+                                      amount: Number(item.amount ?? item.cost ?? 0) || 0,
+                                    }))
+                                  : [];
                   const senderName = msg.username || msg.senderName || managerName;
-                  const proposalDesc = content.projectDescription || content.text || msg.message || "";
-                  const proposalCurrency = (content.currency || quote.currency || user?.currency || user?.preferredCurrency || contextCurrency || "USD").toUpperCase();
+                  const proposalDesc = content.projectDescription || content.text || msg.message || quote.projectDescription || "";
+                  const proposalCurrency = (content.currency || effectiveQuoteSourceCurrency || currency || "USD").toUpperCase();
                   const calculatedDurationDays = propItems.reduce((sum: number, it: any) => {
                     const dur = String(it.duration || "").toLowerCase();
                     const match = dur.match(/(\d+(\.\d+)?)/);
@@ -1158,7 +1629,8 @@ export default function QuoteDetailsPage() {
                   const calculatedItemsSum = propItems.reduce((sum: number, it: any) => sum + (Number(it.amount ?? it.cost) || 0), 0);
                   const rawTotalCost = Number(
                     content.totalCost ??
-                    (quote.totalCost ?? (calculatedItemsSum > 0 ? calculatedItemsSum : 0))
+                    content.price ??
+                    (quote.totalCost ?? (quote.price ?? (calculatedItemsSum > 0 ? calculatedItemsSum : 0)))
                   );
                   const explicitVatRate = Number(
                     content.vatRate !== undefined && content.vatRate !== null
@@ -1199,37 +1671,44 @@ export default function QuoteDetailsPage() {
 
                   const proposalFiles = (content.attachedFiles && content.attachedFiles.length > 0)
                     ? content.attachedFiles
-                    : (msg as any).attachments || (msg as any).attachedFiles || [];
+                    : (msg as any).attachments || (msg as any).attachedFiles || quoteAttachedFiles || [];
                   const hasPropFiles = Boolean(proposalFiles && proposalFiles.length > 0);
 
                   // Check subsequent messages to track actions on this proposal
                   const subsequentMessages = allMessages.slice(i + 1);
-                  const hasLaterProposal = subsequentMessages.some((m: any) => m.type === "quote_proposal");
+                  const hasLaterProposal = subsequentMessages.some((m: any) => isProposalMessage(m));
 
                   // Messages between this proposal and the next proposal (or end of feed)
                   const messagesUntilNextProposal: any[] = [];
                   for (const nextMsg of subsequentMessages) {
-                    if (nextMsg.type === "quote_proposal") break;
+                    if (isProposalMessage(nextMsg)) break;
                     messagesUntilNextProposal.push(nextMsg);
                   }
 
                   const wasDeclinedAfterThis = messagesUntilNextProposal.some(
                     (m: any) =>
-                      m.type === "quote_action" &&
+                      (m.type === "quote_action" || m.type === "action") &&
                       (m.content?.action === "denied" || m.content?.action === "declined" || m.action === "denied" || m.action === "declined")
                   );
 
                   const wasAcceptedAfterThis = messagesUntilNextProposal.some(
                     (m: any) =>
-                      m.type === "quote_action" &&
+                      (m.type === "quote_action" || m.type === "action") &&
                       (m.content?.action === "accepted" || m.action === "accepted")
                   );
 
                   const isAccepted =
                     hasAcceptedLocally ||
                     content.status === "accepted" ||
+                    content.proposalStatus === "accepted" ||
+                    msg.status === "accepted" ||
+                    msg.proposalStatus === "accepted" ||
                     wasAcceptedAfterThis ||
-                    (!hasLaterProposal && quote.status?.toLowerCase() === "approved");
+                    (!hasLaterProposal && (
+                      quote.status?.toLowerCase() === "approved" ||
+                      quote.status?.toLowerCase() === "active" ||
+                      Boolean(quote.acceptedProposalMessageId && (quote.acceptedProposalMessageId === msg.id || quote.acceptedProposalMessageId === msg._id || quote.acceptedProposalMessageId === (msg as any).content?.id))
+                    ));
 
                   const isDeclined =
                     content.status === "declined" ||
@@ -1270,10 +1749,10 @@ export default function QuoteDetailsPage() {
                       {/* Header above offer card */}
                       <div className="text-center pt-2 pb-8 px-4 my-0 recieved-offer-heading">
                         <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
-                          You received an offer
+                          {isAccepted ? "Accepted Proposal Overview" : "You received an offer"}
                         </h3>
                         <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
-                          We’ve prepared a custom proposal for your project.
+                          {isAccepted ? "Overview of the accepted proposal deliverables and financial breakdown." : "We’ve prepared a custom proposal for your project."}
                         </p>
                       </div>
 
