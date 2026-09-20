@@ -11,7 +11,7 @@ import { downloadFile } from "@/lib/utils";
 import { downloadAnalysisPDF, printAnalysisDetails } from "@/lib/generateAnalysisPDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { useCurrency } from "@/context/CurrencyContext";
-import { formatPriceWithCurrency, convertCurrencyAmount } from "@/lib/currencyUtils";
+import { formatPriceWithCurrency, convertCurrencyAmount, formatActiveCurrency } from "@/lib/currencyUtils";
 import { useTimezone } from "@/context/TimezoneContext";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 
@@ -35,11 +35,17 @@ function ReceiptModal({
     (analysis.quoteNumber || (analysis._id ? `INV-2026-${analysis._id.slice(-3).toUpperCase()}` : "INV-2026-150"));
   const isFree = (analysis.isFree !== false && (!analysis.price || Number(analysis.price) === 0)) && !payment && deliverableItems.length === 0;
   const totalPrice = isFree ? 0 : Number(payment?.amount ?? analysis.amountPaid ?? analysis.price ?? analysis.totalCost ?? 0);
-  const { currency: contextCurrency, conversionRate } = useCurrency();
   const formatCurrency = (amt: number, customSourceCurrency?: string) => {
-    const src = (customSourceCurrency || payment?.currency || analysis.currency || "USD").toUpperCase();
-    const target = (contextCurrency || "USD").toUpperCase();
-    return formatPriceWithCurrency(amt, target, src, conversionRate);
+    const src = (
+      customSourceCurrency ||
+      payment?.currency ||
+      payment?.chargedCurrency ||
+      payment?.metadata?.paymentCurrency ||
+      payment?.metadata?.currency ||
+      analysis.currency ||
+      "USD"
+    ).toUpperCase();
+    return formatActiveCurrency(amt, src);
   };
 
   const vatRate = Number(payment?.vatRate ?? payment?.metadata?.vatRate ?? analysis?.vatRate ?? 0);
@@ -649,6 +655,19 @@ export default function AnalysisPaymentsPage() {
     }
   };
 
+  const formatPaymentAmount = (payment: any) => {
+    const pCurr = (
+      payment.currency ||
+      payment.chargedCurrency ||
+      payment.metadata?.paymentCurrency ||
+      payment.metadata?.currency ||
+      activeAnalysis.currency ||
+      "USD"
+    ).toUpperCase();
+    const rawAmt = Number(payment.amount ?? payment.chargedAmount ?? payment.amountPaid ?? 0);
+    return formatActiveCurrency(rawAmt, pCurr);
+  };
+
   // 1. FREE ANALYSIS: Display Payment Overview + Free Website Analysis cards matching project design
   if (isFree) {
     const startDate = activeAnalysis.startDate || activeAnalysis.createdAt || new Date();
@@ -1103,12 +1122,7 @@ export default function AnalysisPaymentsPage() {
                       {payment.description || "Analysis Payment"}
                     </td>
                     <td className="px-6 py-4 font-bold text-gray-900">
-                      {formatPriceWithCurrency(
-                        Number(payment.amountPaid || payment.amount || 0),
-                        currency || "USD",
-                        (payment.currency || activeAnalysis.currency || "USD").toUpperCase(),
-                        Number(payment.exchangeRate || payment.metadata?.exchangeRate || conversionRate || 1.14776)
-                      )}
+                      {formatPaymentAmount(payment)}
                     </td>
                     <td className="px-6 py-4 text-gray-500">
                       {new Date(payment.createdAt).toLocaleDateString()}
