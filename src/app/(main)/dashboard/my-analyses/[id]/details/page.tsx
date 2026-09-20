@@ -1825,7 +1825,7 @@ export default function AnalysisDetailsPage() {
               const invNum = content.invoiceNumber || msg.invoiceNumber;
               const currentMsgId = msg.id || msg._id || msgId;
 
-              const isPaid = isExactPaymentRequestPaid(msg, analysis, combinedPayments);
+              const isPaid = isExactPaymentRequestPaid(msg, analysis, rawPayments);
 
               const payParams = new URLSearchParams();
               if (amount > 0) payParams.set("amount", String(amount));
