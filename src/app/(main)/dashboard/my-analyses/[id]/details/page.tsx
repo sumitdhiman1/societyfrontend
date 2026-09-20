@@ -20,6 +20,7 @@ import { getProjectEstimatedDeadline } from "@/lib/calculatorUtils";
 import { useCurrency } from "@/context/CurrencyContext";
 import { paymentService } from "@/lib/paymentService";
 import { formatPriceWithCurrency, convertCurrencyAmount } from "@/lib/currencyUtils";
+import { isEstoniaCountry } from "@/lib/vatHelper";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
 
@@ -365,14 +366,12 @@ export default function AnalysisDetailsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const actionLoadingRef = useRef(false);
 
-  const syncFinancialsAndAnalysis = React.useCallback(async (silent = true) => {
+  const syncFinancialsAndAnalysis = React.useCallback(async () => {
     try {
-      const refreshed = await refreshAnalysis(silent);
+      await refreshAnalysis();
       const targetId =
-        refreshed?._id ||
-        refreshed?.id ||
-        analysis?._id ||
-        analysis?.id;
+        (analysis as any)?._id ||
+        (analysis as any)?.id;
       if (targetId) {
         const res = await paymentService.getTransactionsByProject(String(targetId));
         const rows = Array.isArray(res?.data) ? res.data : [];
@@ -385,9 +384,9 @@ export default function AnalysisDetailsPage() {
 
   useEffect(() => {
     setCurrentUser(authService.getUser());
-    syncFinancialsAndAnalysis(true);
-    const t1 = setTimeout(() => syncFinancialsAndAnalysis(true), 1500);
-    const t2 = setTimeout(() => syncFinancialsAndAnalysis(true), 3500);
+    syncFinancialsAndAnalysis();
+    const t1 = setTimeout(() => syncFinancialsAndAnalysis(), 1500);
+    const t2 = setTimeout(() => syncFinancialsAndAnalysis(), 3500);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
@@ -397,9 +396,9 @@ export default function AnalysisDetailsPage() {
   // Handle URL success param (e.g. returning from checkout)
   useEffect(() => {
     if (searchParams?.get("success") === "true") {
-      syncFinancialsAndAnalysis(true);
+      syncFinancialsAndAnalysis();
       const t = setTimeout(() => {
-        syncFinancialsAndAnalysis(true);
+        syncFinancialsAndAnalysis();
         try {
           const currentUrl = new URL(window.location.href);
           currentUrl.searchParams.delete("success");
@@ -412,10 +411,10 @@ export default function AnalysisDetailsPage() {
 
   // Refresh whenever tab gains focus or becomes visible
   useEffect(() => {
-    const onFocus = () => syncFinancialsAndAnalysis(true);
+    const onFocus = () => syncFinancialsAndAnalysis();
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
-        syncFinancialsAndAnalysis(true);
+        syncFinancialsAndAnalysis();
       }
     };
     window.addEventListener("focus", onFocus);
@@ -553,7 +552,7 @@ export default function AnalysisDetailsPage() {
         const incomingId = data?.projectId || data?.project?._id || data?.project?.id;
         if (!incomingId || String(incomingId) === String(aId)) {
           refreshAnalysisRef.current();
-          syncFinancialsAndAnalysis(true);
+          syncFinancialsAndAnalysis();
         }
       };
 
@@ -564,7 +563,7 @@ export default function AnalysisDetailsPage() {
         const pId = notif?.data?.projectId || notif?.projectId;
         if (!pId || String(pId) === String(aId)) {
           refreshAnalysisRef.current();
-          syncFinancialsAndAnalysis(true);
+          syncFinancialsAndAnalysis();
         }
       });
     };
@@ -1184,10 +1183,10 @@ export default function AnalysisDetailsPage() {
 
     const deliverableAmount = isFreeAnalysis
       ? 0
-      : pureInitialBase > 0
-      ? pureInitialBase
-      : rawSubtotal > 0
-      ? rawSubtotal
+      : initialAnalysisPrice > 0
+      ? initialAnalysisPrice
+      : baseAmount > 0
+      ? baseAmount
       : Number(analysis.price || 0);
 
     return {

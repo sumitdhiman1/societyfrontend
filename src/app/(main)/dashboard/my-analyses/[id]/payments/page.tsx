@@ -163,13 +163,13 @@ function ReceiptModal({
 
           <div className="flex justify-end pr-2">
             <div className="w-full max-w-xs space-y-2">
-              {vatRate > 0 && (
+              {vatRate > 0 && vatAmount > 0 && (
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-gray-500 font-semibold">Subtotal:</span>
                   <span className="text-gray-800 font-bold">{formatCurrency(subtotal)}</span>
                 </div>
               )}
-              {vatRate > 0 && (
+              {vatRate > 0 && vatAmount > 0 && (
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-gray-500 font-semibold">VAT ({vatRate}%):</span>
                   <span className="text-gray-800 font-bold">{formatCurrency(vatAmount)}</span>
@@ -668,22 +668,6 @@ export default function AnalysisPaymentsPage() {
                       <span className="whitespace-nowrap">
                         Expected Deadline: <span className="text-gray-700 font-medium">{deadlineStr}</span>
                       </span>
-                      <span className="hidden sm:inline text-gray-300">|</span>
-                      <button
-                        type="button"
-                        disabled={isDownloadingInvoice}
-                        onClick={handleViewInvoice}
-                        className="text-gray-500 underline decoration-gray-400 underline-offset-2 hover:text-gray-700 whitespace-nowrap cursor-pointer hover:font-bold transition-all disabled:opacity-50 inline-flex items-center gap-1.5"
-                      >
-                        {isDownloadingInvoice ? (
-                          <>
-                            <div className="w-3 h-3 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
-                            <span>Downloading...</span>
-                          </>
-                        ) : (
-                          "View invoice"
-                        )}
-                      </button>
                     </div>
                   </div>
                   <div className="w-full sm:w-auto order-1 sm:order-2 bg-gray-50 sm:bg-transparent p-4 sm:p-0 rounded-lg space-y-2 flex flex-col sm:items-end">
@@ -737,7 +721,7 @@ export default function AnalysisPaymentsPage() {
                         {formatPriceDisplay(0)}
                       </td>
                     </tr>
-                    {vatRate > 0 && (
+                    {vatRate > 0 && effectiveVatAmount > 0 && (
                       <tr className="border-t-2 border-gray-200 bg-gray-50/70">
                         <td className="py-2.5 px-3 sm:px-6"></td>
                         <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
@@ -748,7 +732,7 @@ export default function AnalysisPaymentsPage() {
                         </td>
                       </tr>
                     )}
-                    {vatRate > 0 && (
+                    {vatRate > 0 && effectiveVatAmount > 0 && (
                       <tr className="bg-gray-50/70">
                         <td className="py-2.5 px-3 sm:px-6"></td>
                         <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
