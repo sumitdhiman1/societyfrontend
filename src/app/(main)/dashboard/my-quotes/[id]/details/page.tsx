@@ -21,6 +21,7 @@ import { getVatRateForCountry } from "@/lib/vatHelper";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
 import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "@/lib/generateCalculatorProjectPDF";
 import { isCalculatorProject } from "@/lib/calculatorUtils";
+import RecommendedSolutions from "@/components/common/RecommendedSolutions";
 import { io, Socket } from "socket.io-client";
 
 // Helper components
