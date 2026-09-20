@@ -642,22 +642,26 @@ function PaymentForm({
               <span className="whitespace-nowrap">
                 {type === "ANALYSIS" ? "Analysis No:" : "Project No:"} <span className="text-gray-700 font-medium">#{entityNumber}</span>
               </span>
-              <span className="hidden sm:inline text-gray-300">|</span>
-              <button
-                type="button"
-                disabled={isDownloadingInvoiceState}
-                onClick={handleDownloadInvoiceClick}
-                className="text-xs sm:text-sm font-semibold text-[#4343F0] hover:text-[#3232b7] underline decoration-[#4343F0]/40 hover:decoration-[#4343F0] underline-offset-2 whitespace-nowrap cursor-pointer transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
-              >
-                {isDownloadingInvoiceState ? (
-                  <>
-                    <div className="w-3 h-3 border-2 border-[#4343F0] border-t-transparent rounded-full animate-spin" />
-                    <span>Downloading Invoice...</span>
-                  </>
-                ) : (
-                  "View invoice"
-                )}
-              </button>
+              {Boolean((projectSubtotal + getVatAmount(projectSubtotal)) > 0 || amountPaid > 0) && (
+                <>
+                  <span className="hidden sm:inline text-gray-300">|</span>
+                  <button
+                    type="button"
+                    disabled={isDownloadingInvoiceState}
+                    onClick={handleDownloadInvoiceClick}
+                    className="text-xs sm:text-sm font-semibold text-[#4343F0] hover:text-[#3232b7] underline decoration-[#4343F0]/40 hover:decoration-[#4343F0] underline-offset-2 whitespace-nowrap cursor-pointer transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+                  >
+                    {isDownloadingInvoiceState ? (
+                      <>
+                        <div className="w-3 h-3 border-2 border-[#4343F0] border-t-transparent rounded-full animate-spin" />
+                        <span>Downloading Invoice...</span>
+                      </>
+                    ) : (
+                      "View invoice"
+                    )}
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -737,7 +741,7 @@ function PaymentForm({
                 </>
               )}
 
-              {getActiveVatRate() > 0 && (
+              {getActiveVatRate() > 0 && getVatAmount(projectSubtotal) > 0 && (
                 <tr className="border-t-2 border-gray-200 bg-gray-50/70">
                   <td className="py-2.5 px-3 sm:px-6"></td>
                   <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
@@ -748,7 +752,7 @@ function PaymentForm({
                   </td>
                 </tr>
               )}
-              {getActiveVatRate() > 0 && (
+              {getActiveVatRate() > 0 && getVatAmount(projectSubtotal) > 0 && (
               <tr className="bg-gray-50/70">
                 <td className="py-2.5 px-3 sm:px-6"></td>
                 <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useAnalysis } from "@/context/AnalysisContext";
 import { analysesService } from "@/lib/analysesService";
 import { requestAnalysisService } from "@/lib/requestAnalysisService";
@@ -15,10 +15,12 @@ import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
 import RecommendedSolutions, { PackageCard } from "@/components/common/RecommendedSolutions";
 import DeadlineTooltip from "@/components/common/DeadlineTooltip";
-import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
+import { downloadAnalysisPDF, printAnalysisDetails } from "@/lib/generateAnalysisPDF";
 import { getProjectEstimatedDeadline } from "@/lib/calculatorUtils";
 import { useCurrency } from "@/context/CurrencyContext";
-import { formatPriceWithCurrency } from "@/lib/currencyUtils";
+import { paymentService } from "@/lib/paymentService";
+import { formatPriceWithCurrency, convertCurrencyAmount } from "@/lib/currencyUtils";
+import { isEstoniaCountry } from "@/lib/vatHelper";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
 
@@ -284,8 +286,72 @@ const formatCategoryName = (cat: any, title?: string): string => {
 
 
 
+const asId = (val: any) => {
+  if (!val) return "";
+  if (typeof val === "string") return val;
+  if (typeof val === "object") return val._id || val.id || val.toString() || "";
+  return String(val);
+};
+
+function isExactPaymentRequestPaid(msg: any, analysis: any, payments: any[]): boolean {
+  const content = typeof msg?.content === "object" && msg.content ? msg.content : {};
+  const invId = asId(content.invoiceId || msg.invoiceId);
+  const invNum = String(content.invoiceNumber || msg.invoiceNumber || "").trim();
+  const msgIds = [asId(msg._id), asId(msg.id), asId(content.messageId)].filter(Boolean);
+
+  if (Boolean(content.isPaid || msg.isPaid || content.status === "paid" || msg.status === "paid")) {
+    return true;
+  }
+
+  if (!invId && !invNum && msgIds.length === 0) return false;
+
+  const matchesTarget = (target: { messageId?: any; invoiceId?: any; invoiceNumber?: any }) => {
+    const tMsgId = asId(target.messageId);
+    const tInvId = asId(target.invoiceId);
+    const tInvNum = String(target.invoiceNumber || "").trim();
+    return Boolean(
+      (tMsgId && msgIds.includes(tMsgId)) ||
+      (invId && tInvId && invId === tInvId) ||
+      (invNum && tInvNum && invNum === tInvNum)
+    );
+  };
+
+  if ((analysis?.invoices || []).some((inv: any) =>
+    String(inv.status || "").toLowerCase() === "paid" &&
+    matchesTarget({ invoiceId: inv._id || inv.id, invoiceNumber: inv.invoiceNumber })
+  )) {
+    return true;
+  }
+
+  if ((analysis?.messages || []).some((m: any) => {
+    const c = m.content || {};
+    const type = String(m.type || c.type || "").toLowerCase();
+    const text = `${m.message || ""} ${c.text || ""} ${c.systemText || ""}`.toLowerCase();
+    const isReceipt = type === "payment_received" || type === "payment_receipt" || text.includes("payment received") || text.includes("payment confirmed");
+    return isReceipt && matchesTarget({
+      messageId: c.messageId || m.messageId,
+      invoiceId: c.invoiceId || m.invoiceId,
+      invoiceNumber: c.invoiceNumber || m.invoiceNumber,
+    });
+  })) {
+    return true;
+  }
+
+  return (payments || []).some((p: any) => {
+    if (!["succeeded", "paid", "completed"].includes(String(p.status || "").toLowerCase())) return false;
+    const meta = p.metadata || {};
+    return matchesTarget({
+      messageId: meta.messageId,
+      invoiceId: meta.invoiceId || meta.invoice_id,
+      invoiceNumber: meta.invoiceNumber,
+    });
+  });
+}
+
 export default function AnalysisDetailsPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const { analysis, refreshAnalysis } = useAnalysis();
   const { currency: contextCurrency, conversionRate } = useCurrency();
   const [messageText, setMessageText] = useState("");
@@ -295,9 +361,69 @@ export default function AnalysisDetailsPage() {
   const [attachments, setAttachments] = useState<any[]>([]);
   const [availablePackages, setAvailablePackages] = useState<any[]>([]);
   const [availableCategories, setAvailableCategories] = useState<any[]>([]);
+  const [analysisPayments, setAnalysisPayments] = useState<any[]>([]);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const actionLoadingRef = useRef(false);
+
+  const syncFinancialsAndAnalysis = React.useCallback(async () => {
+    try {
+      await refreshAnalysis();
+      const targetId =
+        (analysis as any)?._id ||
+        (analysis as any)?.id;
+      if (targetId) {
+        const res = await paymentService.getTransactionsByProject(String(targetId));
+        const rows = Array.isArray(res?.data) ? res.data : [];
+        setAnalysisPayments(rows);
+      }
+    } catch (e) {
+      console.warn("Failed syncFinancialsAndAnalysis:", e);
+    }
+  }, [refreshAnalysis, analysis?._id, analysis?.id]);
+
+  useEffect(() => {
+    setCurrentUser(authService.getUser());
+    syncFinancialsAndAnalysis();
+    const t1 = setTimeout(() => syncFinancialsAndAnalysis(), 1500);
+    const t2 = setTimeout(() => syncFinancialsAndAnalysis(), 3500);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [syncFinancialsAndAnalysis]);
+
+  // Handle URL success param (e.g. returning from checkout)
+  useEffect(() => {
+    if (searchParams?.get("success") === "true") {
+      syncFinancialsAndAnalysis();
+      const t = setTimeout(() => {
+        syncFinancialsAndAnalysis();
+        try {
+          const currentUrl = new URL(window.location.href);
+          currentUrl.searchParams.delete("success");
+          window.history.replaceState(null, "", currentUrl.toString());
+        } catch {}
+      }, 1500);
+      return () => clearTimeout(t);
+    }
+  }, [searchParams, syncFinancialsAndAnalysis]);
+
+  // Refresh whenever tab gains focus or becomes visible
+  useEffect(() => {
+    const onFocus = () => syncFinancialsAndAnalysis();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        syncFinancialsAndAnalysis();
+      }
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [syncFinancialsAndAnalysis]);
 
   const [actionModal, setActionModal] = useState<{
     isOpen: boolean;
@@ -426,6 +552,7 @@ export default function AnalysisDetailsPage() {
         const incomingId = data?.projectId || data?.project?._id || data?.project?.id;
         if (!incomingId || String(incomingId) === String(aId)) {
           refreshAnalysisRef.current();
+          syncFinancialsAndAnalysis();
         }
       };
 
@@ -436,6 +563,7 @@ export default function AnalysisDetailsPage() {
         const pId = notif?.data?.projectId || notif?.projectId;
         if (!pId || String(pId) === String(aId)) {
           refreshAnalysisRef.current();
+          syncFinancialsAndAnalysis();
         }
       });
     };
@@ -792,22 +920,29 @@ export default function AnalysisDetailsPage() {
 
   const addonsTotal = allAddonDeliverables.reduce((sum: number, it: any) => sum + (Number(it.amount) || 0), 0);
 
-  const pureInitialBase =
-    (Number(analysis.package?.amount) > 0 ? Number(analysis.package?.amount) : 0) ||
-    (Number(analysis.package?.price) > 0 ? Number(analysis.package?.price) : 0) ||
-    (Array.isArray(analysis.deliverableItems) && analysis.deliverableItems.length > 0
-      ? analysis.deliverableItems.reduce((s: number, i: any) => s + (Number(i.amount ?? i.cost) || 0), 0)
-      : 0);
+  let initialAnalysisPrice = 0;
+  if (Array.isArray(analysis.deliverableItems) && analysis.deliverableItems.length > 0) {
+    initialAnalysisPrice = analysis.deliverableItems.reduce((s: number, i: any) => s + (Number(i.amount ?? i.cost) || 0), 0);
+  } else if (Number(analysis.basePrice) > 0) {
+    initialAnalysisPrice = Number(analysis.basePrice);
+  } else if (Number(analysis.baseAmount) > 0) {
+    initialAnalysisPrice = Math.max(0, Number(analysis.baseAmount) - addonsTotal);
+  } else if (Number(analysis.subtotal) > 0) {
+    initialAnalysisPrice = Math.max(0, Number(analysis.subtotal) - addonsTotal);
+  } else if (Number(analysis.package?.amount || analysis.package?.price) > 0) {
+    initialAnalysisPrice = Number(analysis.package?.amount || analysis.package?.price);
+  } else if (Number(analysis.product?.amount || analysis.product?.price) > 0) {
+    initialAnalysisPrice = Number(analysis.product?.amount || analysis.product?.price);
+  } else if (Number(analysis.selectedPlan?.price || analysis.selectedPlan?.amount) > 0) {
+    initialAnalysisPrice = Number(analysis.selectedPlan?.price || analysis.selectedPlan?.amount);
+  } else if (!analysis.isFree && (Number(analysis.price) > 0 || Number(analysis.totalCost) > 0)) {
+    const rawVal = Number(analysis.price || analysis.totalCost || 0);
+    initialAnalysisPrice = Math.max(0, rawVal - addonsTotal);
+  } else {
+    initialAnalysisPrice = 0;
+  }
 
-  const rawSubtotal =
-    (Number(analysis.subtotal) > 0 ? Number(analysis.subtotal) : 0) ||
-    (Number(analysis.baseAmount) > 0 ? Number(analysis.baseAmount) : 0) ||
-    (Number(analysis.price) > 0 ? Number(analysis.price) : 0) ||
-    0;
-
-  const baseAmount = pureInitialBase > 0
-    ? pureInitialBase + addonsTotal
-    : (rawSubtotal >= addonsTotal ? rawSubtotal : rawSubtotal + addonsTotal);
+  const baseAmount = initialAnalysisPrice + addonsTotal;
 
   const rawTotalCost =
     (Number(analysis.totalCost) > 0 ? Number(analysis.totalCost) : 0) ||
@@ -816,11 +951,43 @@ export default function AnalysisDetailsPage() {
     (Number(analysis.price) > 0 ? Number(analysis.price) : 0) ||
     baseAmount;
 
-  const vatRate = Number(
+  let vatRate = Number(
     analysis.vatRate ??
     analysis.vatPercentage ??
     (analysis.taxPercentage != null ? analysis.taxPercentage : 0)
   );
+
+  if (vatRate === 0) {
+    for (const a of (analysis?.addons || [])) {
+      if (Number(a.vatRate) > 0) {
+        vatRate = Number(a.vatRate);
+        break;
+      }
+    }
+  }
+  if (vatRate === 0) {
+    for (const m of (analysis?.messages || [])) {
+      const isQuote = m?.type === 'quote_proposal' || m?.content?.type === 'quote_proposal';
+      if (isQuote && Number(m.content?.vatRate) > 0) {
+        vatRate = Number(m.content.vatRate);
+        break;
+      }
+    }
+  }
+  if (vatRate === 0) {
+    const clientCountry =
+      analysis?.clientCountry ||
+      analysis?.country ||
+      analysis?.client?.country ||
+      analysis?.client?.clientCountry ||
+      analysis?.client?.billingCountry ||
+      analysis?.billingCountry ||
+      '';
+    if (isEstoniaCountry(clientCountry)) {
+      vatRate = 24;
+    }
+  }
+
   const rawVatAmount = Number(analysis.vatAmount ?? analysis.tax ?? 0);
 
   const vatAmount =
@@ -832,9 +999,61 @@ export default function AnalysisDetailsPage() {
 
   const totalCost = baseAmount + vatAmount;
 
+  const analysisNativeCurrency = (
+    analysis?.currency ||
+    analysisPayments[0]?.currency ||
+    "USD"
+  ).toLowerCase();
+
+  const ledgerPayments = (analysis?.paymentLedger || []).map((entry: any, index: number) => ({
+    _id: entry.transactionId || `ledger-${index}`,
+    id: entry.transactionId || `ledger-${index}`,
+    amount: entry.chargedAmount || entry.amount,
+    currency: entry.chargedCurrency || entry.currency,
+    status: entry.status || "succeeded",
+    exchangeRate: entry.exchangeRate,
+    metadata: { exchangeRate: entry.exchangeRate },
+    createdAt: entry.date,
+  }));
+
+  const combinedPayments = [...(analysisPayments || [])];
+  const seenTxnIds = new Set(
+    combinedPayments.map((p: any) => String(p._id || p.id || p.transactionId || "")).filter(Boolean)
+  );
+  for (const lp of ledgerPayments) {
+    const id = String(lp._id || lp.id || "");
+    if (!seenTxnIds.has(id)) {
+      combinedPayments.push(lp);
+      seenTxnIds.add(id);
+    }
+  }
+
+  const totalPaidFromTransactions = combinedPayments
+    .filter((p: any) => ["succeeded", "paid", "completed"].includes(String(p?.status || "").toLowerCase()))
+    .reduce((sum: number, p: any) => {
+      const pCurr = (p?.currency || analysisNativeCurrency || "USD").toLowerCase();
+      const pAmt = Number(p?.amountPaid || p?.amount || 0);
+      const pRate = Number(p?.exchangeRate || p?.metadata?.exchangeRate || p?.metadata?.conversionRate || conversionRate || 1.14776);
+      return sum + convertCurrencyAmount(pAmt, analysisNativeCurrency, pCurr, pRate);
+    }, 0);
+
+  const amountPaid = Math.max(
+    totalPaidFromTransactions,
+    Number(analysis?.amountPaid || 0)
+  );
+
+  const resolvedTotalCost = totalCost;
+  const calculatedPending = Math.max(0, Math.round((resolvedTotalCost - amountPaid) * 100) / 100);
+  const isActuallyPaidInFull = (resolvedTotalCost > 0 && amountPaid >= resolvedTotalCost - 0.009) || (analysis?.paymentStatus === "paid" && calculatedPending <= 0.05);
+  const pendingBalance = isActuallyPaidInFull
+    ? 0
+    : amountPaid === 0
+    ? resolvedTotalCost
+    : calculatedPending;
+
   const isFreeAnalysis = Boolean(
-    analysis.isFree === true ||
-    (analysis.isFree === undefined && baseAmount <= 0 && totalCost <= 0 && (!analysis.amountPaid || Number(analysis.amountPaid) <= 0))
+    (analysis.isFree === true && baseAmount <= 0 && totalCost <= 0 && amountPaid <= 0 && allAddonDeliverables.length === 0) ||
+    (analysis.isFree === undefined && baseAmount <= 0 && totalCost <= 0 && amountPaid <= 0 && allAddonDeliverables.length === 0)
   );
 
   const [matchedProduct, setMatchedProduct] = useState<any>(null);
@@ -949,6 +1168,67 @@ export default function AnalysisDetailsPage() {
     return "bg-[#E1FCEF] text-[#14804A] border-[#E1FCEF]";
   };
 
+  const getAnalysisPayloadForPdf = () => {
+    const activeTitle = cleanItemTitle || analysis.title || "Website Analysis";
+    const activeDesc = cleanItemDescription || analysis.description || "";
+    const activeCurrency = (
+      contextCurrency ||
+      (typeof window !== "undefined" ? localStorage.getItem("app-currency") : "") ||
+      currentUser?.currency ||
+      currentUser?.preferredCurrency ||
+      analysis.currency ||
+      "USD"
+    ).toUpperCase();
+    const sourceCurrency = (analysis.currency || "USD").toUpperCase();
+
+    const deliverableAmount = isFreeAnalysis
+      ? 0
+      : initialAnalysisPrice > 0
+      ? initialAnalysisPrice
+      : baseAmount > 0
+      ? baseAmount
+      : Number(analysis.price || 0);
+
+    return {
+      ...analysis,
+      isProject: true,
+      isQuote: false,
+      title: activeTitle,
+      projectTitle: activeTitle,
+      description: activeDesc,
+      projectDescription: activeDesc,
+      currency: activeCurrency,
+      targetCurrency: activeCurrency,
+      sourceCurrency: sourceCurrency,
+      conversionRate: conversionRate || 1.08,
+      analysisNumber: analysisNumber,
+      projectNumber: analysisNumber,
+      referenceNumber: analysisNumber,
+      subtotal: baseAmount,
+      baseAmount: baseAmount,
+      vatRate: vatRate,
+      vatAmount: vatAmount,
+      totalCost: resolvedTotalCost,
+      totalPrice: resolvedTotalCost,
+      amountPaid: amountPaid,
+      pendingBalance: pendingBalance,
+      deliverables: [
+        {
+          name: cleanItemTitle,
+          details: cleanItemDescription,
+          duration: analysis.totalDuration || (analysis.timelineInDays ? `${analysis.timelineInDays} Days` : "5 Days"),
+          amount: deliverableAmount,
+        },
+      ],
+      addons: allAddonDeliverables.map((a: any) => ({
+        name: a.description || "Add-on Task",
+        details: a.details || "",
+        duration: a.duration ? `${a.duration} ${a.unit || "Days"}` : "1 Days",
+        amount: Number(a.amount || 0),
+      })),
+    };
+  };
+
   return (
     <div className="flex flex-col gap-6 md:gap-8 w-full font-sans">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 detail-top-2-col-grid">
@@ -956,13 +1236,37 @@ export default function AnalysisDetailsPage() {
         <div className="lg:col-span-2 flex flex-col gap-6">
           {/* Analysis Details Card */}
           <div className="bg-white border border-gray-300 rounded-[12px] shadow-sm p-4 sm:p-6 md:p-8">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
-              <span className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-wider">
-                Submitted - {submittedDateStr || "Sep 4, 9:03 PM"}
-              </span>
-              <span className={`w-fit px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border uppercase tracking-wider ${getStatusBadgeStyle(analysis.status)}`}>
-                {statusDisplay}
-              </span>
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-wider">
+                  Submitted - {submittedDateStr || "Sep 4, 9:03 PM"}
+                </span>
+                <span className={`w-fit px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border uppercase tracking-wider ${getStatusBadgeStyle(analysis.status)}`}>
+                  {statusDisplay}
+                </span>
+              </div>
+
+              {/* Right Side: Total Cost / Paid to Date / Pending Balance */}
+              <div className="w-full sm:w-60 shrink-0 space-y-1.5 text-xs sm:text-sm self-start">
+                <div className="flex justify-between items-center font-semibold">
+                  <span className="text-gray-900">Total Cost</span>
+                  <span className="text-gray-900 font-bold">
+                    {formatCurrency(resolvedTotalCost)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-green-600">
+                  <span className="font-medium">Paid to Date</span>
+                  <span className="font-semibold">
+                    {formatCurrency(amountPaid)}
+                  </span>
+                </div>
+                <div className={`flex justify-between items-center pt-1 border-t border-gray-100 font-semibold ${pendingBalance > 0.009 ? "text-red-600" : "text-gray-600"}`}>
+                  <span>Pending Balance</span>
+                  <span className="font-bold">
+                    {formatCurrency(pendingBalance)}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div className="border-t border-gray-200 mb-6 sm:mb-8"></div>
@@ -1005,13 +1309,13 @@ export default function AnalysisDetailsPage() {
                       {analysis.totalDuration || "5 Days"}
                     </td>
                     <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-right align-top">
-                      {analysis.isFree || !analysis.price ? (
+                      {isFreeAnalysis || initialAnalysisPrice <= 0 ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest uppercase bg-green-100 text-green-700 border border-green-200">
                           Free
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest uppercase bg-green-100 text-green-700 border border-green-200">
-                          ${Number(analysis.price).toFixed(2)}
+                        <span className="font-bold text-gray-800">
+                          {formatCurrency(initialAnalysisPrice)}
                         </span>
                       )}
                     </td>
@@ -1096,7 +1400,7 @@ export default function AnalysisDetailsPage() {
                       if (isDownloadingPdf) return;
                       setIsDownloadingPdf(true);
                       try {
-                        await downloadProjectDetailsPDF(analysis);
+                        await downloadAnalysisPDF(getAnalysisPayloadForPdf());
                       } catch (err) {
                         console.error("Failed to download PDF", err);
                         toast.error("Failed to download PDF. Please try again.");
@@ -1119,7 +1423,7 @@ export default function AnalysisDetailsPage() {
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
-                      printProjectDetails(analysis);
+                      printAnalysisDetails(getAnalysisPayloadForPdf());
                     }}
                     className="flex-1 sm:flex-initial px-6 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap"
                   >
@@ -1141,20 +1445,23 @@ export default function AnalysisDetailsPage() {
                       <span className="block font-bold text-gray-700 text-xs uppercase mb-1">
                         URL(s) to check
                       </span>
-                      <div className="flex flex-col gap-1.5">
+                      <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
                         {submittedUrls.map((u: string, idx: number) => {
                           const href = u.startsWith("http://") || u.startsWith("https://") ? u : `https://${u}`;
                           const text = u.replace(/^https?:\/\//, "").replace(/\/$/, "");
+                          const isLast = idx === submittedUrls.length - 1;
                           return (
-                            <a
-                              key={idx}
-                              href={href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 font-semibold hover:underline break-all text-xs sm:text-sm block"
-                            >
-                              {text}
-                            </a>
+                            <span key={idx} className="inline-flex items-center">
+                              <a
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 font-semibold hover:underline break-all text-xs sm:text-sm"
+                              >
+                                {text}
+                              </a>
+                              {!isLast && <span className="text-gray-500 mr-1.5">,</span>}
+                            </span>
                           );
                         })}
                       </div>
@@ -1374,7 +1681,7 @@ export default function AnalysisDetailsPage() {
               const invNum = content.invoiceNumber || msg.invoiceNumber;
               const currentMsgId = msg.id || msg._id || msgId;
 
-              const isPaid = Boolean(content.isPaid || msg.isPaid || content.status === 'paid' || msg.status === 'paid');
+              const isPaid = isExactPaymentRequestPaid(msg, analysis, combinedPayments);
 
               const payParams = new URLSearchParams();
               if (amount > 0) payParams.set("amount", String(amount));
@@ -1524,8 +1831,18 @@ export default function AnalysisDetailsPage() {
               const targetProposalId = msg._id ? String(msg._id) : (msg.id ? String(msg.id) : (content?.id ? String(content.id) : String(msgId)));
 
               const baseAmount = items.reduce((sum: number, it: any) => sum + (Number(it.amount ?? it.cost) || 0), 0) || Number(content.total || content.totalCost || 0);
-              const vatRate = content.vatRate ?? 0;
-              const vatAmount = content.vatAmount ?? ((baseAmount * vatRate) / 100);
+              const vatRate = Number(
+                content.vatRate ??
+                (Number(content.subtotal) > 0 && Number(content.totalCost || content.total) > Number(content.subtotal)
+                  ? Math.round(((Number(content.totalCost || content.total) - Number(content.subtotal)) / Number(content.subtotal)) * 100)
+                  : 0)
+              );
+              const vatAmount = Number(
+                content.vatAmount ??
+                (Number(content.subtotal) > 0 && Number(content.totalCost || content.total) > Number(content.subtotal)
+                  ? (Number(content.totalCost || content.total) - Number(content.subtotal))
+                  : (vatRate > 0 ? ((baseAmount * vatRate) / 100) : 0))
+              );
               const totalCost = Number(content.total ?? content.totalCost ?? (baseAmount + vatAmount));
 
               const calculatedDurationDays = items.reduce((sum: number, it: any) => {
@@ -1536,7 +1853,23 @@ export default function AnalysisDetailsPage() {
                 if (dur.includes("month")) return sum + val * 30;
                 return sum + val;
               }, 0);
-              const rawDuration = content.totalDuration || content.duration || (calculatedDurationDays > 0 ? `${calculatedDurationDays} Day${calculatedDurationDays > 1 ? "s" : ""}` : "");
+
+              const cleanRawDur = (val: any) => {
+                if (!val) return "";
+                const str = String(val).trim();
+                if (["not specified", "n/a", "-", "undefined", "null"].includes(str.toLowerCase())) return "";
+                return str;
+              };
+
+              const rawDuration =
+                (calculatedDurationDays > 0
+                  ? (calculatedDurationDays >= 30 && calculatedDurationDays % 30 === 0
+                      ? `${calculatedDurationDays / 30} Month${calculatedDurationDays / 30 > 1 ? 's' : ''}`
+                      : calculatedDurationDays >= 7 && calculatedDurationDays % 7 === 0
+                        ? `${calculatedDurationDays / 7} Week${calculatedDurationDays / 7 > 1 ? 's' : ''}`
+                        : `${calculatedDurationDays} Day${calculatedDurationDays > 1 ? "s" : ""}`)
+                  : (cleanRawDur(content.totalDuration) || cleanRawDur(content.duration) || ""));
+
               const formatOfferDuration = (val: any) => {
                 if (!val) return "";
                 const str = String(val).trim();

@@ -8,7 +8,7 @@ import { paymentService } from "@/lib/paymentService";
 import { requestAnalysisService } from "@/lib/requestAnalysisService";
 import { authService } from "@/lib/authService";
 import { downloadFile } from "@/lib/utils";
-import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
+import { downloadAnalysisPDF, printAnalysisDetails } from "@/lib/generateAnalysisPDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { useCurrency } from "@/context/CurrencyContext";
 import { formatPriceWithCurrency, convertCurrencyAmount } from "@/lib/currencyUtils";
@@ -163,19 +163,16 @@ function ReceiptModal({
 
           <div className="flex justify-end pr-2">
             <div className="w-full max-w-xs space-y-2">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-gray-500 font-semibold">Subtotal:</span>
-                <span className="text-gray-800 font-bold">{formatCurrency(subtotal)}</span>
-              </div>
-              {vatRate > 0 ? (
+              {vatRate > 0 && vatAmount > 0 && (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-500 font-semibold">Subtotal:</span>
+                  <span className="text-gray-800 font-bold">{formatCurrency(subtotal)}</span>
+                </div>
+              )}
+              {vatRate > 0 && vatAmount > 0 && (
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-gray-500 font-semibold">VAT ({vatRate}%):</span>
                   <span className="text-gray-800 font-bold">{formatCurrency(vatAmount)}</span>
-                </div>
-              ) : (
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-gray-500 font-semibold">Tax (0%):</span>
-                  <span className="text-gray-800 font-bold">{formatCurrency(0)}</span>
                 </div>
               )}
               <div className="h-px bg-gray-200 w-full pt-0.5" />
@@ -447,6 +444,57 @@ export default function AnalysisPaymentsPage() {
 
   const isFree = totalProjectCost === 0 && amountPaid === 0 && allAddonItems.length === 0;
 
+  const getAnalysisPayloadForPdf = () => {
+    const activeTitle = dynamicAnalysisTitle || activeAnalysis.title || "Website Analysis";
+    const activeDesc = dynamicAnalysisDesc || activeAnalysis.description || "";
+    const activeCurrency = (currency || (typeof window !== "undefined" ? localStorage.getItem("app-currency") : "") || "usd").toUpperCase();
+    const sourceCurrency = (activeAnalysis.currency || "USD").toUpperCase();
+
+    const deliverableAmount = isFree
+      ? 0
+      : baseCost > 0
+      ? baseCost
+      : Number(activeAnalysis.price || 0);
+
+    const timelineDays = parseInt(String(activeAnalysis.timelineInDays || activeAnalysis.totalDuration || "5"), 10) || 5;
+
+    return {
+      ...activeAnalysis,
+      isProject: true,
+      isQuote: false,
+      title: activeTitle,
+      projectTitle: activeTitle,
+      description: activeDesc,
+      projectDescription: activeDesc,
+      currency: activeCurrency,
+      targetCurrency: activeCurrency,
+      sourceCurrency: sourceCurrency,
+      conversionRate: conversionRate || 1.08,
+      subtotal: totalSubtotal,
+      baseAmount: totalSubtotal,
+      vatRate: vatRate,
+      vatAmount: effectiveVatAmount,
+      totalCost: totalProjectCost,
+      totalPrice: totalProjectCost,
+      amountPaid: amountPaid,
+      pendingBalance: pendingBalance,
+      deliverables: [
+        {
+          name: activeTitle,
+          details: activeDesc,
+          duration: `${timelineDays} Days`,
+          amount: deliverableAmount,
+        },
+      ],
+      addons: allAddonItems.map((a: any) => ({
+        name: a.description || a.title || "Add-on Task",
+        details: a.details || "",
+        duration: a.duration ? `${a.duration} ${a.unit || "Days"}` : "1 Days",
+        amount: Number(a.amount || 0),
+      })),
+    };
+  };
+
   const handleDownloadProject = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (isDownloadingPdf) return;
@@ -455,7 +503,7 @@ export default function AnalysisPaymentsPage() {
       if (activeAnalysis.resultsPdfUrl) {
         downloadFile(e as any, activeAnalysis.resultsPdfUrl, "Final_Analysis_Report.pdf");
       } else {
-        await downloadProjectDetailsPDF(activeAnalysis);
+        await downloadAnalysisPDF(getAnalysisPayloadForPdf());
       }
     } catch (err) {
       console.error("Failed to download analysis PDF:", err);
@@ -478,7 +526,7 @@ export default function AnalysisPaymentsPage() {
 
   const handlePrintDetails = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
-    printProjectDetails(activeAnalysis);
+    printAnalysisDetails(getAnalysisPayloadForPdf());
   };
 
   const getStatusColor = (status: string) => {
@@ -554,7 +602,7 @@ export default function AnalysisPaymentsPage() {
       if (e) e.preventDefault();
       setIsDownloadingInvoice(true);
       try {
-        await downloadProjectDetailsPDF(activeAnalysis);
+        await downloadAnalysisPDF(getAnalysisPayloadForPdf());
       } catch (err) {
         console.error("Failed to download project PDF for invoice view:", err);
       } finally {
@@ -620,22 +668,6 @@ export default function AnalysisPaymentsPage() {
                       <span className="whitespace-nowrap">
                         Expected Deadline: <span className="text-gray-700 font-medium">{deadlineStr}</span>
                       </span>
-                      <span className="hidden sm:inline text-gray-300">|</span>
-                      <button
-                        type="button"
-                        disabled={isDownloadingInvoice}
-                        onClick={handleViewInvoice}
-                        className="text-gray-500 underline decoration-gray-400 underline-offset-2 hover:text-gray-700 whitespace-nowrap cursor-pointer hover:font-bold transition-all disabled:opacity-50 inline-flex items-center gap-1.5"
-                      >
-                        {isDownloadingInvoice ? (
-                          <>
-                            <div className="w-3 h-3 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
-                            <span>Downloading...</span>
-                          </>
-                        ) : (
-                          "View invoice"
-                        )}
-                      </button>
                     </div>
                   </div>
                   <div className="w-full sm:w-auto order-1 sm:order-2 bg-gray-50 sm:bg-transparent p-4 sm:p-0 rounded-lg space-y-2 flex flex-col sm:items-end">
@@ -689,24 +721,28 @@ export default function AnalysisPaymentsPage() {
                         {formatPriceDisplay(0)}
                       </td>
                     </tr>
-                    <tr className="border-t-2 border-gray-200 bg-gray-50/70">
-                      <td className="py-2.5 px-3 sm:px-6"></td>
-                      <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
-                        Base Amount:
-                      </td>
-                      <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
-                        {formatPriceDisplay(0)}
-                      </td>
-                    </tr>
-                    <tr className="bg-gray-50/70">
-                      <td className="py-2.5 px-3 sm:px-6"></td>
-                      <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
-                        VAT (0%):
-                      </td>
-                      <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
-                        {formatPriceDisplay(0)}
-                      </td>
-                    </tr>
+                    {vatRate > 0 && effectiveVatAmount > 0 && (
+                      <tr className="border-t-2 border-gray-200 bg-gray-50/70">
+                        <td className="py-2.5 px-3 sm:px-6"></td>
+                        <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
+                          Base Amount:
+                        </td>
+                        <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
+                          {formatPriceDisplay(0)}
+                        </td>
+                      </tr>
+                    )}
+                    {vatRate > 0 && effectiveVatAmount > 0 && (
+                      <tr className="bg-gray-50/70">
+                        <td className="py-2.5 px-3 sm:px-6"></td>
+                        <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
+                          VAT ({vatRate}%):
+                        </td>
+                        <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
+                          {formatPriceDisplay(0)}
+                        </td>
+                      </tr>
+                    )}
                     <tr className="bg-blue-50/50 border-t border-gray-200">
                       <td className="py-3 px-3 sm:px-6"></td>
                       <td className="py-3 px-3 sm:px-6 text-left text-xs sm:text-sm font-bold text-gray-800 uppercase font-sans whitespace-nowrap">
