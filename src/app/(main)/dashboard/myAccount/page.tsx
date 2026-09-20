@@ -168,6 +168,18 @@ export default function MyAccountPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (showPasswordModal) {
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordError("");
+      setShowOldPass(false);
+      setShowNewPass(false);
+      setShowConfirmPass(false);
+    }
+  }, [showPasswordModal]);
+
+  useEffect(() => {
     const fetchProfile = async () => {
       try {
         const res = await profileService.getMyProfile(true);
@@ -948,7 +960,7 @@ export default function MyAccountPage() {
 
       {/* Password Change Modal */}
       {showPasswordModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8 animate-in fade-in zoom-in-95 duration-200">
             <h2 className="text-xl font-bold text-gray-800 mb-4">
               {isSocialUser ? "Set Account Password" : "Change Password"}
@@ -962,7 +974,14 @@ export default function MyAccountPage() {
               </div>
             )}
 
-            <div className="space-y-4">
+            <form
+              autoComplete="off"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleChangePassword();
+              }}
+              className="space-y-4"
+            >
               {!isSocialUser && (
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">
@@ -973,7 +992,11 @@ export default function MyAccountPage() {
                       type={showOldPass ? "text" : "password"}
                       value={oldPassword}
                       onChange={(e) => setOldPassword(e.target.value)}
-                      autoComplete="current-password"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
+                      name="old_password_field"
+                      id="old_password_field"
                       className="w-full bg-white border border-gray-300 rounded-[4px] px-3.5 py-2.5 pr-12 text-sm text-gray-700 focus:outline-none focus:border-[#4545F0] focus:ring-1 focus:ring-[#4545F0]"
                       placeholder="Enter old password"
                     />
@@ -1008,6 +1031,10 @@ export default function MyAccountPage() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     autoComplete="new-password"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    name="new_password_field"
+                    id="new_password_field"
                     className="w-full bg-white border border-gray-300 rounded-[4px] px-3.5 py-2.5 pr-12 text-sm text-gray-700 focus:outline-none focus:border-[#4545F0] focus:ring-1 focus:ring-[#4545F0]"
                     placeholder="Enter new password (min 8 characters)"
                   />
@@ -1041,6 +1068,10 @@ export default function MyAccountPage() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     autoComplete="new-password"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    name="confirm_password_field"
+                    id="confirm_password_field"
                     className="w-full bg-white border border-gray-300 rounded-[4px] px-3.5 py-2.5 pr-12 text-sm text-gray-700 focus:outline-none focus:border-[#4545F0] focus:ring-1 focus:ring-[#4545F0]"
                     placeholder="Confirm new password"
                   />
@@ -1069,37 +1100,36 @@ export default function MyAccountPage() {
                   <p className="text-xs text-red-600 font-medium">{passwordError}</p>
                 </div>
               )}
-            </div>
 
-            <div className="flex gap-3 mt-6">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowPasswordModal(false);
-                  setOldPassword("");
-                  setNewPassword("");
-                  setConfirmPassword("");
-                  setPasswordError("");
-                }}
-                className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md font-bold text-xs transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleChangePassword}
-                className="flex-1 px-4 py-2.5 bg-[#4545F0] hover:bg-[#3737D8] text-white rounded-md font-bold text-xs transition-colors"
-              >
-                {isSocialUser ? "Set Password" : "Change Password"}
-              </button>
-            </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setOldPassword("");
+                    setNewPassword("");
+                    setConfirmPassword("");
+                    setPasswordError("");
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md font-bold text-xs transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2.5 bg-[#4545F0] hover:bg-[#3737D8] text-white rounded-md font-bold text-xs transition-colors"
+                >
+                  {isSocialUser ? "Set Password" : "Change Password"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
       {/* Change Email Address Modal (matching Screenshot 3) */}
       {showEmailModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-xs">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-[480px] w-full p-7 relative animate-in fade-in zoom-in-95 duration-200 font-sans">
             {/* Header with Title and Close X */}
             <div className="flex items-start justify-between mb-3">
