@@ -322,11 +322,10 @@ export default function QuoteDetailsPage() {
       const existing = authService.getUser();
       if (existing) {
         setUser(existing);
-        return;
       }
       if (!authService.isAuthenticated()) return;
       try {
-        const profileRes = await profileService.getMyProfile();
+        const profileRes = await profileService.getMyProfile(true);
         const profile = profileRes?.data;
         if (profile && typeof profile === "object") {
           authService.updateInternalUser(profile);
@@ -338,9 +337,13 @@ export default function QuoteDetailsPage() {
     };
 
     hydrateUser();
-    const onLogin = () => setUser(authService.getUser());
-    window.addEventListener("auth:login", onLogin);
-    return () => window.removeEventListener("auth:login", onLogin);
+    const onUserSync = () => setUser(authService.getUser());
+    window.addEventListener("auth:login", onUserSync);
+    window.addEventListener("auth:user_update", onUserSync);
+    return () => {
+      window.removeEventListener("auth:login", onUserSync);
+      window.removeEventListener("auth:user_update", onUserSync);
+    };
   }, []);
 
   const requireAuth = () => {
@@ -454,11 +457,51 @@ export default function QuoteDetailsPage() {
   if (!quote) return null;
 
   // Format Helpers
-  const currency = (user?.currency || user?.preferredCurrency || contextCurrency || quote.currency || "USD").toUpperCase();
+  const currency = (
+    contextCurrency ||
+    (typeof window !== "undefined" ? localStorage.getItem("app-currency") : "") ||
+    user?.currency ||
+    user?.preferredCurrency ||
+    (typeof quote?.client === "object" ? (quote.client?.currency || quote.client?.preferredCurrency) : "") ||
+    quote?.clientCurrency ||
+    quote?.currency ||
+    "USD"
+  ).toUpperCase();
+
+  const latestProposalFromQuote = Array.isArray(quote?.messages)
+    ? [...quote.messages].reverse().find((m: any) =>
+        m?.type === "quote_proposal" ||
+        m?.type === "proposal" ||
+        m?.type === "offer" ||
+        m?.content?.type === "quote_proposal" ||
+        m?.content?.type === "proposal" ||
+        m?.content?.type === "offer" ||
+        Boolean(m?.content?.lineItems?.length || m?.content?.deliverableItems?.length)
+      )
+    : null;
+
+  const effectiveQuoteSourceCurrency = (
+    latestProposalFromQuote?.content?.currency ||
+    quote.currency ||
+    (typeof quote?.client === "object" ? (quote.client?.currency || quote.client?.preferredCurrency) : "") ||
+    quote.clientCurrency ||
+    currency ||
+    "USD"
+  ).toUpperCase();
+
   const formatCurrency = (amt: any, customSourceCurrency?: string) => {
     const num = Number(amt || 0);
-    const srcCurrency = (customSourceCurrency || quote.currency || "USD").toUpperCase();
-    const targetCurrency = (user?.currency || user?.preferredCurrency || contextCurrency || "USD").toUpperCase();
+    const srcCurrency = (customSourceCurrency || effectiveQuoteSourceCurrency || "USD").toUpperCase();
+    const targetCurrency = (
+      contextCurrency ||
+      (typeof window !== "undefined" ? localStorage.getItem("app-currency") : "") ||
+      user?.currency ||
+      user?.preferredCurrency ||
+      (typeof quote?.client === "object" ? (quote.client?.currency || quote.client?.preferredCurrency) : "") ||
+      quote?.clientCurrency ||
+      quote?.currency ||
+      "USD"
+    ).toUpperCase();
     return formatPriceWithCurrency(num, targetCurrency, srcCurrency, conversionRate);
   };
 
@@ -1596,7 +1639,7 @@ export default function QuoteDetailsPage() {
                                   : [];
                   const senderName = msg.username || msg.senderName || managerName;
                   const proposalDesc = content.projectDescription || content.text || msg.message || quote.projectDescription || "";
-                  const proposalCurrency = (content.currency || quote.currency || user?.currency || user?.preferredCurrency || contextCurrency || "USD").toUpperCase();
+                  const proposalCurrency = (content.currency || effectiveQuoteSourceCurrency || currency || "USD").toUpperCase();
                   const calculatedDurationDays = propItems.reduce((sum: number, it: any) => {
                     const dur = String(it.duration || "").toLowerCase();
                     const match = dur.match(/(\d+(\.\d+)?)/);
