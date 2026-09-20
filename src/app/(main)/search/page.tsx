@@ -222,11 +222,10 @@ function SearchResults() {
                           )}
                         </div>
                         <span
-                          className={`text-[11px] font-bold ${
-                            isFree
-                              ? "text-emerald-700 bg-emerald-50 border border-emerald-200"
-                              : "text-[#808080] bg-[#e0e0e0]"
-                          } px-3 py-1 rounded-full uppercase tracking-wide mb-3`}
+                          className={`text-[11px] font-bold ${isFree
+                            ? "text-emerald-700 bg-emerald-50 border border-emerald-200"
+                            : "text-[#808080] bg-[#e0e0e0]"
+                            } px-3 py-1 rounded-full uppercase tracking-wide mb-3`}
                         >
                           {pkg.isCategory
                             ? "Service Category"
@@ -239,9 +238,8 @@ function SearchResults() {
                           {pkg.description || "Explore our comprehensive range of services and solutions tailored for your business needs."}
                         </p>
                         <div
-                          className={`mt-auto text-[22px] font-bold ${
-                            isFree ? 'text-emerald-600' : 'text-[#808080]'
-                          } border-t border-gray-100 w-full pt-4`}
+                          className={`mt-auto text-[22px] font-bold ${isFree ? 'text-emerald-600' : 'text-[#808080]'
+                            } border-t border-gray-100 w-full pt-4`}
                         >
                           {pkg.amount}
                         </div>
@@ -295,7 +293,7 @@ function SearchResults() {
             {(data.faqs?.length || 0) > 0 && (
               <section>
                 <h2 className="text-2xl font-bold text-[#434343] mb-6 capitalize font-inter border-b border-gray-200 pb-2">
-                  FAQ Matches
+                  FAQ
                 </h2>
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                   <ul className="divide-y divide-gray-200">

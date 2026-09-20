@@ -136,7 +136,7 @@ export default function SubmitTicketPage() {
       />
 
       {/* Hero Section */}
-      <div className="bg-primary-100 border-[3px] border-gray-600">
+      <div className="bg-primary-100">
         <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:px-[54px] py-16">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">
             Submit a Support Ticket

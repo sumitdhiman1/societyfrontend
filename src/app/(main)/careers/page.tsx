@@ -173,7 +173,7 @@ export default function CareersPage() {
   return (
     <div className="bg-[#F3F4F6] min-h-screen flex flex-col font-sans">
       {/* Hero Header */}
-      <div className="bg-primary-100 border-[3px] border-gray-600">
+      <div className="bg-primary-100">
         <div className="container mx-auto px-4 md:px-8 lg:px-[54px] py-10 md:py-16 max-w-[1536px]">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">
             {data.heroTitle || "Careers"}

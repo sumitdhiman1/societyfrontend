@@ -75,7 +75,7 @@ export default function AnalysisOrderPage() {
         setFormData((prev) => ({ ...prev, ...parsed }));
         sessionStorage.removeItem(`pending_analysis_${productId}`);
       }
-    } catch (e) {}
+    } catch (e) { }
 
     const fetchProduct = async () => {
       try {
@@ -151,7 +151,7 @@ export default function AnalysisOrderPage() {
         if (typeof window !== 'undefined') {
           sessionStorage.setItem(`pending_analysis_${productId}`, JSON.stringify(formData));
         }
-      } catch (err) {}
+      } catch (err) { }
       router.push(`/login?redirect=/dashboard/new-project/analysis/${productId}`);
       return;
     }
@@ -216,7 +216,7 @@ export default function AnalysisOrderPage() {
         if (typeof window !== "undefined") {
           sessionStorage.setItem(`pending_analysis_${productId}`, JSON.stringify(formData));
         }
-      } catch (err) {}
+      } catch (err) { }
       router.push(`/login?redirect=/dashboard/new-project/analysis/${productId}`);
       return;
     }
@@ -300,7 +300,7 @@ export default function AnalysisOrderPage() {
     product?.longDescription ||
     product?.description ||
     "Our classic analysis offer covering branding, UI/UX, functionalities, AI potentiality, tech stack, speed, and SEO. A manual review using a custom process created by Society Web Solutions, checking every important part of your website. Delivered as a custom PDF report within 5 days.";
-  
+
   const imageSrc =
     product?.detailImage ||
     product?.detailImageUrl ||

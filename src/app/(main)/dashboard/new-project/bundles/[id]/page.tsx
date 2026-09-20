@@ -784,8 +784,8 @@ function BundleDetailsContent() {
                           isPaid ? handleTierSelect(col) : router.push("/dashboard/new-project/custom-quote")
                         }
                         className={`w-full max-w-[150px] py-3.5 px-3 rounded-xl font-extrabold text-[12px] md:text-[13px] uppercase tracking-wider transition-all duration-300 shadow-md hover:shadow-lg active:scale-95 ${isSelected
-                            ? "bg-[#2D2DA3] text-white"
-                            : "bg-[#EAEAEA] text-[#2D2DA3] hover:bg-[#D9D9D9]"
+                          ? "bg-[#2D2DA3] text-white"
+                          : "bg-[#EAEAEA] text-[#2D2DA3] hover:bg-[#D9D9D9]"
                           }`}
                       >
                         {isPaid ? "Buy Now" : "Get Quote"}
@@ -917,12 +917,12 @@ function BundleDetailsContent() {
                   </div>
 
                   {/* Title & Price Header */}
-                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
                     <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-600 leading-tight pr-4" style={{ maxWidth: "100%" }}>
                       {pkg.name} - {selectedTier.title}
                     </h3>
-                    <div className="flex items-center gap-6">
-                      <div className="flex flex-col items-end">
+                    <div className="items-center gap-6">
+                      <div className="flex flex-col">
                         <div className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-600">
                           {formatPrice(parsePrice(selectedTier.price))}
                         </div>
@@ -935,26 +935,29 @@ function BundleDetailsContent() {
                           )}
                         </div>
                       </div>
-                      <select
-                        value={currency.toUpperCase()}
-                        onChange={(e) => setCurrency(e.target.value.toLowerCase())}
-                        className="bg-gray-50 border border-gray-300 text-gray-700 font-medium rounded-md px-3 py-1.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-shadow"
-                      >
-                        <option value="USD">USD ($)</option>
-                        <option value="EUR">EUR (€)</option>
-                      </select>
+
                     </div>
                   </div>
 
                   {/* Project Meta Details */}
-                  <div className="mb-6 text-sm text-gray-500 flex items-center gap-3 flex-wrap">
-                    <span>
-                      <strong>Project No:</strong> #{projectNo}
-                    </span>
-                    <span className="text-gray-400">|</span>
-                    <span>
-                      <strong>Timeline:</strong> {getDurationLabel(selectedTier)}
-                    </span>
+                  <div className="mb-6 text-sm text-gray-500 flex items-center gap-3 flex-wrap justify-between">
+                    <div className="flex items-center gap-3">
+                      <span>
+                        <strong>Project No:</strong> #{projectNo}
+                      </span>
+                      <span className="text-gray-400">|</span>
+                      <span>
+                        <strong>Timeline:</strong> {getDurationLabel(selectedTier)}
+                      </span>
+                    </div>
+                    <select
+                      value={currency.toUpperCase()}
+                      onChange={(e) => setCurrency(e.target.value.toLowerCase())}
+                      className="bg-gray-50 border border-gray-300 text-gray-700 font-medium rounded-md px-3 py-1.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-shadow"
+                    >
+                      <option value="USD">USD ($)</option>
+                      <option value="EUR">EUR (€)</option>
+                    </select>
                   </div>
 
                   {/* Description */}
