@@ -263,7 +263,7 @@ export default function QuoteFilesPage() {
       <div className="flex flex-col lg:grid lg:grid-cols-4 gap-6">
         <div className="space-y-4 lg:col-span-1">
           <div className="border border-gray-200 rounded-xl p-4 sm:p-5 bg-white shadow-sm">
-            <h3 className="text-xs sm:text-sm font-bold text-[#363636] uppercase tracking-wider mb-3">Filter by Type</h3>
+            <h3 className="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">Filter by Type</h3>
             <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 scrollbar-hide">
               {filterCategories.map(({ label, value }) => (
                 <button
@@ -281,7 +281,7 @@ export default function QuoteFilesPage() {
             </div>
           </div>
           <div className="border border-gray-200 rounded-xl p-4 sm:p-5 bg-white shadow-sm">
-            <h3 className="text-xs sm:text-sm font-bold text-[#363636] uppercase tracking-wider mb-3">Sources</h3>
+            <h3 className="text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">Sources</h3>
             <div className="flex lg:flex-col gap-4 lg:gap-2.5 text-[10px] sm:text-xs text-[#6B7280]">
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-600 border border-green-100">Uploaded</span>
@@ -303,7 +303,7 @@ export default function QuoteFilesPage() {
           <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-5">
               <div>
-                <h3 className="text-base sm:text-lg font-bold text-[#363636]">Upload Files</h3>
+                <h3 className="text-base sm:text-lg font-bold text-gray-800">Upload Files</h3>
                 <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">Share assets related to this quote</p>
               </div>
               <button
@@ -332,7 +332,7 @@ export default function QuoteFilesPage() {
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-bold text-[#363636]">All Files</h3>
+                <h3 className="text-base sm:text-lg font-bold text-gray-800">All Files</h3>
                 <span className="text-xs text-gray-400">({filteredFiles.length})</span>
               </div>
               <div className="flex border border-gray-200 rounded-lg overflow-hidden">

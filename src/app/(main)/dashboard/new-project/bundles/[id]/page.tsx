@@ -654,9 +654,9 @@ function BundleDetailsContent() {
         message={status.message}
       />
 
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-8 md:pb-12">
         {/* Hero Section */}
-        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-10 md:gap-12 mb-10 md:mb-16">
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-8 md:gap-12 mb-8 md:mb-16">
           <div className="lg:w-[50%] flex flex-col">
             <h1 className="text-[28px] md:text-[48px] lg:text-[64px] font-bold text-gray-800 leading-[1.1] mb-4 md:mb-6 tracking-tight">
               {pkg.name}
@@ -667,10 +667,14 @@ function BundleDetailsContent() {
             </p>
           </div>
           <div className="lg:w-[50%] flex items-center justify-center lg:justify-end">
-            <div className="w-full max-w-[620px] aspect-[16/10] bg-[#F0F0F0] rounded-[4px] overflow-hidden shadow-sm border border-gray-200">
+            <div 
+              className="w-full max-w-[620px] aspect-[16/10] bg-[#F0F0F0] rounded-[10px] overflow-hidden shadow-sm border border-gray-200"
+              style={{ borderRadius: "10px" }}
+            >
               <img
                 alt={pkg.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover rounded-[10px]"
+                style={{ borderRadius: "10px" }}
                 src={
                   pkg.imageUrl ||
                   "http://res.cloudinary.com/dgg6e3flf/image/upload/v1785224007/packages/a_professional_high_fidelity_3d_still_life_scene_for_a_digital_starter_bundle.webp"
@@ -681,7 +685,7 @@ function BundleDetailsContent() {
         </div>
 
         {/* Comparison Table */}
-        <div className="border border-gray-200 rounded-[4px] overflow-hidden shadow-sm bg-white mb-10 md:mb-16">
+        <div className="border border-gray-200 rounded-[10px] overflow-hidden shadow-sm bg-white mb-8 md:mb-16">
           <div className="overflow-x-auto" style={{ cursor: "grab" }}>
             <div className="w-full min-w-[900px]">
               {/* Header: What's Included */}
@@ -791,7 +795,7 @@ function BundleDetailsContent() {
                         onClick={() =>
                           isPaid ? handleTierSelect(col) : router.push("/dashboard/new-project/custom-quote")
                         }
-                        className={`w-full max-w-[150px] py-3.5 px-3 rounded-xl font-extrabold text-[12px] md:text-[13px] uppercase tracking-wider transition-all duration-300 shadow-md hover:shadow-lg active:scale-95 ${isSelected
+                        className={`w-full max-w-[150px] py-3.5 px-3 rounded-[10px] font-extrabold text-[12px] md:text-[13px] uppercase tracking-wider transition-all duration-300 shadow-md hover:shadow-lg active:scale-95 ${isSelected
                           ? "bg-[#2D2DA3] text-white"
                           : "bg-[#EAEAEA] text-[#2D2DA3] hover:bg-[#D9D9D9]"
                           }`}
@@ -879,16 +883,16 @@ function BundleDetailsContent() {
 
         {/* Payment Section */}
         {selectedTier && (
-          <div className="mt-16" id="payment-section">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-600 mb-3">Complete Your Purchase Securely</h2>
+          <div className="mt-8 md:mt-16" id="payment-section">
+            <div className="text-center mb-5 md:mb-8">
+              <h2 className="text-3xl font-bold text-gray-800 mb-3">Complete Your Purchase Securely</h2>
               <p className="text-gray-500 text-lg">Your information is protected and your project starts immediately.</p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-6">
+              <div className="lg:col-span-2 space-y-8 lg:space-y-6">
                 {/* Unified Card Container with Project Details & Payment Form */}
-                <div className="bg-white border border-gray-300 rounded-[4px] shadow-sm p-6 md:p-8">
+                <div className="bg-white border border-gray-300 rounded-[10px] shadow-sm p-6 md:p-8">
                   {/* Top Badges */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                     <div className="bg-gray-200 px-4 py-2 rounded-full w-fit">
@@ -927,12 +931,12 @@ function BundleDetailsContent() {
 
                   {/* Title & Price Header */}
                   <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
-                    <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-600 leading-tight pr-4" style={{ maxWidth: "100%" }}>
+                    <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 leading-tight pr-4" style={{ maxWidth: "100%" }}>
                       {pkg.name} - {selectedTier.title}
                     </h3>
                     <div className="items-center gap-6">
                       <div className="flex flex-col">
-                        <div className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-600">
+                        <div className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-800">
                           {formatPrice(parsePrice(selectedTier.price))}
                         </div>
                         <div className="flex flex-col items-end mt-1">
@@ -950,11 +954,10 @@ function BundleDetailsContent() {
 
                   {/* Project Meta Details */}
                   <div className="mb-6 text-sm text-gray-500 flex items-center gap-3 flex-wrap justify-between">
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col gap-1">
                       <span>
                         <strong>Project No:</strong> #{projectNo}
                       </span>
-                      <span className="text-gray-400">|</span>
                       <span>
                         <strong>Timeline:</strong> {getDurationLabel(selectedTier)}
                       </span>
@@ -1062,7 +1065,7 @@ function BundleDetailsContent() {
                   <button
                     onClick={() => handleSaveOrder(selectedTier)}
                     disabled={processing}
-                    className="w-full px-6 py-3 bg-white border border-gray-300 text-gray-600 font-bold text-xs uppercase tracking-widest hover:bg-gray-50 rounded transition-all duration-200 shadow-sm active:scale-95"
+                    className="w-full px-6 py-3 bg-white border border-gray-300 text-gray-600 font-bold text-xs uppercase tracking-widest hover:bg-gray-50 rounded-[10px] transition-all duration-200 shadow-sm active:scale-95"
                   >
                     {processing ? "Processing..." : "Save Order & Pay Later (Generate Invoice)"}
                   </button>
@@ -1071,14 +1074,14 @@ function BundleDetailsContent() {
 
               {/* Support Card */}
               <div className="lg:col-span-1">
-                <div className="bg-white border border-gray-300 rounded-[4px] shadow-sm p-6 sticky top-28">
-                  <h3 className="text-xl font-bold text-gray-600 text-center mb-3">Questions Before You Pay?</h3>
+                <div className="bg-white border border-gray-300 rounded-[10px] shadow-sm p-6 sticky top-28">
+                  <h3 className="text-xl font-bold text-gray-800 text-center mb-3">Questions Before You Pay?</h3>
                   <p className="text-sm text-gray-500 text-center mb-6">
                     Our support team is here to help with pricing, payments, or package details—no pressure.
                   </p>
                   <button
                     onClick={openChat}
-                    className="w-full px-6 py-3 bg-[#3535b8] hover:bg-[#2a2a9a] text-white font-semibold rounded transition-colors duration-200"
+                    className="w-full px-6 py-3 bg-[#3535b8] hover:bg-[#2a2a9a] text-white font-semibold rounded-[10px] transition-colors duration-200"
                   >
                     Contact Support
                   </button>
