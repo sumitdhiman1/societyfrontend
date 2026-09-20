@@ -15,6 +15,7 @@ import { capitalizeCurrencyInText, formatPriceWithCurrency } from "@/lib/currenc
 import { useCurrency } from "@/context/CurrencyContext";
 import { useTimezone } from "@/context/TimezoneContext";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
+import RecommendedSolutions from "@/components/common/RecommendedSolutions";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import { getVatRateForCountry } from "@/lib/vatHelper";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
