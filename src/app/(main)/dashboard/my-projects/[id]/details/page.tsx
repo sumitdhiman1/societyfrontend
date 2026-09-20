@@ -1375,7 +1375,7 @@ export default function ProjectDetailsPage() {
                         };
                         await downloadCalculatorProjectPDF(projectPayloadForPdf);
                       } else {
-                        await downloadProjectDetailsPDF(project);
+                        await downloadProjectDetailsPDF({ ...project, isProject: true });
                       }
                     } catch (err) {
                       console.error("Failed to download PDF", err);

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { authService } from "@/lib/authService";
 import { quoteService } from "@/lib/quoteService";
 import { useTimezone } from "@/context/TimezoneContext";
+import { isCalculatorProject } from "@/lib/calculator/shared";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 const STATUS_MAPPING: Record<string, string | undefined> = {
@@ -68,9 +69,10 @@ export default function MyQuotesPage() {
             ? payload.data
             : [];
       const quoteList = rawQuoteList.filter((q: any) => {
-        if (q.isCalculator === true) return false;
-        if (q.source === "calculator") return false;
-        if (q.requirements?.categoryKey || q.requirements?.calculatedPrice) return false;
+        if (isCalculatorProject(q)) return false;
+        if (q.isCalculator === true || q.isCalculator === "true" || q.isCalculator === 1 || q.isCalculator === "1") return false;
+        if (String(q.source || "").toLowerCase().includes("calculator")) return false;
+        if (q.requirements?.categoryKey || q.requirements?.categoryName || q.requirements?.calculatedPrice || q.requirements?.selections) return false;
         return true;
       });
       setQuotes(quoteList);
