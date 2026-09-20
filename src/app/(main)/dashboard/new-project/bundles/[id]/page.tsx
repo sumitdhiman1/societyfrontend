@@ -647,9 +647,9 @@ function BundleDetailsContent() {
         message={status.message}
       />
 
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-8 md:pb-12">
         {/* Hero Section */}
-        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-10 md:gap-12 mb-10 md:mb-16">
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-8 md:gap-12 mb-8 md:mb-16">
           <div className="lg:w-[50%] flex flex-col">
             <h1 className="text-[28px] md:text-[48px] lg:text-[64px] font-bold text-gray-800 leading-[1.1] mb-4 md:mb-6 tracking-tight">
               {pkg.name}
@@ -660,7 +660,7 @@ function BundleDetailsContent() {
             </p>
           </div>
           <div className="lg:w-[50%] flex items-center justify-center lg:justify-end">
-            <div className="w-full max-w-[620px] aspect-[16/10] bg-[#F0F0F0] rounded-[4px] overflow-hidden shadow-sm border border-gray-200">
+            <div className="w-full max-w-[620px] aspect-[16/10] bg-[#F0F0F0] rounded-[10px] overflow-hidden shadow-sm border border-gray-200">
               <img
                 alt={pkg.name}
                 className="w-full h-full object-cover"
@@ -674,7 +674,7 @@ function BundleDetailsContent() {
         </div>
 
         {/* Comparison Table */}
-        <div className="border border-gray-200 rounded-[4px] overflow-hidden shadow-sm bg-white mb-10 md:mb-16">
+        <div className="border border-gray-200 rounded-[10px] overflow-hidden shadow-sm bg-white mb-8 md:mb-16">
           <div className="overflow-x-auto" style={{ cursor: "grab" }}>
             <div className="w-full min-w-[900px]">
               {/* Header: What's Included */}
@@ -870,16 +870,16 @@ function BundleDetailsContent() {
 
         {/* Payment Section */}
         {selectedTier && (
-          <div className="mt-16" id="payment-section">
-            <div className="text-center mb-8">
+          <div className="mt-8 md:mt-16" id="payment-section">
+            <div className="text-center mb-5 md:mb-8">
               <h2 className="text-3xl font-bold text-gray-600 mb-3">Complete Your Purchase Securely</h2>
               <p className="text-gray-500 text-lg">Your information is protected and your project starts immediately.</p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-6">
+              <div className="lg:col-span-2 space-y-8 lg:space-y-6">
                 {/* Unified Card Container with Project Details & Payment Form */}
-                <div className="bg-white border border-gray-300 rounded-[4px] shadow-sm p-6 md:p-8">
+                <div className="bg-white border border-gray-300 rounded-[10px] shadow-sm p-6 md:p-8">
                   {/* Top Badges */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                     <div className="bg-gray-200 px-4 py-2 rounded-full w-fit">
@@ -1062,7 +1062,7 @@ function BundleDetailsContent() {
 
               {/* Support Card */}
               <div className="lg:col-span-1">
-                <div className="bg-white border border-gray-300 rounded-[4px] shadow-sm p-6 sticky top-28">
+                <div className="bg-white border border-gray-300 rounded-[10px] shadow-sm p-6 sticky top-28">
                   <h3 className="text-xl font-bold text-gray-600 text-center mb-3">Questions Before You Pay?</h3>
                   <p className="text-sm text-gray-500 text-center mb-6">
                     Our support team is here to help with pricing, payments, or package details—no pressure.

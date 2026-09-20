@@ -368,8 +368,8 @@ export default function AnalysisOrderPage() {
         />
       )}
 
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-12">
-        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-10 md:gap-12 mb-10 md:mb-16">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-8 md:pb-12">
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-8 md:gap-12 mb-8 md:mb-16">
           <div className="lg:w-[50%] flex flex-col">
             <h1 className="text-[28px] md:text-[48px] lg:text-[64px] font-bold text-gray-800 leading-[1.1] mb-4 md:mb-6 tracking-tight">
               {title}
@@ -379,7 +379,7 @@ export default function AnalysisOrderPage() {
             </p>
           </div>
           <div className="lg:w-[50%] flex items-center justify-center lg:justify-end">
-            <div className="w-full max-w-[620px] aspect-[16/10] bg-[#F0F0F0] rounded-[4px] overflow-hidden shadow-sm border border-gray-200">
+            <div className="w-full max-w-[620px] aspect-[16/10] bg-[#F0F0F0] rounded-[10px] overflow-hidden shadow-sm border border-gray-200">
               {imageSrc ? (
                 <img
                   alt={title}
@@ -395,7 +395,7 @@ export default function AnalysisOrderPage() {
           </div>
         </div>
 
-        <div className="bg-[#fcfcfc] border border-gray-200 rounded-[4px] shadow-sm p-6 md:p-8 mb-10 md:mb-16">
+        <div className="bg-[#fcfcfc] border border-gray-200 rounded-[10px] shadow-sm p-6 md:p-8 mb-8 md:mb-16">
           <h2 className="text-xl font-bold text-gray-700 mb-6">Fill out the form to order:</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Column 1 (Left side) */}
@@ -502,17 +502,17 @@ export default function AnalysisOrderPage() {
           </div>
         </div>
 
-        <div className="mt-16" id="payment-section">
-          <div className="text-center mb-8">
+        <div className="mt-8 md:mt-16" id="payment-section">
+          <div className="text-center mb-5 md:mb-8">
             <h2 className="text-3xl font-bold text-gray-600 mb-3">Complete Your Purchase Securely</h2>
             <p className="text-gray-500 text-lg">Your information is protected and your project starts immediately.</p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-6">
             {/* Free Analysis Flow */}
             {isFree ? (
-              <div className="lg:col-span-2 space-y-6">
-                <div className="bg-white border border-gray-300 rounded-[4px] shadow-sm p-6 md:p-8">
+              <div className="lg:col-span-2 space-y-8 lg:space-y-6">
+                <div className="bg-white border border-gray-300 rounded-[10px] shadow-sm p-6 md:p-8">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                     <div className="bg-gray-200 px-4 py-2 rounded-full w-fit">
                       <div className="flex items-center gap-1">
@@ -598,7 +598,7 @@ export default function AnalysisOrderPage() {
                   </div>
                 </div>
 
-                <div className="bg-white border border-gray-300 rounded-[4px] shadow-sm p-6 md:p-8 flex flex-col items-center justify-center text-center">
+                <div className="bg-white border border-gray-300 rounded-[10px] shadow-sm p-6 md:p-8 flex flex-col items-center justify-center text-center">
                   <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -620,8 +620,8 @@ export default function AnalysisOrderPage() {
                 </div>
               </div>
             ) : (
-              <div className="lg:col-span-2 space-y-6">
-                <div className="bg-white border border-gray-300 rounded-[4px] shadow-sm p-6 md:p-8">
+              <div className="lg:col-span-2 space-y-8 lg:space-y-6">
+                <div className="bg-white border border-gray-300 rounded-[10px] shadow-sm p-6 md:p-8">
                   {/* Top Badges */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                     <div className="bg-gray-200 px-4 py-2 rounded-full w-fit">
@@ -788,7 +788,7 @@ export default function AnalysisOrderPage() {
             )}
 
             <div className="lg:col-span-1">
-              <div className="bg-white border border-gray-300 rounded-[4px] shadow-sm p-6 sticky top-28">
+              <div className="bg-white border border-gray-300 rounded-[10px] shadow-sm p-6 sticky top-28">
                 <h3 className="text-xl font-bold text-gray-600 text-center mb-3">Questions Before You Pay?</h3>
                 <p className="text-sm text-gray-500 text-center mb-6">
                   Our support team is here to help with pricing, payments, or package details—no pressure.

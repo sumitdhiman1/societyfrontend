@@ -75,7 +75,7 @@ function PackageDetailsContent() {
 
   useEffect(() => {
     setProjectNo(Math.random().toString(36).substring(2, 9).toUpperCase());
-    
+
     const initUser = async () => {
       const currentUser = authService.getUser();
       if (currentUser) {
@@ -177,7 +177,7 @@ function PackageDetailsContent() {
         const val = f.values?.[tier.id];
         return val && val !== false && (!f.section || f.section === "one-time");
       }).map((f: any) => f.name).join(", ");
-      
+
       const res = await paymentService.createOrder({
         amount: setupPrice,
         currency: currency,
@@ -347,17 +347,17 @@ function PackageDetailsContent() {
         title={status.title}
         message={status.message}
       />
-      
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-16">
-        
+
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-8 md:pb-16">
+
         {/* Hero Section */}
-        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-10 md:gap-12 mb-10 md:mb-16">
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-8 md:gap-12 mb-8 md:mb-16">
           <div className="lg:w-[50%] flex flex-col">
-            <h1 className="text-[28px] md:text-[48px] lg:text-[64px] font-bold text-[#363636] leading-[1.1] mb-4 md:mb-6 tracking-tight">{pkg.name}</h1>
+            <h1 className="text-[28px] md:text-[48px] lg:text-[64px] font-bold text-primary-100 leading-[1.1] mb-4 md:mb-6 tracking-tight">{pkg.name}</h1>
             <p className="text-[#808080] leading-relaxed text-base md:text-lg max-w-xl font-medium">{pkg.description || "Professional standalone services designed for quick turnaround and high-quality results."}</p>
           </div>
           <div className="lg:w-[50%] flex items-center justify-center lg:justify-end">
-            <div className="w-full max-w-[620px] aspect-[16/10] bg-[#e0e0e0] rounded-[4px] overflow-hidden shadow-sm border border-gray-200 relative">
+            <div className="w-full max-w-[620px] aspect-[16/10] bg-[#e0e0e0] rounded-[10px] overflow-hidden shadow-sm border border-gray-200 relative">
               {pkg.imageUrl ? <img src={pkg.imageUrl} alt={pkg.name} className="w-full h-full object-cover" /> : (
                 <div className="flex items-center justify-center w-full h-full">
                   <svg className="w-32 h-32 text-gray-400 opacity-60" fill="currentColor" viewBox="0 0 20 20">
@@ -370,13 +370,13 @@ function PackageDetailsContent() {
         </div>
 
         {columns.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-[10px] shadow-[0px_5px_25px_#0000000D] p-8 md:p-12 text-center max-w-2xl mx-auto my-12">
+          <div className="bg-white border border-gray-200 rounded-[10px] shadow-[0px_5px_25px_#0000000D] p-8 md:p-12 text-center max-w-2xl mx-auto my-8 md:my-12">
             <div className="w-16 h-16 bg-blue-50 text-[#3535b8] rounded-full flex items-center justify-center mx-auto mb-6">
               <svg className="w-8 h-8 text-[#3535b8]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
             </div>
-            <h2 className="text-2xl md:text-3xl font-bold text-[#363636] mb-4">Custom Scope Service</h2>
+            <h2 className="text-2xl md:text-3xl font-bold text-primary-100 mb-4">Custom Scope Service</h2>
             <p className="text-[#808080] text-base leading-relaxed mb-8 max-w-lg mx-auto">
               This service is tailored specifically to your unique business goals, requirements, and budget. Request a custom quote today and our expert team will deliver a personalized plan for you.
             </p>
@@ -398,12 +398,12 @@ function PackageDetailsContent() {
         ) : (
           <>
             {/* Comparison Table */}
-            <div className="border border-gray-200 rounded-[10px] overflow-hidden shadow-[0px_5px_25px_#0000000D] bg-white mb-10 md:mb-16">
+            <div className="border border-gray-200 rounded-[10px] overflow-hidden shadow-[0px_5px_25px_#0000000D] bg-white mb-8 md:mb-16">
               <div className="overflow-x-auto">
                 <div className="min-w-[1000px]">
                   <div className="grid divide-x divide-gray-100 border-b border-gray-100" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
                     <div className="p-6 md:p-8 flex items-center bg-white">
-                      <h3 className="text-xl md:text-[32px] font-bold text-[#646464] leading-[1.1]">What&apos;s<br className="hidden md:block" /> Included?</h3>
+                      <h3 className="text-xl md:text-[32px] font-bold text-primary-100 leading-[1.1]">What&apos;s<br className="hidden md:block" /> Included?</h3>
                     </div>
                     {columns.map((col: any, idx: number) => (
                       <div key={idx} className={`p-6 md:p-8 text-center flex flex-col justify-center ${col.id === 'col_custom' || idx === columns.length - 1 ? "bg-[#f5f5f5]" : "bg-[#fafafa]"}`}>
@@ -415,13 +415,13 @@ function PackageDetailsContent() {
                               <span className="text-[10px] md:text-[12px] font-medium text-gray-400 uppercase tracking-tighter mt-1">{col.billingType === 'monthly' ? "Per Month" : "Starting Price"}</span>
                             </div>
                           ) : (
-                            <div className="text-[#646464] font-bold text-[18px] md:text-[22px] leading-tight">{col.price || "Get A Quote"}</div>
+                            <div className="text-primary-100 font-bold text-[18px] md:text-[22px] leading-tight">{col.price || "Get A Quote"}</div>
                           )}
                         </div>
                       </div>
                     ))}
                   </div>
-                  
+
                   <div className="divide-y divide-gray-100">
                     {/* Timeline Row */}
                     <div className="grid divide-x divide-gray-50 bg-gray-50/40 border-b border-gray-100" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
@@ -436,49 +436,49 @@ function PackageDetailsContent() {
                     {features
                       .filter((f: any) => f.key !== "timeline" && f.name?.toLowerCase().trim() !== "timeline")
                       .map((feature: any, fIdx: number) => (
-                      <div key={fIdx} className="grid divide-x divide-gray-50 hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
-                        <div className="p-4 md:p-5 px-6 md:px-8 font-bold text-[#808080] text-[13px] md:text-[15px] flex items-center">{feature.name}</div>
-                        {columns.map((col: any, cIdx: number) => {
-                          let val = feature.values?.[col.id];
-                          if (val === undefined && feature.values) {
-                            const match = Object.keys(feature.values).find(k => k.toLowerCase() === String(col.id).toLowerCase());
-                            if (match) val = feature.values[match];
-                          }
+                        <div key={fIdx} className="grid divide-x divide-gray-50 hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
+                          <div className="p-4 md:p-5 px-6 md:px-8 font-bold text-[#808080] text-[13px] md:text-[15px] flex items-center">{feature.name}</div>
+                          {columns.map((col: any, cIdx: number) => {
+                            let val = feature.values?.[col.id];
+                            if (val === undefined && feature.values) {
+                              const match = Object.keys(feature.values).find(k => k.toLowerCase() === String(col.id).toLowerCase());
+                              if (match) val = feature.values[match];
+                            }
 
-                          let isLink = false;
-                          let linkData = { label: '', url: '' };
-                          if (typeof val === 'string' && val.startsWith('__LINK__:')) {
-                            isLink = true;
-                            const parts = val.replace('__LINK__:', '').split('|');
-                            linkData = { label: parts[0] || '', url: parts[1] || '' };
-                          }
+                            let isLink = false;
+                            let linkData = { label: '', url: '' };
+                            if (typeof val === 'string' && val.startsWith('__LINK__:')) {
+                              isLink = true;
+                              const parts = val.replace('__LINK__:', '').split('|');
+                              linkData = { label: parts[0] || '', url: parts[1] || '' };
+                            }
 
-                          const isBool = typeof val === "boolean" || val === "true" || val === "false";
-                          const boolVal = typeof val === "boolean" ? val : (val === "true");
+                            const isBool = typeof val === "boolean" || val === "true" || val === "false";
+                            const boolVal = typeof val === "boolean" ? val : (val === "true");
 
-                          return (
-                            <div key={cIdx} className="p-5 flex items-center justify-center">
-                              {isLink ? (
-                                <a
-                                  href={linkData.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-[13px] font-bold text-[#3535b8] hover:underline"
-                                >
-                                  {linkData.label}
-                                </a>
-                              ) : isBool ? (
-                                boolVal ? <CheckIcon /> : <CrossIcon />
-                              ) : val == null || val === "" || val === "-" ? (
-                                <span className="text-gray-300">-</span>
-                              ) : (
-                                <span className="text-[15px] font-bold text-[#646464]">{String(val)}</span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
+                            return (
+                              <div key={cIdx} className="p-5 flex items-center justify-center">
+                                {isLink ? (
+                                  <a
+                                    href={linkData.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[13px] font-bold text-[#3535b8] hover:underline"
+                                  >
+                                    {linkData.label}
+                                  </a>
+                                ) : isBool ? (
+                                  boolVal ? <CheckIcon /> : <CrossIcon />
+                                ) : val == null || val === "" || val === "-" ? (
+                                  <span className="text-gray-300">-</span>
+                                ) : (
+                                  <span className="text-[15px] font-bold text-[#646464]">{String(val)}</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
                   </div>
 
                   <div className="grid divide-x divide-gray-100 border-t border-gray-100 bg-white" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
@@ -501,21 +501,21 @@ function PackageDetailsContent() {
             {/* Payment Section */}
             {selectedTier && (
               <div className="animate-in slide-in-from-bottom duration-700" id="payment-section">
-                <div className="text-center mb-12">
-                  <h1 className="text-[32px] md:text-[42px] font-bold text-[#363636] mb-3">Complete Your Purchase Securely</h1>
+                <div className="text-center mb-5 md:mb-12">
+                  <h1 className="text-[32px] md:text-[42px] font-bold text-primary-100 mb-3">Complete Your Purchase Securely</h1>
                   <p className="text-[#808080] text-lg">Your information is protected and your project starts immediately.</p>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                   <div className="lg:col-span-2">
                     {/* Project Summary Card */}
-                    <div className="bg-white border border-gray-200 rounded-[10px] shadow-[0px_5px_25px_#0000000D] p-8 mb-8 relative">
+                    <div className="bg-white border border-gray-200 rounded-[10px] shadow-[0px_5px_25px_#0000000D] p-4 sm:p-6 md:p-8 mb-8 relative">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-                        <div className="bg-[#e0e0e0] px-4 py-1.5 rounded-full w-fit">
-                          <span className="text-[11px] text-[#808080] font-bold uppercase tracking-wider">Start Date: {new Date().toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}</span>
+                        <div className="bg-[#e0e0e0] px-4 h-7 rounded-full w-fit flex items-center">
+                          <span className="text-[11px] text-[#808080] font-bold uppercase tracking-wider leading-none">Start Date: {new Date().toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}</span>
                         </div>
-                        <div className="bg-[#e0e0e0] px-4 py-1.5 rounded-full w-fit flex items-center gap-2">
-                          <span className="text-[11px] text-[#808080] font-bold uppercase tracking-wider">
+                        <div className="bg-[#e0e0e0] px-4 h-7 rounded-full w-fit flex items-center gap-2">
+                          <span className="text-[11px] text-[#808080] font-bold uppercase tracking-wider leading-none">
                             Estimated Deadline: {(() => {
                               const days = getTimelineDays(selectedTier);
                               const d = new Date();
@@ -529,23 +529,23 @@ function PackageDetailsContent() {
 
                       <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
                         <div className="flex-1">
-                          <h3 className="text-2xl md:text-3xl font-bold text-[#646464] leading-tight mb-3">
+                          <h3 className="text-2xl md:text-3xl font-bold text-primary-100 leading-tight mb-3">
                             {pkg.name} - {selectedTier?.title || "Select a plan"}
                           </h3>
-                          <div className="text-[13px] text-[#808080] font-bold flex items-center gap-2">
+                          <div className="text-[13px] text-[#808080] font-bold flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                             <span>Project No: #{projectNo}</span>
-                            <span className="text-gray-300">|</span>
+                            <span className="hidden sm:inline text-gray-300">|</span>
                             <span>Timeline: {getDurationLabel(selectedTier)}</span>
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           <div className="flex items-center gap-4">
-                            <div className="text-[34px] md:text-[40px] font-bold text-[#646464] leading-none">
+                            <div className="text-[34px] md:text-[40px] font-bold text-primary-100 leading-none">
                               {formatPrice(parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0) + getVatAmount(parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0)))}
                             </div>
                             <div className="relative">
-                              <select 
-                                value={currency.toUpperCase()} 
+                              <select
+                                value={currency.toUpperCase()}
                                 onChange={(e) => setCurrency(e.target.value.toLowerCase())}
                                 className="bg-white border border-gray-300 text-[#646464] text-xs font-bold rounded px-3 py-2 outline-none appearance-none pr-8 cursor-pointer shadow-sm hover:border-gray-400 transition-colors"
                               >
@@ -644,12 +644,12 @@ function PackageDetailsContent() {
 
                   {/* Sidebar Section */}
                   <div className="bg-white border border-gray-200 rounded-[10px] shadow-[0px_5px_25px_#0000000D] p-8 text-center sticky top-28">
-                    <h3 className="text-xl font-bold text-[#646464] mb-3">Questions Before You Pay?</h3>
+                    <h3 className="text-xl font-bold text-primary-100 mb-3">Questions Before You Pay?</h3>
                     <p className="text-[13px] text-[#808080] mb-8 leading-relaxed">
                       Our support team is here to help with pricing, payments, or package details—no pressure.
                     </p>
-                    <button 
-                      onClick={openChat} 
+                    <button
+                      onClick={openChat}
                       className="w-full bg-[#3535b8] hover:bg-[#2a2a9a] text-white py-3.5 rounded-md font-bold text-sm transition-all shadow-md active:scale-95 cursor-pointer"
                     >
                       Contact Support

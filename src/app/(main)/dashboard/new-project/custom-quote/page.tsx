@@ -262,11 +262,11 @@ export default function CustomQuotePage() {
 
   return (
     <div className="bg-white min-h-screen flex flex-col font-sans">
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-10 pb-12">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-10 pb-8 md:pb-12">
         <h1 className="text-[28px] md:text-[32px] font-medium text-primary-100 mb-8 md:mb-12">New Quote</h1>
 
       {/* Tell us about your project box */}
-      <div className="border border-gray-400 rounded-sm p-8 pb-12 mb-12 bg-white">
+      <div className="border border-gray-400 rounded-[10px] p-4 sm:p-6 md:p-8 pb-8 md:pb-12 mb-8 md:mb-12 bg-white">
         <div className="mb-8">
           <h2 className="text-[22px] font-bold text-gray-800 mb-3">Tell us about your project</h2>
           <p className="text-xs text-gray-600 leading-relaxed max-w-4xl">

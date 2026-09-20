@@ -146,11 +146,19 @@ function PackagesContent() {
   const [loading, setLoading] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
 
-  // Accordion sections
-  const [showCategories, setShowCategories] = useState(false);
-  const [showPriceFilter, setShowPriceFilter] = useState(false);
-  const [showTimelineFilter, setShowTimelineFilter] = useState(false);
+  // Accordion sections (open by default on desktop, closed on mobile)
+  const [showCategories, setShowCategories] = useState(true);
+  const [showPriceFilter, setShowPriceFilter] = useState(true);
+  const [showTimelineFilter, setShowTimelineFilter] = useState(true);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setShowCategories(false);
+      setShowPriceFilter(false);
+      setShowTimelineFilter(false);
+    }
+  }, []);
 
   // Derive active category directly from searchParams (Single Source of Truth)
   const categoryCodeParam = (searchParams.get("categorycode") || "ALL").toUpperCase();
