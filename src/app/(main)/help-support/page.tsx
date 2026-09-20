@@ -4,7 +4,6 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useChatWidget } from "@/context/ChatWidgetContext";
-import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
 export default function HelpSupportPage() {
   const { openChat } = useChatWidget();
@@ -134,31 +133,32 @@ export default function HelpSupportPage() {
             <div className="flex flex-col md:flex-row gap-4 md:gap-8 mb-4">
               <div className="flex-1">
                 <p className="text-sm font-bold text-[#808080] mb-2">United States</p>
-                <div className="bg-[#5356ff] rounded-lg px-4 py-3 flex items-center gap-3 shadow-md hover:bg-[#3232b7] transition-colors cursor-pointer group">
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <a
+                  href="tel:+15619353359"
+                  className="bg-[#5356ff] rounded-lg px-4 py-3 flex items-center gap-3 shadow-md hover:bg-[#3232b7] transition-colors cursor-pointer group no-underline"
+                >
+                  <svg className="w-4 h-4 text-white shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
                   </svg>
-                  <span className="font-bold text-white text-lg tracking-tight">+1 (542) 144-2141</span>
-                </div>
-                <p className="text-xs text-[#999999] mt-2">Monday to Saturday, 9 AM to 8 PM</p>
+                  <span className="font-bold text-white text-lg tracking-tight whitespace-nowrap">+1 (561) 935-3359</span>
+                </a>
+                <p className="text-xs text-[#999999] mt-2 leading-relaxed">From Monday to Friday, 9 AM to 5 PM (EDT) (UTC-4)</p>
               </div>
               <div className="flex-1">
                 <p className="text-sm font-bold text-[#808080] mb-2">Europe</p>
-                <div className="bg-[#5356ff] rounded-lg px-4 py-3 flex items-center gap-3 shadow-md hover:bg-[#3232b7] transition-colors cursor-pointer group">
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <a
+                  href="tel:+37256813501"
+                  className="bg-[#5356ff] rounded-lg px-4 py-3 flex items-center gap-3 shadow-md hover:bg-[#3232b7] transition-colors cursor-pointer group no-underline"
+                >
+                  <svg className="w-4 h-4 text-white shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
                   </svg>
-                  <span className="font-bold text-white text-lg tracking-tight">+44 542 144 2141</span>
-                </div>
-                <p className="text-xs text-[#999999] mt-2">Monday to Saturday, 9 AM to 8 PM</p>
+                  <span className="font-bold text-white text-lg tracking-tight whitespace-nowrap">+372 5681 3501</span>
+                </a>
+                <p className="text-xs text-[#999999] mt-2 leading-relaxed">From Monday to Friday, 12 PM to 8 PM (EEST) (UTC+3)</p>
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Newsletter Section */}
-        <div className="border-t border-gray-200 pt-8 md:pt-16">
-          <SupportNewsletter noPadding gridClassName="!mt-0 md:!mt-12" />
         </div>
       </main>
     </div>
