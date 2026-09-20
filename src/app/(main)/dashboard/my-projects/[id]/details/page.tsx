@@ -233,7 +233,19 @@ export default function ProjectDetailsPage() {
   const searchParams = useSearchParams();
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      return authService.getUser();
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    const user = authService.getUser();
+    if (user) {
+      setCurrentUser(user);
+    }
+  }, []);
   const [attachments, setAttachments] = useState<any[]>([]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isTogglingRenewal, setIsTogglingRenewal] = useState(false);
@@ -485,8 +497,21 @@ export default function ProjectDetailsPage() {
 
   const formatCurrency = (amt: any, customSourceCurrency?: string) => {
     const num = Number(amt || 0);
-    const srcCurrency = (customSourceCurrency || project?.currency || "USD").toUpperCase();
-    const targetCurrency = (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || "USD").toUpperCase();
+    const activeUser = currentUser || (typeof window !== "undefined" ? authService.getUser() : null);
+    const resolvedProjectCurrency = (
+      project?.currency ||
+      linkedQuote?.currency ||
+      projectPayments[0]?.currency ||
+      (project?.currencySymbol === "€" ? "EUR" : project?.currencySymbol === "$" ? "USD" : "USD")
+    ).toUpperCase();
+    const srcCurrency = (customSourceCurrency || resolvedProjectCurrency || "USD").toUpperCase();
+    const targetCurrency = (
+      contextCurrency ||
+      activeUser?.currency ||
+      activeUser?.preferredCurrency ||
+      resolvedProjectCurrency ||
+      "USD"
+    ).toUpperCase();
     return formatPriceWithCurrency(num, targetCurrency, srcCurrency, conversionRate);
   };
 
@@ -912,8 +937,17 @@ export default function ProjectDetailsPage() {
     project?.currency ||
     linkedQuote?.currency ||
     projectPayments[0]?.currency ||
-    "USD"
+    (project?.currencySymbol === "€" ? "EUR" : project?.currencySymbol === "$" ? "USD" : "USD")
   ).toLowerCase();
+
+  const activeUser = currentUser || (typeof window !== "undefined" ? authService.getUser() : null);
+  const targetCurrency = (
+    contextCurrency ||
+    activeUser?.currency ||
+    activeUser?.preferredCurrency ||
+    projectNativeCurrency ||
+    "USD"
+  ).toUpperCase();
 
   const ledgerPayments = (project?.paymentLedger || []).map((entry: any, index: number) => ({
     _id: entry.transactionId || `ledger-${index}`,
@@ -1153,7 +1187,7 @@ export default function ProjectDetailsPage() {
             {project.calculatorSpecs ? (
               <div className="mb-10">
                 <div className="text-sm text-gray-700 leading-relaxed font-medium">
-                  <CalculatorSpecsCard specs={project.calculatorSpecs} />
+                  <CalculatorSpecsCard specs={project.calculatorSpecs} currency={targetCurrency} />
                 </div>
               </div>
             ) : (

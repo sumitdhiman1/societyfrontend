@@ -787,7 +787,7 @@ export default function CalculatorProjectDetails({
             {specs && Object.keys(specs).length > 0 && (
               <div className="mb-10">
                 <div className="text-sm text-gray-700 leading-relaxed font-medium">
-                  <CalculatorSpecsCard specs={specs} />
+                  <CalculatorSpecsCard specs={specs} currency={activeDisplayCurrency} />
                 </div>
               </div>
             )}
