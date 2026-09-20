@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/lib/authService";
 import { projectService } from "@/lib/projectService";
+import { getProjectEstimatedDeadline } from "@/lib/calculatorUtils";
 import DeadlineTooltip from "@/components/common/DeadlineTooltip";
 
 const CardsIcon = () => (
@@ -149,18 +150,35 @@ export default function ProjectTabs() {
               .filter((p: any) => p.type !== "analysis" && !p.isAnalysis)
               .map((p: any) => {
                 const pid = p._id || p.id || p.projectId;
+                const estDeadline = getProjectEstimatedDeadline(p);
+                const deadlineFormatted = estDeadline
+                  ? new Date(estDeadline).toLocaleDateString("en-US", {
+                      month: "numeric",
+                      day: "numeric",
+                      year: "2-digit",
+                    })
+                  : p.deadline
+                  ? new Date(p.deadline).toLocaleDateString("en-US", {
+                      month: "numeric",
+                      day: "numeric",
+                      year: "2-digit",
+                    })
+                  : "Ongoing";
+
                 return {
                   id: pid,
                   name: p.title,
-                  number: pid ? `#${pid.slice(-8).toUpperCase()}` : "#00000000",
-                  started: new Date(p.startDate).toLocaleDateString("en-US", {
-                    month: "numeric",
-                    day: "numeric",
-                    year: "2-digit",
-                  }),
-                  deadline: "Ongoing",
+                  number: p.projectNumber || (pid ? `#${pid.slice(-8).toUpperCase()}` : "#00000000"),
+                  started: p.startDate
+                    ? new Date(p.startDate).toLocaleDateString("en-US", {
+                        month: "numeric",
+                        day: "numeric",
+                        year: "2-digit",
+                      })
+                    : "-",
+                  deadline: deadlineFormatted,
                   status: p.status.toLowerCase() === "cancelled" ? "canceled" : p.status.toLowerCase(),
-                  messages: p.unreadMessagesCount,
+                  messages: p.unreadMessagesCount || 0,
                   infoUrl: p.infoUrl || `/dashboard/my-projects/${pid}`,
                 };
               });
@@ -359,12 +377,8 @@ export default function ProjectTabs() {
                       <div>
                         <div className="flex items-center">
                           <p className="text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
-                            Deadline
+                            Estimated Deadline
                           </p>
-                          <p className="hidden text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
-                            Exp. Deadline
-                          </p>
-                          {/* <DeadlineTooltip /> */}
                         </div>
                         <p className="text-[#363636] text-[13px] xl:text-[15px] font-medium leading-[18px]">
                           {p.deadline}
@@ -424,7 +438,7 @@ export default function ProjectTabs() {
                 <div className="col-span-2">Project number</div>
                 <div className="col-span-2">Started</div>
                 <div className="col-span-2 text-[#4343F0] font-bold">
-                  Exp. Deadline
+                  Estimated Deadline
                 </div>
                 <div className="col-span-2"></div>
               </div>
