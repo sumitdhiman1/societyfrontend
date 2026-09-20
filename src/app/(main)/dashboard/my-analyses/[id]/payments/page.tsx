@@ -458,6 +458,24 @@ export default function AnalysisPaymentsPage() {
 
     const timelineDays = parseInt(String(activeAnalysis.timelineInDays || activeAnalysis.totalDuration || "5"), 10) || 5;
 
+    const rawUrls = (activeAnalysis.targetWebsiteUrl || activeAnalysis.websiteUrl || "").trim();
+    const submittedUrls = rawUrls
+      ? rawUrls
+          .split(/[\n,;]+/)
+          .map((u: string) => u.trim())
+          .filter(Boolean)
+      : [];
+
+    const calculatedDeadline =
+      activeAnalysis.deadline ||
+      activeAnalysis.estimatedDeadline ||
+      (activeAnalysis.startDate || activeAnalysis.createdAt
+        ? new Date(
+            new Date(activeAnalysis.startDate || activeAnalysis.createdAt).getTime() +
+              timelineDays * 24 * 60 * 60 * 1000
+          ).toISOString()
+        : new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString());
+
     return {
       ...activeAnalysis,
       isProject: true,
@@ -466,6 +484,20 @@ export default function AnalysisPaymentsPage() {
       projectTitle: activeTitle,
       description: activeDesc,
       projectDescription: activeDesc,
+      deadline: calculatedDeadline,
+      estimatedDeadline: calculatedDeadline,
+      targetWebsiteUrl: activeAnalysis.targetWebsiteUrl || activeAnalysis.websiteUrl || "",
+      websiteUrl: activeAnalysis.targetWebsiteUrl || activeAnalysis.websiteUrl || "",
+      submittedUrls: submittedUrls,
+      scopeOfWork: (activeAnalysis.scopeOfWork || activeAnalysis.metadata?.scopeOfWork || "").trim(),
+      whoCompletedWork: (activeAnalysis.whoCompletedWork || activeAnalysis.metadata?.whoCompletedWork || "").trim(),
+      agreementDetails: (activeAnalysis.agreementDetails || activeAnalysis.metadata?.agreementDetails || "").trim(),
+      additionalComments: (activeAnalysis.additionalComments || activeAnalysis.metadata?.additionalComments || "").trim(),
+      loginsDetails: (activeAnalysis.loginsDetails || activeAnalysis.metadata?.loginsDetails || "").trim(),
+      isLoginsDetailsVisible: Boolean(
+        activeAnalysis.loginsDetails &&
+        activeAnalysis.loginsDetails !== "checking@societywebsolutions.com"
+      ),
       currency: activeCurrency,
       targetCurrency: activeCurrency,
       sourceCurrency: sourceCurrency,
@@ -488,8 +520,11 @@ export default function AnalysisPaymentsPage() {
       ],
       addons: allAddonItems.map((a: any) => ({
         name: a.description || a.title || "Add-on Task",
-        details: a.details || "",
-        duration: a.duration ? `${a.duration} ${a.unit || "Days"}` : "1 Days",
+        duration: a.duration
+          ? (/\b(days?|weeks?|months?|years?|hours?)\b/i.test(String(a.duration))
+              ? String(a.duration).trim()
+              : `${String(a.duration).trim()} ${a.unit || "Days"}`.trim())
+          : "1 Days",
         amount: Number(a.amount || 0),
       })),
     };

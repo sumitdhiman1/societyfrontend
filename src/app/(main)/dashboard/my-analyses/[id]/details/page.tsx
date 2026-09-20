@@ -920,6 +920,48 @@ export default function AnalysisDetailsPage() {
 
   const addonsTotal = allAddonDeliverables.reduce((sum: number, it: any) => sum + (Number(it.amount) || 0), 0);
 
+  const parseDaysFromStr = (durStr: any): number => {
+    if (!durStr) return 0;
+    const str = String(durStr).toLowerCase();
+    const match = str.match(/(\d+(\.\d+)?)/);
+    const val = match ? parseFloat(match[0]) : 0;
+    if (str.includes('month')) return Math.round(val * 30);
+    if (str.includes('week')) return Math.round(val * 7);
+    return Math.round(val);
+  };
+
+  const addonDurationDays = allAddonDeliverables.reduce((sum: number, it: any) => {
+    return sum + parseDaysFromStr(it.duration);
+  }, 0);
+
+  const initialAnalysisDuration = (() => {
+    if (Array.isArray(analysis.deliverableItems) && analysis.deliverableItems.length > 0 && analysis.deliverableItems[0]?.duration) {
+      const dur = String(analysis.deliverableItems[0].duration).trim();
+      return /\b(days?|weeks?|months?)\b/i.test(dur) ? dur : `${dur} ${analysis.deliverableItems[0].unit || 'Days'}`.trim();
+    }
+    if (analysis.timelineInDays) {
+      return `${analysis.timelineInDays} Days`;
+    }
+    if (analysis.package?.timelineInDays) {
+      return `${analysis.package.timelineInDays} Days`;
+    }
+    if (analysis.product?.timelineInDays) {
+      return `${analysis.product.timelineInDays} Days`;
+    }
+    if (analysis.totalDuration) {
+      if (allAddonDeliverables.length > 0 && addonDurationDays > 0) {
+        const totalDays = parseDaysFromStr(analysis.totalDuration);
+        if (totalDays > addonDurationDays) {
+          const remainingDays = totalDays - addonDurationDays;
+          return `${remainingDays} Day${remainingDays > 1 ? 's' : ''}`;
+        }
+      }
+      const dur = String(analysis.totalDuration).trim();
+      return /\b(days?|weeks?|months?)\b/i.test(dur) ? dur : `${dur} Days`;
+    }
+    return "5 Days";
+  })();
+
   let initialAnalysisPrice = 0;
   if (Array.isArray(analysis.deliverableItems) && analysis.deliverableItems.length > 0) {
     initialAnalysisPrice = analysis.deliverableItems.reduce((s: number, i: any) => s + (Number(i.amount ?? i.cost) || 0), 0);
@@ -1142,13 +1184,32 @@ export default function AnalysisDetailsPage() {
       )
       : [];
 
+  const productShareAccessEnabled = (() => {
+    const prod = analysis?.product || matchedProduct || (analysis as any)?.analysisProduct;
+    if (prod) {
+      const vf = prod.visibleFormFields || {};
+      if (vf.shareAccess !== undefined) return Boolean(vf.shareAccess);
+      if (prod.showLoginsDetails !== undefined) return Boolean(prod.showLoginsDetails);
+    }
+    const title = (analysis?.title || "").toLowerCase();
+    if (title.includes("check") || title.includes("work")) {
+      return true;
+    }
+    if (submittedLoginsDetails === "checking@societywebsolutions.com") {
+      return false;
+    }
+    return Boolean(submittedLoginsDetails);
+  })();
+
+  const isLoginsDetailsVisible = Boolean(submittedLoginsDetails && productShareAccessEnabled);
+
   const hasSubmittedRequirements =
     submittedUrls.length > 0 ||
     !!submittedAdditionalComments ||
     !!submittedScopeOfWork ||
     !!submittedWhoCompletedWork ||
     !!submittedAgreementDetails ||
-    !!submittedLoginsDetails ||
+    isLoginsDetailsVisible ||
     extraMetadata.length > 0;
 
   const getStatusBadgeStyle = (status: string) => {
@@ -1167,6 +1228,36 @@ export default function AnalysisDetailsPage() {
     }
     return "bg-[#E1FCEF] text-[#14804A] border-[#E1FCEF]";
   };
+
+  const formatDisplayDate = (date: any): string => {
+    if (!date) return "";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return String(date);
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${mm}/${dd}/${yyyy}`;
+  };
+
+  const analysisEstimatedDeadline =
+    getProjectEstimatedDeadline(analysis) ||
+    (analysis.deadline ? new Date(analysis.deadline) : null) ||
+    (analysis.expectedDeadline ? new Date(analysis.expectedDeadline) : null) ||
+    (analysis.startDate || analysis.createdAt
+      ? (() => {
+          const d = new Date(analysis.startDate || analysis.createdAt);
+          const days =
+            parseDaysFromStr(initialAnalysisDuration) ||
+            Number(analysis.timelineInDays) ||
+            5;
+          d.setDate(d.getDate() + days);
+          return d;
+        })()
+      : (() => {
+          const d = new Date();
+          d.setDate(d.getDate() + 5);
+          return d;
+        })());
 
   const getAnalysisPayloadForPdf = () => {
     const activeTitle = cleanItemTitle || analysis.title || "Website Analysis";
@@ -1189,6 +1280,11 @@ export default function AnalysisDetailsPage() {
       ? baseAmount
       : Number(analysis.price || 0);
 
+    const calculatedDeadline =
+      analysis.deadline ||
+      analysis.estimatedDeadline ||
+      (analysisEstimatedDeadline ? analysisEstimatedDeadline.toISOString() : new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString());
+
     return {
       ...analysis,
       isProject: true,
@@ -1197,6 +1293,17 @@ export default function AnalysisDetailsPage() {
       projectTitle: activeTitle,
       description: activeDesc,
       projectDescription: activeDesc,
+      deadline: calculatedDeadline,
+      estimatedDeadline: calculatedDeadline,
+      targetWebsiteUrl: analysis.targetWebsiteUrl || analysis.websiteUrl || "",
+      websiteUrl: analysis.targetWebsiteUrl || analysis.websiteUrl || "",
+      submittedUrls: submittedUrls,
+      scopeOfWork: submittedScopeOfWork,
+      whoCompletedWork: submittedWhoCompletedWork,
+      agreementDetails: submittedAgreementDetails,
+      additionalComments: submittedAdditionalComments,
+      loginsDetails: isLoginsDetailsVisible ? submittedLoginsDetails : "",
+      isLoginsDetailsVisible: isLoginsDetailsVisible,
       currency: activeCurrency,
       targetCurrency: activeCurrency,
       sourceCurrency: sourceCurrency,
@@ -1212,18 +1319,23 @@ export default function AnalysisDetailsPage() {
       totalPrice: resolvedTotalCost,
       amountPaid: amountPaid,
       pendingBalance: pendingBalance,
+      duration: initialAnalysisDuration,
       deliverables: [
         {
           name: cleanItemTitle,
           details: cleanItemDescription,
-          duration: analysis.totalDuration || (analysis.timelineInDays ? `${analysis.timelineInDays} Days` : "5 Days"),
+          duration: initialAnalysisDuration,
           amount: deliverableAmount,
         },
       ],
       addons: allAddonDeliverables.map((a: any) => ({
         name: a.description || "Add-on Task",
         details: a.details || "",
-        duration: a.duration ? `${a.duration} ${a.unit || "Days"}` : "1 Days",
+        duration: a.duration
+          ? (/\b(days?|weeks?|months?|years?|hours?)\b/i.test(String(a.duration))
+              ? String(a.duration).trim()
+              : `${String(a.duration).trim()} ${a.unit || "Days"}`.trim())
+          : "1 Days",
         amount: Number(a.amount || 0),
       })),
     };
@@ -1306,7 +1418,7 @@ export default function AnalysisDetailsPage() {
                       </div>
                     </td>
                     <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
-                      {analysis.totalDuration || "5 Days"}
+                      {initialAnalysisDuration}
                     </td>
                     <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-right align-top">
                       {isFreeAnalysis || initialAnalysisPrice <= 0 ? (
@@ -1339,7 +1451,7 @@ export default function AnalysisDetailsPage() {
                             {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
                           </td>
                           <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
-                            {item.duration} {item.unit || "Days"}
+                            {item.duration ? `${item.duration}${item.unit ? ` ${item.unit}` : (/\b(days?|weeks?|months?|years?)\b/i.test(String(item.duration)) ? '' : ' Days')}`.trim() : '-'}
                           </td>
                           <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
                             {formatCurrency(item.amount ?? 0)}
@@ -1370,65 +1482,6 @@ export default function AnalysisDetailsPage() {
                 <div className="text-center">
                   <div className="font-bold mb-1 sm:mb-2 text-gray-800">Total Amount</div>
                   <div className="font-bold text-gray-900">{formatCurrency(totalCost)}</div>
-                </div>
-              </div>
-            )}
-
-            {/* Bottom Card Row: Estimated Deadline & Action Buttons (Only for Paid Analysis) */}
-            {!isFreeAnalysis && (
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-gray-200 mb-6">
-                <div>
-                  <div className="text-xs text-gray-500 flex flex-wrap items-center gap-2">
-                    <span className="font-bold text-gray-800 mr-2">Estimated Deadline:</span>
-                    <span>
-                      {getProjectEstimatedDeadline(analysis)
-                        ? formatSubmittedDate(getProjectEstimatedDeadline(analysis))
-                        : analysis.deadline
-                          ? formatSubmittedDate(analysis.deadline)
-                          : "Ongoing"}
-                    </span>
-                    <DeadlineTooltip position="center" />
-                  </div>
-                </div>
-
-                <div className="flex flex-row gap-3 w-full sm:w-auto">
-                  <button
-                    type="button"
-                    disabled={isDownloadingPdf}
-                    onClick={async (e) => {
-                      e.preventDefault();
-                      if (isDownloadingPdf) return;
-                      setIsDownloadingPdf(true);
-                      try {
-                        await downloadAnalysisPDF(getAnalysisPayloadForPdf());
-                      } catch (err) {
-                        console.error("Failed to download PDF", err);
-                        toast.error("Failed to download PDF. Please try again.");
-                      } finally {
-                        setIsDownloadingPdf(false);
-                      }
-                    }}
-                    className="flex-1 sm:flex-initial px-6 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
-                  >
-                    {isDownloadingPdf ? (
-                      <>
-                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Downloading...</span>
-                      </>
-                    ) : (
-                      "Download Project (.PDF)"
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      printAnalysisDetails(getAnalysisPayloadForPdf());
-                    }}
-                    className="flex-1 sm:flex-initial px-6 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap"
-                  >
-                    Print Details
-                  </button>
                 </div>
               </div>
             )}
@@ -1512,7 +1565,7 @@ export default function AnalysisDetailsPage() {
                     </div>
                   )}
 
-                  {submittedLoginsDetails && (
+                  {isLoginsDetailsVisible && (
                     <div className="w-full bg-gray-50 p-3 rounded border border-gray-200">
                       <span className="block font-bold text-gray-700 text-xs uppercase mb-1">
                         Please share required access with our email
@@ -1536,6 +1589,59 @@ export default function AnalysisDetailsPage() {
                 </div>
               </div>
             )}
+
+            {/* Bottom Card Row: Estimated Deadline & Action Buttons (Shown after second box) */}
+            <div className={`flex flex-col sm:flex-row justify-between items-center gap-4 ${hasSubmittedRequirements ? "mt-6 pt-6 border-t border-gray-200" : "pt-6 border-t border-gray-200"}`}>
+              <div>
+                <div className="text-xs text-gray-500 flex flex-wrap items-center gap-2">
+                  <span className="font-bold text-gray-800 mr-2">Estimated Deadline:</span>
+                  <span className="font-semibold text-gray-800">
+                    {formatDisplayDate(analysisEstimatedDeadline) || "Ongoing"}
+                  </span>
+                  <DeadlineTooltip position="center" />
+                </div>
+              </div>
+
+              <div className="flex flex-row gap-3 w-full sm:w-auto">
+                <button
+                  type="button"
+                  disabled={isDownloadingPdf}
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    if (isDownloadingPdf) return;
+                    setIsDownloadingPdf(true);
+                    try {
+                      await downloadAnalysisPDF(getAnalysisPayloadForPdf());
+                    } catch (err) {
+                      console.error("Failed to download PDF", err);
+                      toast.error("Failed to download PDF. Please try again.");
+                    } finally {
+                      setIsDownloadingPdf(false);
+                    }
+                  }}
+                  className="flex-1 sm:flex-initial px-6 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                >
+                  {isDownloadingPdf ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Downloading...</span>
+                    </>
+                  ) : (
+                    "Download Project (.PDF)"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    printAnalysisDetails(getAnalysisPayloadForPdf());
+                  }}
+                  className="flex-1 sm:flex-initial px-6 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white text-[10px] sm:text-xs font-bold rounded shadow-sm transition-colors cursor-pointer whitespace-nowrap"
+                >
+                  Print Details
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2032,7 +2138,7 @@ export default function AnalysisDetailsPage() {
                                   {item.details && <div className="text-[11px] text-gray-400 mt-0.5">{item.details}</div>}
                                 </td>
                                 <td className="px-6 py-5 text-xs sm:text-sm text-gray-600 font-medium text-center align-middle whitespace-nowrap">
-                                  {item.duration ? `${item.duration} Days` : "-"}
+                                  {item.duration ? `${item.duration}${/\b(days?|weeks?|months?|years?)\b/i.test(String(item.duration)) ? '' : ' Days'}` : "-"}
                                 </td>
                                 <td className="px-6 py-5 text-xs sm:text-sm text-gray-900 text-right font-bold align-middle">
                                   {formatCurrency(item.amount ?? item.cost ?? 0)}

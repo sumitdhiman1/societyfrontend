@@ -569,7 +569,7 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     } else if (Array.isArray(data.deliverableItems) && data.deliverableItems.length > 0) {
       data.deliverableItems.forEach((item: any) => {
         const qTitle = item.description || item.title || item.name || "Deliverable";
-        const ans = item.details || (item.duration ? `${item.duration} ${item.unit || "Days"}`.trim() : "Included");
+        const ans = item.details || (item.duration ? (/\b(days?|weeks?|months?|years?)\b/i.test(String(item.duration)) ? String(item.duration).trim() : `${item.duration} ${item.unit || "Days"}`.trim()) : "Included");
         selectedOptions.push({
           question: qTitle,
           answers: [ans],

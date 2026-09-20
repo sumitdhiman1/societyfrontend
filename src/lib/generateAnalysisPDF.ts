@@ -97,6 +97,17 @@ function parseDurationDays(durationInput: any): number {
   return 0;
 }
 
+function formatDurationLabel(duration: any, defaultUnit = "Days"): string {
+  if (duration === undefined || duration === null || String(duration).trim() === "" || String(duration).trim() === "-") {
+    return "-";
+  }
+  const str = String(duration).trim();
+  if (/\b(days?|weeks?|months?|years?|hours?)\b/i.test(str)) {
+    return str;
+  }
+  return `${str} ${defaultUnit}`.trim();
+}
+
 export interface AnalysisPDFData {
   title: string;
   projectNumber: string;
@@ -135,6 +146,14 @@ export interface AnalysisPDFData {
   formattedAmountPaid?: string;
   formattedPendingBalance?: string;
   isFree?: boolean;
+  submittedUrls?: string[];
+  scopeOfWork?: string;
+  whoCompletedWork?: string;
+  agreementDetails?: string;
+  additionalComments?: string;
+  loginsDetails?: string;
+  isLoginsDetailsVisible?: boolean;
+  hasSubmittedReqs?: boolean;
   [key: string]: any;
 }
 
@@ -200,14 +219,28 @@ export function extractAnalysisPDFData(data: any): AnalysisPDFData {
 
   const submittedDate = formatSubmittedDate(rawCreatedAt);
 
-  const rawDeadline =
-    getProjectEstimatedDeadline(data) ||
-    data.estimatedDeadline ||
+  let rawDeadline =
     data.deadline ||
-    data.deliveryDate;
+    data.estimatedDeadline ||
+    data.deliveryDate ||
+    data.expectedDeadline ||
+    getProjectEstimatedDeadline(data);
+
+  if (!rawDeadline || String(rawDeadline).toLowerCase() === "ongoing") {
+    const startObj = new Date(rawCreatedAt);
+    const validStart = !isNaN(startObj.getTime()) ? startObj : new Date();
+    const days =
+      parseDurationDays(data.duration) ||
+      parseDurationDays(data.totalDuration) ||
+      Number(data.timelineInDays) ||
+      (Array.isArray(data.deliverables) && data.deliverables.length > 0 ? parseDurationDays(data.deliverables[0].duration) : 0) ||
+      5;
+    rawDeadline = new Date(validStart.getTime() + days * 24 * 60 * 60 * 1000);
+  }
+
   const deadlineDate = rawDeadline
     ? formatSubmittedDate(rawDeadline)
-    : "Ongoing";
+    : formatSubmittedDate(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000));
 
   const baseCreatedDate = new Date(rawCreatedAt);
   const validCreated = !isNaN(baseCreatedDate.getTime()) ? baseCreatedDate : new Date();
@@ -288,12 +321,7 @@ export function extractAnalysisPDFData(data: any): AnalysisPDFData {
     deliverables = rawDeliverableItems.map((d: any) => ({
       name: d.description || d.item || d.name || d.title || title,
       details: d.details || "",
-      duration:
-        d.duration !== undefined && d.duration !== null && String(d.duration).trim() !== ""
-          ? String(d.duration).trim().toLowerCase().includes("day") || String(d.duration).trim().toLowerCase().includes("week") || String(d.duration).trim().toLowerCase().includes("month")
-            ? String(d.duration).trim()
-            : `${String(d.duration).trim()} ${d.unit || "Days"}`
-          : "-",
+      duration: formatDurationLabel(d.duration, d.unit || "Days"),
       amount: convert(Number(d.amount ?? d.cost ?? (d.price ?? 0))),
     }));
   } else {
@@ -301,7 +329,7 @@ export function extractAnalysisPDFData(data: any): AnalysisPDFData {
       {
         name: title.toLowerCase().startsWith("free website analysis") ? "Free Website Analysis" : title,
         details: data.description || "",
-        duration: data.duration || (data.timelineInDays ? `${data.timelineInDays} Days` : "5 Days"),
+        duration: formatDurationLabel(data.duration || (data.timelineInDays ? `${data.timelineInDays} Days` : "5 Days")),
         amount: convert(rawTotalPrice),
       },
     ];
@@ -321,11 +349,7 @@ export function extractAnalysisPDFData(data: any): AnalysisPDFData {
           rawAddonsList.push({
             name: item.description || item.name || item.title || "Add-on Task",
             details: item.details || "",
-            duration: item.duration
-              ? String(item.duration).toLowerCase().includes("day") || String(item.duration).toLowerCase().includes("week") || String(item.duration).toLowerCase().includes("month")
-                ? String(item.duration)
-                : `${item.duration} ${item.unit || "Days"}`
-              : "-",
+            duration: formatDurationLabel(item.duration, item.unit || "Days"),
             amount: convert(Number(item.amount ?? item.cost ?? 0)),
           });
         });
@@ -333,7 +357,7 @@ export function extractAnalysisPDFData(data: any): AnalysisPDFData {
         rawAddonsList.push({
           name: addon.description || addon.name || addon.title || "Add-on Task",
           details: addon.details || "",
-          duration: addon.duration ? `${addon.duration} ${addon.unit || "Days"}` : "-",
+          duration: formatDurationLabel(addon.duration, addon.unit || "Days"),
           amount: convert(Number(addon.amount ?? addon.cost ?? 0)),
         });
       }
@@ -363,11 +387,7 @@ export function extractAnalysisPDFData(data: any): AnalysisPDFData {
           rawAddonsList.push({
             name: item.description || item.name || item.title || "Add-on Task",
             details: item.details || "",
-            duration: item.duration
-              ? String(item.duration).toLowerCase().includes("day") || String(item.duration).toLowerCase().includes("week") || String(item.duration).toLowerCase().includes("month")
-                ? String(item.duration)
-                : `${item.duration} ${item.unit || "Days"}`
-              : "-",
+            duration: formatDurationLabel(item.duration, item.unit || "Days"),
             amount: convert(Number(item.amount ?? item.cost ?? 0)),
           });
         });
@@ -402,9 +422,9 @@ export function extractAnalysisPDFData(data: any): AnalysisPDFData {
   if (totalDays > 0) {
     duration = `${totalDays} Days`;
   } else if (data.timelineInDays) {
-    duration = `${data.timelineInDays} Days`;
+    duration = formatDurationLabel(data.timelineInDays);
   } else if (data.totalDuration || data.timeline || data.estimatedTimeline || data.duration) {
-    duration = String(data.totalDuration || data.timeline || data.estimatedTimeline || data.duration);
+    duration = formatDurationLabel(data.totalDuration || data.timeline || data.estimatedTimeline || data.duration);
   } else {
     duration = "5 Days";
   }
@@ -516,6 +536,38 @@ export function extractAnalysisPDFData(data: any): AnalysisPDFData {
     maximumFractionDigits: 2,
   }).format(pendingBalance);
 
+  const rawUrls = String(
+    (data.submittedUrls && Array.isArray(data.submittedUrls))
+      ? data.submittedUrls.join("\n")
+      : (data.targetWebsiteUrl || data.websiteUrl || data.urlToCheck || data.url || data.metadata?.targetWebsiteUrl || "")
+  ).trim();
+
+  const submittedUrls: string[] = rawUrls
+    ? rawUrls
+        .split(/[\n,;]+/)
+        .map((u: string) => u.trim())
+        .filter(Boolean)
+    : [];
+
+  const scopeOfWork = String(data.scopeOfWork || data.metadata?.scopeOfWork || "").trim();
+  const whoCompletedWork = String(data.whoCompletedWork || data.metadata?.whoCompletedWork || "").trim();
+  const agreementDetails = String(data.agreementDetails || data.metadata?.agreementDetails || "").trim();
+  const additionalComments = String(data.additionalComments || data.metadata?.additionalComments || "").trim();
+  const loginsDetails = String(data.loginsDetails || data.metadata?.loginsDetails || "").trim();
+  const isLoginsDetailsVisible = Boolean(
+    data.isLoginsDetailsVisible !== false &&
+    loginsDetails &&
+    loginsDetails !== "checking@societywebsolutions.com"
+  );
+
+  const hasSubmittedReqs =
+    submittedUrls.length > 0 ||
+    Boolean(scopeOfWork) ||
+    Boolean(whoCompletedWork) ||
+    Boolean(agreementDetails) ||
+    Boolean(additionalComments) ||
+    Boolean(isLoginsDetailsVisible && loginsDetails);
+
   return {
     rawProjectNumber,
     projectNumber,
@@ -544,6 +596,14 @@ export function extractAnalysisPDFData(data: any): AnalysisPDFData {
     deliverables,
     addons,
     isFree,
+    submittedUrls,
+    scopeOfWork,
+    whoCompletedWork,
+    agreementDetails,
+    additionalComments,
+    loginsDetails,
+    isLoginsDetailsVisible,
+    hasSubmittedReqs,
   };
 }
 
@@ -694,6 +754,92 @@ export function getAnalysisDetailsHTML(d: AnalysisPDFData): string {
             </tbody>
           </table>
         </div>
+
+        ${
+          d.hasSubmittedReqs
+            ? `
+        <!-- ── Submitted Information & Requirements ── -->
+        <div style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; margin-bottom: 20px; background: #FFFFFF;">
+          <div style="background: #F8FAFC; border-bottom: 1px solid #E2E8F0; padding: 10px 18px;">
+            <div style="font-family: Inter, sans-serif; font-size: 10.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.08em;">
+              SUBMITTED INFORMATION &amp; REQUIREMENTS
+            </div>
+          </div>
+          <div style="padding: 14px 18px; display: flex; flex-direction: column; gap: 12px;">
+            ${
+              d.submittedUrls && d.submittedUrls.length > 0
+                ? `
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-family: Inter, sans-serif; font-size: 10px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">URL(S) TO CHECK</span>
+                <div style="font-family: Inter, sans-serif; font-size: 12px; font-weight: 600; color: #2563EB; line-height: 1.5; word-break: break-word;">
+                  ${d.submittedUrls
+                    .map((url: string, idx: number) => {
+                      const href = url.startsWith("http://") || url.startsWith("https://") ? url : `https://${url}`;
+                      const clean = url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+                      const isLast = idx === d.submittedUrls!.length - 1;
+                      return `<a href="${href}" target="_blank" style="color: #2563EB; text-decoration: underline;">${clean}</a>${!isLast ? '<span style="color: #64748B; margin-right: 4px;">,</span> ' : ""}`;
+                    })
+                    .join("")}
+                </div>
+              </div>
+            `
+                : ""
+            }
+            ${
+              d.scopeOfWork
+                ? `
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-family: Inter, sans-serif; font-size: 10px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px;">WHAT SPECIFICALLY DO YOU WANT US TO LOOK AT?</span>
+                <div style="font-family: Inter, sans-serif; font-size: 12px; font-weight: 500; color: #1E293B; line-height: 1.45; white-space: pre-wrap;">${d.scopeOfWork}</div>
+              </div>
+            `
+                : ""
+            }
+            ${
+              d.whoCompletedWork
+                ? `
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-family: Inter, sans-serif; font-size: 10px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px;">WHO WAS THE WORK COMPLETED BY?</span>
+                <div style="font-family: Inter, sans-serif; font-size: 12px; font-weight: 500; color: #1E293B; line-height: 1.45; white-space: pre-wrap;">${d.whoCompletedWork}</div>
+              </div>
+            `
+                : ""
+            }
+            ${
+              d.agreementDetails
+                ? `
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-family: Inter, sans-serif; font-size: 10px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px;">WHAT WAS THE AGREEMENT FOR THIS WORK?</span>
+                <div style="font-family: Inter, sans-serif; font-size: 12px; font-weight: 500; color: #1E293B; line-height: 1.45; white-space: pre-wrap;">${d.agreementDetails}</div>
+              </div>
+            `
+                : ""
+            }
+            ${
+              d.isLoginsDetailsVisible && d.loginsDetails
+                ? `
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-family: Inter, sans-serif; font-size: 10px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px;">PLEASE SHARE REQUIRED ACCESS WITH OUR EMAIL</span>
+                <div style="font-family: monospace; font-size: 12px; font-weight: 500; color: #1E293B; line-height: 1.45;">${d.loginsDetails}</div>
+              </div>
+            `
+                : ""
+            }
+            ${
+              d.additionalComments
+                ? `
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-family: Inter, sans-serif; font-size: 10px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px;">PROVIDE ANY ADDITIONAL REQUIRED INFORMATION</span>
+                <div style="font-family: Inter, sans-serif; font-size: 12px; font-weight: 500; color: #1E293B; line-height: 1.45; white-space: pre-wrap;">${d.additionalComments}</div>
+              </div>
+            `
+                : ""
+            }
+          </div>
+        </div>
+        `
+            : ""
+        }
 
         <!-- ── Summary Box (Bottom-Right) ── -->
         <div style="display: flex; justify-content: flex-end; margin-top: 20px; margin-bottom: 24px;">
