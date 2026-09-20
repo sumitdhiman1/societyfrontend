@@ -547,47 +547,49 @@ export default function RenewalsPage() {
                       }`}
                   >
                     {/* Left Side: Checkbox + Globe + Info */}
-                    <div className="flex items-start md:items-center gap-4 md:gap-6">
-                      {/* Checkbox */}
-                      <div
-                        className={`mt-1 md:mt-0 w-5 h-5 rounded-[4px] flex-shrink-0 
-                          flex items-center justify-center overflow-hidden transition-colors ${isSelected
+                    <div className="flex items-start md:items-center gap-3.5 md:gap-6 flex-1 min-w-0">
+                      {/* Checkbox and Globe Icon: stacked on mobile, row on desktop */}
+                      <div className="flex flex-col md:flex-row items-center gap-2 md:gap-6 shrink-0 mt-0.5 md:mt-0">
+                        {/* Checkbox */}
+                        <div
+                          className={`w-5 h-5 rounded-[4px] flex-shrink-0 flex items-center justify-center overflow-hidden transition-colors ${isSelected
                             ? "bg-[#4343f0] border-primary-300 border text-white"
                             : "border border-gray-300 bg-white"
-                          }`}
-                      >
-                        {isSelected && (
-                          <svg
-                            width="10"
-                            height="10"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        )}
-                      </div>
+                            }`}
+                        >
+                          {isSelected && (
+                            <svg
+                              width="10"
+                              height="10"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          )}
+                        </div>
 
-                      {/* Globe Icon */}
-                      <div className="text-primary-300 flex-shrink-0">
-                        <GlobeIcon />
+                        {/* Globe Icon */}
+                        <div className="text-primary-300 flex-shrink-0">
+                          <GlobeIcon />
+                        </div>
                       </div>
 
                       {/* Title and Metadata */}
-                      <div>
-                        <div className="text-[15px] font-bold text-gray-900 leading-tight flex items-center gap-2">
-                          {project.title}
+                      <div className="min-w-0">
+                        <div className="text-[15px] font-bold text-gray-900 leading-tight flex flex-wrap items-center gap-2">
+                          <span className="break-words">{project.title}</span>
                           {/* Auto-renew badge */}
                           {isAutoRenewOn ? (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase border bg-green-50 text-green-700 border-green-200">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase border bg-green-50 text-green-700 border-green-200 shrink-0">
                               AUTO-RENEW ON
                             </span>
                           ) : (
-                            <span className="bg-gray-100 text-gray-500 border border-gray-200 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            <span className="bg-gray-100 text-gray-500 border border-gray-200 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
                               AUTO-RENEW OFF
                             </span>
                           )}
@@ -605,14 +607,14 @@ export default function RenewalsPage() {
                     </div>
 
                     {/* Right Side: Stop Auto-Renewal + Rate + Price */}
-                    <div className="flex items-center md:items-center gap-4 md:gap-6 justify-between md:justify-end md:text-right pr-0 md:pr-4 pl-9 md:pl-0 ">
+                    <div className="flex items-center gap-2 sm:gap-4 md:gap-6 justify-between md:justify-end md:text-right pr-0 md:pr-4 pl-0">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleToggleAutoRenew(project);
                         }}
-                        className="text-xs font-bold px-3 py-1.5 rounded transition-colors border bg-red-50 text-red-700 hover:bg-red-100 border-red-200"
+                        className="text-[11px] sm:text-xs font-bold px-2.5 sm:px-3 py-1.5 rounded transition-colors border bg-red-50 text-red-700 hover:bg-red-100 border-red-200 whitespace-nowrap shrink-0"
                       >
                         {isAutoRenewOn ? "Stop Auto-Renewal" : "Enable Auto-Renewal"}
                       </button>
@@ -621,9 +623,9 @@ export default function RenewalsPage() {
                         1 month: {formattedItemPrice} / mo
                       </span>
 
-                      <div className="text-base font-bold text-gray-900 min-w-0 md:min-w-[120px]">
-                        {formattedItemPrice}
-                        <span className="text-[10px] font-normal text-gray-400 ml-2 uppercase">
+                      <div className="text-sm sm:text-base font-bold text-gray-900 shrink-0 whitespace-nowrap flex items-baseline gap-1.5 sm:gap-2 min-w-0 md:min-w-[120px]">
+                        <span>{formattedItemPrice}</span>
+                        <span className="text-[9px] sm:text-[10px] font-normal text-gray-400 uppercase tracking-tight whitespace-nowrap">
                           EXCL. TAX
                         </span>
                       </div>

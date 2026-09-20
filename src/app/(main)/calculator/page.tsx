@@ -1966,10 +1966,10 @@ export default function CalculatorPage() {
           priority
           className="object-cover object-center opacity-[.85]"
         />
-        <div className="absolute inset-0 z-0 bg-gradient-to-r from-[#00102E] via-[#00102E]/60 to-transparent"></div>
+        <div className="absolute inset-0 z-0 bg-gradient-to-r from-[#00102E] via-[#00102E]/90 to-[#00102E]/75 md:via-[#00102E]/60 md:to-transparent opacity-90"></div>
         <div className="mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] text-left relative z-10 max-w-[1536px] w-full">
           <div className="flex flex-row justify-center items-center">
-            <div className="w-full text-center md:text-left">
+            <div className="w-full text-left">
               <p className="text-gray-300 text-sm md:text-base font-medium mb-3">Calculator</p>
               <h1 className="text-4xl md:text-[52px] font-bold mb-4 leading-tight tracking-tight text-white">
                 Instantly create your price quote.

@@ -228,7 +228,7 @@ export default function FreeAnalysis() {
             </div>
 
 
-            <div className="flex flex-col items-center text-center px-6 pb-8 pt-2" style={{ gap: "20px" }}>
+            <div className="flex flex-col items-center text-center px-6 pb-8 pt-8" style={{ gap: "20px" }}>
               <h2 className="text-[26px] sm:text-[28px] font-bold text-[#434343] leading-[1.25]">
                 Get a Free<br className="md:hidden" /> Website Analysis!
               </h2>
