@@ -221,7 +221,15 @@ export class RequestAnalysisService {
 
   async renameProject(id: string, title: string) {
     const client = new HttpClient();
-    return await client.patch(`/request-analysis/projects/${id}/rename`, { title });
+    try {
+      return await client.patch(`/request-analysis/projects/${id}/rename`, { title });
+    } catch (err: any) {
+      try {
+        return await client.patch(`/projects/rename/${id}`, { title });
+      } catch (err2: any) {
+        return await client.patch(`/request-analysis/rename/${id}`, { title });
+      }
+    }
   }
 
   async claimProject(data: { analysisId?: string; analysisIds?: string[] }) {

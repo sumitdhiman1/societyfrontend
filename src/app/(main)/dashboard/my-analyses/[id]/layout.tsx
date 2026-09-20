@@ -72,9 +72,10 @@ function AnalysisLayoutContent({ children }: { children: React.ReactNode }) {
 
     setIsRenaming(true);
     try {
-      const res = await requestAnalysisService.renameProject(aId, newTitle.trim());
-      if (res && (res.statusCode === 200 || res.statusCode === 201 || res.isSuccessful)) {
-        refreshAnalysis();
+      const trimmed = newTitle.trim();
+      const res: any = await requestAnalysisService.renameProject(aId, trimmed);
+      if (res && (res.statusCode === 200 || res.statusCode === 201 || res.isSuccessful || res.data)) {
+        await refreshAnalysis();
       }
     } catch (error) {
       console.error("Failed to rename analysis:", error);
