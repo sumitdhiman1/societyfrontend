@@ -9,10 +9,10 @@ import { authService } from "@/lib/authService";
 import { paymentService } from "@/lib/paymentService";
 import { profileService } from "@/lib/profileService";
 import StatusPopup from "@/components/common/StatusPopup";
-import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
+import PackageBundlePaymentForm from "@/components/dashboard/PackageBundlePaymentForm";
 import Toast from "@/components/common/Toast";
 import { countryService, Country } from "@/lib/countryService";
-import { formatPriceWithCurrency } from "@/lib/currencyUtils";
+import { formatPackageBundlePriceWithCurrency as formatPriceWithCurrency } from "@/lib/currencyUtils";
 
 const CheckIcon = () => (
   <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center mx-auto">
@@ -555,8 +555,9 @@ function PackageDetailsContent() {
                           <h3 className="text-2xl md:text-3xl font-bold text-gray-800 leading-tight mb-3">
                             {pkg.name} - {selectedTier?.title || "Select a plan"}
                           </h3>
-                          <div className="text-[13px] text-[#808080] font-bold flex flex-col gap-1">
+                          <div className="text-[13px] text-[#808080] font-bold flex items-center gap-3 flex-wrap">
                             <span><strong>Project No:</strong> #{projectNo}</span>
+                            <span className="hidden sm:inline text-gray-300">|</span>
                             <span><strong>Timeline:</strong> {getDurationLabel(selectedTier)}</span>
                           </div>
                         </div>
@@ -608,7 +609,7 @@ function PackageDetailsContent() {
                       </div>
                     </div>
 
-                    <UnifiedPaymentForm
+                    <PackageBundlePaymentForm
                       type="PACKAGE"
                       entityId={packageId}
                       entityNumber={projectNo}

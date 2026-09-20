@@ -9,9 +9,9 @@ import { authService } from "@/lib/authService";
 import { paymentService } from "@/lib/paymentService";
 import { profileService } from "@/lib/profileService";
 import StatusPopup from "@/components/common/StatusPopup";
-import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
+import PackageBundlePaymentForm from "@/components/dashboard/PackageBundlePaymentForm";
 import { countryService, Country } from "@/lib/countryService";
-import { formatPriceWithCurrency } from "@/lib/currencyUtils";
+import { formatPackageBundlePriceWithCurrency as formatPriceWithCurrency } from "@/lib/currencyUtils";
 
 const CheckIcon = () => (
   <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center mx-auto">
@@ -397,13 +397,13 @@ function BundleDetailsContent() {
       const val = Number(daysOrObj.value);
       if (isNaN(val) || val <= 0) return "-";
       const unit = (daysOrObj.type || daysOrObj.unit || "days").toLowerCase();
-      if (unit.startsWith("month")) return `${val} ${val === 1 ? "Month" : "Months"}`;
-      if (unit.startsWith("week")) return `${val} ${val === 1 ? "Week" : "Weeks"}`;
-      return `${val} ${val === 1 ? "Day" : "Days"}`;
+      if (unit.startsWith("month")) return `${val} ${val === 1 ? "month" : "months"}`;
+      if (unit.startsWith("week")) return `${val} ${val === 1 ? "week" : "weeks"}`;
+      return `${val} ${val === 1 ? "day" : "days"}`;
     }
 
     if (typeof daysOrObj === "string" && !/^\d+$/.test(daysOrObj.trim())) {
-      return daysOrObj;
+      return daysOrObj.replace(/\bWeeks\b/g, "weeks").replace(/\bWeek\b/g, "week");
     }
 
     const days = typeof daysOrObj === "number" ? daysOrObj : parseInt(String(daysOrObj).trim(), 10);
@@ -411,13 +411,13 @@ function BundleDetailsContent() {
 
     if (days % 30 === 0) {
       const months = days / 30;
-      return `${months} ${months === 1 ? "Month" : "Months"}`;
+      return `${months} ${months === 1 ? "month" : "months"}`;
     }
     if (days % 7 === 0) {
       const weeks = days / 7;
-      return `${weeks} ${weeks === 1 ? "Week" : "Weeks"}`;
+      return `${weeks} ${weeks === 1 ? "week" : "weeks"}`;
     }
-    return `${days} ${days === 1 ? "Day" : "Days"}`;
+    return `${days} ${days === 1 ? "day" : "days"}`;
   };
 
   const getTimelineDays = (col: any): number => {
@@ -467,19 +467,19 @@ function BundleDetailsContent() {
 
     // 3. Fallback for Digital Starter Bundle tiers
     const title = (col.title || col.label || "").toLowerCase();
-    if (title.includes("starter") || col.id === "col_starter" || col.id === "starter" || idx === 0) return "2 Weeks";
-    if (title.includes("standard") || col.id === "col_standard" || col.id === "professional" || idx === 1) return "6 Weeks";
-    if (title.includes("premium") || col.id === "col_premium" || col.id === "premium" || idx === 2) return "12 Weeks";
+    if (title.includes("starter") || col.id === "col_starter" || col.id === "starter" || idx === 0) return "2 weeks";
+    if (title.includes("standard") || col.id === "col_standard" || col.id === "professional" || idx === 1) return "6 weeks";
+    if (title.includes("premium") || col.id === "col_premium" || col.id === "premium" || idx === 2) return "12 weeks";
 
     return "-";
   };
 
   const getDurationLabel = (tier?: any) => {
     const t = tier || selectedTier;
-    if (!t) return "6 Weeks";
+    if (!t) return "6 weeks";
     const display = getTimelineDisplay(t, features);
     if (display && display !== "-") return display;
-    return t?.period || "6 Weeks";
+    return t?.period ? String(t.period).replace(/\bWeeks\b/g, "weeks").replace(/\bWeek\b/g, "week") : "6 weeks";
   };
 
   const handleTierSelect = (tier: any) => {
@@ -954,10 +954,11 @@ function BundleDetailsContent() {
 
                   {/* Project Meta Details */}
                   <div className="mb-6 text-sm text-gray-500 flex items-center gap-3 flex-wrap justify-between">
-                    <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
                       <span>
                         <strong>Project No:</strong> #{projectNo}
                       </span>
+                      <span className="hidden sm:inline text-gray-300">|</span>
                       <span>
                         <strong>Timeline:</strong> {getDurationLabel(selectedTier)}
                       </span>
@@ -1006,7 +1007,7 @@ function BundleDetailsContent() {
                   <div className="border-t border-gray-300 my-8"></div>
 
                   {/* Payment form rendered cleanly within card */}
-                  <UnifiedPaymentForm
+                  <PackageBundlePaymentForm
                     containerClassName=""
                     hideCurrencyToggle={true}
                     type="BUNDLE"

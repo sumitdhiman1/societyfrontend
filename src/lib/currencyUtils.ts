@@ -31,6 +31,7 @@ export function convertCurrencyAmount(
 
   if (!isTargetEur && isSourceEur) {
     // EUR -> USD
+    const converted = amount * rate;
     return Number((amount * rate).toFixed(2));
   }
 
@@ -63,6 +64,55 @@ export function formatActiveCurrency(
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(val);
+}
+
+/**
+ * Specialized helpers for Package & Bundle pricing
+ * Rounds EUR conversions to the nearest 5 and formats without fractional decimals when whole.
+ */
+export function convertPackageBundleCurrencyAmount(
+  amount: number,
+  targetCurrency: string,
+  sourceCurrency: string = "usd",
+  conversionRate: number = 1.08
+): number {
+  if (!amount || !Number.isFinite(amount) || amount === 0) return 0;
+  const isTargetEur = targetCurrency?.toLowerCase() === "eur";
+  const isSourceEur = sourceCurrency?.toLowerCase() === "eur";
+  const rate = conversionRate || 1.08;
+
+  if (isTargetEur === isSourceEur || targetCurrency?.toLowerCase() === sourceCurrency?.toLowerCase()) {
+    return Number(amount.toFixed(2));
+  }
+
+  if (isTargetEur && !isSourceEur) {
+    // USD -> EUR (rounded to nearest 5)
+    const converted = amount / rate;
+    return roundToNearest5(converted);
+  }
+
+  if (!isTargetEur && isSourceEur) {
+    // EUR -> USD
+    const converted = amount * rate;
+    return Number((amount * rate).toFixed(2));
+  }
+
+  return Number(amount.toFixed(2));
+}
+
+export function formatPackageBundlePriceWithCurrency(
+  amount: number,
+  targetCurrency: string,
+  sourceCurrency: string = "usd",
+  conversionRate: number = 1.08
+): string {
+  const converted = convertPackageBundleCurrencyAmount(amount, targetCurrency, sourceCurrency, conversionRate);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: (targetCurrency || "usd").toUpperCase(),
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(converted);
 }
 
 export function capitalizeCurrencyInText(text?: string): string {
@@ -110,6 +160,3 @@ export function formatPriceStringWithCurrency(
     return `${symbol}${formattedNum}`;
   });
 }
-
-
-
