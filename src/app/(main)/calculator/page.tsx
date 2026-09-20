@@ -1303,6 +1303,11 @@ const CalculatorPaymentForm = ({
       const seoMode = categoryKey === "seo" ? getSeoServiceMode(selections, category?.questions) : undefined;
       const isMonthlyBilling = isMonthlyBillingCategory(categoryKey, seoMode);
 
+      const fullSubtotalInCurrency = payableTotal;
+      const fullVatAmountInCurrency = Math.round(payableTotal * vatMultiplier * 100) / 100;
+      const fullTotalInCurrency = Math.round((payableTotal + fullVatAmountInCurrency) * 100) / 100;
+      const isDeposit = paymentOption === "half" || (paymentOption === "custom" && totalPayable < fullTotalInCurrency - 0.05);
+
       const proposalData = {
         categoryKey,
         selections: enrichedSelections,
@@ -1328,11 +1333,6 @@ const CalculatorPaymentForm = ({
       // currency the user chose to pay in.
       const usdBaseAmount = totalPrice; // totalPrice is always the raw USD amount from the calculator
 
-      const isDeposit = paymentOption === "half";
-      const fullSubtotalInCurrency = payableTotal;
-      const fullVatAmountInCurrency = Math.round(payableTotal * vatMultiplier * 100) / 100;
-      const fullTotalInCurrency = Math.round((payableTotal + fullVatAmountInCurrency) * 100) / 100;
-
       const paymentPayload = {
         amount,          // actual charge amount in chosen currency (totalPayable, including VAT)
         currency,        // "usd" or "eur"
@@ -1355,6 +1355,7 @@ const CalculatorPaymentForm = ({
           conversionRate: String(conversionRate),
           paymentCurrency: currency,
           paymentOption: paymentOption,
+          isCustom: paymentOption === "custom" ? "true" : "false",
           isDeposit: isDeposit ? "true" : "false",
           depositAmount: isDeposit ? String(totalPayable) : undefined,
           depositSubtotal: isDeposit ? String(baseAmount) : undefined,

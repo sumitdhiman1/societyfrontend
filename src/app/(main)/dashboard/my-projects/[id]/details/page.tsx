@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useProject } from "@/context/ProjectContext";
 import { projectService } from "@/lib/projectService";
 import { mediaService } from "@/lib/mediaService";
@@ -17,7 +17,7 @@ import RecommendedSolutions from "@/components/common/RecommendedSolutions";
 import CalculatorSpecsCard from "@/components/common/CalculatorSpecsCard";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import { getMainCalculatorCategory, getProjectEstimatedDeadline, isCalculatorProject } from "@/lib/calculatorUtils";
-import { capitalizeCurrencyInText, formatPriceWithCurrency } from "@/lib/currencyUtils";
+import { capitalizeCurrencyInText, formatPriceWithCurrency, convertCurrencyAmount } from "@/lib/currencyUtils";
 import { useCurrency } from "@/context/CurrencyContext";
 import { useTimezone } from "@/context/TimezoneContext";
 import { toast } from "sonner";
@@ -230,9 +230,22 @@ export default function ProjectDetailsPage() {
     formatDateTime: formatDateTimeTz,
   } = useTimezone();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      return authService.getUser();
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    const user = authService.getUser();
+    if (user) {
+      setCurrentUser(user);
+    }
+  }, []);
   const [attachments, setAttachments] = useState<any[]>([]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isTogglingRenewal, setIsTogglingRenewal] = useState(false);
@@ -298,10 +311,67 @@ export default function ProjectDetailsPage() {
 
   const isLoggedIn = Boolean(currentUser) || authService.isAuthenticated();
 
+  const syncFinancialsAndProject = React.useCallback(async (silent = true) => {
+    try {
+      const refreshed = await refreshProject(silent);
+      const targetId =
+        refreshed?._id ||
+        refreshed?.id ||
+        project?._id ||
+        project?.id ||
+        project?.projectId;
+      if (targetId) {
+        const res = await paymentService.getTransactionsByProject(String(targetId));
+        const rows = Array.isArray(res?.data) ? res.data : [];
+        setProjectPayments(rows);
+      }
+    } catch (e) {
+      console.warn("Failed syncFinancialsAndProject:", e);
+    }
+  }, [refreshProject, project?._id, project?.id, project?.projectId]);
+
   useEffect(() => {
     setCurrentUser(authService.getUser());
-    refreshProject(true);
-  }, [refreshProject]);
+    syncFinancialsAndProject(true);
+    const t1 = setTimeout(() => syncFinancialsAndProject(true), 1500);
+    const t2 = setTimeout(() => syncFinancialsAndProject(true), 3500);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [syncFinancialsAndProject]);
+
+  // Handle URL success param (e.g. returning from checkout)
+  useEffect(() => {
+    if (searchParams?.get("success") === "true") {
+      syncFinancialsAndProject(true);
+      const t = setTimeout(() => {
+        syncFinancialsAndProject(true);
+        try {
+          const currentUrl = new URL(window.location.href);
+          currentUrl.searchParams.delete("success");
+          window.history.replaceState(null, "", currentUrl.toString());
+        } catch {}
+      }, 1500);
+      return () => clearTimeout(t);
+    }
+  }, [searchParams, syncFinancialsAndProject]);
+
+  // Refresh whenever tab gains focus or becomes visible
+  useEffect(() => {
+    const onFocus = () => syncFinancialsAndProject(true);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        syncFinancialsAndProject(true);
+      }
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [syncFinancialsAndProject]);
 
   useEffect(() => {
     const projectId =
@@ -317,9 +387,9 @@ export default function ProjectDetailsPage() {
         setProjectPayments(rows);
       })
       .catch(() => {
-        setProjectPayments([]);
+        // Keep existing projectPayments
       });
-  }, [project?._id, project?.id, project?.projectId, project?.amountPaid]);
+  }, [project?._id, project?.id, project?.projectId, project?.amountPaid, project?.paymentStatus, project?.updatedAt, project?.paymentLedger?.length]);
 
   useEffect(() => {
     const projectId = project?._id || project?.id || project?.projectId || project?.project_id || project?.orderId || project?.uuid || project?.uid || project?.project?._id || project?.project?.id;
@@ -427,8 +497,21 @@ export default function ProjectDetailsPage() {
 
   const formatCurrency = (amt: any, customSourceCurrency?: string) => {
     const num = Number(amt || 0);
-    const srcCurrency = (customSourceCurrency || project?.currency || "USD").toUpperCase();
-    const targetCurrency = (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || "USD").toUpperCase();
+    const activeUser = currentUser || (typeof window !== "undefined" ? authService.getUser() : null);
+    const resolvedProjectCurrency = (
+      project?.currency ||
+      linkedQuote?.currency ||
+      projectPayments[0]?.currency ||
+      (project?.currencySymbol === "€" ? "EUR" : project?.currencySymbol === "$" ? "USD" : "USD")
+    ).toUpperCase();
+    const srcCurrency = (customSourceCurrency || resolvedProjectCurrency || "USD").toUpperCase();
+    const targetCurrency = (
+      contextCurrency ||
+      activeUser?.currency ||
+      activeUser?.preferredCurrency ||
+      resolvedProjectCurrency ||
+      "USD"
+    ).toUpperCase();
     return formatPriceWithCurrency(num, targetCurrency, srcCurrency, conversionRate);
   };
 
@@ -850,17 +933,76 @@ export default function ProjectDetailsPage() {
     : Number(project?.vatAmount ?? linkedQuote?.vatAmount ?? 0);
   const totalCost = totalSubtotal + effectiveVatAmount;
 
-  const totalPaidFromTransactions = (projectPayments || [])
-    .filter((p: any) => ["succeeded", "paid", "completed"].includes(String(p?.status || "").toLowerCase()))
-    .reduce((sum: number, p: any) => sum + (Number(p?.amount) || 0), 0);
+  const projectNativeCurrency = (
+    project?.currency ||
+    linkedQuote?.currency ||
+    projectPayments[0]?.currency ||
+    (project?.currencySymbol === "€" ? "EUR" : project?.currencySymbol === "$" ? "USD" : "USD")
+  ).toLowerCase();
 
-  const amountPaid = Math.max(Number(project?.amountPaid || 0), totalPaidFromTransactions);
-  const calculatedPending = Math.max(0, totalCost - amountPaid);
-  const isActuallyPaidInFull = totalCost > 0 && amountPaid >= totalCost - 0.009;
+  const activeUser = currentUser || (typeof window !== "undefined" ? authService.getUser() : null);
+  const targetCurrency = (
+    contextCurrency ||
+    activeUser?.currency ||
+    activeUser?.preferredCurrency ||
+    projectNativeCurrency ||
+    "USD"
+  ).toUpperCase();
+
+  const ledgerPayments = (project?.paymentLedger || []).map((entry: any, index: number) => ({
+    _id: entry.transactionId || `ledger-${index}`,
+    id: entry.transactionId || `ledger-${index}`,
+    amount: entry.chargedAmount || entry.amount,
+    currency: entry.chargedCurrency || entry.currency,
+    status: entry.status || "succeeded",
+    exchangeRate: entry.exchangeRate,
+    metadata: { exchangeRate: entry.exchangeRate },
+    createdAt: entry.date,
+  }));
+
+  const combinedPayments = [...(projectPayments || [])];
+  const seenTxnIds = new Set(
+    combinedPayments.map((p: any) => String(p._id || p.id || p.transactionId || "")).filter(Boolean)
+  );
+  for (const lp of ledgerPayments) {
+    const id = String(lp._id || lp.id || "");
+    if (!seenTxnIds.has(id)) {
+      combinedPayments.push(lp);
+      seenTxnIds.add(id);
+    }
+  }
+
+  const totalPaidFromTransactions = combinedPayments
+    .filter((p: any) => ["succeeded", "paid", "completed"].includes(String(p?.status || "").toLowerCase()))
+    .reduce((sum: number, p: any) => {
+      const pCurr = (p?.currency || projectNativeCurrency || "USD").toLowerCase();
+      const pAmt = Number(p?.amountPaid || p?.amount || 0);
+      const pRate = Number(p?.exchangeRate || p?.metadata?.exchangeRate || p?.metadata?.conversionRate || conversionRate || 1.14776);
+      return sum + convertCurrencyAmount(pAmt, projectNativeCurrency, pCurr, pRate);
+    }, 0);
+
+  const amountPaid = Math.max(
+    totalPaidFromTransactions,
+    Number(project?.amountPaid || 0)
+  );
+
+  const isDepositHalf =
+    project?.paymentOption === "half" ||
+    project?.paymentOption === "deposit" ||
+    linkedQuote?.paymentOption === "half" ||
+    combinedPayments.some((p: any) => p?.metadata?.isDeposit === "true" || p?.metadata?.paymentOption === "half");
+
+  let resolvedTotalCost = totalCost;
+  if (isDepositHalf && amountPaid > 0 && Math.abs(resolvedTotalCost - (amountPaid * 2)) <= 15) {
+    resolvedTotalCost = Math.round(amountPaid * 2 * 100) / 100;
+  }
+
+  const calculatedPending = Math.max(0, Math.round((resolvedTotalCost - amountPaid) * 100) / 100);
+  const isActuallyPaidInFull = (resolvedTotalCost > 0 && amountPaid >= resolvedTotalCost - 0.009) || (project?.paymentStatus === "paid" && calculatedPending <= 0.05);
   const pendingBalance = isActuallyPaidInFull
     ? 0
     : amountPaid === 0
-    ? totalCost
+    ? resolvedTotalCost
     : calculatedPending;
 
   // Date for delivery due divider
@@ -954,7 +1096,7 @@ export default function ProjectDetailsPage() {
                 <div className="flex justify-between items-center font-semibold">
                   <span className="text-gray-900">Total Cost</span>
                   <span className="text-gray-900 font-bold">
-                    {formatCurrency(totalCost)}
+                    {formatCurrency(resolvedTotalCost)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-green-600">
@@ -1045,7 +1187,7 @@ export default function ProjectDetailsPage() {
             {project.calculatorSpecs ? (
               <div className="mb-10">
                 <div className="text-sm text-gray-700 leading-relaxed font-medium">
-                  <CalculatorSpecsCard specs={project.calculatorSpecs} />
+                  <CalculatorSpecsCard specs={project.calculatorSpecs} currency={targetCurrency} />
                 </div>
               </div>
             ) : (
@@ -1282,9 +1424,10 @@ export default function ProjectDetailsPage() {
         <div className="lg:col-span-1">
           <div className="bg-white border border-gray-300 rounded-[12px] shadow-sm p-6 sm:p-8 sticky top-24">
             {(() => {
-              const managers = (Array.isArray(project.assignedManagers) && project.assignedManagers.length > 0)
+              const rawManagers = (Array.isArray(project.assignedManagers) && project.assignedManagers.length > 0)
                 ? project.assignedManagers
                 : (project.projectManager ? [project.projectManager] : []);
+              const managers = rawManagers.filter((m: any) => m && (typeof m === 'object' ? (m._id || m.fullName || m.email) : Boolean(m)));
 
               if (managers.length > 1) {
                 return (
@@ -1320,23 +1463,27 @@ export default function ProjectDetailsPage() {
               }
 
               const manager = managers[0];
-              const name = manager?.fullName || "Unassigned";
+              const name = manager?.fullName || "Not assigned yet";
               const avatar = manager?.avatar;
               return (
                 <div className="text-center py-4">
-                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gradient-to-br from-[#BAC2D0] to-[#9AA5B8] border border-gray-200">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gray-100 border border-gray-200">
                     {avatar ? (
                       <img src={avatar} alt={name} className="w-full h-full object-cover" />
+                    ) : manager ? (
+                      <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-3xl font-bold">
+                        {name[0] || "M"}
+                      </div>
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-white text-3xl font-bold">
-                        {name === "Unassigned" ? "?" : name[0]}
+                      <div className="w-full h-full bg-gradient-to-b from-gray-100 to-gray-200 flex items-center justify-center text-gray-400">
+                        <svg className="w-12 h-12 sm:w-14 sm:h-14 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                          <path fillRule="evenodd" d="M12 4a4 4 0 100 8 4 4 0 000-8zm-2 9a6 6 0 00-6 6v1a1 1 0 001 1h14a1 1 0 001-1v-1a6 6 0 00-6-6h-4z" clipRule="evenodd" />
+                        </svg>
                       </div>
                     )}
                   </div>
-                  <h4 className="text-lg font-bold text-gray-800 mb-1">{name}</h4>
+                  <h4 className="text-lg font-bold text-gray-800 mb-1">{manager ? name : "Not assigned yet"}</h4>
                   <p className="text-sm text-gray-500 font-medium uppercase tracking-wider text-[10px]">PROJECT MANAGER</p>
-
-
                 </div>
               );
             })()}
@@ -1488,10 +1635,11 @@ export default function ProjectDetailsPage() {
                 const invId = asId(content.invoiceId || msg.invoiceId);
                 const invNum = content.invoiceNumber || msg.invoiceNumber;
                 const currentMsgId = asId(msg.id || msg._id || msgId);
-                const isPaid = isExactPaymentRequestPaid(msg, project, projectPayments);
+                const isPaid = isExactPaymentRequestPaid(msg, project, combinedPayments);
 
                 const payParams = new URLSearchParams();
                 if (amount > 0) payParams.set("amount", String(amount));
+                if (currency) payParams.set("currency", currency);
                 if (invId) payParams.set("invoiceId", invId);
                 if (invNum) payParams.set("invoiceNumber", String(invNum));
                 if (currentMsgId) payParams.set("messageId", currentMsgId);
@@ -1518,7 +1666,10 @@ export default function ProjectDetailsPage() {
                           <p className="text-xs sm:text-sm text-[#3B82F6] font-medium mb-1.5">{description}</p>
                         ) : null}
                         <div className="flex items-baseline gap-1">
-                          <span className="text-xl sm:text-2xl font-black text-[#1E3A8A]">{formatCurrency(amount)}</span>
+                          <span className="text-xl sm:text-2xl font-black text-[#1E3A8A]">
+                            {currency === "EUR" ? "€" : "$"}{amount.toFixed(0)}
+                          </span>
+                          <span className="text-[11px] font-bold text-[#3B82F6] uppercase">{currency}</span>
                         </div>
                       </div>
                     </div>

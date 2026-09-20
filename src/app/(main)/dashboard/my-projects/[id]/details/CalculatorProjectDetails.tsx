@@ -262,20 +262,34 @@ export default function CalculatorProjectDetails({
   // their sum can drift from the true project subtotal by up to ±€5.
   // Use activeProject.subtotal as primary source; fall back to regularItemsSum only when absent.
   const storedSubtotal = Number(activeProject.subtotal || 0);
-  const baseSubtotal = storedSubtotal > 0
-    ? storedSubtotal
+  const quoteExpectedSubtotal = Number(
+    linkedQuote.subtotal ??
+    specs.subtotal ??
+    specs.calculatedPrice ??
+    linkedQuote.requirements?.subtotal ??
+    linkedQuote.requirements?.calculatedPrice ??
+    0
+  );
+  const isPartialProject =
+    activeProject.paymentOption === "custom" ||
+    activeProject.paymentOption === "other" ||
+    activeProject.paymentOption === "half" ||
+    activeProject.paymentOption === "deposit";
+
+  const effectiveStoredSubtotal =
+    storedSubtotal > 0 && !(isPartialProject && quoteExpectedSubtotal > storedSubtotal + 10)
+      ? storedSubtotal
+      : (quoteExpectedSubtotal > 0
+          ? quoteExpectedSubtotal
+          : (storedSubtotal > 0 ? storedSubtotal : regularItemsSum));
+
+  const baseSubtotal = effectiveStoredSubtotal > 0
+    ? effectiveStoredSubtotal
     : (regularItemsSum > 0
         ? regularItemsSum
-        : Number(
-            linkedQuote.subtotal ??
-            specs.subtotal ??
-            specs.calculatedPrice ??
-            linkedQuote.requirements?.subtotal ??
-            linkedQuote.requirements?.calculatedPrice ??
-            (vatRate > 0 && rawTotalCost > 0
-              ? Math.round((rawTotalCost / (1 + vatRate / 100)) * 100) / 100
-              : rawTotalCost)
-          ));
+        : (vatRate > 0 && rawTotalCost > 0
+            ? Math.round((rawTotalCost / (1 + vatRate / 100)) * 100) / 100
+            : rawTotalCost));
 
   const primaryItemTitle =
     itemTitle ||
@@ -365,17 +379,48 @@ export default function CalculatorProjectDetails({
     : Number(activeProject.vatAmount ?? linkedQuote.vatAmount ?? 0);
   let computedTotalCost = totalSubtotal + effectiveVatAmount;
 
-  const totalPaidFromTransactions = (payments || [])
-    .filter((p: any) => ["succeeded", "paid", "completed"].includes(String(p?.status || "").toLowerCase()))
-    .reduce((sum: number, p: any) => sum + (Number(p?.amount) || 0), 0);
+  const ledgerPayments = (activeProject.paymentLedger || []).map((entry: any, index: number) => ({
+    _id: entry.transactionId || `ledger-${index}`,
+    id: entry.transactionId || `ledger-${index}`,
+    amount: entry.chargedAmount || entry.amount,
+    currency: entry.chargedCurrency || entry.currency,
+    status: entry.status || "succeeded",
+    exchangeRate: entry.exchangeRate,
+    metadata: { exchangeRate: entry.exchangeRate },
+    createdAt: entry.date,
+  }));
 
-  const amountPaid = Math.max(Number(activeProject.amountPaid || 0), totalPaidFromTransactions);
+  const combinedPayments = [...(payments || [])];
+  const seenTxnIds = new Set(
+    combinedPayments.map((p: any) => String(p._id || p.id || p.transactionId || "")).filter(Boolean)
+  );
+  for (const lp of ledgerPayments) {
+    const id = String(lp._id || lp.id || "");
+    if (!seenTxnIds.has(id)) {
+      combinedPayments.push(lp);
+      seenTxnIds.add(id);
+    }
+  }
+
+  const totalPaidFromTransactions = combinedPayments
+    .filter((p: any) => ["succeeded", "paid", "completed"].includes(String(p?.status || "").toLowerCase()))
+    .reduce((sum: number, p: any) => {
+      const pCurr = (p?.currency || projectNativeCurrency || "USD").toLowerCase();
+      const pAmt = Number(p?.amountPaid || p?.amount || 0);
+      const pRate = Number(p?.exchangeRate || p?.metadata?.exchangeRate || p?.metadata?.conversionRate || conversionRate || 1.14776);
+      return sum + convertCurrencyAmount(pAmt, projectNativeCurrency, pCurr, pRate);
+    }, 0);
+
+  const amountPaid = Math.max(
+    totalPaidFromTransactions,
+    Number(activeProject.amountPaid || 0)
+  );
 
   const isDepositHalf =
     activeProject.paymentOption === "half" ||
     activeProject.paymentOption === "deposit" ||
     linkedQuote?.paymentOption === "half" ||
-    (payments || []).some((p: any) => p?.metadata?.isDeposit === "true" || p?.metadata?.paymentOption === "half");
+    combinedPayments.some((p: any) => p?.metadata?.isDeposit === "true" || p?.metadata?.paymentOption === "half");
 
   if (isDepositHalf && amountPaid > 0 && Math.abs(computedTotalCost - (amountPaid * 2)) <= 15) {
     computedTotalCost = Math.round(amountPaid * 2 * 100) / 100;
@@ -383,7 +428,7 @@ export default function CalculatorProjectDetails({
 
   const totalCost = computedTotalCost;
   const calculatedPending = Math.max(0, Math.round((totalCost - amountPaid) * 100) / 100);
-  const isActuallyPaidInFull = totalCost > 0 && amountPaid >= totalCost - 0.009;
+  const isActuallyPaidInFull = (totalCost > 0 && amountPaid >= totalCost - 0.009) || (activeProject.paymentStatus === "paid" && calculatedPending <= 0.05);
   const pendingBalance = isActuallyPaidInFull
     ? 0
     : amountPaid === 0
@@ -742,7 +787,7 @@ export default function CalculatorProjectDetails({
             {specs && Object.keys(specs).length > 0 && (
               <div className="mb-10">
                 <div className="text-sm text-gray-700 leading-relaxed font-medium">
-                  <CalculatorSpecsCard specs={specs} />
+                  <CalculatorSpecsCard specs={specs} currency={activeDisplayCurrency} />
                 </div>
               </div>
             )}
@@ -896,12 +941,13 @@ export default function CalculatorProjectDetails({
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-white border border-gray-300 rounded-[12px] shadow-sm p-6 sm:p-8 sticky top-24">
             {(() => {
-              const managers =
+              const rawManagers =
                 Array.isArray(activeProject.assignedManagers) && activeProject.assignedManagers.length > 0
                   ? activeProject.assignedManagers
                   : activeProject.projectManager
                   ? [activeProject.projectManager]
                   : [];
+              const managers = rawManagers.filter((m: any) => m && (typeof m === 'object' ? (m._id || m.fullName || m.email) : Boolean(m)));
 
               if (managers.length > 1) {
                 return (
@@ -942,20 +988,26 @@ export default function CalculatorProjectDetails({
               }
 
               const manager = managers[0];
-              const name = manager?.fullName || "Unassigned";
+              const name = manager?.fullName || "Not assigned yet";
               const avatar = manager?.avatar;
               return (
                 <div className="text-center py-4">
-                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gradient-to-br from-[#BAC2D0] to-[#9AA5B8] border border-gray-200">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gray-100 border border-gray-200">
                     {avatar ? (
                       <img src={avatar} alt={name} className="w-full h-full object-cover" />
+                    ) : manager ? (
+                      <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-3xl font-bold">
+                        {name[0] || "M"}
+                      </div>
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-white text-3xl font-bold">
-                        {name === "Unassigned" ? "?" : name[0]}
+                      <div className="w-full h-full bg-gradient-to-b from-gray-100 to-gray-200 flex items-center justify-center text-gray-400">
+                        <svg className="w-12 h-12 sm:w-14 sm:h-14 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                          <path fillRule="evenodd" d="M12 4a4 4 0 100 8 4 4 0 000-8zm-2 9a6 6 0 00-6 6v1a1 1 0 001 1h14a1 1 0 001-1v-1a6 6 0 00-6-6h-4z" clipRule="evenodd" />
+                        </svg>
                       </div>
                     )}
                   </div>
-                  <h4 className="text-lg font-bold text-gray-800 mb-1">{name}</h4>
+                  <h4 className="text-lg font-bold text-gray-800 mb-1">{manager ? name : "Not assigned yet"}</h4>
                   <p className="text-sm text-gray-500 font-medium uppercase tracking-wider text-[10px]">
                     PROJECT MANAGER
                   </p>

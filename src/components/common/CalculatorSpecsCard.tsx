@@ -35,6 +35,7 @@ interface CalculatorSpecs {
 
 interface Props {
   specs: CalculatorSpecs;
+  currency?: string;
 }
 
 function formatTimelineAnswer(timeline?: string, estimatedTimeline?: string): string {
@@ -115,7 +116,7 @@ function renderAnswerValue(sel: CalculatorSelection): React.ReactNode {
   }
 
   return (
-    <ul style={{ margin: "6px 0 0 0", paddingLeft: "28px", listStyleType: "disc", color: "#334155", fontSize: "13px", fontWeight: 500, lineHeight: 1.6 }}>
+    <ul style={{ margin: "6px 0 0 0", paddingLeft: "28px", listStyleType: "disc", color: "#2563eb", fontSize: "13.5px", fontWeight: 600, lineHeight: 1.6 }}>
       {displayTexts.map((t, i) => (
         <li key={i} style={{ marginBottom: "4px" }}>{t}</li>
       ))}
@@ -131,8 +132,17 @@ function cleanQuestionTitle(text?: string): string {
   return cleaned;
 }
 
-export default function CalculatorSpecsCard({ specs }: Props) {
+export default function CalculatorSpecsCard({ specs, currency: customCurrency }: Props) {
   if (!specs) return null;
+
+  const resolvedCurrency = (customCurrency || "usd").toUpperCase();
+  const formatAmount = (amt: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: resolvedCurrency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(amt);
 
   const {
     categoryKey = "website",
@@ -302,7 +312,7 @@ export default function CalculatorSpecsCard({ specs }: Props) {
                   paddingLeft: "16px",
                 }}
               >
-                {item.amount > 0 ? `$${item.amount.toLocaleString()}` : "Included"}
+                {item.amount > 0 ? formatAmount(item.amount) : "Included"}
               </div>
             </div>
           ))

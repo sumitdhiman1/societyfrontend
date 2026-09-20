@@ -1244,8 +1244,10 @@ export default function AnalysisDetailsPage() {
                     {managerName[0] || "M"}
                   </div>
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white text-3xl font-bold">
-                    ?
+                  <div className="w-full h-full bg-gradient-to-b from-gray-100 to-gray-200 flex items-center justify-center text-gray-400">
+                    <svg className="w-12 h-12 sm:w-14 sm:h-14 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                      <path fillRule="evenodd" d="M12 4a4 4 0 100 8 4 4 0 000-8zm-2 9a6 6 0 00-6 6v1a1 1 0 001 1h14a1 1 0 001-1v-1a6 6 0 00-6-6h-4z" clipRule="evenodd" />
+                    </svg>
                   </div>
                 )}
               </div>
@@ -1376,6 +1378,7 @@ export default function AnalysisDetailsPage() {
 
               const payParams = new URLSearchParams();
               if (amount > 0) payParams.set("amount", String(amount));
+              if (currency) payParams.set("currency", currency);
               if (invId) payParams.set("invoiceId", String(invId));
               if (invNum) payParams.set("invoiceNumber", String(invNum));
               if (currentMsgId) payParams.set("messageId", String(currentMsgId));

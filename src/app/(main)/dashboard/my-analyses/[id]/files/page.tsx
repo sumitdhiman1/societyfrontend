@@ -266,10 +266,10 @@ export default function AnalysisFilesPage() {
         const mimeType = isImg
           ? "image/png"
           : isDoc
-          ? "application/pdf"
-          : isVid
-          ? "video/mp4"
-          : file.type || "application/octet-stream";
+            ? "application/pdf"
+            : isVid
+              ? "video/mp4"
+              : file.type || "application/octet-stream";
 
         const isDeliveryFile =
           isDelivery ||
@@ -434,7 +434,7 @@ export default function AnalysisFilesPage() {
           type: file.type || "application/octet-stream",
           category: getCategory(file.type, file.name),
         });
-        
+
         setUploadedFiles((prev) => [newUploadedRecord, ...prev]);
         successCount++;
       } catch (e: any) {
@@ -498,7 +498,7 @@ export default function AnalysisFilesPage() {
         {/* Left Column: Filter & Sources */}
         <div className="space-y-4 lg:col-span-1">
           {/* Filter by Type */}
-          <div className="border border-gray-200 rounded-xl p-4 sm:p-5 bg-white">
+          <div className="border border-gray-200 rounded-xl p-4 sm:p-5 bg-white shadow-xs">
             <h3 className="text-xs sm:text-sm font-bold text-[#363636] uppercase tracking-wider mb-3">
               Filter by Type
             </h3>
@@ -511,17 +511,15 @@ export default function AnalysisFilesPage() {
                     key={value}
                     type="button"
                     onClick={() => setActiveCategory(value)}
-                    className={`flex-shrink-0 lg:w-full rounded-lg px-3 py-2 text-sm flex justify-between items-center transition-all cursor-pointer ${
-                      isActive
-                        ? "bg-[#3232b7] text-white font-semibold shadow-sm"
-                        : "text-[#6B7280] hover:bg-gray-100"
-                    }`}
+                    className={`flex-shrink-0 lg:w-full rounded-lg px-3 py-2 text-sm flex justify-between items-center transition-all cursor-pointer ${isActive
+                      ? "bg-[#3232b7] text-white font-semibold shadow-sm"
+                      : "text-[#6B7280] hover:bg-gray-100"
+                      }`}
                   >
                     <span>{label}</span>
                     <span
-                      className={`text-xs font-mono rounded-full px-2 py-0.5 ${
-                        isActive ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
-                      }`}
+                      className={`text-xs font-mono rounded-full px-2 py-0.5 ${isActive ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
+                        }`}
                     >
                       {count}
                     </span>
@@ -532,7 +530,7 @@ export default function AnalysisFilesPage() {
           </div>
 
           {/* Sources */}
-          <div className="border border-gray-200 rounded-xl p-4 sm:p-5">
+          <div className="border border-gray-200 rounded-xl p-4 sm:p-5 bg-white">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs sm:text-sm font-bold text-[#363636] uppercase tracking-wider">
                 Sources
@@ -551,11 +549,10 @@ export default function AnalysisFilesPage() {
               <button
                 type="button"
                 onClick={() => setActiveSource(activeSource === "delivery" ? "all" : "delivery")}
-                className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all cursor-pointer ${
-                  activeSource === "delivery"
-                    ? "bg-[#4343F0]/10 border border-[#4343F0]"
-                    : "hover:bg-gray-50 border border-transparent"
-                }`}
+                className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all cursor-pointer ${activeSource === "delivery"
+                  ? "bg-[#4343F0]/10 border border-[#4343F0]"
+                  : "hover:bg-gray-50 border border-transparent"
+                  }`}
               >
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black bg-[#4343F0] text-white border border-[#4343F0]/25 uppercase tracking-tighter">
@@ -571,11 +568,10 @@ export default function AnalysisFilesPage() {
               <button
                 type="button"
                 onClick={() => setActiveSource(activeSource === "chat" ? "all" : "chat")}
-                className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all cursor-pointer ${
-                  activeSource === "chat"
-                    ? "bg-blue-50 border border-blue-400"
-                    : "hover:bg-gray-50 border border-transparent"
-                }`}
+                className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all cursor-pointer ${activeSource === "chat"
+                  ? "bg-blue-50 border border-blue-400"
+                  : "hover:bg-gray-50 border border-transparent"
+                  }`}
               >
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100">
@@ -591,11 +587,10 @@ export default function AnalysisFilesPage() {
               <button
                 type="button"
                 onClick={() => setActiveSource(activeSource === "uploaded" ? "all" : "uploaded")}
-                className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all cursor-pointer ${
-                  activeSource === "uploaded"
-                    ? "bg-green-50 border border-green-400"
-                    : "hover:bg-gray-50 border border-transparent"
-                }`}
+                className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all cursor-pointer ${activeSource === "uploaded"
+                  ? "bg-green-50 border border-green-400"
+                  : "hover:bg-gray-50 border border-transparent"
+                  }`}
               >
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-600 border border-green-100">
@@ -661,9 +656,8 @@ export default function AnalysisFilesPage() {
                 if (e.dataTransfer.files?.length) handleUploadFiles(e.dataTransfer.files);
               }}
               onClick={handleTriggerUpload}
-              className={`w-full border-2 border-dashed rounded-xl h-[120px] sm:h-[140px] flex flex-col items-center justify-center text-sm cursor-pointer transition-all border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-400 ${
-                isDragging ? "border-[#3232b7] bg-blue-50/40" : ""
-              }`}
+              className={`w-full border-2 border-dashed rounded-xl h-[120px] sm:h-[140px] flex flex-col items-center justify-center text-sm cursor-pointer transition-all border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-400 ${isDragging ? "border-[#3232b7] bg-blue-50/40" : ""
+                }`}
             >
               <div className="text-2xl sm:text-3xl mb-2">☁️</div>
               <p className="text-xs sm:text-sm text-center px-4">
@@ -688,18 +682,16 @@ export default function AnalysisFilesPage() {
                   <button
                     type="button"
                     onClick={() => setViewMode("list")}
-                    className={`px-3 py-1.5 text-[10px] sm:text-xs font-medium transition-colors cursor-pointer ${
-                      viewMode === "list" ? "bg-[#3232b7] text-white" : "text-gray-500 hover:bg-gray-50"
-                    }`}
+                    className={`px-3 py-1.5 text-[10px] sm:text-xs font-medium transition-colors cursor-pointer ${viewMode === "list" ? "bg-[#3232b7] text-white" : "text-gray-500 hover:bg-gray-50"
+                      }`}
                   >
                     ☰ List
                   </button>
                   <button
                     type="button"
                     onClick={() => setViewMode("grid")}
-                    className={`px-3 py-1.5 text-[10px] sm:text-xs font-medium transition-colors cursor-pointer ${
-                      viewMode === "grid" ? "bg-[#3232b7] text-white" : "text-gray-500 hover:bg-gray-50"
-                    }`}
+                    className={`px-3 py-1.5 text-[10px] sm:text-xs font-medium transition-colors cursor-pointer ${viewMode === "grid" ? "bg-[#3232b7] text-white" : "text-gray-500 hover:bg-gray-50"
+                      }`}
                   >
                     ⊞ Grid
                   </button>
@@ -752,9 +744,8 @@ export default function AnalysisFilesPage() {
                       <img
                         src={ensureHttps(file.url)}
                         alt={file.name}
-                        className={`w-full h-full ${
-                          file.url?.toLowerCase().includes(".svg") ? "object-contain p-2" : "object-cover"
-                        }`}
+                        className={`w-full h-full ${file.url?.toLowerCase().includes(".svg") ? "object-contain p-2" : "object-cover"
+                          }`}
                         onError={(e) => {
                           const target = e.currentTarget;
                           if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {

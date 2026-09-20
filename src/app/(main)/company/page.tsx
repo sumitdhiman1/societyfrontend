@@ -212,7 +212,7 @@ export default function CompanyPage() {
         </section>
 
         {/* ── Our Company Section ──────────────────────────────────────── */}
-        <section className="bg-[#f3f4f6] text-[#363636] py-8 md:py-[70px]">
+        <section className="bg-[#F4F5FA] text-[#363636] py-8 md:py-[70px]">
           <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] w-full flex flex-col gap-8 md:gap-[30px]">
             <div className="flex flex-col lg:flex-row w-full justify-between gap-8 lg:gap-12">
               <div className="flex flex-col gap-3 md:gap-[21px] w-full lg:w-[42%] lg:max-w-[530px] shrink-0">
@@ -306,7 +306,7 @@ export default function CompanyPage() {
         </section>
 
         {/* ── Dynamic Testimonials & CTA Section ────────────────────────── */}
-        <section className="bg-[#f3f4f6] text-[#363636] pt-8 md:pt-[70px] pb-0 flex flex-col items-center">
+        <section className="bg-[#F4F5FA] text-[#363636] pt-8 md:pt-[70px] pb-0 flex flex-col items-center">
           <div className="w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] flex flex-col items-center gap-0 md:gap-[25px]">
             <h2 className="w-full text-2xl sm:text-3xl md:text-[40px] lg:text-[50px] font-semibold leading-tight sm:leading-[44px] md:leading-[60px] text-center text-[#363636] mb-5 md:mb-0">
               See what our business community has to say
@@ -328,9 +328,9 @@ export default function CompanyPage() {
                   >
                     <div
                       className="bg-white rounded-[20px] p-6 lg:p-[28px] flex flex-col gap-3 min-h-[300px] lg:min-h-[340px] h-full"
-                      style={{
-                        boxShadow: "0px 4px 44px 0px rgba(194, 194, 194, 0.25)",
-                      }}
+                    // style={{
+                    //   boxShadow: "0px 4px 44px 0px rgba(194, 194, 194, 0.25)",
+                    // }}
                     >
                       <h3 className="font-bold text-[#363636] text-lg sm:text-[20px] leading-snug uppercase opacity-80 truncate text-left m-0">
                         {getTestimonialTitle(t)}

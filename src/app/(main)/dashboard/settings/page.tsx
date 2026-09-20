@@ -57,15 +57,60 @@ export default function SettingsPage() {
 
   const handleToggle = async (key: string) => {
     if (!preferences) return;
-    const newVal = !preferences[key];
+    const currentVal = !!preferences[key];
+    const newVal = !currentVal;
+
+    let updatedPreferences = { ...preferences };
+
+    if (key === "emailNotifications") {
+      if (!newVal) {
+        // Turning master toggle OFF turns all notifications off
+        updatedPreferences = {
+          emailNotifications: false,
+          projects: false,
+          quotes: false,
+          support: false,
+          payments: false,
+          marketing: false,
+        };
+      } else {
+        // Turning master toggle ON turns on notification categories
+        updatedPreferences = {
+          emailNotifications: true,
+          projects: true,
+          quotes: true,
+          support: true,
+          payments: true,
+          marketing: false,
+        };
+      }
+    } else {
+      updatedPreferences[key] = newVal;
+      // If user turns on any individual category, master toggle should be true
+      if (newVal) {
+        updatedPreferences.emailNotifications = true;
+      } else {
+        // If all individual category toggles are false, master toggle should be false
+        const anyActive =
+          (key !== "projects" && updatedPreferences.projects) ||
+          (key !== "quotes" && updatedPreferences.quotes) ||
+          (key !== "support" && updatedPreferences.support) ||
+          (key !== "payments" && updatedPreferences.payments) ||
+          (key !== "marketing" && updatedPreferences.marketing);
+        if (!anyActive) {
+          updatedPreferences.emailNotifications = false;
+        }
+      }
+    }
+
     // Optimistic update
-    setPreferences((prev: any) => (prev ? { ...prev, [key]: newVal } : null));
+    setPreferences(updatedPreferences);
     try {
-      await profileService.updateEmailPreferences({ [key]: newVal });
+      await profileService.updateEmailPreferences(updatedPreferences);
     } catch (e) {
       console.error("Failed to update preference", e);
       // Revert
-      setPreferences((prev: any) => (prev ? { ...prev, [key]: !newVal } : null));
+      setPreferences(preferences);
     }
   };
 

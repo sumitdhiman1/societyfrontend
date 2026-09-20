@@ -488,15 +488,15 @@ export default function ProjectFilesPage() {
                     type="button"
                     onClick={() => setActiveCategory(value)}
                     className={`flex-shrink-0 lg:w-full rounded-lg px-3 py-2 text-sm flex justify-between items-center transition-all cursor-pointer ${activeCategory === value
-                        ? "bg-[#4343F0] text-white font-semibold shadow-sm"
-                        : "text-[#6B7280] hover:bg-gray-100"
+                      ? "bg-[#4343F0] text-white font-semibold shadow-sm"
+                      : "text-[#6B7280] hover:bg-gray-100"
                       }`}
                   >
                     <span>{label}</span>
                     <span
                       className={`text-xs font-mono rounded-full px-2 py-0.5 ${activeCategory === value
-                          ? "bg-white/20 text-white font-bold"
-                          : "bg-gray-100 text-gray-500"
+                        ? "bg-white/20 text-white font-bold"
+                        : "bg-gray-100 text-gray-500"
                         }`}
                     >
                       {count}
@@ -585,8 +585,8 @@ export default function ProjectFilesPage() {
               }}
               onClick={handleTriggerUpload}
               className={`w-full border-2 border-dashed rounded-xl h-[130px] flex flex-col items-center justify-center text-sm cursor-pointer transition-all ${isDragging
-                  ? "border-[#4343F0] bg-blue-50/50"
-                  : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/40 text-gray-400"
+                ? "border-[#4343F0] bg-blue-50/50"
+                : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/40 text-gray-400"
                 }`}
             >
               <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center mb-1.5 text-gray-400">
@@ -685,8 +685,8 @@ export default function ProjectFilesPage() {
                         src={ensureHttps(file.url)}
                         alt={file.name}
                         className={`w-full h-full ${file.url?.toLowerCase().includes(".svg")
-                            ? "object-contain p-2"
-                            : "object-cover"
+                          ? "object-contain p-2"
+                          : "object-cover"
                           }`}
                         onError={(e) => {
                           const target = e.currentTarget;
