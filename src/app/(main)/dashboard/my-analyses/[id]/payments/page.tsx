@@ -336,25 +336,6 @@ export default function AnalysisPaymentsPage() {
            ? "An offer to check the completed work of any other web professionals, including your own in-house staff and/or partners. Fully custom and manual checking by our quality assurance team. Serves as a third, objective perspective on the quality of work completed."
            : "Our classic analysis offer covering branding, UI/UX, functionalities, AI potentiality, tech stack, speed, and SEO. A manual review using a custom process created by Society Web Solutions, checking every important part of your website. Delivered as a custom PDF report within 5 days."));
 
-  const analysisNativeCurrency = (
-    activeAnalysis.currency ||
-    payments[0]?.currency ||
-    "USD"
-  ).toLowerCase();
-
-  const totalPaidFromTransactions = (payments || [])
-    .filter((p: any) => ["succeeded", "paid", "completed"].includes(p.status?.toLowerCase()))
-    .reduce((sum: number, p: any) => {
-      const pCurr = (p?.currency || analysisNativeCurrency || "USD").toLowerCase();
-      const pAmt = Number(p?.amountPaid || p?.amount || 0);
-      const pRate = Number(p?.exchangeRate || p?.metadata?.exchangeRate || p?.metadata?.conversionRate || conversionRate || 1.14776);
-      return sum + convertCurrencyAmount(pAmt, analysisNativeCurrency, pCurr, pRate);
-    }, 0);
-
-  const amountPaid = totalPaidFromTransactions > 0
-    ? totalPaidFromTransactions
-    : Number(activeAnalysis.amountPaid || 0);
-
   // 1. Regular items
   const regularItems = (activeAnalysis.deliverableItems && activeAnalysis.deliverableItems.length > 0)
     ? activeAnalysis.deliverableItems.map((item: any) => ({
@@ -428,6 +409,40 @@ export default function AnalysisPaymentsPage() {
   const allAddonItems = addonItemsFromAddons.length > 0 ? addonItemsFromAddons : addonItemsFromMessages;
   const deliverableItems = allAddonItems.length > 0 ? [...regularItems, ...allAddonItems] : regularItems;
 
+  const activeAddonCurrency = (
+    allAddonItems.find((a: any) => a.currency)?.currency ||
+    activeAnalysis?.addons?.[0]?.currency ||
+    activeAnalysis?.messages?.find((m: any) => (m.type === 'quote_proposal' || m.content?.type === 'quote_proposal') && (m.content?.currency || m.currency))?.content?.currency ||
+    activeAnalysis?.messages?.find((m: any) => (m.type === 'quote_proposal' || m.content?.type === 'quote_proposal') && (m.content?.currency || m.currency))?.currency ||
+    ""
+  ).toUpperCase();
+
+  const isBaseFree = Boolean(
+    activeAnalysis.isFree ||
+    (!activeAnalysis.basePrice && (!activeAnalysis.deliverableItems?.length || activeAnalysis.deliverableItems.every((d: any) => Number(d.amount ?? d.cost ?? 0) === 0)))
+  );
+
+  const effectiveAnalysisSourceCurrency = (
+    isBaseFree && activeAddonCurrency
+      ? activeAddonCurrency
+      : (activeAnalysis.currency || activeAddonCurrency || payments[0]?.currency || "USD")
+  ).toUpperCase();
+
+  const analysisNativeCurrency = effectiveAnalysisSourceCurrency.toLowerCase();
+
+  const totalPaidFromTransactions = (payments || [])
+    .filter((p: any) => ["succeeded", "paid", "completed"].includes(p.status?.toLowerCase()))
+    .reduce((sum: number, p: any) => {
+      const pCurr = (p?.currency || analysisNativeCurrency || "USD").toLowerCase();
+      const pAmt = Number(p?.amountPaid || p?.amount || 0);
+      const pRate = Number(p?.exchangeRate || p?.metadata?.exchangeRate || p?.metadata?.conversionRate || conversionRate || 1.14776);
+      return sum + convertCurrencyAmount(pAmt, analysisNativeCurrency, pCurr, pRate);
+    }, 0);
+
+  const amountPaid = totalPaidFromTransactions > 0
+    ? totalPaidFromTransactions
+    : Number(activeAnalysis.amountPaid || 0);
+
   const addonsTotal = allAddonItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
   const currentPrice = Number(activeAnalysis.price ?? activeAnalysis.totalCost ?? 0);
   const baseCost = activeAnalysis.basePrice != null
@@ -446,20 +461,6 @@ export default function AnalysisPaymentsPage() {
   const isFullyPaid = pendingBalance <= 0.009 && amountPaid > 0 && activeAnalysis.paymentStatus !== "pending";
 
   const isFree = totalProjectCost === 0 && amountPaid === 0 && allAddonItems.length === 0;
-
-  const activeAddonCurrency = (
-    allAddonItems.find((a: any) => a.currency)?.currency ||
-    activeAnalysis?.addons?.[0]?.currency ||
-    activeAnalysis?.messages?.find((m: any) => (m.type === 'quote_proposal' || m.content?.type === 'quote_proposal') && (m.content?.currency || m.currency))?.content?.currency ||
-    activeAnalysis?.messages?.find((m: any) => (m.type === 'quote_proposal' || m.content?.type === 'quote_proposal') && (m.content?.currency || m.currency))?.currency ||
-    ""
-  ).toUpperCase();
-
-  const effectiveAnalysisSourceCurrency = (
-    (isFree || baseCost <= 0) && activeAddonCurrency
-      ? activeAddonCurrency
-      : (activeAnalysis.currency || activeAddonCurrency || payments[0]?.currency || "USD")
-  ).toUpperCase();
 
   const getAnalysisPayloadForPdf = () => {
     const activeTitle = dynamicAnalysisTitle || activeAnalysis.title || "Website Analysis";

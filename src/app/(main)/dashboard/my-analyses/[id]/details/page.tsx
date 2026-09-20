@@ -1058,36 +1058,41 @@ export default function AnalysisDetailsPage() {
 
   const totalCost = baseAmount + vatAmount;
 
-  const analysisNativeCurrency = (
-    analysis?.currency ||
-    analysisPayments[0]?.currency ||
-    "USD"
+  const activeAddonCurrency = (
+    allAddonDeliverables.find((a: any) => a.currency)?.currency ||
+    analysis?.addons?.[0]?.currency ||
+    analysis?.messages?.find((m: any) => (m.type === 'quote_proposal' || m.content?.type === 'quote_proposal') && (m.content?.currency || m.currency))?.content?.currency ||
+    analysis?.messages?.find((m: any) => (m.type === 'quote_proposal' || m.content?.type === 'quote_proposal') && (m.content?.currency || m.currency))?.currency ||
+    ""
   ).toLowerCase();
 
-  const ledgerPayments = (analysis?.paymentLedger || []).map((entry: any, index: number) => ({
-    _id: entry.transactionId || `ledger-${index}`,
-    id: entry.transactionId || `ledger-${index}`,
-    amount: entry.chargedAmount || entry.amount,
-    currency: entry.chargedCurrency || entry.currency,
-    status: entry.status || "succeeded",
-    exchangeRate: entry.exchangeRate,
-    metadata: { exchangeRate: entry.exchangeRate },
-    createdAt: entry.date,
-  }));
-
-  const combinedPayments = [...(analysisPayments || [])];
-  const seenTxnIds = new Set(
-    combinedPayments.map((p: any) => String(p._id || p.id || p.transactionId || "")).filter(Boolean)
+  const isBaseFree = Boolean(
+    analysis.isFree ||
+    (!analysis.basePrice && (!analysis.deliverableItems?.length || analysis.deliverableItems.every((d: any) => Number(d.amount ?? d.cost ?? 0) === 0)))
   );
-  for (const lp of ledgerPayments) {
-    const id = String(lp._id || lp.id || "");
-    if (!seenTxnIds.has(id)) {
-      combinedPayments.push(lp);
-      seenTxnIds.add(id);
-    }
-  }
 
-  const totalPaidFromTransactions = combinedPayments
+  const analysisNativeCurrency = (
+    (isBaseFree || initialAnalysisPrice <= 0) && activeAddonCurrency
+      ? activeAddonCurrency
+      : (analysis?.currency || activeAddonCurrency || analysisPayments[0]?.currency || "USD")
+  ).toLowerCase();
+
+  const rawPayments = Array.isArray(analysisPayments) && analysisPayments.length > 0
+    ? analysisPayments
+    : (Array.isArray(analysis?.paymentLedger) && analysis.paymentLedger.length > 0
+        ? analysis.paymentLedger.map((entry: any, index: number) => ({
+            _id: entry.transactionId || `ledger-${index}`,
+            id: entry.transactionId || `ledger-${index}`,
+            amount: entry.chargedAmount || entry.amount,
+            currency: entry.chargedCurrency || entry.currency,
+            status: entry.status || "succeeded",
+            exchangeRate: entry.exchangeRate,
+            metadata: { exchangeRate: entry.exchangeRate },
+            createdAt: entry.date,
+          }))
+        : []);
+
+  const totalPaidFromTransactions = rawPayments
     .filter((p: any) => ["succeeded", "paid", "completed"].includes(String(p?.status || "").toLowerCase()))
     .reduce((sum: number, p: any) => {
       const pCurr = (p?.currency || analysisNativeCurrency || "USD").toLowerCase();
@@ -1096,10 +1101,9 @@ export default function AnalysisDetailsPage() {
       return sum + convertCurrencyAmount(pAmt, analysisNativeCurrency, pCurr, pRate);
     }, 0);
 
-  const amountPaid = Math.max(
-    totalPaidFromTransactions,
-    Number(analysis?.amountPaid || 0)
-  );
+  const amountPaid = totalPaidFromTransactions > 0
+    ? totalPaidFromTransactions
+    : Number(analysis?.amountPaid || 0);
 
   const resolvedTotalCost = totalCost;
   const calculatedPending = Math.max(0, Math.round((resolvedTotalCost - amountPaid) * 100) / 100);

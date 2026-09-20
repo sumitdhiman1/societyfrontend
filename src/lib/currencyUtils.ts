@@ -83,7 +83,8 @@ export function formatPriceStringWithCurrency(
   text: string,
   targetCurrency: string = "usd",
   sourceCurrency: string = "usd",
-  conversionRate: number = 1.08
+  conversionRate: number = 1.08,
+  roundBy5: boolean = false
 ): string {
   if (!text || typeof text !== "string") return "";
   const trimmed = text.trim();
@@ -94,16 +95,18 @@ export function formatPriceStringWithCurrency(
   const targetCurr = (targetCurrency || "usd").toLowerCase();
   const sourceCurr = (sourceCurrency || "usd").toLowerCase();
   const symbol = targetCurr === "eur" ? "€" : "$";
+  const isRange = text.includes("-");
 
   // Replace monetary figures (e.g. $2200, 2200, $2200.00, €2000)
   return text.replace(/(?:[\$€£])?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/g, (match, numStr) => {
     const cleanNum = parseFloat(numStr.replace(/,/g, ""));
     if (isNaN(cleanNum)) return match;
     const converted = convertCurrencyAmount(cleanNum, targetCurr, sourceCurr, conversionRate);
-    const hasCents = converted % 1 !== 0;
+    const finalVal = (roundBy5 || isRange || targetCurr === "eur") ? roundToNearest5(converted) : converted;
+    const hasCents = finalVal % 1 !== 0;
     const formattedNum = hasCents
-      ? converted.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      : converted.toLocaleString("en-US", { maximumFractionDigits: 0 });
+      ? finalVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : finalVal.toLocaleString("en-US", { maximumFractionDigits: 0 });
     return `${symbol}${formattedNum}`;
   });
 }

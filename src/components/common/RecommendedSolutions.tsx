@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { getSafeUrl } from "@/lib/utils";
 import { packagesService } from "@/lib/packagesService";
 import { useCurrency } from "@/context/CurrencyContext";
-import { formatPriceWithCurrency, formatPriceStringWithCurrency } from "@/lib/currencyUtils";
+import { formatPriceWithCurrency, formatPriceStringWithCurrency, roundToNearest5, convertCurrencyAmount } from "@/lib/currencyUtils";
 
 const categoryMap: Record<string, string> = {
   // Short auto-generated codes
@@ -196,26 +196,42 @@ export const formatPriceDisplay = (
 
   const suffix = isMonthly ? "/month" : "";
 
-  // Helper to format a single amount
-  const fmt = (num: number) => {
-    return formatPriceWithCurrency(num, targetCurrency, "usd", conversionRate).replace(/\.00(?!\d)/g, "") + suffix;
+  // Helper to format a single amount rounded to nearest 5
+  const formatVal = (num: number) => {
+    const converted = convertCurrencyAmount(num, targetCurrency, "usd", conversionRate);
+    const rounded = roundToNearest5(converted);
+    const targetCurr = (targetCurrency || "usd").toLowerCase();
+    const symbol = targetCurr === "eur" ? "€" : "$";
+    return `${symbol}${rounded.toLocaleString("en-US")}`;
   };
 
-  // 1. Dynamic range check from pre-calculated amount / priceText
+  const fmt = (num: number) => {
+    return `${formatVal(num)}${suffix}`;
+  };
+
+  // 1. Dynamic range check from pre-calculated amount / priceText (rounded to nearest 5)
   const candidateRange =
     (match?.amount && String(match.amount).includes("-") ? String(match.amount) : null) ||
     (sol.amount && String(sol.amount).includes("-") ? String(sol.amount) : null) ||
     (sol.priceText && String(sol.priceText).includes("-") ? String(sol.priceText) : null);
 
   if (candidateRange) {
-    let clean = formatPriceStringWithCurrency(candidateRange, targetCurrency, "usd", conversionRate).replace(/\s*-\s*/, " - ").trim();
+    let clean = candidateRange.replace(/(?:[\$€£])?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/g, (matchStr, numStr) => {
+      const cleanNum = parseFloat(numStr.replace(/,/g, ""));
+      if (isNaN(cleanNum)) return matchStr;
+      const converted = convertCurrencyAmount(cleanNum, targetCurrency, "usd", conversionRate);
+      const rounded = roundToNearest5(converted);
+      const targetCurr = (targetCurrency || "usd").toLowerCase();
+      const symbol = targetCurr === "eur" ? "€" : "$";
+      return `${symbol}${rounded.toLocaleString("en-US")}`;
+    }).replace(/\s*-\s*/, " - ").trim();
     if (isMonthly && !clean.toLowerCase().includes("month")) {
       clean = `${clean}/month`;
     }
     return clean;
   }
 
-  // 2. Dynamic minPrice & maxPrice check
+  // 2. Dynamic minPrice & maxPrice check (rounded to nearest 5)
   const min = match?.minPrice ?? sol.minPrice;
   const max = match?.maxPrice ?? sol.maxPrice;
   if (min !== undefined && max !== undefined && (Number(min) > 0 || Number(max) > 0)) {
@@ -224,12 +240,12 @@ export const formatPriceDisplay = (
     if (minNum === maxNum) {
       return fmt(minNum);
     }
-    const minFmt = formatPriceWithCurrency(minNum, targetCurrency, "usd", conversionRate).replace(/\.00(?!\d)/g, "");
-    const maxFmt = formatPriceWithCurrency(maxNum, targetCurrency, "usd", conversionRate).replace(/\.00(?!\d)/g, "");
+    const minFmt = formatVal(minNum);
+    const maxFmt = formatVal(maxNum);
     return `${minFmt} - ${maxFmt}${suffix}`;
   }
 
-  // 3. Dynamic columns check (calculate min/max across columns)
+  // 3. Dynamic columns check (calculate min/max across columns rounded to nearest 5)
   const cols =
     (Array.isArray(match?.columns) && match.columns.length > 0 ? match.columns : null) ||
     (Array.isArray(sol.columns) && sol.columns.length > 0 ? sol.columns : null);
@@ -248,13 +264,13 @@ export const formatPriceDisplay = (
       if (colMin === colMax) {
         return fmt(colMin);
       }
-      const minFmt = formatPriceWithCurrency(colMin, targetCurrency, "usd", conversionRate).replace(/\.00(?!\d)/g, "");
-      const maxFmt = formatPriceWithCurrency(colMax, targetCurrency, "usd", conversionRate).replace(/\.00(?!\d)/g, "");
+      const minFmt = formatVal(colMin);
+      const maxFmt = formatVal(colMax);
       return `${minFmt} - ${maxFmt}${suffix}`;
     }
   }
 
-  // 4. Single value fallback (derived dynamically from match or sol)
+  // 4. Single value fallback (derived dynamically from match or sol rounded to nearest 5)
   const singleVal = match?.amount ?? sol.priceText ?? sol.amount ?? sol.price ?? sol.cost;
   if (singleVal !== undefined && singleVal !== null && singleVal !== "") {
     if (typeof singleVal === "number") {
@@ -262,8 +278,16 @@ export const formatPriceDisplay = (
     }
     const str = String(singleVal).trim();
     if (str.toUpperCase() === "FREE") return "FREE";
-    if (str.startsWith("$") || str.startsWith("€") || str.startsWith("£")) {
-      const convertedStr = formatPriceStringWithCurrency(str, targetCurrency, "usd", conversionRate);
+    if (str.startsWith("$") || str.startsWith("€") || str.startsWith("£") || /\d/.test(str)) {
+      let convertedStr = str.replace(/(?:[\$€£])?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/g, (matchStr, numStr) => {
+        const cleanNum = parseFloat(numStr.replace(/,/g, ""));
+        if (isNaN(cleanNum)) return matchStr;
+        const converted = convertCurrencyAmount(cleanNum, targetCurrency, "usd", conversionRate);
+        const rounded = roundToNearest5(converted);
+        const targetCurr = (targetCurrency || "usd").toLowerCase();
+        const symbol = targetCurr === "eur" ? "€" : "$";
+        return `${symbol}${rounded.toLocaleString("en-US")}`;
+      });
       return isMonthly && !convertedStr.toLowerCase().includes("month") ? `${convertedStr}/month` : convertedStr;
     }
     const num = Number(str);
