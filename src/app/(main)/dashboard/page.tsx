@@ -34,12 +34,12 @@ export default function DashboardPage() {
         </div>
 
         {/* Informational Sections */}
-        <div className="mt-8 md:mt-10 lg:mt-[60px] w-full">
+        <div className="mt-0 md:mt-10 lg:mt-[60px] w-full">
           <FreeAnalysis />
         </div>
 
-        <div className="mt-8 md:mt-10 lg:mt-[60px] w-full">
-          <SupportNewsletter />
+        <div className="mt-0 md:mt-10 lg:mt-[60px] w-full">
+          <SupportNewsletter gridClassName="mt-0 md:mt-12" />
         </div>
       </div>
 
