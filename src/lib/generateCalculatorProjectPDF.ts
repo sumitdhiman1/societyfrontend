@@ -141,7 +141,10 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     "Website Development";
 
   const title =
+    data.projectTitle ||
     data.title ||
+    data.requirements?.projectTitle ||
+    data.calculatorSpecs?.projectTitle ||
     `Project Proposal - ${categoryName}`;
 
   const status = (data.status || "Active").charAt(0).toUpperCase() + (data.status || "Active").slice(1).toLowerCase();
@@ -739,8 +742,15 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     );
   };
 
+  const rawDesc =
+    data.projectDescription ||
+    data.description ||
+    data.requirements?.projectDescription ||
+    data.requirements?.description ||
+    data.calculatorSpecs?.projectDescription ||
+    "";
   const cleanSubtitle = isRawDump(data.subtitle) ? "" : (data.subtitle || "");
-  const cleanDescription = isRawDump(data.description) ? "" : (data.description || "");
+  const cleanDescription = isRawDump(rawDesc) ? "" : rawDesc;
 
   const isEstoniaClient = (c?: string) => {
     if (!c) return false;

@@ -1133,10 +1133,17 @@ export default function QuoteDetailsPage() {
       : "30 Days");
 
   const getQuotePayloadForPdf = () => {
+    const activeTitle = quote?.projectTitle || quote?.title || "Custom Quote";
+    const activeDesc = quote?.projectDescription || quote?.description || quote?.requirements?.projectDescription || "";
     return {
       ...quote,
       isQuote: true,
       isProject: false,
+      title: activeTitle,
+      projectTitle: activeTitle,
+      description: activeDesc,
+      projectDescription: activeDesc,
+      currency: effectiveQuoteSourceCurrency || currency || quote?.currency || "USD",
       quoteNumber: quote?.quoteNumber || quote?.proposalNumber || quoteNumber,
       deliverables: quoteDeliverableItems && quoteDeliverableItems.length > 0 ? quoteDeliverableItems : (quote?.deliverables || quote?.lineItems),
       lineItems: quoteDeliverableItems && quoteDeliverableItems.length > 0 ? quoteDeliverableItems : (quote?.lineItems || quote?.deliverables),
@@ -1146,7 +1153,7 @@ export default function QuoteDetailsPage() {
       vatAmount: quoteVatAmount,
       totalCost: quoteResolvedTotalCost > 0 ? quoteResolvedTotalCost : (quote?.totalCost || quoteSubtotal),
       calculatorSpecs: quote?.calculatorSpecs || quote?.requirements,
-      user: quote?.user || (user ? { name: user.name, email: user.email } : undefined),
+      user: quote?.user || (user ? { name: user.fullName || user.name, fullName: user.fullName || user.name, email: user.email } : undefined),
     };
   };
 

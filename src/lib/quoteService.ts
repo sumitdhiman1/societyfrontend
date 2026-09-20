@@ -38,14 +38,8 @@ export class QuoteService {
   }
 
   async downloadQuotePDF(quote: { _id?: string; quoteNumber?: string; [key: string]: any }) {
-    const { isCalculatorProject } = await import("./calculator/shared");
-    if (isCalculatorProject(quote)) {
-      const { downloadCalculatorProjectPDF } = await import("./generateCalculatorProjectPDF");
-      await downloadCalculatorProjectPDF(quote);
-    } else {
-      const { downloadProjectDetailsPDF } = await import("./generateProjectDetailsPDF");
-      await downloadProjectDetailsPDF({ ...quote, isQuote: true });
-    }
+    const { generateQuotePDF } = await import("./generateQuotePDF");
+    await generateQuotePDF(quote);
   }
 
   async getQuoteFiles(id: string) {
