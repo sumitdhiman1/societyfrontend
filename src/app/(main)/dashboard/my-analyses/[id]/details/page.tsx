@@ -644,8 +644,22 @@ export default function AnalysisDetailsPage() {
   const formatCurrency = (amt: any, customSourceCurrency?: string) => {
     const val = Number(amt);
     if (isNaN(val)) return "$0.00";
-    const srcCurrency = (customSourceCurrency || analysis?.currency || "USD").toUpperCase();
     const targetCurrency = (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || "USD").toUpperCase();
+    let resolvedSrc = customSourceCurrency;
+    if (!resolvedSrc) {
+      const addonCurrency = (
+        analysis?.addons?.[0]?.currency ||
+        analysis?.messages?.find((m: any) => (m.type === 'quote_proposal' || m.content?.type === 'quote_proposal') && (m.content?.currency || m.currency))?.content?.currency ||
+        analysis?.messages?.find((m: any) => (m.type === 'quote_proposal' || m.content?.type === 'quote_proposal') && (m.content?.currency || m.currency))?.currency ||
+        ""
+      );
+      if (addonCurrency) {
+        resolvedSrc = addonCurrency;
+      } else {
+        resolvedSrc = analysis?.currency || targetCurrency;
+      }
+    }
+    const srcCurrency = (resolvedSrc || targetCurrency).toUpperCase();
     return formatPriceWithCurrency(val, targetCurrency, srcCurrency, conversionRate);
   };
 
@@ -884,6 +898,7 @@ export default function AnalysisDetailsPage() {
       duration: d.duration ? `${d.duration}` : '-',
       unit: d.unit || 'Days',
       details: d.details || '',
+      currency: (addon.currency || d.currency || '').toUpperCase(),
     }))
   );
 
@@ -900,12 +915,14 @@ export default function AnalysisDetailsPage() {
     })
     .flatMap((m: any) => {
       const deliverables = m.content?.deliverableItems || m.deliverableItems || [];
+      const proposalCurrency = (m.content?.currency || m.currency || '').toUpperCase();
       return deliverables.map((d: any) => ({
         description: d.description || d.title || d.name || 'Add-on deliverable',
         amount: Number(d.amount ?? d.cost ?? 0),
         duration: d.duration ? `${d.duration}` : '-',
         unit: 'Days',
         details: '',
+        currency: (proposalCurrency || d.currency || '').toUpperCase(),
       }));
     });
 
@@ -1262,15 +1279,29 @@ export default function AnalysisDetailsPage() {
   const getAnalysisPayloadForPdf = () => {
     const activeTitle = cleanItemTitle || analysis.title || "Website Analysis";
     const activeDesc = cleanItemDescription || analysis.description || "";
+    const activeAddonCurrency = (
+      allAddonDeliverables.find((a: any) => a.currency)?.currency ||
+      analysis?.addons?.[0]?.currency ||
+      analysis?.messages?.find((m: any) => (m.type === 'quote_proposal' || m.content?.type === 'quote_proposal') && (m.content?.currency || m.currency))?.content?.currency ||
+      analysis?.messages?.find((m: any) => (m.type === 'quote_proposal' || m.content?.type === 'quote_proposal') && (m.content?.currency || m.currency))?.currency ||
+      ""
+    ).toUpperCase();
+
+    const effectiveSrcCurrency = (
+      (isFreeAnalysis || initialAnalysisPrice <= 0) && activeAddonCurrency
+        ? activeAddonCurrency
+        : (analysis.currency || activeAddonCurrency || "USD")
+    ).toUpperCase();
+
     const activeCurrency = (
       contextCurrency ||
       (typeof window !== "undefined" ? localStorage.getItem("app-currency") : "") ||
       currentUser?.currency ||
       currentUser?.preferredCurrency ||
-      analysis.currency ||
+      effectiveSrcCurrency ||
       "USD"
     ).toUpperCase();
-    const sourceCurrency = (analysis.currency || "USD").toUpperCase();
+    const sourceCurrency = effectiveSrcCurrency;
 
     const deliverableAmount = isFreeAnalysis
       ? 0
@@ -1441,23 +1472,26 @@ export default function AnalysisDetailsPage() {
                           Add-On Tasks
                         </td>
                       </tr>
-                      {allAddonDeliverables.map((item: any, iIdx: number) => (
-                        <tr
-                          key={`addon-task-${iIdx}`}
-                          className={iIdx === allAddonDeliverables.length - 1 ? "" : "border-b border-gray-400"}
-                        >
-                          <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
-                            <div className="font-medium text-gray-700 mb-1">{item.description}</div>
-                            {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
-                          </td>
-                          <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
-                            {item.duration ? `${item.duration}${item.unit ? ` ${item.unit}` : (/\b(days?|weeks?|months?|years?)\b/i.test(String(item.duration)) ? '' : ' Days')}`.trim() : '-'}
-                          </td>
-                          <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
-                            {formatCurrency(item.amount ?? 0)}
-                          </td>
-                        </tr>
-                      ))}
+                      {allAddonDeliverables.map((item: any, iIdx: number) => {
+                        const itemCurrency = (item.currency || "").toUpperCase() || undefined;
+                        return (
+                          <tr
+                            key={`addon-task-${iIdx}`}
+                            className={iIdx === allAddonDeliverables.length - 1 ? "" : "border-b border-gray-400"}
+                          >
+                            <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-500 align-top">
+                              <div className="font-medium text-gray-700 mb-1">{item.description}</div>
+                              {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
+                            </td>
+                            <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
+                              {item.duration ? `${item.duration}${item.unit ? ` ${item.unit}` : (/\b(days?|weeks?|months?|years?)\b/i.test(String(item.duration)) ? '' : ' Days')}`.trim() : '-'}
+                            </td>
+                            <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
+                              {formatCurrency(item.amount ?? 0, itemCurrency)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </React.Fragment>
                   )}
                 </tbody>
@@ -2001,6 +2035,17 @@ export default function AnalysisDetailsPage() {
 
               const isLast = idx === (analysis.messages?.length || 0) - 1;
 
+              const proposalCurrency = (
+                content.currency ||
+                content.selectedCurrency ||
+                msg.currency ||
+                currentUser?.currency ||
+                currentUser?.preferredCurrency ||
+                contextCurrency ||
+                analysis?.currency ||
+                "USD"
+              ).toUpperCase();
+
               if (isDeliverablesProposal) {
                 return (
                   <div key={msgId} ref={isLast ? messagesEndRef : null} className="w-full my-4">
@@ -2141,7 +2186,7 @@ export default function AnalysisDetailsPage() {
                                   {item.duration ? `${item.duration}${/\b(days?|weeks?|months?|years?)\b/i.test(String(item.duration)) ? '' : ' Days'}` : "-"}
                                 </td>
                                 <td className="px-6 py-5 text-xs sm:text-sm text-gray-900 text-right font-bold align-middle">
-                                  {formatCurrency(item.amount ?? item.cost ?? 0)}
+                                  {formatCurrency(item.amount ?? item.cost ?? 0, proposalCurrency)}
                                 </td>
                               </tr>
                             ))}
@@ -2163,13 +2208,13 @@ export default function AnalysisDetailsPage() {
                           {vatRate > 0 && vatAmount > 0 && (
                             <div className="flex justify-between w-full gap-8">
                               <span className="text-gray-500 font-medium">Base Amount:</span>
-                              <span className="font-bold text-gray-700">{formatCurrency(baseAmount)}</span>
+                              <span className="font-bold text-gray-700">{formatCurrency(baseAmount, proposalCurrency)}</span>
                             </div>
                           )}
                           {vatRate > 0 && vatAmount > 0 && (
                             <div className="flex justify-between w-full gap-8">
                               <span className="text-gray-500 font-medium">VAT ({vatRate}%):</span>
-                              <span className="font-bold text-gray-700">{formatCurrency(vatAmount)}</span>
+                              <span className="font-bold text-gray-700">{formatCurrency(vatAmount, proposalCurrency)}</span>
                             </div>
                           )}
                           {vatRate > 0 && vatAmount > 0 && (
@@ -2177,7 +2222,7 @@ export default function AnalysisDetailsPage() {
                           )}
                           <div className="flex justify-between w-full gap-8">
                             <span className="text-gray-800 font-bold text-sm">Total Cost:</span>
-                            <span className="font-extrabold text-gray-900 text-sm sm:text-base">{formatCurrency(totalCost)}</span>
+                            <span className="font-extrabold text-gray-900 text-sm sm:text-base">{formatCurrency(totalCost, proposalCurrency)}</span>
                           </div>
                         </div>
                       </div>

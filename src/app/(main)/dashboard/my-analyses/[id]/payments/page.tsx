@@ -379,6 +379,7 @@ export default function AnalysisPaymentsPage() {
       details: item.details || "",
       duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
       amount: Number(item.amount ?? addon.totalCost ?? addon.cost ?? 0),
+      currency: (addon.currency || item.currency || "").toUpperCase(),
       isAddOn: true,
     }))
   );
@@ -413,11 +414,13 @@ export default function AnalysisPaymentsPage() {
     if (!isAccepted) return [];
 
     const items = content.deliverableItems || content.items || msg.deliverableItems || [];
+    const proposalCurrency = (content.currency || msg.currency || "").toUpperCase();
     return items.map((item: any) => ({
       description: item.description || item.title || item.name || "Add-On Deliverable",
       details: item.details || "",
       duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
       amount: Number(item.amount ?? item.cost ?? 0),
+      currency: (proposalCurrency || item.currency || "").toUpperCase(),
       isAddOn: true,
     }));
   });
@@ -444,11 +447,25 @@ export default function AnalysisPaymentsPage() {
 
   const isFree = totalProjectCost === 0 && amountPaid === 0 && allAddonItems.length === 0;
 
+  const activeAddonCurrency = (
+    allAddonItems.find((a: any) => a.currency)?.currency ||
+    activeAnalysis?.addons?.[0]?.currency ||
+    activeAnalysis?.messages?.find((m: any) => (m.type === 'quote_proposal' || m.content?.type === 'quote_proposal') && (m.content?.currency || m.currency))?.content?.currency ||
+    activeAnalysis?.messages?.find((m: any) => (m.type === 'quote_proposal' || m.content?.type === 'quote_proposal') && (m.content?.currency || m.currency))?.currency ||
+    ""
+  ).toUpperCase();
+
+  const effectiveAnalysisSourceCurrency = (
+    (isFree || baseCost <= 0) && activeAddonCurrency
+      ? activeAddonCurrency
+      : (activeAnalysis.currency || activeAddonCurrency || payments[0]?.currency || "USD")
+  ).toUpperCase();
+
   const getAnalysisPayloadForPdf = () => {
     const activeTitle = dynamicAnalysisTitle || activeAnalysis.title || "Website Analysis";
     const activeDesc = dynamicAnalysisDesc || activeAnalysis.description || "";
     const activeCurrency = (currency || (typeof window !== "undefined" ? localStorage.getItem("app-currency") : "") || "usd").toUpperCase();
-    const sourceCurrency = (activeAnalysis.currency || "USD").toUpperCase();
+    const sourceCurrency = effectiveAnalysisSourceCurrency;
 
     const deliverableAmount = isFree
       ? 0
@@ -912,7 +929,7 @@ export default function AnalysisPaymentsPage() {
             successRedirectUrl={`/dashboard/my-analyses/${analysisId}/payments?success=true`}
             amountPaid={amountPaid}
             isFullyPaid={isFullyPaid}
-            nativeCurrency={activeAnalysis.currency || "USD"}
+            nativeCurrency={effectiveAnalysisSourceCurrency || activeAnalysis.currency || "USD"}
             vatRate={activeAnalysis.vatRate ?? activeAnalysis.vatPercentage ?? activeAnalysis.taxPercentage ?? undefined}
             invoiceId={searchInvoiceId}
             metadata={{
