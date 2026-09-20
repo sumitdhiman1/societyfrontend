@@ -10,7 +10,7 @@ import {
   CardExpiryElement,
   CardCvcElement,
 } from "@stripe/react-stripe-js";
-import { paymentService } from "@/lib/paymentService";
+import { packageBundlePaymentService } from "@/lib/packageBundlePaymentService";
 import { authService } from "@/lib/authService";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -157,7 +157,7 @@ function PackageBundlePaymentFormContent({
     const initData = async () => {
       setIsLoadingMethods(true);
       try {
-        const response = await paymentService.getSavedPaymentMethods();
+        const response = await packageBundlePaymentService.getSavedPaymentMethods();
         if (response.isSuccessful && response.data) {
           setSavedMethods(response.data);
           if (response.data.length > 0) {
@@ -403,7 +403,7 @@ function PackageBundlePaymentFormContent({
         : rawLineItems;
 
       setPaymentStep("gateway");
-      const intentResponse = await paymentService.createPaymentIntent({
+      const intentResponse = await packageBundlePaymentService.createPaymentIntent({
         amount: finalAmount,
         currency,
         useCredits,
@@ -423,9 +423,11 @@ function PackageBundlePaymentFormContent({
           invoiceNumber: effectiveInvoiceNumber,
           messageId: effectiveMessageId,
           description: effectiveDescription,
+          deliverableItems: deliverableItems,
           vatRate: activeVatRate,
           vatAmount: activeVatAmount,
           subtotal: convertedSubtotal,
+          fullAmount: activeTotalWithVat,
           clientCountry: getActiveCountryCode(),
         },
       });
@@ -535,7 +537,7 @@ function PackageBundlePaymentFormContent({
 
     if (confirmResponse.paymentIntent?.status === "succeeded") {
       setPaymentStep("confirming");
-      const confirmResult = await paymentService.confirmPayment({ transactionId });
+      const confirmResult = await packageBundlePaymentService.confirmPayment({ transactionId });
       if (confirmResult.isSuccessful) {
         setPaymentStep("activating");
         await new Promise((r) => setTimeout(r, 600));

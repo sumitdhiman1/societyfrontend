@@ -6,13 +6,16 @@ import { packagesService } from "@/lib/packagesService";
 import { useChatWidget } from "@/context/ChatWidgetContext";
 import { useCurrency } from "@/context/CurrencyContext";
 import { authService } from "@/lib/authService";
-import { paymentService } from "@/lib/paymentService";
+import { packageBundlePaymentService } from "@/lib/packageBundlePaymentService";
 import { profileService } from "@/lib/profileService";
 import StatusPopup from "@/components/common/StatusPopup";
 import PackageBundlePaymentForm from "@/components/dashboard/PackageBundlePaymentForm";
 import Toast from "@/components/common/Toast";
 import { countryService, Country } from "@/lib/countryService";
-import { formatPackageBundlePriceWithCurrency as formatPriceWithCurrency } from "@/lib/currencyUtils";
+import {
+  formatPackageBundlePriceWithCurrency as formatPriceWithCurrency,
+  convertPackageBundleCurrencyAmount,
+} from "@/lib/currencyUtils";
 
 const CheckIcon = () => (
   <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center mx-auto">
@@ -167,7 +170,9 @@ function PackageDetailsContent() {
       authService.redirectToLogin();
       return;
     }
-    if (!(parsePrice(tier.price) > 0 || parsePrice(tier.recurringAmount) > 0)) {
+    const rawSetupPrice = parsePrice(tier.price);
+    const rawRecurringPrice = parsePrice(tier.recurringAmount);
+    if (!(rawSetupPrice > 0 || rawRecurringPrice > 0)) {
       router.push("/dashboard/new-project/custom-quote");
       return;
     }
@@ -175,16 +180,47 @@ function PackageDetailsContent() {
     setSelectedTier(tier);
     setProcessing(true);
     try {
-      const setupPrice = parsePrice(tier.price);
-      const recurringPrice = parsePrice(tier.recurringAmount);
+      const user = authService.getUser();
+      const userCountry = user?.country || "";
+      const isEstonia = ["ee", "est", "estonia"].includes(String(userCountry).toLowerCase().trim());
+      const vatRate = isEstonia ? 24 : 0;
+
+      const convertedPrice = convertPackageBundleCurrencyAmount(
+        rawSetupPrice > 0 ? rawSetupPrice : rawRecurringPrice,
+        currency,
+        "USD",
+        conversionRate
+      );
+
+      const convertedRecurringPrice = rawRecurringPrice > 0
+        ? convertPackageBundleCurrencyAmount(rawRecurringPrice, currency, "USD", conversionRate)
+        : 0;
+
+      const vatAmount = vatRate > 0 ? Math.round(convertedPrice * (vatRate / 100) * 100) / 100 : 0;
+      const totalWithVat = Math.round((convertedPrice + vatAmount) * 100) / 100;
+
       const oneTimeItems = features.filter((f: any) => {
         const val = f.values?.[tier.id];
         return val && val !== false && (!f.section || f.section === "one-time");
       }).map((f: any) => f.name).join(", ");
-      
-      const res = await paymentService.createOrder({
-        amount: setupPrice,
-        currency: currency,
+
+      const duration = getDurationLabel(tier);
+      const title = `${pkg.name}${tier.title ? ` - ${tier.title}` : ""}`;
+
+      const deliverableItems = [
+        {
+          description: title,
+          details: pkg.description || oneTimeItems || "",
+          amount: convertedPrice,
+          duration: duration,
+          unit: "",
+          isAddOn: false,
+        },
+      ];
+
+      const res = await packageBundlePaymentService.createOrder({
+        amount: totalWithVat,
+        currency: currency.toUpperCase(),
         creditsToApply: 0,
         metadata: {
           type: "PACKAGE",
@@ -192,14 +228,22 @@ function PackageDetailsContent() {
           packageName: pkg.name,
           tierId: tier.id,
           tierTitle: tier.title,
-          title: pkg.name,
+          title: title,
           description: pkg.description,
+          deliverableItems: deliverableItems,
           lineItems: oneTimeItems,
-          recurringAmount: recurringPrice,
-          fullAmount: setupPrice,
-          duration: getDurationLabel(tier),
-          billingType: tier.billingType || "fixed"
-        }
+          recurringAmount: convertedRecurringPrice,
+          subtotal: convertedPrice,
+          vatRate: vatRate,
+          vatAmount: vatAmount,
+          fullAmount: totalWithVat,
+          duration: duration,
+          totalDuration: duration,
+          billingType: tier.billingType || (pkg.paymentType?.toLowerCase().includes("month") ? "monthly" : "fixed"),
+          exchangeRate: conversionRate,
+          conversionRate: conversionRate,
+          clientCountry: userCountry,
+        },
       });
 
       if (res.isSuccessful && res.data?.projectId) {

@@ -6,12 +6,15 @@ import { packagesService } from "@/lib/packagesService";
 import { useChatWidget } from "@/context/ChatWidgetContext";
 import { useCurrency } from "@/context/CurrencyContext";
 import { authService } from "@/lib/authService";
-import { paymentService } from "@/lib/paymentService";
+import { packageBundlePaymentService } from "@/lib/packageBundlePaymentService";
 import { profileService } from "@/lib/profileService";
 import StatusPopup from "@/components/common/StatusPopup";
 import PackageBundlePaymentForm from "@/components/dashboard/PackageBundlePaymentForm";
 import { countryService, Country } from "@/lib/countryService";
-import { formatPackageBundlePriceWithCurrency as formatPriceWithCurrency } from "@/lib/currencyUtils";
+import {
+  formatPackageBundlePriceWithCurrency as formatPriceWithCurrency,
+  convertPackageBundleCurrencyAmount,
+} from "@/lib/currencyUtils";
 
 const CheckIcon = () => (
   <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center mx-auto">
@@ -504,9 +507,9 @@ function BundleDetailsContent() {
       authService.redirectToLogin();
       return;
     }
-    const recPrice = parsePrice(tier.recurringAmount ?? tier.recurringPrice);
-    const setupPrice = parsePrice(tier.price);
-    if (!(setupPrice > 0 || recPrice > 0)) {
+    const rawRecPrice = parsePrice(tier.recurringAmount ?? tier.recurringPrice);
+    const rawSetupPrice = parsePrice(tier.price);
+    if (!(rawSetupPrice > 0 || rawRecPrice > 0)) {
       router.push("/dashboard/new-project/custom-quote");
       return;
     }
@@ -514,21 +517,51 @@ function BundleDetailsContent() {
     setSelectedTier(tier);
     setProcessing(true);
     try {
-      const oneTimeItems = getIncludedFeatures("one-time", tier)
-        .map((f: any) => f.name)
-        .join(", ");
+      const user = authService.getUser();
+      const userCountry = user?.country || "";
+      const isEstonia = ["ee", "est", "estonia"].includes(String(userCountry).toLowerCase().trim());
+      const vatRate = isEstonia ? 24 : 0;
 
-      const recurringItems = getIncludedFeatures("monthly", tier)
-        .map((f: any) => f.name)
-        .join(", ");
+      const convertedSetupPrice = convertPackageBundleCurrencyAmount(
+        rawSetupPrice,
+        currency,
+        "USD",
+        conversionRate
+      );
+
+      const convertedRecPrice = rawRecPrice > 0
+        ? convertPackageBundleCurrencyAmount(rawRecPrice, currency, "USD", conversionRate)
+        : 0;
+
+      const vatAmount = vatRate > 0 ? Math.round(convertedSetupPrice * (vatRate / 100) * 100) / 100 : 0;
+      const totalWithVat = Math.round((convertedSetupPrice + vatAmount) * 100) / 100;
+
+      const oneTimeList = getIncludedFeatures("one-time", tier);
+      const oneTimeItems = oneTimeList.map((f: any) => f.name).join(", ");
+
+      const recurringList = getIncludedFeatures("monthly", tier);
+      const recurringItems = recurringList.map((f: any) => f.name).join(", ");
 
       const recurringDuration = tier.recurringTimeline
         ? (typeof tier.recurringTimeline === "object" ? `${tier.recurringTimeline.value} ${tier.recurringTimeline.type}` : "Monthly")
         : "Monthly";
 
-      const res = await paymentService.createOrder({
-        amount: setupPrice,
-        currency: currency,
+      const duration = getDurationLabel(tier);
+
+      const deliverableItems = [
+        {
+          description: "Initial Project Setup & Implementation",
+          details: oneTimeItems || `${pkg.name} (${tier.title} Tier)`,
+          amount: convertedSetupPrice,
+          duration: duration,
+          unit: "",
+          isAddOn: false,
+        },
+      ];
+
+      const res = await packageBundlePaymentService.createOrder({
+        amount: totalWithVat,
+        currency: currency.toUpperCase(),
         creditsToApply: 0,
         metadata: {
           type: "BUNDLE",
@@ -536,15 +569,23 @@ function BundleDetailsContent() {
           packageName: pkg.name,
           tierId: tier.id,
           tierTitle: tier.title,
-          title: pkg.name,
+          title: `${pkg.name} - ${tier.title}`,
           description: pkg.description,
+          deliverableItems: deliverableItems,
           lineItems: oneTimeItems,
           recurringLineItems: recurringItems,
-          recurringAmount: recPrice,
-          fullAmount: setupPrice,
-          duration: getDurationLabel(tier),
+          recurringAmount: convertedRecPrice,
+          subtotal: convertedSetupPrice,
+          vatRate: vatRate,
+          vatAmount: vatAmount,
+          fullAmount: totalWithVat,
+          duration: duration,
+          totalDuration: duration,
           recurringDuration: recurringDuration,
           billingType: "mixed",
+          exchangeRate: conversionRate,
+          conversionRate: conversionRate,
+          clientCountry: userCountry,
         },
       });
 
