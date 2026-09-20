@@ -763,11 +763,15 @@ export default function ProjectDetailsPage() {
   const isMonthlyProject = Boolean(
     project.billingType === "monthly" ||
     project.calculatorSpecs?.billingType === "monthly" ||
-    project.calculatorSpecs?.categoryKey === "marketing" ||
-    project.categoryKey === "marketing" ||
-    /marketing|campaign/i.test(project.title || "") ||
-    /marketing|campaign/i.test(project.calculatorSpecs?.categoryName || "") ||
-    (project.calculatorSpecs?.categoryKey === "seo" && project.calculatorSpecs?.seoServiceMode === "monthly")
+    (project.billingType !== "fixed" &&
+      project.billingType !== "onetime" &&
+      project.billingType !== "milestone" &&
+      project.billingType !== "installment" &&
+      project.type !== "bundle" &&
+      project.type !== "analysis" &&
+      (project.calculatorSpecs?.categoryKey === "marketing" ||
+        project.categoryKey === "marketing" ||
+        (project.calculatorSpecs?.categoryKey === "seo" && project.calculatorSpecs?.seoServiceMode === "monthly")))
   );
 
   const linkedQuote = fetchedQuote || (typeof project?.quoteId === "object" && project?.quoteId ? project.quoteId : null) || project?.quote || {};

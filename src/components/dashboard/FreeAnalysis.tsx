@@ -106,7 +106,7 @@ export default function FreeAnalysis() {
   };
 
   return (
-    <div className="max-w-[1536px] w-full mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] mt-20 md:mt-32 mb-0">
+    <div className="max-w-[1536px] w-full mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] mt-8 md:mt-32 mb-8 md:mb-0">
       <StatusPopup
         isOpen={!!status}
         onClose={() => setStatus(null)}
@@ -115,7 +115,7 @@ export default function FreeAnalysis() {
         message={status?.message || ""}
       />
 
-      <div className="mb-12 w-full font-sans" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
+      <div className="mb-0 md:mb-12 w-full font-sans" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
         <div className="w-full">
           {/* Desktop Version */}
           <div
