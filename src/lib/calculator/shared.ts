@@ -770,28 +770,61 @@ export function getProjectEstimatedDeadline(project: any): Date | null {
 /** Check whether a project or quote originated from the price calculator */
 export function isCalculatorProject(project: any, quote?: any): boolean {
   if (!project) return false;
-  if (project.isCalculator) return true;
-  if (project.source === "calculator") return true;
+  if (
+    project.isCalculator === true ||
+    project.isCalculator === "true" ||
+    project.isCalculator === 1 ||
+    project.isCalculator === "1"
+  ) {
+    return true;
+  }
+  const projectSource = String(project.source || "").toLowerCase();
+  if (projectSource.includes("calculator")) return true;
   if (project.calculatorSpecs && Object.keys(project.calculatorSpecs).length > 0) return true;
 
-  const q = quote || (typeof project.quoteId === "object" ? project.quoteId : null) || project.quote;
-  if (q) {
-    if (q.isCalculator === true) return true;
-    if (q.source === "calculator") return true;
-    if (
-      q.requirements?.categoryKey ||
-      q.requirements?.calculatedPrice ||
-      (Array.isArray(q.requirements?.selections) && q.requirements.selections.length > 0)
-    ) {
-      return true;
+  const req = project.requirements;
+  if (req) {
+    if (typeof req === "object" && Object.keys(req).length > 0) {
+      if (
+        req.categoryKey ||
+        req.categoryName ||
+        req.calculatedPrice ||
+        (Array.isArray(req.selections) && req.selections.length > 0) ||
+        req.billingType ||
+        req.depositAmount
+      ) {
+        return true;
+      }
     }
   }
 
-  if (
-    project.requirements?.categoryKey ||
-    (Array.isArray(project.requirements?.selections) && project.requirements.selections.length > 0)
-  ) {
-    return true;
+  const q = quote || (typeof project.quoteId === "object" ? project.quoteId : null) || project.quote;
+  if (q) {
+    if (
+      q.isCalculator === true ||
+      q.isCalculator === "true" ||
+      q.isCalculator === 1 ||
+      q.isCalculator === "1"
+    ) {
+      return true;
+    }
+    const qSource = String(q.source || "").toLowerCase();
+    if (qSource.includes("calculator")) return true;
+    const qReq = q.requirements;
+    if (qReq) {
+      if (typeof qReq === "object" && Object.keys(qReq).length > 0) {
+        if (
+          qReq.categoryKey ||
+          qReq.categoryName ||
+          qReq.calculatedPrice ||
+          (Array.isArray(qReq.selections) && qReq.selections.length > 0) ||
+          qReq.billingType ||
+          qReq.depositAmount
+        ) {
+          return true;
+        }
+      }
+    }
   }
 
   return false;

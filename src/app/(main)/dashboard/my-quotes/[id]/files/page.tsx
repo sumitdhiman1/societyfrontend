@@ -165,7 +165,7 @@ export default function QuoteFilesPage() {
         mimeType,
         category: getCategory(mimeType, filename),
         uploadedAt: msg.createdAt || msg.sentAt || msg.timestamp || "",
-        source: msg.type === "quote_proposal" ? "delivery" : "chat",
+        source: (msg.type === "quote_proposal" || msg.content?.type === "quote_proposal") ? "delivery" : "chat",
         canDelete: false
       });
     });
