@@ -62,6 +62,7 @@ export default function CompanyPage() {
   const sliderRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
+  const [mobileRowHeight, setMobileRowHeight] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     const fetchTestimonials = async () => {
@@ -93,18 +94,72 @@ export default function CompanyPage() {
     }
   };
 
+  const updateMobileHeight = () => {
+    if (typeof window === "undefined") return;
+    if (window.innerWidth >= 768) {
+      setMobileRowHeight(undefined);
+      return;
+    }
+    const slider = sliderRef.current;
+    if (!slider) return;
+
+    const cards = Array.from(slider.children) as HTMLElement[];
+    if (!cards.length) return;
+
+    const scrollLeft = slider.scrollLeft;
+    const sliderCenter = scrollLeft + slider.clientWidth / 2;
+
+    let closestCard = cards[0];
+    let minDiff = Infinity;
+
+    cards.forEach((card) => {
+      const cardCenter = card.offsetLeft - slider.offsetLeft + card.offsetWidth / 2;
+      const diff = Math.abs(sliderCenter - cardCenter);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestCard = card;
+      }
+    });
+
+    if (closestCard) {
+      const inner = (closestCard.firstElementChild as HTMLElement) || closestCard;
+      const cardContentHeight = inner.offsetHeight || inner.scrollHeight;
+      const comp = window.getComputedStyle(slider);
+      const padTop = parseFloat(comp.paddingTop) || 0;
+      const padBottom = parseFloat(comp.paddingBottom) || 0;
+      const totalH = Math.round(cardContentHeight + padTop + padBottom);
+      if (totalH > 0) {
+        setMobileRowHeight((prev) => (prev === totalH ? prev : totalH));
+      }
+    }
+  };
+
   useEffect(() => {
     updateScrollButtons();
+    updateMobileHeight();
     const currentSlider = sliderRef.current;
+    const handleSliderScroll = () => {
+      updateScrollButtons();
+      updateMobileHeight();
+    };
+    const handleWindowResize = () => {
+      updateScrollButtons();
+      updateMobileHeight();
+    };
+
     if (currentSlider) {
-      currentSlider.addEventListener("scroll", updateScrollButtons, { passive: true });
-      window.addEventListener("resize", updateScrollButtons);
+      currentSlider.addEventListener("scroll", handleSliderScroll, { passive: true });
     }
+    window.addEventListener("resize", handleWindowResize);
+
+    const timer = setTimeout(updateMobileHeight, 150);
+
     return () => {
       if (currentSlider) {
-        currentSlider.removeEventListener("scroll", updateScrollButtons);
+        currentSlider.removeEventListener("scroll", handleSliderScroll);
       }
-      window.removeEventListener("resize", updateScrollButtons);
+      window.removeEventListener("resize", handleWindowResize);
+      clearTimeout(timer);
     };
   }, [testimonials]);
 
@@ -117,6 +172,18 @@ export default function CompanyPage() {
 
     const containerLeft = slider.getBoundingClientRect().left;
 
+    const setCardHeight = (targetCard: HTMLElement) => {
+      if (window.innerWidth < 768) {
+        const inner = (targetCard.firstElementChild as HTMLElement) || targetCard;
+        const cardContentHeight = inner.offsetHeight || inner.scrollHeight;
+        const comp = window.getComputedStyle(slider);
+        const padTop = parseFloat(comp.paddingTop) || 0;
+        const padBottom = parseFloat(comp.paddingBottom) || 0;
+        const totalH = Math.round(cardContentHeight + padTop + padBottom);
+        if (totalH > 0) setMobileRowHeight(totalH);
+      }
+    };
+
     if (direction === "right") {
       // Find the first card whose left edge is clearly beyond the container's left edge
       const nextCard = cards.find((card) => {
@@ -127,6 +194,7 @@ export default function CompanyPage() {
       if (nextCard) {
         const target = nextCard.offsetLeft - slider.offsetLeft;
         slider.scrollTo({ left: target, behavior: "smooth" });
+        setCardHeight(nextCard);
       } else {
         slider.scrollTo({ left: slider.scrollWidth, behavior: "smooth" });
       }
@@ -141,6 +209,7 @@ export default function CompanyPage() {
         const prevCard = prevCards[prevCards.length - 1];
         const target = prevCard.offsetLeft - slider.offsetLeft;
         slider.scrollTo({ left: target, behavior: "smooth" });
+        setCardHeight(prevCard);
       } else {
         slider.scrollTo({ left: 0, behavior: "smooth" });
       }
@@ -319,7 +388,10 @@ export default function CompanyPage() {
                 onMouseLeave={handleMouseLeave}
                 onMouseUp={handleMouseUp}
                 onMouseMove={handleMouseMove}
-                className="w-full overflow-x-auto hide-scrollbar flex gap-4 md:gap-5 snap-x snap-mandatory cursor-grab active:cursor-grabbing select-none pt-0 pb-2 md:py-4 px-1"
+                className="w-full overflow-x-auto overflow-y-hidden md:overflow-y-visible hide-scrollbar flex items-start md:items-stretch gap-4 md:gap-5 snap-x snap-mandatory cursor-grab active:cursor-grabbing select-none pt-0 pb-2 md:py-4 px-1 transition-[height] duration-300 ease-in-out md:transition-none"
+                style={{
+                  height: mobileRowHeight ? `${mobileRowHeight}px` : undefined,
+                }}
               >
                 {testimonials.map((t, index) => (
                   <div
@@ -327,7 +399,7 @@ export default function CompanyPage() {
                     className="w-[85vw] sm:w-[360px] md:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)] flex-shrink-0 snap-start"
                   >
                     <div
-                      className="bg-white rounded-[20px] p-6 lg:p-[28px] flex flex-col gap-3 min-h-[300px] lg:min-h-[340px] h-full"
+                      className="bg-white rounded-[20px] p-6 lg:p-[28px] flex flex-col gap-3 h-auto md:h-full md:min-h-[300px] lg:min-h-[340px]"
                     // style={{
                     //   boxShadow: "0px 4px 44px 0px rgba(194, 194, 194, 0.25)",
                     // }}
