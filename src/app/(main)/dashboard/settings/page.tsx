@@ -15,7 +15,7 @@ const ToggleRow = ({
   checked: boolean;
   onChange: (v: boolean) => void;
 }) => (
-  <div className="flex items-center justify-between py-6 border-b border-gray-100 last:border-0 hover:bg-gray-50 px-4 -mx-4 transition-colors rounded-[4px]">
+  <div className="flex items-center justify-between py-5 border-b border-gray-300 hover:bg-gray-50 px-4 transition-colors">
     <span className="text-sm font-bold text-gray-700">{label}</span>
     <div
       className={`w-10 h-5 flex items-center rounded-full p-1 cursor-pointer transition-colors ${checked ? "bg-primary-300" : "bg-gray-300"
@@ -130,11 +130,11 @@ export default function SettingsPage() {
           Notification Settings
         </h1>
 
-        <div className="border border-gray-300 rounded-[4px] p-8 md:p-12">
+        <div className="border border-gray-300 rounded-[4px] bg-white p-8 md:p-12">
           <div className="flex flex-col lg:flex-row lg:gap-16">
             {/* Left: toggles */}
             <div className="flex-1">
-              <div className="mb-10">
+              <div className="mb-8 lg:mb-0">
                 <h3 className="text-sm font-bold text-gray-800 mb-2">Email Notifications</h3>
                 <p className="text-xs text-gray-500 mb-6">
                   We&apos;ll use{" "}
@@ -142,7 +142,7 @@ export default function SettingsPage() {
                   to send you information for notifications.
                 </p>
 
-                <div className="flex flex-col">
+                <div className="flex flex-col border-t border-gray-300 -mx-4">
                   {preferences && (
                     <>
                       <ToggleRow
@@ -182,7 +182,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Right: info panel */}
-            <div className="w-full lg:w-[320px] pl-0 lg:pl-12 border-l-0 lg:border-l border-gray-200">
+            <div className="w-full lg:w-[320px] pl-0 lg:pl-12 border-l-0 lg:border-l border-gray-300">
               <h4 className="font-bold text-sm text-gray-800 mb-4">
                 Essential Emails Notifications
               </h4>

@@ -37,7 +37,7 @@ const InputField = ({
         readOnly={readOnly}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        className={`w-full rounded-[4px] px-4 py-3 text-sm transition-all ${readOnly
+        className={`bg-white w-full rounded-[4px] px-4 py-3 text-sm transition-all ${readOnly
           ? "bg-gray-100 border border-gray-200 text-gray-500 cursor-not-allowed"
           : "bg-white border border-gray-200 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#4545F0] focus:ring-1 focus:ring-[#4545F0]"
           }`}
@@ -611,7 +611,7 @@ export default function MyAccountPage() {
                 {/* Preferred Currency */}
                 <div>
                   <label className="text-sm font-bold text-gray-700 mb-2 block">Preferred Currency</label>
-                  <div className="flex bg-gray-100 rounded-lg p-1 w-fit border border-gray-200">
+                  <div className="flex bg-white h[46px] rounded-lg w-fit border border-gray-200">
                     <button
                       type="button"
                       onClick={() => setCurrency("usd")}

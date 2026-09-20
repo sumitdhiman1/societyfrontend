@@ -29,7 +29,7 @@ export default function DashboardSubNav({ hideMenu = false }: { hideMenu?: boole
   if (!isAuthenticated || hideMenu || !isAccountPage) return null;
 
   return (
-    <div className="w-full bg-gray-100 font-sans">
+    <div className="bg-white w-full bg-gray-100 font-sans">
       <div className="bg-white max-w-[1536px] mx-auto px-4 md:px-8 lg:px-0 lg:pl-[54px] lg:pr-[62px] py-4 flex overflow-x-auto hide-scrollbar flex-nowrap md:flex-wrap gap-8">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
