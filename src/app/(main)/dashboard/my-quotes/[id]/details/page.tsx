@@ -1251,39 +1251,6 @@ export default function QuoteDetailsPage() {
               )}
             </div>
           </div>
-
-          <div className="flex flex-row items-center gap-3 w-full sm:w-auto">
-            <button
-              type="button"
-              disabled={isDownloadingPdf}
-              onClick={handleDownloadQuotePDF}
-              className="flex-1 sm:flex-initial px-5 py-2.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold rounded-[8px] shadow-sm transition-colors cursor-pointer whitespace-nowrap disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isDownloadingPdf ? (
-                <>
-                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Downloading...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  <span>Download Quote (.PDF)</span>
-                </>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={handlePrintQuote}
-              className="flex-1 sm:flex-initial px-5 py-2.5 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-xs sm:text-sm font-bold rounded-[8px] shadow-sm transition-colors cursor-pointer whitespace-nowrap flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-              <span>Print Details</span>
-            </button>
-          </div>
         </div>
       </div>
 
