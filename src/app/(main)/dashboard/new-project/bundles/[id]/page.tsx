@@ -885,7 +885,7 @@ function BundleDetailsContent() {
         {selectedTier && (
           <div className="mt-8 md:mt-16" id="payment-section">
             <div className="text-center mb-5 md:mb-8">
-              <h2 className="text-3xl font-bold text-gray-600 mb-3">Complete Your Purchase Securely</h2>
+              <h2 className="text-3xl font-bold text-gray-800 mb-3">Complete Your Purchase Securely</h2>
               <p className="text-gray-500 text-lg">Your information is protected and your project starts immediately.</p>
             </div>
 
@@ -931,12 +931,12 @@ function BundleDetailsContent() {
 
                   {/* Title & Price Header */}
                   <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
-                    <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-600 leading-tight pr-4" style={{ maxWidth: "100%" }}>
+                    <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 leading-tight pr-4" style={{ maxWidth: "100%" }}>
                       {pkg.name} - {selectedTier.title}
                     </h3>
                     <div className="items-center gap-6">
                       <div className="flex flex-col">
-                        <div className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-600">
+                        <div className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-800">
                           {formatPrice(parsePrice(selectedTier.price))}
                         </div>
                         <div className="flex flex-col items-end mt-1">
@@ -1075,7 +1075,7 @@ function BundleDetailsContent() {
               {/* Support Card */}
               <div className="lg:col-span-1">
                 <div className="bg-white border border-gray-300 rounded-[10px] shadow-sm p-6 sticky top-28">
-                  <h3 className="text-xl font-bold text-gray-600 text-center mb-3">Questions Before You Pay?</h3>
+                  <h3 className="text-xl font-bold text-gray-800 text-center mb-3">Questions Before You Pay?</h3>
                   <p className="text-sm text-gray-500 text-center mb-6">
                     Our support team is here to help with pricing, payments, or package details—no pressure.
                   </p>

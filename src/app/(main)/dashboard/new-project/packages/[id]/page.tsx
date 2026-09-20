@@ -552,7 +552,7 @@ function PackageDetailsContent() {
 
                       <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4 sm:mb-6">
                         <div className="flex-1">
-                          <h3 className="text-2xl md:text-3xl font-bold text-[#646464] leading-tight mb-3">
+                          <h3 className="text-2xl md:text-3xl font-bold text-gray-800 leading-tight mb-3">
                             {pkg.name} - {selectedTier?.title || "Select a plan"}
                           </h3>
                           <div className="text-[13px] text-[#808080] font-bold flex flex-col gap-1">
@@ -562,7 +562,7 @@ function PackageDetailsContent() {
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           <div className="flex items-center gap-4">
-                            <div className="text-[34px] md:text-[40px] font-bold text-[#646464] leading-none">
+                            <div className="text-[34px] md:text-[40px] font-bold text-gray-800 leading-none">
                               {formatPrice(parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0) + getVatAmount(parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0)))}
                             </div>
                             <div className="relative">
@@ -666,7 +666,7 @@ function PackageDetailsContent() {
 
                   {/* Sidebar Section */}
                   <div className="bg-white border border-gray-200 rounded-[10px] shadow-[0px_5px_25px_#0000000D] p-6 md:p-8 text-center sticky top-28">
-                    <h3 className="text-xl font-bold text-[#646464] mb-3">Questions Before You Pay?</h3>
+                    <h3 className="text-xl font-bold text-gray-800 mb-3">Questions Before You Pay?</h3>
                     <p className="text-[13px] text-[#808080] mb-8 leading-relaxed">
                       Our support team is here to help with pricing, payments, or package details—no pressure.
                     </p>
