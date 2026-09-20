@@ -350,6 +350,7 @@ function isExactPaymentRequestPaid(msg: any, analysis: any, payments: any[]): bo
 
 export default function AnalysisDetailsPage() {
   const params = useParams();
+  const analysisId = (params?.id as string) || "";
   const searchParams = useSearchParams();
   const router = useRouter();
   const { analysis, refreshAnalysis } = useAnalysis();
@@ -371,7 +372,8 @@ export default function AnalysisDetailsPage() {
       await refreshAnalysis();
       const targetId =
         (analysis as any)?._id ||
-        (analysis as any)?.id;
+        (analysis as any)?.id ||
+        analysisId;
       if (targetId) {
         const res = await paymentService.getTransactionsByProject(String(targetId));
         const rows = Array.isArray(res?.data) ? res.data : [];
@@ -380,13 +382,13 @@ export default function AnalysisDetailsPage() {
     } catch (e) {
       console.warn("Failed syncFinancialsAndAnalysis:", e);
     }
-  }, [refreshAnalysis, analysis?._id, analysis?.id]);
+  }, [refreshAnalysis, analysis?._id, analysis?.id, analysisId]);
 
   useEffect(() => {
     setCurrentUser(authService.getUser());
     syncFinancialsAndAnalysis();
-    const t1 = setTimeout(() => syncFinancialsAndAnalysis(), 1500);
-    const t2 = setTimeout(() => syncFinancialsAndAnalysis(), 3500);
+    const t1 = setTimeout(() => syncFinancialsAndAnalysis(), 1000);
+    const t2 = setTimeout(() => syncFinancialsAndAnalysis(), 2500);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
@@ -395,17 +397,35 @@ export default function AnalysisDetailsPage() {
 
   // Handle URL success param (e.g. returning from checkout)
   useEffect(() => {
-    if (searchParams?.get("success") === "true") {
+    const isSuccess =
+      searchParams?.get("success") === "true" ||
+      searchParams?.get("redirect_status") === "succeeded" ||
+      Boolean(searchParams?.get("payment_intent") && searchParams?.get("payment_intent_client_secret"));
+
+    if (isSuccess) {
       syncFinancialsAndAnalysis();
-      const t = setTimeout(() => {
-        syncFinancialsAndAnalysis();
+      const pollDelays = [300, 800, 1800, 3500];
+      const timers = pollDelays.map((delay) =>
+        setTimeout(() => {
+          syncFinancialsAndAnalysis();
+        }, delay)
+      );
+
+      const cleanupTimer = setTimeout(() => {
         try {
           const currentUrl = new URL(window.location.href);
           currentUrl.searchParams.delete("success");
+          currentUrl.searchParams.delete("redirect_status");
+          currentUrl.searchParams.delete("payment_intent");
+          currentUrl.searchParams.delete("payment_intent_client_secret");
           window.history.replaceState(null, "", currentUrl.toString());
         } catch {}
-      }, 1500);
-      return () => clearTimeout(t);
+      }, 4500);
+
+      return () => {
+        timers.forEach((t) => clearTimeout(t));
+        clearTimeout(cleanupTimer);
+      };
     }
   }, [searchParams, syncFinancialsAndAnalysis]);
 

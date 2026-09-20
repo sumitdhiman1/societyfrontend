@@ -219,6 +219,7 @@ export default function AnalysisPaymentsPage() {
   const searchParams = useSearchParams();
   const analysisId = params.id as string;
   const { analysis, isLoading: analysisLoading, refreshAnalysis } = useAnalysis();
+  const activeAnalysis = analysis || {};
   const [payments, setPayments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -230,9 +231,9 @@ export default function AnalysisPaymentsPage() {
   const { formatDateTime: formatDateTimeTz } = useTimezone();
   const hasRefreshedRef = useRef(false);
 
-  const fetchPayments = useCallback(async () => {
+  const fetchPayments = useCallback(async (silent = false) => {
     if (!analysisId) return;
-    setIsLoading(true);
+    if (!silent) setIsLoading(true);
     try {
       const res = await paymentService.getTransactionsByProject(analysisId);
       if (res?.data) {
@@ -241,29 +242,79 @@ export default function AnalysisPaymentsPage() {
     } catch (error) {
       console.error("Failed to fetch analysis payments:", error);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   }, [analysisId]);
 
   useEffect(() => {
     if (analysisId) {
-      fetchPayments();
+      fetchPayments(false);
     }
   }, [analysisId, fetchPayments]);
 
   useEffect(() => {
-    if (searchParams?.get("success") === "true" && !hasRefreshedRef.current) {
-      hasRefreshedRef.current = true;
+    const isSuccess =
+      searchParams?.get("success") === "true" ||
+      searchParams?.get("redirect_status") === "succeeded" ||
+      Boolean(searchParams?.get("payment_intent") && searchParams?.get("payment_intent_client_secret"));
+
+    if (isSuccess) {
       refreshAnalysis();
-      fetchPayments();
-      const timer = setTimeout(() => {
+      fetchPayments(true);
+
+      const pollDelays = [300, 800, 1800, 3500];
+      const timers = pollDelays.map((delay) =>
+        setTimeout(() => {
+          refreshAnalysis();
+          fetchPayments(true);
+        }, delay)
+      );
+
+      const cleanupTimer = setTimeout(() => {
         try {
           window.history.replaceState(null, "", `/dashboard/my-analyses/${analysisId}/payments`);
         } catch {}
-      }, 100);
-      return () => clearTimeout(timer);
+      }, 4500);
+
+      return () => {
+        timers.forEach((t) => clearTimeout(t));
+        clearTimeout(cleanupTimer);
+      };
     }
   }, [searchParams, analysisId, refreshAnalysis, fetchPayments]);
+
+  // Refresh whenever tab gains focus or becomes visible
+  useEffect(() => {
+    const onFocus = () => {
+      refreshAnalysis();
+      fetchPayments(true);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        refreshAnalysis();
+        fetchPayments(true);
+      }
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [refreshAnalysis, fetchPayments]);
+
+  useEffect(() => {
+    if (analysisId && analysis) {
+      fetchPayments(true);
+    }
+  }, [
+    analysisId,
+    analysis?.amountPaid,
+    analysis?.paymentStatus,
+    analysis?.messages?.length,
+    analysis?.addons?.length,
+    fetchPayments,
+  ]);
 
   if (analysisLoading && !analysis) {
     return (
@@ -275,7 +326,6 @@ export default function AnalysisPaymentsPage() {
 
   if (!analysis) return null;
 
-  const activeAnalysis = analysis || {};
   const currentUser = authService.getUser();
   const projectNumber =
     activeAnalysis.projectNumber ||
@@ -903,7 +953,7 @@ export default function AnalysisPaymentsPage() {
   const searchMessageId = searchParams?.get("messageId") || undefined;
   const searchDescription = searchParams?.get("description") || undefined;
   const targetCost = amountPaid === 0
-    ? totalProjectCost
+    ? totalSubtotal
     : (vatRate > 0 ? Math.round((pendingBalance / (1 + vatRate / 100)) * 100) / 100 : pendingBalance);
 
   return (
@@ -925,6 +975,7 @@ export default function AnalysisPaymentsPage() {
             startDate={activeAnalysis.startDate || activeAnalysis.createdAt}
             deadline={activeAnalysis.deadline || activeAnalysis.expectedDeadline}
             totalCost={targetCost}
+            depositAmount={Number(activeAnalysis.depositAmount || activeAnalysis.deposit || 0)}
             deliverableItems={deliverableItems}
             clientEmail={currentUser?.email || activeAnalysis.clientEmail || ""}
             successRedirectUrl={`/dashboard/my-analyses/${analysisId}/payments?success=true`}
@@ -933,6 +984,33 @@ export default function AnalysisPaymentsPage() {
             nativeCurrency={effectiveAnalysisSourceCurrency || activeAnalysis.currency || "USD"}
             vatRate={activeAnalysis.vatRate ?? activeAnalysis.vatPercentage ?? activeAnalysis.taxPercentage ?? undefined}
             invoiceId={searchInvoiceId}
+            onDownloadInvoice={async () => {
+              if (isDownloadingInvoice) return;
+              setIsDownloadingInvoice(true);
+              try {
+                if (activeAnalysis.resultsPdfUrl) {
+                  downloadFile({} as any, activeAnalysis.resultsPdfUrl, "Final_Analysis_Report.pdf");
+                } else {
+                  await downloadAnalysisPDF(getAnalysisPayloadForPdf());
+                }
+              } catch (err) {
+                console.error("Failed to download analysis invoice PDF:", err);
+              } finally {
+                setIsDownloadingInvoice(false);
+              }
+            }}
+            isDownloadingInvoice={isDownloadingInvoice}
+            onPaymentSuccess={async () => {
+              await fetchPayments(true);
+              refreshAnalysis();
+              const pollDelays = [300, 800, 1800, 3500];
+              pollDelays.forEach((delay) => {
+                setTimeout(() => {
+                  fetchPayments(true);
+                  refreshAnalysis();
+                }, delay);
+              });
+            }}
             metadata={{
               type: "ANALYSIS",
               analysisId: analysisId,
@@ -1025,12 +1103,12 @@ export default function AnalysisPaymentsPage() {
                       {payment.description || "Analysis Payment"}
                     </td>
                     <td className="px-6 py-4 font-bold text-gray-900">
-                      {new Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: (payment.currency || activeAnalysis.currency || "USD").toUpperCase(),
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      }).format(payment.amount ?? 0)}
+                      {formatPriceWithCurrency(
+                        Number(payment.amountPaid || payment.amount || 0),
+                        currency || "USD",
+                        (payment.currency || activeAnalysis.currency || "USD").toUpperCase(),
+                        Number(payment.exchangeRate || payment.metadata?.exchangeRate || conversionRate || 1.14776)
+                      )}
                     </td>
                     <td className="px-6 py-4 text-gray-500">
                       {new Date(payment.createdAt).toLocaleDateString()}
