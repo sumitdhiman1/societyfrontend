@@ -10,7 +10,7 @@ import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { getMainCalculatorCategory } from "@/lib/calculatorUtils";
 import { useTimezone } from "@/context/TimezoneContext";
 import { useCurrency } from "@/context/CurrencyContext";
-import { formatPriceWithCurrency, formatActiveCurrency } from "@/lib/currencyUtils";
+import { formatPriceWithCurrency, formatActiveCurrency, convertCurrencyAmount } from "@/lib/currencyUtils";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 
 const isEstoniaClient = (c?: string) => {
@@ -432,11 +432,35 @@ export default function CalculatorProjectPayments({
     : Number(activeProject.vatAmount ?? linkedQuote.vatAmount ?? 0);
   let computedTotalCost = totalSubtotal + effectiveVatAmount;
 
+  const { currency: contextCurrency, setCurrency, conversionRate } = useCurrency();
+
+  const projectNativeCurrency = (
+    activeProject.currency ||
+    linkedQuote.currency ||
+    payments[0]?.currency ||
+    (activeProject?.currencySymbol === "€" ? "EUR" : activeProject?.currencySymbol === "$" ? "USD" : "USD")
+  ).toLowerCase();
+
+  const currency = (
+    contextCurrency ||
+    currentUser?.currency ||
+    currentUser?.preferredCurrency ||
+    projectNativeCurrency ||
+    "usd"
+  ).toUpperCase();
+
   const totalPaidFromTransactions = (payments || [])
     .filter((p: any) => ["succeeded", "paid", "completed"].includes(p.status?.toLowerCase()))
-    .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+    .reduce((sum: number, p: any) => {
+      const pCurr = (p?.currency || projectNativeCurrency || "USD").toLowerCase();
+      const pAmt = Number(p?.amountPaid || p?.amount || 0);
+      const pRate = Number(p?.exchangeRate || p?.metadata?.exchangeRate || p?.metadata?.conversionRate || conversionRate || 1.14776);
+      return sum + convertCurrencyAmount(pAmt, projectNativeCurrency, pCurr, pRate);
+    }, 0);
 
-  const amountPaid = Math.max(Number(activeProject.amountPaid || 0), totalPaidFromTransactions);
+  const amountPaid = totalPaidFromTransactions > 0
+    ? totalPaidFromTransactions
+    : Number(activeProject.amountPaid || 0);
 
   const isDepositHalf =
     activeProject.paymentOption === "half" ||
@@ -519,23 +543,6 @@ export default function CalculatorProjectPayments({
         linkedQuote.depositAmount ||
         (totalSubtotal > 0 ? totalSubtotal / 2 : (totalProjectCost > 0 ? totalProjectCost / 2 : 0))
       );
-
-  const { currency: contextCurrency, setCurrency, conversionRate } = useCurrency();
-
-  const projectNativeCurrency = (
-    activeProject.currency ||
-    linkedQuote.currency ||
-    payments[0]?.currency ||
-    (activeProject?.currencySymbol === "€" ? "EUR" : activeProject?.currencySymbol === "$" ? "USD" : "USD")
-  ).toLowerCase();
-
-  const currency = (
-    contextCurrency ||
-    currentUser?.currency ||
-    currentUser?.preferredCurrency ||
-    projectNativeCurrency ||
-    "usd"
-  ).toUpperCase();
 
   const formatCurrency = (amt: number) =>
     formatPriceWithCurrency(amt, currency.toLowerCase(), projectNativeCurrency, conversionRate);
@@ -832,14 +839,15 @@ export default function CalculatorProjectPayments({
   // -------------------------------------------------------------------------
   // CASE 2: Single Full Payment (Fully Paid at once) -> Display Calculator Payment Summary Card
   // -------------------------------------------------------------------------
-  const totalPaidAmount = Number(
-    activeProject.amountPaid ??
-    (totalPaidFromTransactions > 0 ? totalPaidFromTransactions : undefined) ??
-    totalProjectCost ??
-    activeProject.totalCost ??
-    activeProject.price ??
-    0
-  );
+  const totalPaidAmount = totalPaidFromTransactions > 0
+    ? totalPaidFromTransactions
+    : Number(
+        activeProject.amountPaid ??
+        totalProjectCost ??
+        activeProject.totalCost ??
+        activeProject.price ??
+        0
+      );
 
   return (
     <div className="w-full font-sans space-y-8">

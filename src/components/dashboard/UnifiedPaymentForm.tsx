@@ -447,6 +447,8 @@ function PaymentForm({
         saveCard: selectedMethod === "new" && saveCard,
         metadata: {
           ...extraMetadata,
+          exchangeRate: conversionRate,
+          conversionRate,
           title: title || extraMetadata?.title,
           lineItems: effectiveLineItems,
           type,

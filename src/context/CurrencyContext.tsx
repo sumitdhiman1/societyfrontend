@@ -17,7 +17,15 @@ const CurrencyContext = createContext<CurrencyContextType>({
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const [currency, setCurrencyState] = useState("usd");
-  const [conversionRate, setConversionRate] = useState(1.08);
+  const [conversionRate, setConversionRate] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const cachedRate = localStorage.getItem("app-conversion-rate");
+      if (cachedRate && !isNaN(Number(cachedRate)) && Number(cachedRate) > 0) {
+        return Number(cachedRate);
+      }
+    }
+    return 1.14776;
+  });
 
   useEffect(() => {
     const savedCurrency = localStorage.getItem("app-currency");
@@ -25,30 +33,38 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
       setCurrencyState(savedCurrency);
     }
 
-    const fetchRates = () => {
-      // Fallback live rates
+    const fetchFallbackExternalRates = () => {
       fetch("https://open.er-api.com/v6/latest/USD")
         .then((res) => res.json())
         .then((data) => {
           if (data?.rates?.EUR) {
-            setConversionRate(1 / data.rates.EUR);
+            const fallbackRate = 1 / data.rates.EUR;
+            setConversionRate(fallbackRate);
           }
         })
-        .catch((err) => console.error("Failed to fetch live exchange rates", err));
+        .catch((err) => console.error("Failed to fetch fallback live exchange rates", err));
     };
 
-    // Try to get exchange rate from backend first
+    // Priority 1: Fetch authoritative exchange rate from DB system-settings
     fetch("/api-gateway/system-settings/exchange_rate_usd_eur")
-      .then(res => res.json())
-      .then(res => {
-        const rate = res?.data;
-        if (typeof rate === 'number') {
+      .then((res) => res.json())
+      .then((res) => {
+        const rawRate = res?.data?.value ?? res?.data;
+        const rate = typeof rawRate === "number" ? rawRate : Number(rawRate);
+        if (!isNaN(rate) && rate > 0) {
           setConversionRate(rate);
+          localStorage.setItem("app-conversion-rate", String(rate));
         } else {
-          fetchRates();
+          fetchFallbackExternalRates();
         }
       })
-      .catch(() => fetchRates());
+      .catch(() => {
+        // If DB cannot be reached and no cached rate, use external fallback
+        const hasCached = localStorage.getItem("app-conversion-rate");
+        if (!hasCached) {
+          fetchFallbackExternalRates();
+        }
+      });
 
     // Sync from profile if logged in
     if (authService.isAuthenticated()) {

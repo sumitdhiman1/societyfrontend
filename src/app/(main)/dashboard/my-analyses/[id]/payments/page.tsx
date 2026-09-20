@@ -11,7 +11,7 @@ import { downloadFile } from "@/lib/utils";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { useCurrency } from "@/context/CurrencyContext";
-import { formatPriceWithCurrency } from "@/lib/currencyUtils";
+import { formatPriceWithCurrency, convertCurrencyAmount } from "@/lib/currencyUtils";
 import { useTimezone } from "@/context/TimezoneContext";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 
@@ -229,7 +229,7 @@ export default function AnalysisPaymentsPage() {
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null);
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
-  const { currency, setCurrency } = useCurrency();
+  const { currency, setCurrency, conversionRate } = useCurrency();
   const { formatDateTime: formatDateTimeTz } = useTimezone();
   const hasRefreshedRef = useRef(false);
 
@@ -339,11 +339,24 @@ export default function AnalysisPaymentsPage() {
            ? "An offer to check the completed work of any other web professionals, including your own in-house staff and/or partners. Fully custom and manual checking by our quality assurance team. Serves as a third, objective perspective on the quality of work completed."
            : "Our classic analysis offer covering branding, UI/UX, functionalities, AI potentiality, tech stack, speed, and SEO. A manual review using a custom process created by Society Web Solutions, checking every important part of your website. Delivered as a custom PDF report within 5 days."));
 
+  const analysisNativeCurrency = (
+    activeAnalysis.currency ||
+    payments[0]?.currency ||
+    "USD"
+  ).toLowerCase();
+
   const totalPaidFromTransactions = (payments || [])
     .filter((p: any) => ["succeeded", "paid", "completed"].includes(p.status?.toLowerCase()))
-    .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+    .reduce((sum: number, p: any) => {
+      const pCurr = (p?.currency || analysisNativeCurrency || "USD").toLowerCase();
+      const pAmt = Number(p?.amountPaid || p?.amount || 0);
+      const pRate = Number(p?.exchangeRate || p?.metadata?.exchangeRate || p?.metadata?.conversionRate || conversionRate || 1.14776);
+      return sum + convertCurrencyAmount(pAmt, analysisNativeCurrency, pCurr, pRate);
+    }, 0);
 
-  const amountPaid = Math.max(Number(activeAnalysis.amountPaid || 0), totalPaidFromTransactions);
+  const amountPaid = totalPaidFromTransactions > 0
+    ? totalPaidFromTransactions
+    : Number(activeAnalysis.amountPaid || 0);
 
   // 1. Regular items
   const regularItems = (activeAnalysis.deliverableItems && activeAnalysis.deliverableItems.length > 0)

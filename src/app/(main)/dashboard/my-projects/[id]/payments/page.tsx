@@ -10,7 +10,7 @@ import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generatePr
 import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "@/lib/generateCalculatorProjectPDF";
 import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { useCurrency } from "@/context/CurrencyContext";
-import { formatPriceWithCurrency, formatActiveCurrency } from "@/lib/currencyUtils";
+import { formatPriceWithCurrency, formatActiveCurrency, convertCurrencyAmount } from "@/lib/currencyUtils";
 import { useTimezone } from "@/context/TimezoneContext";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 import CalculatorProjectPayments, { ReceiptModal } from "./CalculatorProjectPayments";
@@ -311,11 +311,25 @@ export default function ProjectPaymentsPage() {
   // Combine deliverable items
   const deliverableItems = allAddonItems.length > 0 ? [...regularItems, ...allAddonItems] : regularItems;
 
+  const projectNativeCurrency = (
+    activeProject.currency ||
+    linkedQuote.currency ||
+    payments[0]?.currency ||
+    "USD"
+  ).toLowerCase();
+
   const totalPaidFromTransactions = (payments || [])
     .filter((p: any) => ["succeeded", "paid", "completed"].includes(p.status?.toLowerCase()))
-    .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+    .reduce((sum: number, p: any) => {
+      const pCurr = (p?.currency || projectNativeCurrency || "USD").toLowerCase();
+      const pAmt = Number(p?.amountPaid || p?.amount || 0);
+      const pRate = Number(p?.exchangeRate || p?.metadata?.exchangeRate || p?.metadata?.conversionRate || conversionRate || 1.14776);
+      return sum + convertCurrencyAmount(pAmt, projectNativeCurrency, pCurr, pRate);
+    }, 0);
 
-  const amountPaid = Math.max(Number(activeProject.amountPaid || 0), totalPaidFromTransactions);
+  const amountPaid = totalPaidFromTransactions > 0
+    ? totalPaidFromTransactions
+    : Number(activeProject.amountPaid || 0);
   const totalSubtotal = baseSubtotal + addonsTotal;
   const effectiveVatAmount = vatRate > 0 && totalSubtotal > 0
     ? Math.round((totalSubtotal * (vatRate / 100)) * 100) / 100
@@ -672,14 +686,15 @@ export default function ProjectPaymentsPage() {
   // -------------------------------------------------------------------------
   // CASE 2: Single Full Payment (Fully Paid) -> Project Payment Summary Card
   // -------------------------------------------------------------------------
-  const totalPaidAmount = Number(
-    activeProject.amountPaid ??
-    (totalPaidFromTransactions > 0 ? totalPaidFromTransactions : undefined) ??
-    totalProjectCost ??
-    activeProject.totalCost ??
-    activeProject.price ??
-    0
-  );
+  const totalPaidAmount = totalPaidFromTransactions > 0
+    ? totalPaidFromTransactions
+    : Number(
+        activeProject.amountPaid ??
+        totalProjectCost ??
+        activeProject.totalCost ??
+        activeProject.price ??
+        0
+      );
 
   return (
     <div className="w-full font-sans space-y-8">

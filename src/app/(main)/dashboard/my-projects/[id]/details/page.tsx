@@ -17,7 +17,7 @@ import RecommendedSolutions from "@/components/common/RecommendedSolutions";
 import CalculatorSpecsCard from "@/components/common/CalculatorSpecsCard";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import { getMainCalculatorCategory, getProjectEstimatedDeadline, isCalculatorProject } from "@/lib/calculatorUtils";
-import { capitalizeCurrencyInText, formatPriceWithCurrency } from "@/lib/currencyUtils";
+import { capitalizeCurrencyInText, formatPriceWithCurrency, convertCurrencyAmount } from "@/lib/currencyUtils";
 import { useCurrency } from "@/context/CurrencyContext";
 import { useTimezone } from "@/context/TimezoneContext";
 import { toast } from "sonner";
@@ -850,11 +850,25 @@ export default function ProjectDetailsPage() {
     : Number(project?.vatAmount ?? linkedQuote?.vatAmount ?? 0);
   const totalCost = totalSubtotal + effectiveVatAmount;
 
+  const projectNativeCurrency = (
+    project?.currency ||
+    linkedQuote?.currency ||
+    projectPayments[0]?.currency ||
+    "USD"
+  ).toLowerCase();
+
   const totalPaidFromTransactions = (projectPayments || [])
     .filter((p: any) => ["succeeded", "paid", "completed"].includes(String(p?.status || "").toLowerCase()))
-    .reduce((sum: number, p: any) => sum + (Number(p?.amount) || 0), 0);
+    .reduce((sum: number, p: any) => {
+      const pCurr = (p?.currency || projectNativeCurrency || "USD").toLowerCase();
+      const pAmt = Number(p?.amountPaid || p?.amount || 0);
+      const pRate = Number(p?.exchangeRate || p?.metadata?.exchangeRate || p?.metadata?.conversionRate || conversionRate || 1.14776);
+      return sum + convertCurrencyAmount(pAmt, projectNativeCurrency, pCurr, pRate);
+    }, 0);
 
-  const amountPaid = Math.max(Number(project?.amountPaid || 0), totalPaidFromTransactions);
+  const amountPaid = totalPaidFromTransactions > 0
+    ? totalPaidFromTransactions
+    : Number(project?.amountPaid || 0);
   const calculatedPending = Math.max(0, totalCost - amountPaid);
   const isActuallyPaidInFull = totalCost > 0 && amountPaid >= totalCost - 0.009;
   const pendingBalance = isActuallyPaidInFull
@@ -1282,9 +1296,10 @@ export default function ProjectDetailsPage() {
         <div className="lg:col-span-1">
           <div className="bg-white border border-gray-300 rounded-[12px] shadow-sm p-6 sm:p-8 sticky top-24">
             {(() => {
-              const managers = (Array.isArray(project.assignedManagers) && project.assignedManagers.length > 0)
+              const rawManagers = (Array.isArray(project.assignedManagers) && project.assignedManagers.length > 0)
                 ? project.assignedManagers
                 : (project.projectManager ? [project.projectManager] : []);
+              const managers = rawManagers.filter((m: any) => m && (typeof m === 'object' ? (m._id || m.fullName || m.email) : Boolean(m)));
 
               if (managers.length > 1) {
                 return (
@@ -1320,23 +1335,27 @@ export default function ProjectDetailsPage() {
               }
 
               const manager = managers[0];
-              const name = manager?.fullName || "Unassigned";
+              const name = manager?.fullName || "Not assigned yet";
               const avatar = manager?.avatar;
               return (
                 <div className="text-center py-4">
-                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gradient-to-br from-[#BAC2D0] to-[#9AA5B8] border border-gray-200">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full mx-auto mb-4 flex items-center justify-center shadow-md overflow-hidden bg-gray-100 border border-gray-200">
                     {avatar ? (
                       <img src={avatar} alt={name} className="w-full h-full object-cover" />
+                    ) : manager ? (
+                      <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-3xl font-bold">
+                        {name[0] || "M"}
+                      </div>
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-white text-3xl font-bold">
-                        {name === "Unassigned" ? "?" : name[0]}
+                      <div className="w-full h-full bg-gradient-to-b from-gray-100 to-gray-200 flex items-center justify-center text-gray-400">
+                        <svg className="w-12 h-12 sm:w-14 sm:h-14 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                          <path fillRule="evenodd" d="M12 4a4 4 0 100 8 4 4 0 000-8zm-2 9a6 6 0 00-6 6v1a1 1 0 001 1h14a1 1 0 001-1v-1a6 6 0 00-6-6h-4z" clipRule="evenodd" />
+                        </svg>
                       </div>
                     )}
                   </div>
-                  <h4 className="text-lg font-bold text-gray-800 mb-1">{name}</h4>
+                  <h4 className="text-lg font-bold text-gray-800 mb-1">{manager ? name : "Not assigned yet"}</h4>
                   <p className="text-sm text-gray-500 font-medium uppercase tracking-wider text-[10px]">PROJECT MANAGER</p>
-
-
                 </div>
               );
             })()}
