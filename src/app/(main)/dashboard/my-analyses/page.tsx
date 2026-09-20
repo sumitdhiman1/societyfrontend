@@ -53,16 +53,28 @@ export default function MyAnalysesPage() {
             const normalizedStatus =
               statusKey === "active" ? "in_progress" : statusKey;
 
-            const target = item.targetWebsiteUrl || item.websiteUrl || item.domain || "website";
-            const cleanTarget = target.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
-            const fullTargetUrl = target.startsWith("http") ? target : `https://${cleanTarget}`;
+            const rawTarget = String(item.targetWebsiteUrl || item.websiteUrl || item.domain || "website").trim();
+            const targetUrls = rawTarget
+              ? rawTarget
+                  .split(/[\r\n,;]+/)
+                  .map((u) => u.trim())
+                  .filter(Boolean)
+                  .map((u) => {
+                    const clean = u.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+                    const href = u.startsWith("http://") || u.startsWith("https://") ? u : `https://${clean}`;
+                    return { href, text: clean || u };
+                  })
+              : [];
+            const firstClean = targetUrls[0]?.text || rawTarget.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+            const firstHref = targetUrls[0]?.href || (rawTarget.startsWith("http") ? rawTarget : `https://${firstClean}`);
 
             return {
               id: aid,
               title: item.title || "Free Website Analysis",
               analysisNumber: item.projectNumber || item.invoiceNumber || (aid ? `INV-2026-${aid.slice(-3).toUpperCase()}` : "INV-2026-150"),
-              targetUrl: fullTargetUrl,
-              displayTarget: cleanTarget,
+              targetUrl: firstHref,
+              displayTarget: targetUrls.map((t) => t.text).join(", ") || firstClean,
+              targetUrls: targetUrls,
               submittedDate: item.createdAt
                 ? formatDateTime(item.createdAt, {
                   month: "short",
@@ -235,16 +247,35 @@ export default function MyAnalysesPage() {
                         ({a.analysisNumber})
                       </span>
                     </h3>
-                    <div className="text-sm text-gray-600 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="font-semibold text-gray-500">Target:</span>
-                      <a
-                        href={a.targetUrl}
-                        className="text-blue-600 hover:underline break-all"
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {a.displayTarget || a.targetUrl}
-                      </a>
+                    <div className="text-sm text-gray-600 mt-1 flex flex-wrap items-center gap-x-1 gap-y-1">
+                      <span className="font-semibold text-gray-500 mr-1">Target:</span>
+                      {a.targetUrls && a.targetUrls.length > 0 ? (
+                        a.targetUrls.map((t: any, idx: number) => {
+                          const isLast = idx === a.targetUrls.length - 1;
+                          return (
+                            <span key={idx} className="inline-flex items-center">
+                              <a
+                                href={t.href}
+                                className="text-blue-600 hover:underline break-all"
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                {t.text}
+                              </a>
+                              {!isLast && <span className="text-gray-500 mr-1">,</span>}
+                            </span>
+                          );
+                        })
+                      ) : (
+                        <a
+                          href={a.targetUrl}
+                          className="text-blue-600 hover:underline break-all"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {a.displayTarget || a.targetUrl}
+                        </a>
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
