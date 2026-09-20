@@ -25,6 +25,7 @@ import {
   formatActiveCurrency,
 } from "@/lib/currencyUtils";
 import { downloadProjectDetailsPDF } from "@/lib/generateProjectDetailsPDF";
+import { downloadBundlePDF } from "@/lib/generateBundlePDF";
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -279,7 +280,7 @@ function PackageBundlePaymentFormContent({
 
     setLocalDownloadingInvoice(true);
     try {
-      await downloadProjectDetailsPDF({
+      const payload = {
         projectNumber: entityNumber,
         title: title || description,
         description: description,
@@ -292,7 +293,17 @@ function PackageBundlePaymentFormContent({
         pendingBalance: activePendingBalance,
         currency: currency.toUpperCase(),
         clientEmail: clientEmail,
-      });
+        targetCurrency: currency.toUpperCase(),
+        conversionRate: conversionRate,
+        recurringAmount: extraMetadata?.recurringAmount,
+        recurringLineItems: extraMetadata?.recurringLineItems,
+        isConverted: true,
+      };
+      if (type === "BUNDLE") {
+        await downloadBundlePDF(payload);
+      } else {
+        await downloadProjectDetailsPDF(payload);
+      }
     } catch (err) {
       console.error("Failed to download project PDF for invoice view:", err);
     } finally {

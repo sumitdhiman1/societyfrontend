@@ -24,15 +24,17 @@ export function convertCurrencyAmount(
   }
 
   if (isTargetEur && !isSourceEur) {
-    // USD -> EUR
+    // USD -> EUR (rounded to nearest 5)
     const converted = amount / rate;
-    return Number(converted.toFixed(2));
+    const rounded = roundToNearest5(converted);
+    return Number(rounded.toFixed(2));
   }
 
   if (!isTargetEur && isSourceEur) {
-    // EUR -> USD
+    // EUR -> USD (rounded to nearest 5)
     const converted = amount * rate;
-    return Number((amount * rate).toFixed(2));
+    const rounded = roundToNearest5(converted);
+    return Number(rounded.toFixed(2));
   }
 
   return Number(amount.toFixed(2));
@@ -68,7 +70,7 @@ export function formatActiveCurrency(
 
 /**
  * Specialized helpers for Package & Bundle pricing
- * Rounds EUR conversions to the nearest 5 and formats without fractional decimals when whole.
+ * Rounds EUR conversions to the nearest 5 and formats with two-decimal precision.
  */
 export function convertPackageBundleCurrencyAmount(
   amount: number,
@@ -82,22 +84,26 @@ export function convertPackageBundleCurrencyAmount(
   const rate = conversionRate || 1.08;
 
   if (isTargetEur === isSourceEur || targetCurrency?.toLowerCase() === sourceCurrency?.toLowerCase()) {
-    return Number(amount.toFixed(2));
+    const rounded = roundToNearest5(amount);
+    return Number(rounded.toFixed(2));
   }
 
   if (isTargetEur && !isSourceEur) {
     // USD -> EUR (rounded to nearest 5)
     const converted = amount / rate;
-    return roundToNearest5(converted);
+    const rounded = roundToNearest5(converted);
+    return Number(rounded.toFixed(2));
   }
 
   if (!isTargetEur && isSourceEur) {
-    // EUR -> USD
+    // EUR -> USD (rounded to nearest 5)
     const converted = amount * rate;
-    return Number((amount * rate).toFixed(2));
+    const rounded = roundToNearest5(converted);
+    return Number(rounded.toFixed(2));
   }
 
-  return Number(amount.toFixed(2));
+  const rounded = roundToNearest5(amount);
+  return Number(rounded.toFixed(2));
 }
 
 export function formatPackageBundlePriceWithCurrency(
