@@ -151,6 +151,10 @@ function PackageDetailsContent() {
   }, [pkg]);
 
   const handleTierSelect = (tier: any) => {
+    if (!(parsePrice(tier.price) > 0 || parsePrice(tier.recurringAmount) > 0)) {
+      router.push("/dashboard/new-project/custom-quote");
+      return;
+    }
     setSelectedTier(tier);
     setTimeout(() => {
       const el = document.getElementById("payment-section");
@@ -405,21 +409,28 @@ function PackageDetailsContent() {
                     <div className="p-6 md:p-8 flex items-center bg-white">
                       <h3 className="text-xl md:text-[32px] font-bold text-[#646464] leading-[1.1]">What&apos;s<br className="hidden md:block" /> Included?</h3>
                     </div>
-                    {columns.map((col: any, idx: number) => (
-                      <div key={idx} className={`p-6 md:p-8 text-center flex flex-col justify-center ${col.id === 'col_custom' || idx === columns.length - 1 ? "bg-[#f5f5f5]" : "bg-[#fafafa]"}`}>
-                        <span className="text-[11px] md:text-[13px] font-bold text-gray-400 uppercase tracking-widest mb-2">{col.title}</span>
-                        <div className="text-[#646464]">
-                          {parsePrice(col.price) > 0 || parsePrice(col.recurringAmount) > 0 ? (
-                            <div className="flex flex-col">
-                              <span className="text-[28px] md:text-[32px] font-bold leading-none text-gray-700">{formatPrice(parsePrice(col.price || col.recurringAmount))}</span>
-                              <span className="text-[10px] md:text-[12px] font-medium text-gray-400 uppercase tracking-tighter mt-1">{col.billingType === 'monthly' ? "Per Month" : "Starting Price"}</span>
-                            </div>
-                          ) : (
-                            <div className="text-[#646464] font-bold text-[18px] md:text-[22px] leading-tight">{col.price || "Get A Quote"}</div>
-                          )}
+                    {columns.map((col: any, idx: number) => {
+                      const isPaid = parsePrice(col.price) > 0 || parsePrice(col.recurringAmount) > 0;
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => !isPaid && router.push("/dashboard/new-project/custom-quote")}
+                          className={`p-6 md:p-8 text-center flex flex-col justify-center ${!isPaid ? "cursor-pointer group hover:bg-[#eaeaea] transition-colors" : ""} ${col.id === 'col_custom' || idx === columns.length - 1 ? "bg-[#f5f5f5]" : "bg-[#fafafa]"}`}
+                        >
+                          <span className="text-[11px] md:text-[13px] font-bold text-gray-400 uppercase tracking-widest mb-2">{col.title}</span>
+                          <div className="text-[#646464]">
+                            {isPaid ? (
+                              <div className="flex flex-col">
+                                <span className="text-[28px] md:text-[32px] font-bold leading-none text-gray-700">{formatPrice(parsePrice(col.price || col.recurringAmount))}</span>
+                                <span className="text-[10px] md:text-[12px] font-medium text-gray-400 uppercase tracking-tighter mt-1">{col.billingType === 'monthly' ? "Per Month" : "Starting Price"}</span>
+                              </div>
+                            ) : (
+                              <div className="text-[#646464] group-hover:text-primary-300 font-bold text-[18px] md:text-[22px] leading-tight transition-colors">{col.price || "Get A Quote"}</div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   
                   <div className="divide-y divide-gray-100">

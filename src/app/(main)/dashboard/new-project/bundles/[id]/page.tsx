@@ -485,6 +485,13 @@ function BundleDetailsContent() {
   const handleTierSelect = (tier: any) => {
     const colIdx = columns.findIndex((c: any) => c.id === tier.id || c.title?.toLowerCase() === tier.title?.toLowerCase());
     const enrichedTier = colIdx >= 0 ? columns[colIdx] : tier;
+    const isPaid =
+      (enrichedTier.price && enrichedTier.price !== "Get A Quote" && parsePrice(enrichedTier.price) > 0) ||
+      (parsePrice(enrichedTier.recurringAmount ?? enrichedTier.recurringPrice) > 0);
+    if (!isPaid) {
+      router.push("/dashboard/new-project/custom-quote");
+      return;
+    }
     setSelectedTier(enrichedTier);
     setTimeout(() => {
       const el = document.getElementById("payment-section");
@@ -696,7 +703,8 @@ function BundleDetailsContent() {
                   return (
                     <div
                       key={idx}
-                      className={`px-2 md:px-6 py-4 md:py-8 text-center flex flex-col justify-center items-center ${isCustom ? "bg-[#D9D9D9]" : "bg-[#EAEAEA]"
+                      onClick={() => !isPaid && router.push("/dashboard/new-project/custom-quote")}
+                      className={`px-2 md:px-6 py-4 md:py-8 text-center flex flex-col justify-center items-center ${!isPaid ? "cursor-pointer group hover:bg-[#D0D0D0] transition-colors" : ""} ${isCustom ? "bg-[#D9D9D9]" : "bg-[#EAEAEA]"
                         }`}
                     >
                       <span className="text-[11px] md:text-[13px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-center">
@@ -713,7 +721,7 @@ function BundleDetailsContent() {
                             </span>
                           </div>
                         ) : (
-                          <div className="text-gray-700 font-bold text-[18px] md:text-[22px] leading-tight text-center whitespace-nowrap">
+                          <div className="text-gray-700 group-hover:text-primary-300 font-bold text-[18px] md:text-[22px] leading-tight text-center whitespace-nowrap transition-colors">
                             Get A Quote
                           </div>
                         )}
@@ -815,7 +823,8 @@ function BundleDetailsContent() {
                       return (
                         <div
                           key={idx}
-                          className={`px-2 md:px-6 py-4 md:py-8 text-center flex flex-col justify-center items-center ${isCustom ? "bg-[#D9D9D9]" : "bg-[#EAEAEA]"
+                          onClick={() => !hasRec && router.push("/dashboard/new-project/custom-quote")}
+                          className={`px-2 md:px-6 py-4 md:py-8 text-center flex flex-col justify-center items-center ${!hasRec ? "cursor-pointer group hover:bg-[#D0D0D0] transition-colors" : ""} ${isCustom ? "bg-[#D9D9D9]" : "bg-[#EAEAEA]"
                             }`}
                         >
                           <span className="text-[11px] md:text-[13px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-center">
@@ -832,7 +841,7 @@ function BundleDetailsContent() {
                                 </span>
                               </>
                             ) : (
-                              <div className="text-gray-700 font-bold text-[18px] md:text-[22px] leading-tight text-center whitespace-nowrap">
+                              <div className="text-gray-700 group-hover:text-primary-300 font-bold text-[18px] md:text-[22px] leading-tight text-center whitespace-nowrap transition-colors">
                                 Get A Quote
                               </div>
                             )}
