@@ -667,10 +667,14 @@ function BundleDetailsContent() {
             </p>
           </div>
           <div className="lg:w-[50%] flex items-center justify-center lg:justify-end">
-            <div className="w-full max-w-[620px] aspect-[16/10] bg-[#F0F0F0] rounded-[10px] overflow-hidden shadow-sm border border-gray-200">
+            <div 
+              className="w-full max-w-[620px] aspect-[16/10] bg-[#F0F0F0] rounded-[10px] overflow-hidden shadow-sm border border-gray-200"
+              style={{ borderRadius: "10px" }}
+            >
               <img
                 alt={pkg.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover rounded-[10px]"
+                style={{ borderRadius: "10px" }}
                 src={
                   pkg.imageUrl ||
                   "http://res.cloudinary.com/dgg6e3flf/image/upload/v1785224007/packages/a_professional_high_fidelity_3d_still_life_scene_for_a_digital_starter_bundle.webp"
@@ -791,7 +795,7 @@ function BundleDetailsContent() {
                         onClick={() =>
                           isPaid ? handleTierSelect(col) : router.push("/dashboard/new-project/custom-quote")
                         }
-                        className={`w-full max-w-[150px] py-3.5 px-3 rounded-xl font-extrabold text-[12px] md:text-[13px] uppercase tracking-wider transition-all duration-300 shadow-md hover:shadow-lg active:scale-95 ${isSelected
+                        className={`w-full max-w-[150px] py-3.5 px-3 rounded-[10px] font-extrabold text-[12px] md:text-[13px] uppercase tracking-wider transition-all duration-300 shadow-md hover:shadow-lg active:scale-95 ${isSelected
                           ? "bg-[#2D2DA3] text-white"
                           : "bg-[#EAEAEA] text-[#2D2DA3] hover:bg-[#D9D9D9]"
                           }`}
@@ -950,11 +954,10 @@ function BundleDetailsContent() {
 
                   {/* Project Meta Details */}
                   <div className="mb-6 text-sm text-gray-500 flex items-center gap-3 flex-wrap justify-between">
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col gap-1">
                       <span>
                         <strong>Project No:</strong> #{projectNo}
                       </span>
-                      <span className="text-gray-400">|</span>
                       <span>
                         <strong>Timeline:</strong> {getDurationLabel(selectedTier)}
                       </span>
@@ -1062,7 +1065,7 @@ function BundleDetailsContent() {
                   <button
                     onClick={() => handleSaveOrder(selectedTier)}
                     disabled={processing}
-                    className="w-full px-6 py-3 bg-white border border-gray-300 text-gray-600 font-bold text-xs uppercase tracking-widest hover:bg-gray-50 rounded transition-all duration-200 shadow-sm active:scale-95"
+                    className="w-full px-6 py-3 bg-white border border-gray-300 text-gray-600 font-bold text-xs uppercase tracking-widest hover:bg-gray-50 rounded-[10px] transition-all duration-200 shadow-sm active:scale-95"
                   >
                     {processing ? "Processing..." : "Save Order & Pay Later (Generate Invoice)"}
                   </button>
@@ -1078,7 +1081,7 @@ function BundleDetailsContent() {
                   </p>
                   <button
                     onClick={openChat}
-                    className="w-full px-6 py-3 bg-[#3535b8] hover:bg-[#2a2a9a] text-white font-semibold rounded transition-colors duration-200"
+                    className="w-full px-6 py-3 bg-[#3535b8] hover:bg-[#2a2a9a] text-white font-semibold rounded-[10px] transition-colors duration-200"
                   >
                     Contact Support
                   </button>

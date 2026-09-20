@@ -379,11 +379,15 @@ export default function AnalysisOrderPage() {
             </p>
           </div>
           <div className="lg:w-[50%] flex items-center justify-center lg:justify-end">
-            <div className="w-full max-w-[620px] aspect-[16/10] bg-[#F0F0F0] rounded-[10px] overflow-hidden shadow-sm border border-gray-200">
+            <div 
+              className="w-full max-w-[620px] aspect-[16/10] bg-[#F0F0F0] rounded-[10px] overflow-hidden shadow-sm border border-gray-200"
+              style={{ borderRadius: "10px" }}
+            >
               {imageSrc ? (
                 <img
                   alt={title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover rounded-[10px]"
+                  style={{ borderRadius: "10px" }}
                   src={imageSrc}
                 />
               ) : (
@@ -555,9 +559,8 @@ export default function AnalysisOrderPage() {
                     </div>
                   </div>
 
-                  <div className="mb-6 text-sm text-gray-500 flex items-center gap-3 flex-wrap">
+                  <div className="mb-6 text-sm text-gray-500 flex flex-col gap-1">
                     <span><strong>Analysis No:</strong> {analysisNo}</span>
-                    <span className="text-gray-400">|</span>
                     <span><strong>Timeline:</strong> {timelineDays} Days</span>
                   </div>
 
@@ -612,7 +615,7 @@ export default function AnalysisOrderPage() {
                     type="button"
                     onClick={(e) => handleSubmit(e as any)}
                     disabled={submitting}
-                    className="w-full px-6 py-3.5 bg-[#3535b8] hover:bg-[#2a2a9a] text-white font-semibold rounded transition-colors duration-200 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full px-6 py-3.5 bg-[#3535b8] hover:bg-[#2a2a9a] text-white font-semibold rounded-[10px] transition-colors duration-200 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
                   >
                     {submitting && <SpinnerIcon size={16} />}
                     <span>{submitting ? "Submitting..." : "Submit Request"}</span>
@@ -680,9 +683,8 @@ export default function AnalysisOrderPage() {
                   </div>
 
                   {/* Meta Details */}
-                  <div className="mb-6 text-sm text-gray-500 flex items-center gap-3 flex-wrap">
+                  <div className="mb-6 text-sm text-gray-500 flex flex-col gap-1">
                     <span><strong>Analysis No:</strong> {analysisNo}</span>
-                    <span className="text-gray-400">|</span>
                     <span><strong>Timeline:</strong> {timelineDays} Days</span>
                   </div>
 
@@ -779,7 +781,7 @@ export default function AnalysisOrderPage() {
                   <button
                     onClick={handleSaveOrder}
                     disabled={processing}
-                    className="w-full px-6 py-3 bg-white border border-gray-300 text-gray-600 font-bold text-xs uppercase tracking-widest hover:bg-gray-50 rounded transition-all duration-200 shadow-sm active:scale-95 cursor-pointer"
+                    className="w-full px-6 py-3 bg-white border border-gray-300 text-gray-600 font-bold text-xs uppercase tracking-widest hover:bg-gray-50 rounded-[10px] transition-all duration-200 shadow-sm active:scale-95 cursor-pointer"
                   >
                     {processing ? "Processing..." : "Save Order & Pay Later (Generate Invoice)"}
                   </button>
@@ -796,7 +798,7 @@ export default function AnalysisOrderPage() {
                 <button
                   type="button"
                   onClick={openChat}
-                  className="w-full px-6 py-3 bg-[#3535b8] hover:bg-[#2a2a9a] text-white font-semibold rounded transition-colors duration-200 cursor-pointer"
+                  className="w-full px-6 py-3 bg-[#3535b8] hover:bg-[#2a2a9a] text-white font-semibold rounded-[10px] transition-colors duration-200 cursor-pointer"
                 >
                   Contact Support
                 </button>

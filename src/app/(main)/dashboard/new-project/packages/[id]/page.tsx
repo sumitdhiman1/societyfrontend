@@ -352,17 +352,27 @@ function PackageDetailsContent() {
         message={status.message}
       />
       
-      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-16">
+      <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-8 md:pb-16">
         
         {/* Hero Section */}
-        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-10 md:gap-12 mb-10 md:mb-16">
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-8 md:gap-12 mb-8 md:mb-16">
           <div className="lg:w-[50%] flex flex-col">
             <h1 className="text-[28px] md:text-[48px] lg:text-[64px] font-bold text-[#363636] leading-[1.1] mb-4 md:mb-6 tracking-tight">{pkg.name}</h1>
             <p className="text-[#808080] leading-relaxed text-base md:text-lg max-w-xl font-medium">{pkg.description || "Professional standalone services designed for quick turnaround and high-quality results."}</p>
           </div>
           <div className="lg:w-[50%] flex items-center justify-center lg:justify-end">
-            <div className="w-full max-w-[620px] aspect-[16/10] bg-[#e0e0e0] rounded-[4px] overflow-hidden shadow-sm border border-gray-200 relative">
-              {pkg.imageUrl ? <img src={pkg.imageUrl} alt={pkg.name} className="w-full h-full object-cover" /> : (
+            <div 
+              className="w-full max-w-[620px] aspect-[16/10] bg-[#e0e0e0] rounded-[10px] overflow-hidden shadow-sm border border-gray-200 relative"
+              style={{ borderRadius: "10px" }}
+            >
+              {pkg.imageUrl ? (
+                <img 
+                  src={pkg.imageUrl} 
+                  alt={pkg.name} 
+                  className="w-full h-full object-cover rounded-[10px]" 
+                  style={{ borderRadius: "10px" }}
+                />
+              ) : (
                 <div className="flex items-center justify-center w-full h-full">
                   <svg className="w-32 h-32 text-gray-400 opacity-60" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
@@ -374,7 +384,7 @@ function PackageDetailsContent() {
         </div>
 
         {columns.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-[10px] shadow-[0px_5px_25px_#0000000D] p-8 md:p-12 text-center max-w-2xl mx-auto my-12">
+          <div className="bg-white border border-gray-200 rounded-[10px] shadow-[0px_5px_25px_#0000000D] p-6 md:p-12 text-center max-w-2xl mx-auto my-8 md:my-12">
             <div className="w-16 h-16 bg-blue-50 text-[#3535b8] rounded-full flex items-center justify-center mx-auto mb-6">
               <svg className="w-8 h-8 text-[#3535b8]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -387,13 +397,13 @@ function PackageDetailsContent() {
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <button
                 onClick={() => router.push("/dashboard/new-project/custom-quote")}
-                className="px-8 py-4 bg-[#3535b8] hover:bg-[#2a2a9a] text-white rounded-lg font-bold text-sm tracking-wider uppercase transition-all shadow-md active:scale-[0.98] cursor-pointer"
+                className="px-8 py-4 bg-[#3535b8] hover:bg-[#2a2a9a] text-white rounded-[10px] font-bold text-sm tracking-wider uppercase transition-all shadow-md active:scale-[0.98] cursor-pointer"
               >
                 Request Custom Quote
               </button>
               <button
                 onClick={openChat}
-                className="px-8 py-4 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg font-bold text-sm tracking-wider uppercase transition-all active:scale-[0.98] cursor-pointer"
+                className="px-8 py-4 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-[10px] font-bold text-sm tracking-wider uppercase transition-all active:scale-[0.98] cursor-pointer"
               >
                 Contact Support
               </button>
@@ -402,7 +412,7 @@ function PackageDetailsContent() {
         ) : (
           <>
             {/* Comparison Table */}
-            <div className="border border-gray-200 rounded-[10px] overflow-hidden shadow-[0px_5px_25px_#0000000D] bg-white mb-10 md:mb-16">
+            <div className="border border-gray-200 rounded-[10px] overflow-hidden shadow-[0px_5px_25px_#0000000D] bg-white mb-8 md:mb-16">
               <div className="overflow-x-auto">
                 <div className="min-w-[1000px]">
                   <div className="grid divide-x divide-gray-100 border-b border-gray-100" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
@@ -498,7 +508,7 @@ function PackageDetailsContent() {
                       <div key={idx} className="p-6 md:p-8 flex items-center justify-center">
                         <button
                           onClick={() => handleTierSelect(col)}
-                          className={`w-full max-w-[160px] py-4 rounded-xl font-black text-[13px] uppercase tracking-widest transition-all duration-300 shadow-md hover:shadow-lg active:scale-95 ${selectedTier?.id === col.id ? "bg-[#3535b8] text-white" : "bg-[#e0e0e0] text-[#3535b8] hover:bg-gray-200"}`}
+                          className={`w-full max-w-[160px] py-4 rounded-[10px] font-black text-[13px] uppercase tracking-widest transition-all duration-300 shadow-md hover:shadow-lg active:scale-95 ${selectedTier?.id === col.id ? "bg-[#3535b8] text-white" : "bg-[#e0e0e0] text-[#3535b8] hover:bg-gray-200"}`}
                         >
                           {parsePrice(col.price) > 0 || parsePrice(col.recurringAmount) > 0 ? "Buy Now" : "Get Quote"}
                         </button>
@@ -512,7 +522,7 @@ function PackageDetailsContent() {
             {/* Payment Section */}
             {selectedTier && (
               <div className="animate-in slide-in-from-bottom duration-700" id="payment-section">
-                <div className="text-center mb-12">
+                <div className="text-center mb-[20px] md:mb-12">
                   <h1 className="text-[32px] md:text-[42px] font-bold text-[#363636] mb-3">Complete Your Purchase Securely</h1>
                   <p className="text-[#808080] text-lg">Your information is protected and your project starts immediately.</p>
                 </div>
@@ -520,8 +530,8 @@ function PackageDetailsContent() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                   <div className="lg:col-span-2">
                     {/* Project Summary Card */}
-                    <div className="bg-white border border-gray-200 rounded-[10px] shadow-[0px_5px_25px_#0000000D] p-8 mb-8 relative">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                    <div className="bg-white border border-gray-200 rounded-[10px] shadow-[0px_5px_25px_#0000000D] p-4 sm:p-6 md:p-8 mb-6 md:mb-8 relative">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-8">
                         <div className="bg-[#e0e0e0] px-4 py-1.5 rounded-full w-fit">
                           <span className="text-[11px] text-[#808080] font-bold uppercase tracking-wider">Start Date: {new Date().toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}</span>
                         </div>
@@ -538,15 +548,14 @@ function PackageDetailsContent() {
                         </div>
                       </div>
 
-                      <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
+                      <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4 sm:mb-6">
                         <div className="flex-1">
                           <h3 className="text-2xl md:text-3xl font-bold text-[#646464] leading-tight mb-3">
                             {pkg.name} - {selectedTier?.title || "Select a plan"}
                           </h3>
-                          <div className="text-[13px] text-[#808080] font-bold flex items-center gap-2">
-                            <span>Project No: #{projectNo}</span>
-                            <span className="text-gray-300">|</span>
-                            <span>Timeline: {getDurationLabel(selectedTier)}</span>
+                          <div className="text-[13px] text-[#808080] font-bold flex flex-col gap-1">
+                            <span><strong>Project No:</strong> #{projectNo}</span>
+                            <span><strong>Timeline:</strong> {getDurationLabel(selectedTier)}</span>
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1">
@@ -646,7 +655,7 @@ function PackageDetailsContent() {
                       <button
                         onClick={() => handleSaveOrder(selectedTier)}
                         disabled={processing}
-                        className="w-full px-6 py-3 bg-white border border-gray-300 text-[#808080] font-bold text-xs uppercase tracking-widest hover:bg-gray-50 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+                        className="w-full px-6 py-3 bg-white border border-gray-300 text-[#808080] font-bold text-xs uppercase tracking-widest hover:bg-gray-50 rounded-[10px] transition-colors duration-200 flex items-center justify-center gap-2"
                       >
                         {processing ? "Processing..." : "Save Order & Pay Later (Generate Invoice)"}
                       </button>
@@ -654,14 +663,14 @@ function PackageDetailsContent() {
                   </div>
 
                   {/* Sidebar Section */}
-                  <div className="bg-white border border-gray-200 rounded-[10px] shadow-[0px_5px_25px_#0000000D] p-8 text-center sticky top-28">
+                  <div className="bg-white border border-gray-200 rounded-[10px] shadow-[0px_5px_25px_#0000000D] p-6 md:p-8 text-center sticky top-28">
                     <h3 className="text-xl font-bold text-[#646464] mb-3">Questions Before You Pay?</h3>
                     <p className="text-[13px] text-[#808080] mb-8 leading-relaxed">
                       Our support team is here to help with pricing, payments, or package details—no pressure.
                     </p>
                     <button 
                       onClick={openChat} 
-                      className="w-full bg-[#3535b8] hover:bg-[#2a2a9a] text-white py-3.5 rounded-md font-bold text-sm transition-all shadow-md active:scale-95 cursor-pointer"
+                      className="w-full bg-[#3535b8] hover:bg-[#2a2a9a] text-white py-3.5 rounded-[10px] font-bold text-sm transition-all shadow-md active:scale-95 cursor-pointer"
                     >
                       Contact Support
                     </button>
