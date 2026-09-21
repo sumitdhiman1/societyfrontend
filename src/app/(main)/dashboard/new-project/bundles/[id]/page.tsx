@@ -972,15 +972,29 @@ function BundleDetailsContent() {
 
                   {/* Title & Price Header */}
                   <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
-                    <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 leading-tight pr-4" style={{ maxWidth: "100%" }}>
-                      {pkg.name} - {selectedTier.title}
-                    </h3>
-                    <div className="items-center gap-6">
-                      <div className="flex flex-col">
+                    <div className="flex flex-col gap-4">
+                      <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 leading-tight pr-4" style={{ maxWidth: "100%" }}>
+                        {pkg.name} - {selectedTier.title}
+                      </h3>
+                      <div className="mb-6 text-sm text-gray-500 flex items-center gap-3 flex-wrap justify-between">
+                        <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+                          <span>
+                            <strong>Project No:</strong> #{projectNo}
+                          </span>
+                          <span className="hidden sm:inline text-gray-300">|</span>
+                          <span>
+                            <strong>Timeline:</strong> {getDurationLabel(selectedTier)}
+                          </span>
+                        </div>
+                      </div>
+
+                    </div>
+                    <div className="items-center gap-6 block md:flex">
+                      <div className="flex flex-col mb-6 md:mb-0">
                         <div className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-800">
                           {formatPrice(parsePrice(selectedTier.price))}
                         </div>
-                        <div className="flex flex-col items-end mt-1">
+                        <div className="flex flex-col text-left md:text-right mt-1">
                           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">One-Time Setup Fee</span>
                           {recurringAmount > 0 && (
                             <span className="text-xs font-semibold text-blue-600 mt-0.5">
@@ -989,30 +1003,17 @@ function BundleDetailsContent() {
                           )}
                         </div>
                       </div>
-
+                      <select
+                        value={currency.toUpperCase()}
+                        onChange={(e) => setCurrency(e.target.value.toLowerCase())}
+                        className="bg-gray-50 border border-gray-300 text-gray-700 font-medium rounded-md px-3 py-1.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-shadow"
+                      >
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                      </select>
                     </div>
                   </div>
 
-                  {/* Project Meta Details */}
-                  <div className="mb-6 text-sm text-gray-500 flex items-center gap-3 flex-wrap justify-between">
-                    <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
-                      <span>
-                        <strong>Project No:</strong> #{projectNo}
-                      </span>
-                      <span className="hidden sm:inline text-gray-300">|</span>
-                      <span>
-                        <strong>Timeline:</strong> {getDurationLabel(selectedTier)}
-                      </span>
-                    </div>
-                    <select
-                      value={currency.toUpperCase()}
-                      onChange={(e) => setCurrency(e.target.value.toLowerCase())}
-                      className="bg-gray-50 border border-gray-300 text-gray-700 font-medium rounded-md px-3 py-1.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-shadow"
-                    >
-                      <option value="USD">USD ($)</option>
-                      <option value="EUR">EUR (€)</option>
-                    </select>
-                  </div>
 
                   {/* Description */}
                   <div className="mb-8 text-sm text-gray-500 leading-relaxed">
