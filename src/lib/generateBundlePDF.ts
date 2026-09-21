@@ -1,35 +1,22 @@
 import { authService } from "./authService";
 import { getVatRateForCountry } from "./vatHelper";
 import {
-  convertPackageBundleCurrencyAmount,
+  convertCurrencyAmount,
+  formatPriceWithCurrency,
   formatActiveCurrency,
 } from "./currencyUtils";
 
-function formatPdfDate(dateInput: any): string {
+function formatSubmittedDate(dateInput: any): string {
   if (!dateInput) return "";
   const d = new Date(dateInput);
   if (isNaN(d.getTime())) return String(dateInput);
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const m = months[d.getMonth()];
-  const dd = d.getDate();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
   const yyyy = d.getFullYear();
-  return `${m} ${dd}, ${yyyy}`;
+  return `${mm}/${dd}/${yyyy}`;
 }
 
-function parseDurationDays(raw: any): number {
-  if (!raw) return 0;
-  const str = String(raw).trim();
-  const wMatch = /(\d+)\s*(?:weeks?|wks?)/i.exec(str);
-  if (wMatch) return parseInt(wMatch[1], 10) * 7;
-  const dMatch = /(\d+)\s*(?:days?|dys?)/i.exec(str);
-  if (dMatch) return parseInt(dMatch[1], 10);
-  const mMatch = /(\d+)\s*(?:months?|mos?)/i.exec(str);
-  if (mMatch) return parseInt(mMatch[1], 10) * 30;
-  const num = parseInt(str, 10);
-  return isNaN(num) ? 0 : num;
-}
-
-function formatDurationLabel(raw: any, fallbackUnit: string = "weeks"): string {
+function formatDurationLabel(raw: any): string {
   if (!raw) return "-";
   const str = String(raw).trim();
   if (str === "" || str === "-") return "-";
@@ -45,6 +32,7 @@ function formatDurationLabel(raw: any, fallbackUnit: string = "weeks"): string {
 export interface BundlePDFData {
   title: string;
   projectNumber: string;
+  referenceNumber: string;
   rawProjectNumber: string;
   clientEmail: string;
   clientName: string;
@@ -112,6 +100,7 @@ export function extractBundlePDFData(data: any): BundlePDFData {
     "";
 
   const title = String(
+    data.projectTitle ||
     data.title ||
     data.name ||
     data.bundleName ||
@@ -124,20 +113,23 @@ export function extractBundlePDFData(data: any): BundlePDFData {
   const rawProjectNumber = String(
     data.projectNumber ||
     data.referenceNumber ||
+    data.refNumber ||
+    data.refNo ||
     data.entityNumber ||
     data.orderNumber ||
     (data._id ? String(data._id).slice(-8).toUpperCase() : "SOC-BUNDLE")
-  ).replace(/^#/, "");
+  ).replace(/^#/, "").replace(/^INV-/i, "").replace(/^PROJECT-/i, "").trim();
 
-  const projectNumber = `#${rawProjectNumber}`;
+  const projectNumber = rawProjectNumber.startsWith("#") ? rawProjectNumber : `#${rawProjectNumber}`;
+  const referenceNumber = projectNumber;
 
-  const submittedDate = formatPdfDate(data.createdAt || data.startDate || data.submittedDate || new Date());
-  const validUntilDate = formatPdfDate(
+  const submittedDate = formatSubmittedDate(data.createdAt || data.startDate || data.submittedDate || new Date());
+  const validUntilDate = formatSubmittedDate(
     data.validUntil ||
     data.deadline ||
     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
   );
-  const deadlineDate = data.deadline ? formatPdfDate(data.deadline) : "Ongoing";
+  const deadlineDate = data.deadline ? formatSubmittedDate(data.deadline) : (data.duration || "Ongoing");
 
   const status = String(data.status || "active").replace(/_/g, " ").toUpperCase();
 
@@ -146,7 +138,10 @@ export function extractBundlePDFData(data: any): BundlePDFData {
   let activeContextRate: number | null = null;
   try {
     if (typeof window !== "undefined") {
-      activeContextCurrency = localStorage.getItem("app-currency") || "";
+      const stored = localStorage.getItem("app-currency");
+      if (stored && stored.trim()) {
+        activeContextCurrency = stored.trim().toUpperCase();
+      }
       const savedRate = localStorage.getItem("app-conversion-rate");
       if (savedRate && !isNaN(Number(savedRate)) && Number(savedRate) > 0) {
         activeContextRate = Number(savedRate);
@@ -154,37 +149,35 @@ export function extractBundlePDFData(data: any): BundlePDFData {
     }
   } catch {}
 
-  const targetCurrency = (
-    data.targetCurrency ||
-    data.activeCurrency ||
-    data.selectedCurrency ||
-    activeContextCurrency ||
-    currentUser?.currency ||
-    currentUser?.preferredCurrency ||
+  const sourceCurrency = (
+    data.sourceCurrency ||
     data.currency ||
+    data.quote?.currency ||
+    (data.currencySymbol === "€" ? "EUR" : data.currencySymbol === "$" ? "USD" : "") ||
     "USD"
   ).toUpperCase();
 
-  const sourceCurrency = (
-    data.sourceCurrency ||
-    data.nativeCurrency ||
-    data.baseCurrency ||
-    data.originalCurrency ||
-    data.currency ||
+  const targetCurrency = (
+    data.targetCurrency ||
+    activeContextCurrency ||
+    data.activeCurrency ||
+    data.selectedCurrency ||
+    currentUser?.currency ||
+    currentUser?.preferredCurrency ||
+    sourceCurrency ||
     "USD"
   ).toUpperCase();
 
   const conversionRate = Number(
     data.conversionRate ||
-    data.exchangeRate ||
     activeContextRate ||
+    data.exchangeRate ||
     1.08
   );
 
   const convert = (amt: number): number => {
     if (!amt || !Number.isFinite(amt) || amt === 0) return 0;
-    if (data.isConverted) return amt;
-    return convertPackageBundleCurrencyAmount(amt, targetCurrency, sourceCurrency, conversionRate);
+    return convertCurrencyAmount(amt, targetCurrency, sourceCurrency, conversionRate);
   };
 
   const currency = targetCurrency;
@@ -284,6 +277,7 @@ export function extractBundlePDFData(data: any): BundlePDFData {
   return {
     title,
     projectNumber,
+    referenceNumber,
     rawProjectNumber,
     clientEmail,
     clientName,
@@ -347,7 +341,7 @@ export function getBundleHTML(d: BundlePDFData): string {
             ${LOGO_SVG}
           </div>
           <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; margin: 0; padding: 0; white-space: nowrap;">
-            <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.01em; color: #2A2AA0; margin: 0 0 10px 0; line-height: 1; padding: 0;">${d.isProject ? "BUNDLE SPECIFICATIONS" : "BUNDLE DETAILS"}</div>
+            <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.01em; color: #2A2AA0; margin: 0 0 10px 0; line-height: 1; padding: 0;">${d.isProject ? "PROJECT DETAILS" : "PROJECT QUOTE"}</div>
             <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 13.5px; line-height: 1.3; color: #1E293B; margin-bottom: 3px;">Society Web Solutions</div>
             <div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.45; color: #64748B;">1645 Palm Beach Lakes Blvd</div>
             <div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.45; color: #64748B; margin-bottom: 2px;">West Palm Beach, FL, US</div>
@@ -357,7 +351,7 @@ export function getBundleHTML(d: BundlePDFData): string {
           </div>
         </header>
 
-        <!-- ── Client / Bundle Summary Card ── -->
+        <!-- ── Quote / Client Summary Card ── -->
         <section style="
           box-sizing: border-box;
           width: 100%;
@@ -370,107 +364,121 @@ export function getBundleHTML(d: BundlePDFData): string {
           justify-content: space-between;
           align-items: flex-start;
         ">
-          <!-- Client Details -->
-          <div style="display: flex; flex-direction: column; gap: 4px;">
-            <div style="font-size: 11px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">CLIENT DETAILS</div>
-            <div style="font-size: 14px; font-weight: 700; color: #0F172A;">${d.clientName}</div>
-            ${d.clientCompany ? `<div style="font-size: 12px; color: #475569; font-weight: 500;">${d.clientCompany}</div>` : ""}
-            <div style="font-size: 12px; color: #64748B;">${d.clientEmail}</div>
-            ${d.clientCountry ? `<div style="font-size: 12px; color: #64748B;">${d.clientCountry}</div>` : ""}
+          <!-- Prepared For / Client -->
+          <div style="display: flex; flex-direction: column;">
+            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 10.5px; letter-spacing: 0.08em; color: #94A3B8; text-transform: uppercase; margin: 0 0 8px 0;">${d.isProject ? "CLIENT" : "PREPARED FOR"}</div>
+            <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 15.5px; line-height: 1.3; color: #0F172A; margin: 0 0 3px 0;">${d.clientName}</div>
+            ${d.clientCompany ? `<div style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; line-height: 1.4; color: #475569;">${d.clientCompany}</div>` : ""}
+            ${d.clientEmail ? `<div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.4; color: #64748B;">${d.clientEmail}</div>` : ""}
           </div>
 
-          <!-- Reference & Metadata -->
-          <div style="display: flex; flex-direction: column; gap: 6px; text-align: right; min-width: 180px;">
-            <div style="display: flex; justify-content: flex-end; gap: 8px; font-size: 12px;">
-              <span style="color: #64748B;">Reference No:</span>
-              <span style="font-weight: 700; color: #0F172A;">${d.projectNumber}</span>
+          <!-- Quote Details / Project Details -->
+          <div style="width: 240px; display: flex; flex-direction: column;">
+            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 10.5px; letter-spacing: 0.08em; color: #94A3B8; text-transform: uppercase; margin: 0 0 8px 0;">${d.isProject ? "PROJECT SUMMARY" : "QUOTE DETAILS"}</div>
+            ${
+              d.isProject
+                ? `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Project ID:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${d.projectNumber || d.referenceNumber}</span>
             </div>
-            <div style="display: flex; justify-content: flex-end; gap: 8px; font-size: 12px;">
-              <span style="color: #64748B;">Issued:</span>
-              <span style="font-weight: 600; color: #1E293B;">${d.submittedDate}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Submitted:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: #0F172A;">${d.submittedDate}</span>
             </div>
-            <div style="display: flex; justify-content: flex-end; gap: 8px; font-size: 12px;">
-              <span style="color: #64748B;">Valid Until:</span>
-              <span style="font-weight: 600; color: #1E293B;">${d.validUntilDate}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Est. Deadline:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #13663A;">${d.deadlineDate}</span>
             </div>
-            <div style="display: flex; justify-content: flex-end; gap: 8px; font-size: 12px; align-items: center; margin-top: 2px;">
-              <span style="color: #64748B;">Status:</span>
-              <span style="
-                background: #E0E7FF;
-                color: #3730A3;
-                font-size: 10px;
-                font-weight: 700;
-                padding: 2px 8px;
-                border-radius: 9999px;
-                text-transform: uppercase;
-                letter-spacing: 0.04em;
-              ">${d.status}</span>
+            `
+                : `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Ref Number:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${d.referenceNumber || d.projectNumber}</span>
             </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Issued On:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: #0F172A;">${d.submittedDate}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Valid Until:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: #0F172A;">${d.validUntilDate || d.deadlineDate}</span>
+            </div>
+            `
+            }
           </div>
         </section>
 
-        <!-- ── Bundle Title Section ── -->
-        <section style="margin: 26px 0 16px 0;">
-          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-            <h1 style="font-size: 19px; font-weight: 800; color: #0F172A; margin: 0; line-height: 1.3;">
-              ${cleanTitle}
-            </h1>
-            <span style="background: #F3E8FF; color: #7E22CE; border: 1px solid #E9D5FF; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase;">
-              BUNDLE
-            </span>
-          </div>
-          ${d.description ? `<p style="font-size: 12.5px; color: #475569; line-height: 1.5; margin: 0;">${d.description}</p>` : ""}
-        </section>
+        <!-- ── Project Overview & Scope ── -->
+        <div style="margin-top: 18px; margin-bottom: 16px;">
+          <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 15px; color: #2A2AA0; margin-bottom: 6px;">${cleanTitle}</div>
+          ${d.description ? `<p style="font-family: Inter, sans-serif; font-size: 12px; color: #475569; line-height: 1.5; margin: 0; white-space: pre-line;">${d.description}</p>` : ""}
+        </div>
 
         <!-- ── Deliverables Table ── -->
-        <section style="margin-top: 8px;">
+        <div style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; margin-bottom: 20px; background: #FFFFFF;">
           <table style="width: 100%; border-collapse: collapse; text-align: left;">
             <thead>
-              <tr style="border-bottom: 2px solid #E2E8F0;">
-                <th style="padding: 10px 12px 10px 0; font-size: 11px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; width: 55%;">Item & Scope</th>
-                <th style="padding: 10px 12px; font-size: 11px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; width: 20%;">Duration</th>
-                <th style="padding: 10px 0 10px 12px; font-size: 11px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; text-align: right; width: 25%;">Amount</th>
+              <tr style="background: #2A2AA0; border-bottom: 1px solid #2A2AA0;">
+                <th style="padding: 12px 18px; font-family: Inter, sans-serif; font-size: 10.5px; font-weight: 700; color: #FFFFFF; text-transform: uppercase; letter-spacing: 0.08em; text-align: left; width: 55%;">DELIVERABLES &amp; WORK SCOPE</th>
+                <th style="padding: 12px 18px; font-family: Inter, sans-serif; font-size: 10.5px; font-weight: 700; color: #FFFFFF; text-transform: uppercase; letter-spacing: 0.08em; text-align: center; width: 22%;">Duration</th>
+                <th style="padding: 12px 18px; font-family: Inter, sans-serif; font-size: 10.5px; font-weight: 700; color: #FFFFFF; text-transform: uppercase; letter-spacing: 0.08em; text-align: right; width: 23%;">Amount</th>
               </tr>
             </thead>
             <tbody>
-              ${d.deliverables.map((item, idx) => `
-                <tr style="border-bottom: 1px solid #F1F5F9;">
-                  <td style="padding: 14px 12px 14px 0; vertical-align: top;">
-                    <div style="font-size: 13px; font-weight: 700; color: #1E293B; margin-bottom: 3px;">${item.name}</div>
-                    ${item.details ? `<div style="font-size: 11.5px; color: #64748B; line-height: 1.45;">${item.details}</div>` : ""}
+              ${(d.deliverables || [])
+                .map(
+                  (item: { name: string; details?: string; duration: string; amount: number; formattedAmount: string }, idx: number) => `
+                <tr style="background-color: #FFFFFF; border-top: ${idx > 0 ? "1px solid #F1F5F9" : "none"};">
+                  <td style="padding: 14px 18px; vertical-align: top; text-align: left;">
+                    <div style="font-family: Inter, sans-serif; font-size: 13px; font-weight: 600; color: #0F172A; line-height: 1.4;">${item.name}</div>
+                    ${item.details ? `<div style="font-family: Inter, sans-serif; font-size: 11px; color: #64748B; line-height: 1.4; margin-top: 3px;">${item.details}</div>` : ""}
                   </td>
-                  <td style="padding: 14px 12px; font-size: 12px; font-weight: 600; color: #475569; text-align: center; vertical-align: top; white-space: nowrap;">
+                  <td style="padding: 14px 18px; vertical-align: top; font-family: Inter, sans-serif; font-size: 12.5px; font-weight: 500; color: #475569; text-align: center; white-space: nowrap;">
                     ${item.duration}
                   </td>
-                  <td style="padding: 14px 0 14px 12px; font-size: 13px; font-weight: 700; color: #0F172A; text-align: right; vertical-align: top; white-space: nowrap;">
-                    ${item.formattedAmount}
+                  <td style="padding: 14px 18px; vertical-align: top; font-family: Inter, sans-serif; font-size: 13px; font-weight: 700; color: #0F172A; text-align: right; white-space: nowrap;">
+                    ${item.formattedAmount || formatActiveCurrency(item.amount, d.currency)}
                   </td>
                 </tr>
-              `).join("")}
-
-              ${d.recurringDeliverables ? d.recurringDeliverables.map((item) => `
-                <tr style="background: #FAF5FF; border-bottom: 1px solid #F3E8FF;">
-                  <td style="padding: 12px 12px 12px 8px; vertical-align: top;">
-                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
-                      <span style="font-size: 12.5px; font-weight: 700; color: #6B21A8;">${item.name}</span>
-                      <span style="font-size: 9px; font-weight: 700; background: #E9D5FF; color: #581C87; padding: 1px 6px; border-radius: 3px;">PHASE 2</span>
-                    </div>
-                    ${item.details ? `<div style="font-size: 11px; color: #7E22CE; line-height: 1.4;">${item.details}</div>` : ""}
-                  </td>
-                  <td style="padding: 12px; font-size: 11.5px; font-weight: 600; color: #6B21A8; text-align: center; vertical-align: top;">
-                    ${item.duration}
-                  </td>
-                  <td style="padding: 12px 8px 12px 12px; font-size: 12.5px; font-weight: 700; color: #581C87; text-align: right; vertical-align: top; white-space: nowrap;">
-                    ${item.formattedAmount} / mo
+              `
+                )
+                .join("")}
+              ${
+                d.recurringDeliverables && d.recurringDeliverables.length > 0
+                  ? `
+                <tr class="table-subheading" style="background-color: #E2E8F0; border-top: 1px solid #CBD5E1; border-bottom: 1px solid #CBD5E1;">
+                  <td colspan="3" style="padding: 10px 18px; font-family: Inter, sans-serif; font-size: 10.5px; font-weight: 700; color: #202124; text-transform: uppercase; letter-spacing: 0.08em; text-align: left;">
+                    MONTHLY MAINTENANCE &amp; RECURRING SERVICES
                   </td>
                 </tr>
-              `).join("") : ""}
+                ${d.recurringDeliverables
+                  .map(
+                    (item: { name: string; details?: string; duration: string; amount: number; formattedAmount: string }, aIdx: number) => `
+                  <tr style="background-color: #FFFFFF; border-top: ${aIdx > 0 ? "1px solid #F1F5F9" : "none"}; border-bottom: 1px solid #E2E8F0;">
+                    <td style="padding: 14px 18px; vertical-align: top; text-align: left;">
+                      <div style="font-family: Inter, sans-serif; font-size: 13px; font-weight: 600; color: #0F172A; line-height: 1.4;">${item.name}</div>
+                      ${item.details ? `<div style="font-family: Inter, sans-serif; font-size: 11px; color: #64748B; line-height: 1.4; margin-top: 3px;">${item.details}</div>` : ""}
+                    </td>
+                    <td style="padding: 14px 18px; vertical-align: top; font-family: Inter, sans-serif; font-size: 12.5px; font-weight: 500; color: #475569; text-align: center; white-space: nowrap;">
+                      ${item.duration}
+                    </td>
+                    <td style="padding: 14px 18px; vertical-align: top; font-family: Inter, sans-serif; font-size: 13px; font-weight: 700; color: #0F172A; text-align: right; white-space: nowrap;">
+                      ${item.formattedAmount ? `${item.formattedAmount} / mo` : `${formatActiveCurrency(item.amount, d.currency)} / mo`}
+                    </td>
+                  </tr>
+                `
+                  )
+                  .join("")}
+              `
+                  : ""
+              }
             </tbody>
           </table>
-        </section>
+        </div>
 
-        <!-- ── Financial Summary Box ── -->
-        <section style="display: flex; justify-content: flex-end; margin-top: 24px; margin-bottom: 24px;">
+        <!-- ── Summary Box (Bottom-Right) ── -->
+        <div style="display: flex; justify-content: flex-end; margin-top: 20px; margin-bottom: 24px;">
           <div style="width: 380px; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border: 1px solid #1E293B;">
             <!-- Timeline Row -->
             <div style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; box-sizing: border-box;">
@@ -478,50 +486,49 @@ export function getBundleHTML(d: BundlePDFData): string {
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap; position: relative; top: -1.5px; line-height: 1;">${d.duration}</span>
             </div>
 
+            ${
+              d.vatRate && d.vatRate > 0 && d.vatAmount && d.vatAmount > 0
+                ? `
             <!-- Subtotal Row -->
             <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; box-sizing: border-box;">
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">SUBTOTAL</span>
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap; position: relative; top: -1.5px; line-height: 1;">${d.formattedSubtotal}</span>
             </div>
 
-            ${d.vatRate > 0 && d.vatAmount > 0 ? `
             <!-- VAT Row -->
             <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; box-sizing: border-box;">
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">VAT (${d.vatRate}%)</span>
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap; position: relative; top: -1.5px; line-height: 1;">${d.formattedVatAmount}</span>
             </div>
-            ` : ""}
+            `
+                : ""
+            }
 
-            <!-- Total Cost / Investment Row -->
-            <div style="background-color: #2A2AA0; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 58px; box-sizing: border-box; ${d.vatRate > 0 && d.vatAmount > 0 ? "border-top: 1px solid #3E3EE8;" : "border-top: 1px solid #1E293B;"}">
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; letter-spacing: 0.06em; color: #FFFFFF; text-transform: uppercase; white-space: nowrap;">INVESTMENT TOTAL</span>
+            <!-- Total Cost Row -->
+            <div style="background-color: #2A2AA0; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 58px; box-sizing: border-box; ${d.vatRate && d.vatRate > 0 && d.vatAmount && d.vatAmount > 0 ? "border-top: 1px solid #3E3EE8;" : "border-top: 1px solid #1E293B;"}">
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; letter-spacing: 0.06em; color: #FFFFFF; text-transform: uppercase; white-space: nowrap;">${d.isProject ? "INVESTMENT TOTAL" : "TOTAL COST"}</span>
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 20px; color: #FFFFFF; white-space: nowrap; margin-left: 16px; position: relative; top: -2px; line-height: 1;">${d.formattedPrice}</span>
             </div>
-
-            ${d.amountPaid > 0 ? `
-            <!-- Amount Paid Row -->
-            <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 38px; box-sizing: border-box;">
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 10.5px; letter-spacing: 0.06em; color: #4ADE80; text-transform: uppercase;">PAID TO DATE</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 13.5px; color: #4ADE80; white-space: nowrap;">${d.formattedAmountPaid}</span>
-            </div>
-            ` : ""}
-
-            ${d.pendingBalance > 0 ? `
-            <!-- Pending Balance Row -->
-            <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 38px; box-sizing: border-box;">
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 10.5px; letter-spacing: 0.06em; color: #F87171; text-transform: uppercase;">PENDING BALANCE</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 13.5px; color: #F87171; white-space: nowrap;">${d.formattedPendingBalance}</span>
-            </div>
-            ` : ""}
           </div>
-        </section>
+        </div>
       </div>
 
       <!-- ── Footer ── -->
-      <footer style="margin-top: 36px; padding-top: 18px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #94A3B8;">
-        <div>Society Web Solutions • www.societywebsolutions.com</div>
-        <div>Questions? contact@societywebsolutions.com</div>
+      <footer style="width: 100%; margin-top: auto; padding-top: 20px;">
+        <!-- Divider Line -->
+        <div style="border-top: 1px solid #E5E7EB; margin-bottom: 14px; width: 100%;"></div>
+
+        <!-- Footer (Centered) -->
+        <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-bottom: 2px;">
+          <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 9.5px; line-height: 1.5; color: #94A3B8; margin: 0;">${d.isProject ? "This document serves as a record of project details and agreed deliverables." : "Acceptance of this quote binds the client to the agreed delivery timeline and total investment."}</p>
+          <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 9.5px; line-height: 1.5; color: #94A3B8; margin: 0;">Note: Time spent waiting for client replies does not count towards project deadlines.</p>
+          <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 9.5px; line-height: 1.5; color: #94A3B8; margin: 0;">For inquiries, please reach out to <span style="font-weight: 600; color: #64748B;">contact@societywebsolutions.com</span></p>
+          <div style="margin-top: 12px; text-align: center;">
+            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.14em; color: #CBD5E1; text-transform: uppercase;">SOCIETY WEB SOLUTIONS</span>
+          </div>
+        </div>
       </footer>
+
     </div>
   `;
 }
@@ -577,43 +584,76 @@ export async function generateBundlePDF(data: any): Promise<Blob> {
   const htmlContent = getBundleHTML(pdfData);
 
   const container = document.createElement("div");
-  container.style.position = "absolute";
-  container.style.left = "-9999px";
-  container.style.top = "0";
+  container.style.position = "fixed";
+  container.style.left = "0px";
+  container.style.top = "0px";
+  container.style.zIndex = "-99999";
   container.style.width = "794px";
-  container.style.background = "#FFFFFF";
+  container.style.backgroundColor = "#ffffff";
+  container.style.opacity = "1";
+  container.style.pointerEvents = "none";
   container.innerHTML = htmlContent;
   document.body.appendChild(container);
+
+  // Wait 150ms for layout and font rendering
+  await new Promise((r) => setTimeout(r, 150));
 
   try {
     const canvas = await html2canvasLib(container, {
       scale: 2,
       useCORS: true,
       logging: false,
-      backgroundColor: "#FFFFFF",
+      backgroundColor: "#ffffff",
+      windowWidth: 794,
+      scrollY: 0,
+      scrollX: 0,
     });
 
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPdfLib({
-      orientation: "portrait",
-      unit: "mm",
-      format: "a4",
-    });
+    if (!canvas || canvas.width === 0 || canvas.height === 0) {
+      throw new Error("Failed to render canvas for bundle PDF");
+    }
 
-    const imgWidth = 210;
+    const pdf = new jsPdfLib("p", "pt", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    const imgWidth = pageWidth;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+
+    const pageImgData = canvas.toDataURL("image/png");
+
+    if (imgHeight <= pageHeight + 40 || imgHeight <= pageHeight * 1.12) {
+      const fitH = Math.min(imgHeight, pageHeight);
+      pdf.addImage(pageImgData, "PNG", 0, 0, imgWidth, fitH, undefined, "FAST");
+    } else {
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(pageImgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 50) {
+        position -= pageHeight;
+        pdf.addPage();
+        pdf.addImage(pageImgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
+        heightLeft -= pageHeight;
+      }
+    }
 
     return pdf.output("blob");
   } finally {
-    document.body.removeChild(container);
+    if (document.body.contains(container)) {
+      document.body.removeChild(container);
+    }
   }
 }
 
 export async function downloadBundlePDF(data: any, customFilename?: string): Promise<void> {
   const blob = await generateBundlePDF(data);
   const pdfData = extractBundlePDFData(data);
-  const filename = customFilename || `Bundle_${pdfData.rawProjectNumber || "Project"}.pdf`;
+  const cleanNum = (pdfData.rawProjectNumber || pdfData.referenceNumber || pdfData.projectNumber || "1").replace(/[^a-zA-Z0-9-_]/g, "");
+  const prefix = pdfData.isProject ? "Project_Details" : "Project_Quote";
+  const filename = customFilename || (cleanNum ? `${prefix}_${cleanNum}.pdf` : `${prefix}.pdf`);
 
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -642,7 +682,9 @@ export async function printBundlePDF(data: any): Promise<void> {
     setTimeout(() => {
       iframe.contentWindow?.print();
       setTimeout(() => {
-        document.body.removeChild(iframe);
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
         URL.revokeObjectURL(url);
       }, 2000);
     }, 200);
@@ -651,3 +693,4 @@ export async function printBundlePDF(data: any): Promise<void> {
 
 export const downloadBundleProjectPDF = downloadBundlePDF;
 export const printBundleProjectPDF = printBundlePDF;
+

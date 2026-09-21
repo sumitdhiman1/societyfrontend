@@ -14,6 +14,7 @@ import { formatPriceWithCurrency, formatActiveCurrency, convertCurrencyAmount } 
 import { useTimezone } from "@/context/TimezoneContext";
 import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 import CalculatorProjectPayments, { ReceiptModal } from "./CalculatorProjectPayments";
+import { downloadBundlePDF, printBundlePDF } from "@/lib/generateBundlePDF";
 
 function isCalculatorProject(project: any, quote?: any): boolean {
   if (!project) return false;
@@ -197,11 +198,21 @@ export default function ProjectPaymentsPage() {
     }
   }
 
+  const linkedQuote =
+    fetchedQuote ||
+    (typeof activeProject.quoteId === "object" ? activeProject.quoteId : activeProject.quote) ||
+    {};
+
+  const isBundle =
+    String(activeProject.type || "").toLowerCase() === "bundle" ||
+    Boolean(activeProject.isBundle) ||
+    String(linkedQuote?.type || "").toLowerCase() === "bundle";
+
   if (isCalc) {
     return (
       <CalculatorProjectPayments
         project={activeProject}
-        quote={fetchedQuote || (typeof activeProject.quoteId === "object" ? activeProject.quoteId : activeProject.quote)}
+        quote={linkedQuote}
         payments={combinedPayments}
         isLoadingPayments={isLoading}
         refreshPayments={fetchPayments}
@@ -233,7 +244,6 @@ export default function ProjectPaymentsPage() {
     const upper = c.trim().toUpperCase();
     return upper === "EE" || upper === "EST" || upper === "ESTONIA";
   };
-  const linkedQuote = fetchedQuote || (typeof activeProject.quoteId === "object" ? activeProject.quoteId : activeProject.quote) || {};
   const countryStr = String(
     activeProject.clientCountry ||
     activeProject.country ||
@@ -475,7 +485,16 @@ export default function ProjectPaymentsPage() {
     if (isDownloadingPdf || isDownloadingInvoice) return;
     setIsDownloadingPdf(true);
     try {
-      if (isCalc) {
+      if (isBundle) {
+        await downloadBundlePDF({
+          ...activeProject,
+          quote: fetchedQuote || (typeof activeProject?.quoteId === "object" ? activeProject?.quoteId : null),
+          targetCurrency: (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || "USD").toUpperCase(),
+          sourceCurrency: (activeProject?.currency || fetchedQuote?.currency || payments[0]?.currency || "USD").toUpperCase(),
+          conversionRate,
+          isProject: true,
+        });
+      } else if (isCalc) {
         await downloadCalculatorProjectPDF({
           ...activeProject,
           calculatorSpecs: activeProject?.calculatorSpecs || fetchedQuote?.requirements || fetchedQuote?.calculatorSpecs,
@@ -496,7 +515,16 @@ export default function ProjectPaymentsPage() {
     if (isDownloadingInvoice || isDownloadingPdf) return;
     setIsDownloadingInvoice(true);
     try {
-      if (isCalc) {
+      if (isBundle) {
+        await downloadBundlePDF({
+          ...activeProject,
+          quote: fetchedQuote || (typeof activeProject?.quoteId === "object" ? activeProject?.quoteId : null),
+          targetCurrency: (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || "USD").toUpperCase(),
+          sourceCurrency: (activeProject?.currency || fetchedQuote?.currency || payments[0]?.currency || "USD").toUpperCase(),
+          conversionRate,
+          isProject: true,
+        });
+      } else if (isCalc) {
         await downloadCalculatorProjectPDF({
           ...activeProject,
           calculatorSpecs: activeProject?.calculatorSpecs || fetchedQuote?.requirements || fetchedQuote?.calculatorSpecs,
@@ -514,7 +542,13 @@ export default function ProjectPaymentsPage() {
 
   const handlePrintDetails = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
-    if (isCalc) {
+    if (isBundle) {
+      printBundlePDF({
+        ...activeProject,
+        quote: fetchedQuote || (typeof activeProject?.quoteId === "object" ? activeProject?.quoteId : null),
+        isProject: true,
+      });
+    } else if (isCalc) {
       printCalculatorProjectPDF({
         ...activeProject,
         calculatorSpecs: activeProject?.calculatorSpecs || fetchedQuote?.requirements || fetchedQuote?.calculatorSpecs,

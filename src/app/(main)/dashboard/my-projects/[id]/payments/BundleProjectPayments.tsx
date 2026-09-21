@@ -10,8 +10,10 @@ import { downloadReceiptPDF } from "@/lib/generateReceiptPDF";
 import { useTimezone } from "@/context/TimezoneContext";
 import { useCurrency } from "@/context/CurrencyContext";
 import {
-  convertPackageBundleCurrencyAmount,
+  formatPriceWithCurrency,
   formatActiveCurrency,
+  convertCurrencyAmount,
+  sumPaymentsInNativeCurrency,
 } from "@/lib/currencyUtils";
 import PackageBundlePaymentForm from "@/components/dashboard/PackageBundlePaymentForm";
 import { toast } from "sonner";
@@ -58,45 +60,52 @@ export function BundleReceiptModal({
   const cleanNumber = String(rawNumber).replace(/^Project\s*#?/i, "").replace(/^#/, "");
   const projectNumber = `#${cleanNumber}`;
 
-  const { currency: contextCurrency, conversionRate } = useCurrency();
+  const totalPrice = Number(
+    payment?.amount ??
+    payment?.chargedAmount ??
+    payment?.amountPaid ??
+    project.amountPaid ??
+    project.price ??
+    project.totalCost ??
+    0
+  );
+
   const currency = (
     payment?.currency ||
-    contextCurrency ||
-    (typeof window !== "undefined" ? localStorage.getItem("app-currency") : "") ||
-    project.targetCurrency ||
+    payment?.chargedCurrency ||
+    payment?.metadata?.paymentCurrency ||
+    payment?.metadata?.currency ||
     project.currency ||
-    "USD"
+    (project?.currencySymbol === "€" ? "EUR" : project?.currencySymbol === "$" ? "USD" : "USD")
   ).toUpperCase();
-
-  const sourceCurrency = (
-    project.sourceCurrency ||
-    project.nativeCurrency ||
-    project.baseCurrency ||
-    project.currency ||
-    "USD"
-  ).toUpperCase();
-
-  const convert = (amt: number): number => {
-    if (!amt || !Number.isFinite(amt) || amt === 0) return 0;
-    return convertPackageBundleCurrencyAmount(amt, currency, sourceCurrency, conversionRate);
-  };
-
-  const rawSubtotal = Number(payment?.subtotal ?? project.subtotal ?? project.price ?? project.totalCost ?? 0);
-  const subtotal = convert(rawSubtotal);
 
   const clientCountryStr = project?.clientCountry || project?.country || payment?.clientCountry || "";
   const dbVatRate = countryService.getVatRateSync(clientCountryStr);
-  const vatRate = isEstoniaClient(clientCountryStr) ? 24 : (dbVatRate > 0 ? dbVatRate : (Number(project.vatRate || 0)));
+  const explicitVatRate = Number(
+    payment?.vatRate ??
+    project.vatRate ??
+    project.vatPercentage ??
+    (project.taxPercentage != null ? project.taxPercentage : 0)
+  );
+  const vatRate = isEstoniaClient(clientCountryStr)
+    ? 24
+    : dbVatRate > 0
+    ? dbVatRate
+    : explicitVatRate > 0
+    ? explicitVatRate
+    : Number(project.vatRate || 0);
 
   const vatAmount = Number(
     payment?.vatAmount !== undefined && !isNaN(Number(payment.vatAmount))
-      ? convert(Number(payment.vatAmount))
-      : (vatRate > 0 ? Math.round(subtotal * (vatRate / 100) * 100) / 100 : 0)
+      ? Number(payment.vatAmount)
+      : (vatRate > 0 ? Math.round(((totalPrice * vatRate) / (100 + vatRate)) * 100) / 100 : 0)
   );
 
-  const totalPrice = payment?.amount !== undefined && !isNaN(Number(payment.amount))
-    ? convert(Number(payment.amount))
-    : Math.round((subtotal + vatAmount) * 100) / 100;
+  const subtotal = Number(
+    payment?.subtotal !== undefined && !isNaN(Number(payment.subtotal))
+      ? Number(payment.subtotal)
+      : (vatRate > 0 ? Math.round((totalPrice - vatAmount) * 100) / 100 : totalPrice)
+  );
 
   const formatCurrency = (amt: number) => formatActiveCurrency(amt, currency);
 
@@ -299,29 +308,26 @@ export default function BundleProjectPayments({
   const { formatDateTime: formatDateTimeTz } = useTimezone();
   const { currency: contextCurrency, conversionRate } = useCurrency();
 
-  const targetCurrency = (
+  const projectNativeCurrency = (
+    activeProject.currency ||
+    linkedQuote.currency ||
+    payments[0]?.currency ||
+    (activeProject?.currencySymbol === "€" ? "EUR" : activeProject?.currencySymbol === "$" ? "USD" : "USD")
+  ).toLowerCase();
+
+  // Active display currency: respects profile / context currency
+  const activeDisplayCurrency = (
     contextCurrency ||
-    (typeof window !== "undefined" ? localStorage.getItem("app-currency") : "") ||
-    activeProject.targetCurrency ||
     currentUser?.currency ||
-    activeProject.currency ||
-    "USD"
-  ).toUpperCase();
+    currentUser?.preferredCurrency ||
+    projectNativeCurrency ||
+    "usd"
+  ).toLowerCase();
 
-  const sourceCurrency = (
-    activeProject.sourceCurrency ||
-    activeProject.nativeCurrency ||
-    activeProject.baseCurrency ||
-    activeProject.currency ||
-    "USD"
-  ).toUpperCase();
-
-  const convert = (amt: number): number => {
-    if (!amt || !Number.isFinite(amt) || amt === 0) return 0;
-    return convertPackageBundleCurrencyAmount(amt, targetCurrency, sourceCurrency, conversionRate);
+  const formatCurr = (amt: number, customCurr?: string) => {
+    const targetCurr = (customCurr || activeDisplayCurrency).toLowerCase();
+    return formatPriceWithCurrency(amt, targetCurr, projectNativeCurrency, conversionRate);
   };
-
-  const formatCurr = (amt: number) => formatActiveCurrency(amt, targetCurrency);
 
   const clientCountryStr =
     activeProject.clientCountry ||
@@ -345,7 +351,7 @@ export default function BundleProjectPayments({
     ? explicitVatRate
     : 0;
 
-  // Deliverables
+  // Deliverables & Pricing — mirrors CalculatorProjectPayments logic
   let rawDeliverables: any[] = [];
   if (Array.isArray(activeProject.deliverableItems) && activeProject.deliverableItems.length > 0) {
     rawDeliverables = activeProject.deliverableItems;
@@ -355,27 +361,58 @@ export default function BundleProjectPayments({
     rawDeliverables = linkedQuote.deliverableItems;
   }
 
-  const rawSubtotalInput = Number(
-    activeProject.subtotal ??
-    activeProject.baseAmount ??
-    activeProject.price ??
+  const projectPrice = Number(activeProject.price || 0) || Number(activeProject.totalPrice || 0);
+  const rawTotalCost = projectPrice > 0
+    ? Math.max(
+        projectPrice,
+        Number(activeProject.amountPaid || 0) + Number(activeProject.amountDue || 0)
+      )
+    : Math.max(
+        Number(linkedQuote.totalCost || 0),
+        Number(activeProject.totalCost || 0),
+        Number(activeProject.amountPaid || 0) + Number(activeProject.amountDue || 0)
+      );
+
+  const regularItemsSum = (rawDeliverables.length > 0)
+    ? rawDeliverables.reduce((sum: number, it: any) => sum + (Number(it.amount ?? it.cost) || 0), 0)
+    : 0;
+
+  const storedSubtotal = Number(activeProject.subtotal || 0);
+  const quoteExpectedSubtotal = Number(
     linkedQuote.subtotal ??
     linkedQuote.totalCost ??
-    activeProject.totalCost ??
+    activeProject.baseAmount ??
     0
   );
+  const isPartialProject =
+    activeProject.paymentOption === "custom" ||
+    activeProject.paymentOption === "other" ||
+    activeProject.paymentOption === "half" ||
+    activeProject.paymentOption === "deposit";
 
-  const convertedBasePrice = convert(rawSubtotalInput);
+  const effectiveStoredSubtotal =
+    storedSubtotal > 0 && !(isPartialProject && quoteExpectedSubtotal > storedSubtotal + 10)
+      ? storedSubtotal
+      : (quoteExpectedSubtotal > 0
+          ? quoteExpectedSubtotal
+          : (storedSubtotal > 0 ? storedSubtotal : regularItemsSum));
+
+  const baseSubtotal = effectiveStoredSubtotal > 0
+    ? effectiveStoredSubtotal
+    : (regularItemsSum > 0
+        ? regularItemsSum
+        : (vatRate > 0 && rawTotalCost > 0
+            ? Math.round((rawTotalCost / (1 + vatRate / 100)) * 100) / 100
+            : rawTotalCost));
 
   const deliverableItems = rawDeliverables.length > 0
     ? rawDeliverables.map((item: any) => {
-        const itemAmt = Number(item.amount ?? item.cost ?? (rawDeliverables.length === 1 ? rawSubtotalInput : 0));
-        const convertedItemAmt = convert(itemAmt);
+        const itemAmt = Number(item.amount ?? item.cost ?? (rawDeliverables.length === 1 ? baseSubtotal : 0));
         return {
           name: item.description || item.title || item.name || "Initial Project Setup & Implementation",
           details: item.details || item.subtitle || "",
           duration: formatDurationLabel(item.duration || activeProject.totalDuration || "2 weeks"),
-          amount: convertedItemAmt,
+          amount: itemAmt,
         };
       })
     : [
@@ -383,24 +420,117 @@ export default function BundleProjectPayments({
           name: "Initial Project Setup & Implementation",
           details: activeProject.description || "Bundle Setup Phase",
           duration: formatDurationLabel(activeProject.totalDuration || activeProject.duration || "2 weeks"),
-          amount: convertedBasePrice,
+          amount: baseSubtotal,
         },
       ];
 
-  const subtotal = deliverableItems.reduce((s, it) => s + (it.amount || 0), 0) || convertedBasePrice;
-  const vatAmount = vatRate > 0 ? Math.round(subtotal * (vatRate / 100) * 100) / 100 : 0;
-  const totalCost = Math.round((subtotal + vatAmount) * 100) / 100;
+  const totalSubtotal = baseSubtotal;
+  const effectiveVatAmount = vatRate > 0 && totalSubtotal > 0
+    ? Math.round((totalSubtotal * (vatRate / 100)) * 100) / 100
+    : Number(activeProject.vatAmount ?? linkedQuote.vatAmount ?? 0);
+  let computedTotalCost = totalSubtotal + effectiveVatAmount;
 
-  const rawAmountPaid = Number(activeProject.amountPaid || 0);
-  const amountPaid = convert(rawAmountPaid);
-  const pendingBalance = Math.max(0, Math.round((totalCost - amountPaid) * 100) / 100);
+  const ledgerPayments = (activeProject.paymentLedger || []).map((entry: any, index: number) => ({
+    _id: entry.transactionId || `ledger-${index}`,
+    id: entry.transactionId || `ledger-${index}`,
+    transactionNumber: entry.transactionNumber || (entry.transactionId ? entry.transactionId.slice(-8).toUpperCase() : `LEDGER-${index + 1}`),
+    amount: entry.chargedAmount || entry.amount,
+    currency: entry.chargedCurrency || entry.currency,
+    description: entry.type === "deposit" ? "Initial Deposit Payment" : (entry.type === "final" ? "Final Payment" : "Bundle Project Payment"),
+    status: entry.status || "succeeded",
+    exchangeRate: entry.exchangeRate,
+    metadata: { exchangeRate: entry.exchangeRate },
+    createdAt: entry.date,
+  }));
+
+  const combinedPayments = [...(payments || [])];
+  const seenTxnIds = new Set(
+    combinedPayments.map((p: any) => String(p._id || p.id || p.transactionId || "")).filter(Boolean)
+  );
+  for (const lp of ledgerPayments) {
+    const id = String(lp._id || lp.id || "");
+    if (!seenTxnIds.has(id)) {
+      combinedPayments.push(lp);
+      seenTxnIds.add(id);
+    }
+  }
+
+  // Mirror backend sumPaymentLedger: use each payment's own DB exchangeRate,
+  // precise 2-decimal math (no nearest-5 per payment), round final sum once.
+  const totalPaidFromTransactions = sumPaymentsInNativeCurrency(
+    combinedPayments,
+    projectNativeCurrency,
+    conversionRate
+  );
+
+  const rawAmountPaid = Math.max(
+    totalPaidFromTransactions,
+    Number(activeProject.amountPaid || 0)
+  );
+
+  const isDepositHalf =
+    activeProject.paymentOption === "half" ||
+    activeProject.paymentOption === "deposit" ||
+    linkedQuote?.paymentOption === "half" ||
+    combinedPayments.some((p: any) => p?.metadata?.isDeposit === "true" || p?.metadata?.paymentOption === "half");
+
+  if (isDepositHalf && rawAmountPaid > 0 && Math.abs(computedTotalCost - (rawAmountPaid * 2)) <= 15) {
+    computedTotalCost = Math.round(rawAmountPaid * 2 * 100) / 100;
+  }
+
+  const totalCost = computedTotalCost;
+  const calculatedPending = Math.max(0, Math.round((totalCost - rawAmountPaid) * 100) / 100);
+
+  // Trust the backend's payment status decision. When a project has been confirmed
+  // paid (paymentStatus="paid"), multi-currency exchange-rate rounding can cause the
+  // summed transaction total to be slightly less than the quoted project cost (e.g.
+  // €2,702.10 vs €2,703.20). In that case we honour the backend's determination and
+  // show amountPaid = totalCost so no false pending balance appears.
+  //
+  // IMPORTANT: Only apply this override when rawAmountPaid >= 90% of totalCost.
+  // This prevents deposit/half-payment scenarios (≈50%) from being incorrectly
+  // treated as fully paid. Exchange-rate gaps are always < 1%, so 90% is safe.
+  const isBackendConfirmedPaid =
+    (activeProject.paymentStatus === "paid" ||
+     activeProject.paymentStatus === "succeeded" ||
+     activeProject.isPaid === true) &&
+    totalCost > 0 &&
+    rawAmountPaid >= totalCost * 0.9;
+
+  const isActuallyPaidInFull =
+    (totalCost > 0 && rawAmountPaid >= totalCost - 0.009) ||
+    isBackendConfirmedPaid;
+
+  // When fully paid, pin amountPaid to totalCost to avoid showing a fractional gap
+  const amountPaid = isActuallyPaidInFull && rawAmountPaid > 0
+    ? Math.max(rawAmountPaid, totalCost)
+    : rawAmountPaid;
+
+  const pendingBalance = isActuallyPaidInFull
+    ? 0
+    : rawAmountPaid === 0
+    ? totalCost
+    : calculatedPending;
 
   const duration = formatDurationLabel(activeProject.totalDuration || activeProject.duration || deliverableItems[0]?.duration || "2 weeks");
 
-  const rawRecurring = Number(activeProject.recurringAmount || activeProject.recurringPrice || linkedQuote.recurringPrice || 0);
-  const recurringAmount = rawRecurring > 0 ? convert(rawRecurring) : 0;
+  const recurringAmount = Number(activeProject.recurringAmount || activeProject.recurringPrice || linkedQuote.recurringPrice || 0);
 
-  const isPaid = pendingBalance <= 0 || activeProject.isPaid || activeProject.paymentStatus === "paid" || activeProject.paymentStatus === "succeeded";
+  const isPaid = isActuallyPaidInFull || activeProject.isPaid || activeProject.paymentStatus === "paid" || activeProject.paymentStatus === "succeeded";
+
+
+  const formatPaymentAmount = (payment: any) => {
+    const pCurr = (
+      payment?.currency ||
+      payment?.chargedCurrency ||
+      payment?.metadata?.paymentCurrency ||
+      payment?.metadata?.currency ||
+      projectNativeCurrency ||
+      "USD"
+    ).toUpperCase();
+    const rawAmt = Number(payment?.amount ?? payment?.chargedAmount ?? payment?.amountPaid ?? 0);
+    return formatActiveCurrency(rawAmt, pCurr);
+  };
 
   const handleDownloadPdf = async (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
@@ -409,8 +539,9 @@ export default function BundleProjectPayments({
     try {
       const payload = {
         ...activeProject,
-        targetCurrency,
-        sourceCurrency,
+        quote: linkedQuote,
+        targetCurrency: activeDisplayCurrency.toUpperCase(),
+        sourceCurrency: projectNativeCurrency.toUpperCase(),
         conversionRate,
         isProject: true,
       };
@@ -430,8 +561,9 @@ export default function BundleProjectPayments({
     try {
       const payload = {
         ...activeProject,
-        targetCurrency,
-        sourceCurrency,
+        quote: linkedQuote,
+        targetCurrency: activeDisplayCurrency.toUpperCase(),
+        sourceCurrency: projectNativeCurrency.toUpperCase(),
         conversionRate,
         isProject: true,
       };
@@ -448,8 +580,9 @@ export default function BundleProjectPayments({
     if (e) e.preventDefault();
     const payload = {
       ...activeProject,
-      targetCurrency,
-      sourceCurrency,
+      quote: linkedQuote,
+      targetCurrency: activeDisplayCurrency.toUpperCase(),
+      sourceCurrency: projectNativeCurrency.toUpperCase(),
       conversionRate,
       isProject: true,
     };
@@ -551,7 +684,7 @@ export default function BundleProjectPayments({
         <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs">
           <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total Cost</div>
           <div className="text-xl sm:text-2xl font-black text-gray-900">{formatCurr(totalCost)}</div>
-          <div className="text-[11px] text-gray-500 mt-1">Includes VAT ({vatRate}%)</div>
+        <div className="text-[11px] text-gray-500 mt-1">Includes VAT ({vatRate}%)</div>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs">
@@ -628,12 +761,12 @@ export default function BundleProjectPayments({
               <div className="w-full max-w-xs space-y-2">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-gray-500 font-semibold">Base Amount:</span>
-                  <span className="text-gray-800 font-bold">{formatCurr(subtotal)}</span>
+                  <span className="text-gray-800 font-bold">{formatCurr(totalSubtotal)}</span>
                 </div>
-                {vatRate > 0 && (
+                {vatRate > 0 && effectiveVatAmount > 0 && (
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-500 font-semibold">VAT ({vatRate}%):</span>
-                    <span className="text-gray-800 font-bold">{formatCurr(vatAmount)}</span>
+                    <span className="text-gray-800 font-bold">{formatCurr(effectiveVatAmount)}</span>
                   </div>
                 )}
                 <div className="h-px bg-gray-200 w-full" />
@@ -656,11 +789,11 @@ export default function BundleProjectPayments({
                 title={activeProject.title || "Local Business Growth Bundle - Starter"}
                 description={activeProject.description || "Bundle Setup & Implementation"}
                 date={activeProject.createdAt || new Date().toISOString()}
-                totalCost={subtotal}
+                totalCost={totalSubtotal}
                 deliverableItems={deliverableItems}
                 clientEmail={clientEmail}
                 successRedirectUrl={`/dashboard/my-projects/${projectId}/payments?success=true`}
-                amountPaid={rawAmountPaid}
+                amountPaid={amountPaid}
                 vatRate={vatRate}
                 hideHeader={true}
                 onPaymentSuccess={async () => {
@@ -674,7 +807,7 @@ export default function BundleProjectPayments({
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-xs">
             <h2 className="text-base font-bold text-gray-900 mb-4">Payment History & Receipts</h2>
 
-            {payments.length === 0 ? (
+            {combinedPayments.length === 0 ? (
               <div className="text-center py-8 text-gray-400 text-xs">
                 No payment transactions recorded yet.
               </div>
@@ -685,6 +818,7 @@ export default function BundleProjectPayments({
                     <tr>
                       <th className="px-4 py-3 font-bold text-gray-700">Date</th>
                       <th className="px-4 py-3 font-bold text-gray-700">Transaction ID</th>
+                      <th className="px-4 py-3 font-bold text-gray-700">Description</th>
                       <th className="px-4 py-3 font-bold text-gray-700">Method</th>
                       <th className="px-4 py-3 font-bold text-gray-700">Amount</th>
                       <th className="px-4 py-3 font-bold text-gray-700">Status</th>
@@ -692,19 +826,24 @@ export default function BundleProjectPayments({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {payments.map((p, idx) => {
+                    {combinedPayments.map((p, idx) => {
                       const pId = p._id || p.id || p.transactionId || `tx_${idx}`;
                       const pDate = p.createdAt ? formatDateTimeTz(p.createdAt, { month: "short", day: "numeric", year: "numeric" }) : "-";
-                      const pAmount = convert(Number(p.amount || 0));
+                      const pRef = p.transactionNumber || p.paymentIntentId?.slice(-8).toUpperCase() || (String(pId).startsWith("ledger-") ? pId.toUpperCase() : String(pId).slice(-10).toUpperCase());
 
                       return (
                         <tr key={pId} className="hover:bg-gray-50/50 transition-colors">
                           <td className="px-4 py-3.5 text-gray-600 font-medium">{pDate}</td>
-                          <td className="px-4 py-3.5 text-gray-800 font-mono text-[11px]">{String(pId).slice(-10).toUpperCase()}</td>
+                          <td className="px-4 py-3.5 text-gray-800 font-mono text-[11px]">{pRef}</td>
+                          <td className="px-4 py-3.5 text-gray-600">{p.description || "Bundle Project Payment"}</td>
                           <td className="px-4 py-3.5 text-gray-600 capitalize">{p.paymentMethod || "Card"}</td>
-                          <td className="px-4 py-3.5 font-bold text-gray-900">{formatCurr(pAmount)}</td>
+                          <td className="px-4 py-3.5 font-bold text-gray-900">{formatPaymentAmount(p)}</td>
                           <td className="px-4 py-3.5">
-                            <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                              ["succeeded", "paid", "completed"].includes(String(p.status || "").toLowerCase())
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                : "bg-amber-50 text-amber-700 border border-amber-200"
+                            }`}>
                               {p.status || "Succeeded"}
                             </span>
                           </td>
@@ -752,7 +891,7 @@ export default function BundleProjectPayments({
 
             <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
               <span className="text-gray-500">Currency:</span>
-              <span className="font-bold text-gray-900">{targetCurrency}</span>
+              <span className="font-bold text-gray-900">{activeDisplayCurrency.toUpperCase()}</span>
             </div>
 
             <div className="flex justify-between items-center py-1.5 border-b border-gray-100">

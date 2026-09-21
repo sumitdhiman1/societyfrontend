@@ -413,6 +413,11 @@ function PackageBundlePaymentFormContent({
         ? rawLineItems.substring(0, 397) + "..."
         : rawLineItems;
 
+      const convertedDeliverableItems = (deliverableItems || []).map((item: any) => ({
+        ...item,
+        amount: convertCurrencyAmount(item.amount || 0, currency, nativeCurrency || "USD", conversionRate),
+      }));
+
       setPaymentStep("gateway");
       const intentResponse = await packageBundlePaymentService.createPaymentIntent({
         amount: finalAmount,
@@ -434,11 +439,14 @@ function PackageBundlePaymentFormContent({
           invoiceNumber: effectiveInvoiceNumber,
           messageId: effectiveMessageId,
           description: effectiveDescription,
-          deliverableItems: deliverableItems,
+          deliverableItems: convertedDeliverableItems.length > 0 ? convertedDeliverableItems : deliverableItems,
           vatRate: activeVatRate,
           vatAmount: activeVatAmount,
           subtotal: convertedSubtotal,
           fullAmount: activeTotalWithVat,
+          paymentOption,
+          isDeposit: paymentOption === "half" ? "true" : "false",
+          depositAmount: convertedDepositAmount,
           clientCountry: getActiveCountryCode(),
         },
       });

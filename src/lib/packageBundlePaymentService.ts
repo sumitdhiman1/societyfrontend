@@ -8,24 +8,24 @@ export class PackageBundlePaymentService {
   }
 
   async createOrder(data: any) {
-    return this.client.post("/payments/create-order", data);
+    return this.client.post("/package-bundle-payments/create-order", data);
   }
 
   async createPaymentIntent(data: any) {
     console.log("[PackageBundlePaymentService.createPaymentIntent] Sending to API:", data);
-    return this.client.post("/payments/create-intent", data);
+    return this.client.post("/package-bundle-payments/create-intent", data);
   }
 
   async confirmPayment(data: any) {
-    return this.client.post("/payments/confirm", data);
+    return this.client.post("/package-bundle-payments/confirm", data);
   }
 
   async getSavedPaymentMethods() {
-    return this.client.get("/payments/methods");
+    return this.client.get("/package-bundle-payments/methods");
   }
 
   async createSetupIntent() {
-    return this.client.post("/payments/create-setup-intent", {});
+    return this.client.post("/package-bundle-payments/create-setup-intent", {});
   }
 }
 

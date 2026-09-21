@@ -10,6 +10,7 @@ import { authService } from "@/lib/authService";
 import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
 import { downloadProjectDetailsPDF, printProjectDetails } from "@/lib/generateProjectDetailsPDF";
 import { downloadCalculatorProjectPDF, printCalculatorProjectPDF } from "@/lib/generateCalculatorProjectPDF";
+import { downloadBundlePDF, printBundlePDF } from "@/lib/generateBundlePDF";
 import LoadingDots from "@/components/common/LoadingDots";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
 import DeadlineTooltip from "@/components/common/DeadlineTooltip";
@@ -1397,7 +1398,21 @@ export default function ProjectDetailsPage() {
                     setIsDownloadingPdf(true);
                     try {
                       const isCalc = isCalculatorProject(project, fetchedQuote);
-                      if (isCalc) {
+                      const isBundle =
+                        String(project?.type || "").toLowerCase() === "bundle" ||
+                        Boolean(project?.isBundle) ||
+                        String(linkedQuote?.type || "").toLowerCase() === "bundle";
+
+                      if (isBundle) {
+                        await downloadBundlePDF({
+                          ...project,
+                          quote: fetchedQuote || (typeof project?.quoteId === "object" ? project?.quoteId : null),
+                          targetCurrency: (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || "USD").toUpperCase(),
+                          sourceCurrency: (project?.currency || fetchedQuote?.currency || "USD").toUpperCase(),
+                          conversionRate,
+                          isProject: true,
+                        });
+                      } else if (isCalc) {
                         const projectPayloadForPdf = {
                           ...project,
                           calculatorSpecs: project?.calculatorSpecs || fetchedQuote?.requirements || fetchedQuote?.calculatorSpecs,
@@ -1430,7 +1445,18 @@ export default function ProjectDetailsPage() {
                   onClick={(e) => {
                     e.preventDefault();
                     const isCalc = isCalculatorProject(project, fetchedQuote);
-                    if (isCalc) {
+                    const isBundle =
+                      String(project?.type || "").toLowerCase() === "bundle" ||
+                      Boolean(project?.isBundle) ||
+                      String(linkedQuote?.type || "").toLowerCase() === "bundle";
+
+                    if (isBundle) {
+                      printBundlePDF({
+                        ...project,
+                        quote: fetchedQuote || (typeof project?.quoteId === "object" ? project?.quoteId : null),
+                        isProject: true,
+                      });
+                    } else if (isCalc) {
                       const projectPayloadForPdf = {
                         ...project,
                         calculatorSpecs: project?.calculatorSpecs || fetchedQuote?.requirements || fetchedQuote?.calculatorSpecs,

@@ -40,6 +40,72 @@ export function convertCurrencyAmount(
   return Number(amount.toFixed(2));
 }
 
+/**
+ * Mirrors the backend sumPaymentLedger helper exactly.
+ *
+ * Aggregates a list of payment transactions into a single total expressed in
+ * `targetCurrency`. Each payment's OWN exchangeRate stored in the DB is used
+ * (not the live context rate), so historical payments are valued at the rate
+ * that was actually used at payment time. Conversion uses precise 2-decimal
+ * math — no roundToNearest5 per-payment — to prevent rounding errors from
+ * accumulating across multiple payments. The final sum is rounded once to
+ * 2 decimal places.
+ *
+ * @param payments       - Array of payment/transaction objects from the API
+ * @param targetCurrency - Native project currency to express the total in (e.g. "eur")
+ * @param fallbackRate   - Rate used only when a payment has no stored exchangeRate
+ */
+export function sumPaymentsInNativeCurrency(
+  payments: Array<{
+    amount?: number;
+    amountPaid?: number;
+    currency?: string;
+    exchangeRate?: number;
+    metadata?: { exchangeRate?: number; conversionRate?: number };
+    status?: string;
+  }>,
+  targetCurrency: string,
+  fallbackRate: number = 1.14776
+): number {
+  const target = (targetCurrency || "usd").toLowerCase();
+  const defaultRate = fallbackRate > 0 ? fallbackRate : 1.14776;
+
+  const total = (payments || [])
+    .filter((p) =>
+      ["succeeded", "paid", "completed"].includes(String(p?.status || "").toLowerCase())
+    )
+    .reduce((sum, p) => {
+      const amt = Number(p?.amountPaid || p?.amount || 0);
+      if (!amt) return sum;
+      const src = (p?.currency || "usd").toLowerCase();
+
+      // Same currency — no conversion needed
+      if (src === target) return sum + amt;
+
+      // Use the rate stored on THIS specific payment in the DB
+      const rate = Number(
+        p?.exchangeRate ||
+        p?.metadata?.exchangeRate ||
+        p?.metadata?.conversionRate ||
+        defaultRate
+      );
+
+      if (target === "eur" && src === "usd") {
+        // USD → EUR: precise 2-decimal (matches backend sumPaymentLedger line 133)
+        return sum + Math.round((amt / rate) * 100) / 100;
+      }
+      if (target === "usd" && src === "eur") {
+        // EUR → USD: precise 2-decimal (matches backend sumPaymentLedger line 138)
+        return sum + Math.round(amt * rate * 100) / 100;
+      }
+
+      // Different non-EUR/USD pair — treat as same currency
+      return sum + amt;
+    }, 0);
+
+  return Math.round(total * 100) / 100;
+}
+
 export function formatPriceWithCurrency(
   amount: number,
   targetCurrency: string,
