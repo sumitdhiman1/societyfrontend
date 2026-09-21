@@ -1016,7 +1016,7 @@ function BundleDetailsContent() {
 
 
                   {/* Description */}
-                  <div className="mb-8 text-sm text-gray-500 leading-relaxed">
+                  <div className="mb-6 text-sm text-gray-500 leading-relaxed">
                     {pkg.description}
                   </div>
 
@@ -1046,7 +1046,7 @@ function BundleDetailsContent() {
                     </ul>
                   </div>
 
-                  <div className="border-t border-gray-300 my-8"></div>
+                  <div className="border-t border-gray-300 my-6"></div>
 
                   {/* Payment form rendered cleanly within card */}
                   <PackageBundlePaymentForm
