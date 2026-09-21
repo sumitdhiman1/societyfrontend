@@ -27,7 +27,7 @@ import {
 import { downloadProjectDetailsPDF } from "@/lib/generateProjectDetailsPDF";
 import { downloadBundlePDF } from "@/lib/generateBundlePDF";
 
-const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
   : null;
 
@@ -77,7 +77,6 @@ export interface PackageBundlePaymentFormProps {
   onDownloadInvoice?: () => void | Promise<void>;
   isDownloadingInvoice?: boolean;
   onPaymentSuccess?: () => void | Promise<void>;
-  children?: React.ReactNode;
 }
 
 function PackageBundlePaymentFormContent({
@@ -107,18 +106,16 @@ function PackageBundlePaymentFormContent({
   onDownloadInvoice,
   isDownloadingInvoice: propIsDownloadingInvoice,
   onPaymentSuccess,
-  children,
-}: PackageBundlePaymentFormProps & { hideHeader?: boolean; children?: React.ReactNode }) {
+}: PackageBundlePaymentFormProps & { hideHeader?: boolean }) {
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isPackagePage = type === "PACKAGE";
-  
+
   const queryAmount = searchParams?.get("amount");
   const hasQueryAmount = !!(queryAmount && !isNaN(Number(queryAmount)) && Number(queryAmount) > 0);
   const hasAlreadyPaid = amountPaid > 0;
-  
+
   const [paymentOption, setPaymentOption] = useState<string>(
     hasQueryAmount || hasAlreadyPaid ? "custom" : "full"
   );
@@ -532,14 +529,14 @@ function PackageBundlePaymentFormContent({
     const billing_details = billingSameAsBusiness
       ? {}
       : {
-          address: {
-            line1: billingAddress.line1,
-            city: billingAddress.city,
-            state: billingAddress.state,
-            postal_code: billingAddress.postal_code,
-            country: billingAddress.country,
-          },
-        };
+        address: {
+          line1: billingAddress.line1,
+          city: billingAddress.city,
+          state: billingAddress.state,
+          postal_code: billingAddress.postal_code,
+          country: billingAddress.country,
+        },
+      };
 
     setPaymentStep("bank_auth");
     const confirmResponse = await stripe.confirmCardPayment(clientSecret, {
@@ -593,18 +590,16 @@ function PackageBundlePaymentFormContent({
                     <button
                       type="button"
                       onClick={() => setCurrency("usd")}
-                      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
-                        currency === "usd" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"
-                      }`}
+                      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "usd" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"
+                        }`}
                     >
                       USD
                     </button>
                     <button
                       type="button"
                       onClick={() => setCurrency("eur")}
-                      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
-                        currency === "eur" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"
-                      }`}
+                      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "eur" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"
+                        }`}
                     >
                       EUR
                     </button>
@@ -705,15 +700,15 @@ function PackageBundlePaymentFormContent({
                 </tr>
               )}
               {activeVatRate > 0 && activeVatAmount > 0 && (
-              <tr className="bg-gray-50/70">
-                <td className="py-2.5 px-3 sm:px-6"></td>
-                <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
-                  VAT ({activeVatRate}%):
-                </td>
-                <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
-                  {formatActiveCurrency(activeVatAmount, currency)}
-                </td>
-              </tr>
+                <tr className="bg-gray-50/70">
+                  <td className="py-2.5 px-3 sm:px-6"></td>
+                  <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
+                    VAT ({activeVatRate}%):
+                  </td>
+                  <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
+                    {formatActiveCurrency(activeVatAmount, currency)}
+                  </td>
+                </tr>
               )}
               <tr className="bg-blue-50/50 border-t border-gray-200">
                 <td className="py-3 px-3 sm:px-6"></td>
@@ -738,7 +733,7 @@ function PackageBundlePaymentFormContent({
             <div>
               <h4 className="text-amber-800 font-bold mb-1">Payment System Offline</h4>
               <p className="text-amber-700 text-sm">
-                The secure checkout is currently being configured. Please contact our support team at 
+                The secure checkout is currently being configured. Please contact our support team at
                 <span className="font-bold"> support@society.com</span> to complete your payment manually.
               </p>
             </div>
@@ -761,9 +756,8 @@ function PackageBundlePaymentFormContent({
             {canPayDepositHalf && (
               <label className="flex items-center gap-3 cursor-pointer group">
                 <div
-                  className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                    paymentOption === "half" ? "border-gray-800" : "border-gray-300"
-                  }`}
+                  className={`w-5 h-5 rounded-full border flex items-center justify-center ${paymentOption === "half" ? "border-gray-800" : "border-gray-300"
+                    }`}
                 >
                   {paymentOption === "half" && <div className="w-3 h-3 rounded-full bg-gray-600" />}
                 </div>
@@ -782,9 +776,8 @@ function PackageBundlePaymentFormContent({
 
             <label className="flex items-center gap-3 cursor-pointer group">
               <div
-                className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                  paymentOption === "full" ? "border-gray-800" : "border-gray-300"
-                }`}
+                className={`w-5 h-5 rounded-full border flex items-center justify-center ${paymentOption === "full" ? "border-gray-800" : "border-gray-300"
+                  }`}
               >
                 {paymentOption === "full" && <div className="w-3 h-3 rounded-full bg-gray-600" />}
               </div>
@@ -806,9 +799,8 @@ function PackageBundlePaymentFormContent({
             <div className="flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-3 cursor-pointer group">
                 <div
-                  className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                    paymentOption === "custom" ? "border-gray-800" : "border-gray-300"
-                  }`}
+                  className={`w-5 h-5 rounded-full border flex items-center justify-center ${paymentOption === "custom" ? "border-gray-800" : "border-gray-300"
+                    }`}
                 >
                   {paymentOption === "custom" && <div className="w-3 h-3 rounded-full bg-gray-600" />}
                 </div>
@@ -835,9 +827,8 @@ function PackageBundlePaymentFormContent({
                           setCustomAmount(e.target.value);
                           if (formErrors.amount) setFormErrors((prev: any) => ({ ...prev, amount: "" }));
                         }}
-                        className={`w-full bg-white border ${
-                          formErrors.amount ? "border-red-500" : "border-gray-300"
-                        } rounded-md py-1.5 px-3 text-sm focus:ring-1 focus:ring-gray-300 outline-none transition-shadow`}
+                        className={`w-full bg-white border ${formErrors.amount ? "border-red-500" : "border-gray-300"
+                          } rounded-md py-1.5 px-3 text-sm focus:ring-1 focus:ring-gray-300 outline-none transition-shadow`}
                         placeholder="Amount"
                       />
                     </div>
@@ -884,9 +875,8 @@ function PackageBundlePaymentFormContent({
                   </div>
                   <div className="flex items-center">
                     <label
-                      className={`relative inline-flex items-center ${
-                        availableCredits > 0 ? "cursor-pointer" : "cursor-not-allowed opacity-40"
-                      }`}
+                      className={`relative inline-flex items-center ${availableCredits > 0 ? "cursor-pointer" : "cursor-not-allowed opacity-40"
+                        }`}
                     >
                       <span className="sr-only">Apply Credits</span>
                       <input
@@ -904,7 +894,7 @@ function PackageBundlePaymentFormContent({
             )}
           </div>
 
-          <div className="mb-10">
+          <div className="mb-8">
             <h3 className="text-gray-700 font-bold mb-4 uppercase tracking-wider text-xs">Payment Method</h3>
             {isLoadingMethods ? (
               <div className="animate-pulse space-y-3">
@@ -917,17 +907,15 @@ function PackageBundlePaymentFormContent({
                 {savedMethods.map((method) => (
                   <label
                     key={method.id}
-                    className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all ${
-                      selectedMethod === method.id
-                        ? "border-indigo-600 bg-indigo-50/30 ring-1 ring-indigo-600"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
+                    className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all ${selectedMethod === method.id
+                      ? "border-indigo-600 bg-indigo-50/30 ring-1 ring-indigo-600"
+                      : "border-gray-200 hover:border-gray-300"
+                      }`}
                   >
                     <div className="flex items-center gap-4">
                       <div
-                        className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                          selectedMethod === method.id ? "border-indigo-600" : "border-gray-300"
-                        }`}
+                        className={`w-5 h-5 rounded-full border flex items-center justify-center ${selectedMethod === method.id ? "border-indigo-600" : "border-gray-300"
+                          }`}
                       >
                         {selectedMethod === method.id && <div className="w-2.5 h-2.5 rounded-full bg-indigo-600" />}
                       </div>
@@ -953,16 +941,14 @@ function PackageBundlePaymentFormContent({
                 ))}
 
                 <label
-                  className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-all ${
-                    selectedMethod === "new"
-                      ? "border-indigo-600 bg-indigo-50/30 ring-1 ring-indigo-600"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
+                  className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-all ${selectedMethod === "new"
+                    ? "border-indigo-600 bg-indigo-50/30 ring-1 ring-indigo-600"
+                    : "border-gray-200 hover:border-gray-300"
+                    }`}
                 >
                   <div
-                    className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                      selectedMethod === "new" ? "border-indigo-600" : "border-gray-300"
-                    }`}
+                    className={`w-5 h-5 rounded-full border flex items-center justify-center ${selectedMethod === "new" ? "border-indigo-600" : "border-gray-300"
+                      }`}
                   >
                     {selectedMethod === "new" && <div className="w-2.5 h-2.5 rounded-full bg-indigo-600" />}
                   </div>
@@ -994,11 +980,8 @@ function PackageBundlePaymentFormContent({
                     if (formErrors.cardHolderName) setFormErrors((prev: any) => ({ ...prev, cardHolderName: "" }));
                   }}
                   placeholder="John Allen Doe"
-                  className={`w-full ${
-                    isPackagePage
-                      ? `bg-white border ${formErrors.cardHolderName ? "border-red-500 ring-1 ring-red-500" : "border-gray-300"} rounded-md px-4 h-11 text-sm text-gray-800 placeholder-gray-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-shadow outline-none`
-                      : `bg-gray-100 border ${formErrors.cardHolderName ? "border-red-500 ring-1 ring-red-500" : "border-none"} rounded-md px-4 py-3 text-sm text-gray-800 placeholder-gray-400 focus:ring-1 focus:ring-gray-300 transition-shadow outline-none`
-                  }`}
+                  className={`w-full bg-gray-100 border ${formErrors.cardHolderName ? "border-red-500 ring-1 ring-red-500" : "border-none"
+                    } rounded-md px-4 py-3 text-sm text-gray-800 placeholder-gray-400 focus:ring-1 focus:ring-gray-300 transition-shadow outline-none`}
                 />
                 {formErrors.cardHolderName && (
                   <span className="text-[10px] text-red-500 font-bold mt-1 block">{formErrors.cardHolderName}</span>
@@ -1034,9 +1017,8 @@ function PackageBundlePaymentFormContent({
                         setBillingAddress({ ...billingAddress, line1: e.target.value });
                         setFormErrors((prev: any) => ({ ...prev, billingAddress: "" }));
                       }}
-                      className={`w-full bg-white border ${
-                        formErrors.billingAddress ? "border-red-500 focus:ring-red-300" : "border-gray-300 focus:ring-indigo-300"
-                      } rounded-md px-4 py-2 text-sm text-gray-800 outline-none focus:ring-2`}
+                      className={`w-full bg-white border ${formErrors.billingAddress ? "border-red-500 focus:ring-red-300" : "border-gray-300 focus:ring-indigo-300"
+                        } rounded-md px-4 py-2 text-sm text-gray-800 outline-none focus:ring-2`}
                     />
                     {formErrors.billingLine1 && <span className="text-[10px] text-red-500">{formErrors.billingLine1}</span>}
                   </div>
@@ -1049,9 +1031,8 @@ function PackageBundlePaymentFormContent({
                         setBillingAddress({ ...billingAddress, city: e.target.value });
                         setFormErrors((prev: any) => ({ ...prev, billingCity: "" }));
                       }}
-                      className={`w-full bg-white border ${
-                        formErrors.billingCity ? "border-red-500 focus:ring-red-300" : "border-gray-300 focus:ring-indigo-300"
-                      } rounded-md px-4 py-2 text-sm text-gray-800 outline-none focus:ring-2`}
+                      className={`w-full bg-white border ${formErrors.billingCity ? "border-red-500 focus:ring-red-300" : "border-gray-300 focus:ring-indigo-300"
+                        } rounded-md px-4 py-2 text-sm text-gray-800 outline-none focus:ring-2`}
                     />
                   </div>
                   <div>
@@ -1063,9 +1044,8 @@ function PackageBundlePaymentFormContent({
                         setBillingAddress({ ...billingAddress, state: e.target.value });
                         setFormErrors((prev: any) => ({ ...prev, billingState: "" }));
                       }}
-                      className={`w-full bg-white border ${
-                        formErrors.billingState ? "border-red-500 focus:ring-red-300" : "border-gray-300 focus:ring-indigo-300"
-                      } rounded-md px-4 py-2 text-sm text-gray-800 outline-none focus:ring-2`}
+                      className={`w-full bg-white border ${formErrors.billingState ? "border-red-500 focus:ring-red-300" : "border-gray-300 focus:ring-indigo-300"
+                        } rounded-md px-4 py-2 text-sm text-gray-800 outline-none focus:ring-2`}
                     />
                   </div>
                   <div>
@@ -1077,9 +1057,8 @@ function PackageBundlePaymentFormContent({
                         setBillingAddress({ ...billingAddress, postal_code: e.target.value });
                         setFormErrors((prev: any) => ({ ...prev, billingZip: "" }));
                       }}
-                      className={`w-full bg-white border ${
-                        formErrors.billingZip ? "border-red-500 focus:ring-red-300" : "border-gray-300 focus:ring-indigo-300"
-                      } rounded-md px-4 py-2 text-sm text-gray-800 outline-none focus:ring-2`}
+                      className={`w-full bg-white border ${formErrors.billingZip ? "border-red-500 focus:ring-red-300" : "border-gray-300 focus:ring-indigo-300"
+                        } rounded-md px-4 py-2 text-sm text-gray-800 outline-none focus:ring-2`}
                     />
                   </div>
                   <div>
@@ -1092,7 +1071,7 @@ function PackageBundlePaymentFormContent({
                       {countriesList && countriesList.length > 0 ? (
                         countriesList.map((c) => (
                           <option key={c.iso2 || c._id} value={c.iso2}>
-                            {c.flagEmoji ? `${c.flagEmoji} ` : ""}{c.name} ({c.iso2}){['EE','EST','ESTONIA'].includes((c.iso2 || '').toUpperCase()) && c.vatRate > 0 ? ` - ${c.vatRate}% VAT` : ""}
+                            {c.flagEmoji ? `${c.flagEmoji} ` : ""}{c.name} ({c.iso2}){['EE', 'EST', 'ESTONIA'].includes((c.iso2 || '').toUpperCase()) && c.vatRate > 0 ? ` - ${c.vatRate}% VAT` : ""}
                           </option>
                         ))
                       ) : (
@@ -1112,11 +1091,8 @@ function PackageBundlePaymentFormContent({
               <div>
                 <label className="block text-[15px] font-medium text-[#111827] mb-2">Card number:</label>
                 <div
-                  className={`w-full ${
-                    isPackagePage
-                      ? `bg-white border ${formErrors.cardNumber ? "border-red-500 ring-1 ring-red-500" : "border-gray-300"} rounded-md px-4 h-11 flex items-center text-sm focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-shadow`
-                      : `bg-gray-100 border ${formErrors.cardNumber ? "border-red-500 ring-1 ring-red-500" : "border-none"} rounded-md px-4 py-3 text-sm focus-within:ring-1 focus-within:ring-gray-300 transition-shadow`
-                  }`}
+                  className={`w-full bg-gray-100 border h-[43px] ${formErrors.cardNumber ? "border-red-500 ring-1 ring-red-500" : "border-none"
+                    } rounded-md px-4 py-3 text-sm focus-within:ring-1 focus-within:ring-gray-300 transition-shadow`}
                 >
                   <CardNumberElement
                     options={{ ...stripeElementOptions, showIcon: true }}
@@ -1136,11 +1112,8 @@ function PackageBundlePaymentFormContent({
                 <div>
                   <label className="block text-[15px] font-medium text-[#111827] mb-2">Expiry date:</label>
                   <div
-                    className={`w-full ${
-                      isPackagePage
-                        ? `bg-white border ${formErrors.cardExpiry ? "border-red-500 ring-1 ring-red-500" : "border-gray-300"} rounded-md px-4 h-11 flex items-center text-sm focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-shadow`
-                        : `bg-gray-100 border ${formErrors.cardExpiry ? "border-red-500 ring-1 ring-red-500" : "border-none"} rounded-md px-4 py-3 text-sm focus-within:ring-1 focus-within:ring-gray-300 transition-shadow`
-                    }`}
+                    className={`w-full bg-gray-100 border h-[43px] ${formErrors.cardExpiry ? "border-red-500 ring-1 ring-red-500" : "border-none"
+                      } rounded-md px-4 py-3 text-sm focus-within:ring-1 focus-within:ring-gray-300 transition-shadow`}
                   >
                     <CardExpiryElement
                       options={stripeElementOptions}
@@ -1158,11 +1131,8 @@ function PackageBundlePaymentFormContent({
                 <div>
                   <label className="block text-[15px] font-medium text-[#111827] mb-2">CVC:</label>
                   <div
-                    className={`w-full ${
-                      isPackagePage
-                        ? `bg-white border ${formErrors.cardCvc ? "border-red-500 ring-1 ring-red-500" : "border-gray-300"} rounded-md px-4 h-11 flex items-center text-sm focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-shadow`
-                        : `bg-gray-100 border ${formErrors.cardCvc ? "border-red-500 ring-1 ring-red-500" : "border-none"} rounded-md px-4 py-3 text-sm focus-within:ring-1 focus-within:ring-gray-300 transition-shadow`
-                    }`}
+                    className={`w-full bg-gray-100 border h-[43px] ${formErrors.cardCvc ? "border-red-500 ring-1 ring-red-500" : "border-none"
+                      } rounded-md px-4 py-3 text-sm focus-within:ring-1 focus-within:ring-gray-300 transition-shadow`}
                   >
                     <CardCvcElement
                       options={stripeElementOptions}
@@ -1203,7 +1173,7 @@ function PackageBundlePaymentFormContent({
           ) : null}
 
           {!stripePromise && (
-            <div className="mt-4 p-3 mb-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+            <div className="p-3 mb-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
               <span>⚠️ Stripe is not initialized. Please configure <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> in environment.</span>
             </div>
           )}
@@ -1211,13 +1181,7 @@ function PackageBundlePaymentFormContent({
           <button
             onClick={handleSubmit}
             disabled={isProcessing || !stripe || !elements || !stripePromise}
-            className={`w-full text-white font-medium py-3 rounded-md transition-colors text-sm mt-4 flex items-center justify-center gap-2 ${
-              isPackagePage
-                ? `bg-[#3535b8] hover:bg-[#2a2a9a] ${isProcessing || !stripe || !elements || !stripePromise ? "disabled:opacity-70 disabled:cursor-not-allowed" : "cursor-pointer"}`
-                : isProcessing || !stripe || !elements || !stripePromise
-                  ? "bg-slate-600 opacity-70 cursor-not-allowed"
-                  : "bg-[#1e293b] hover:bg-[#0f172a] cursor-pointer"
-            }`}
+            className="w-full bg-[#1e293b] hover:bg-[#0f172a] text-white font-medium py-3 rounded-md transition-colors text-sm mt-4 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isProcessing ? (
               <>
@@ -1236,22 +1200,16 @@ function PackageBundlePaymentFormContent({
               `Pay ${formatActiveCurrency(finalPayable, currency)} now`
             )}
           </button>
-          {children}
         </div>
       )}
     </div>
   );
 }
 
-export default function PackageBundlePaymentForm({
-  children,
-  ...props
-}: PackageBundlePaymentFormProps & { hideHeader?: boolean; children?: React.ReactNode }) {
+export default function PackageBundlePaymentForm(props: PackageBundlePaymentFormProps & { hideHeader?: boolean }) {
   return (
     <Elements stripe={stripePromise}>
-      <PackageBundlePaymentFormContent {...props}>
-        {children}
-      </PackageBundlePaymentFormContent>
+      <PackageBundlePaymentFormContent {...props} />
     </Elements>
   );
 }

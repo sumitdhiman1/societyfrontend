@@ -199,18 +199,19 @@ function PackageDetailsContent() {
       const vatAmount = vatRate > 0 ? Math.round(convertedPrice * (vatRate / 100) * 100) / 100 : 0;
       const totalWithVat = Math.round((convertedPrice + vatAmount) * 100) / 100;
 
-      const oneTimeItems = features.filter((f: any) => {
-        const val = f.values?.[tier.id];
-        return val && val !== false && (!f.section || f.section === "one-time");
-      }).map((f: any) => f.name).join(", ");
-
       const duration = getDurationLabel(tier);
       const title = `${pkg.name}${tier.title ? ` - ${tier.title}` : ""}`;
+
+      const oneTimeList = getIncludedFeatures("one-time", tier);
+      const oneTimeDetails = oneTimeList
+        .map((f: any) => (f.displayLabel ? `${f.name}: ${f.displayLabel}` : f.name))
+        .join("\n");
+      const oneTimeItems = oneTimeList.map((f: any) => f.name).join(", ");
 
       const deliverableItems = [
         {
           description: title,
-          details: pkg.description || oneTimeItems || "",
+          details: oneTimeDetails || pkg.description || "",
           amount: convertedPrice,
           duration: duration,
           unit: "",
@@ -268,12 +269,43 @@ function PackageDetailsContent() {
     }
   };
 
-  const getIncludedFeatures = (section: "one-time" | "monthly" = "one-time") => {
-    if (!selectedTier) return [];
-    return features.filter((f: any) => {
-      const val = f.values?.[selectedTier.id];
-      return val && val !== false && (section === "one-time" ? (!f.section || f.section === "one-time") : (f.section === "monthly"));
-    });
+  const getFeatureValue = (feature: any, tier: any, colIdx?: number) => {
+    if (!feature || !tier) return null;
+    if (feature.values && typeof feature.values === "object") {
+      if (feature.values[tier.id] !== undefined) return feature.values[tier.id];
+      if (colIdx !== undefined && feature.values[colIdx] !== undefined) return feature.values[colIdx];
+      const matchKey = Object.keys(feature.values).find(
+        (k) => k.toLowerCase() === (tier.id || "").toLowerCase() || k.toLowerCase() === (tier.title || "").toLowerCase()
+      );
+      if (matchKey && feature.values[matchKey] !== undefined) return feature.values[matchKey];
+    }
+    return null;
+  };
+
+  const getIncludedFeatures = (section: "one-time" | "monthly" = "one-time", tier?: any) => {
+    const activeTier = tier || selectedTier;
+    if (!activeTier) return [];
+    return features
+      .map((feature: any) => {
+        const colIdx = columns.findIndex((c: any) => c.id === activeTier.id || c.title?.toLowerCase() === activeTier.title?.toLowerCase());
+        const val = getFeatureValue(feature, activeTier, colIdx >= 0 ? colIdx : undefined);
+        return { feature, val };
+      })
+      .filter((item: { feature: any; val: any }) => item.val && item.val !== false && item.val !== "false" && item.val !== "-")
+      .map((item: { feature: any; val: any }) => {
+        let label = "";
+        if (typeof item.val === "string") {
+          if (item.val.startsWith("__LINK__:")) {
+            label = item.val.replace("__LINK__:", "").split("|")[0];
+          } else if (item.val.toLowerCase() !== "true") {
+            label = item.val;
+          }
+        }
+        return {
+          ...item.feature,
+          displayLabel: label,
+        };
+      });
   };
 
   const formatPrice = (amount: number) => {
@@ -406,15 +438,15 @@ function PackageDetailsContent() {
           </div>
           <div className="lg:w-[50%] flex items-center justify-center lg:justify-end">
             <div 
-              className="w-full max-w-[620px] aspect-[16/10] bg-[#e0e0e0] rounded-none overflow-hidden shadow-sm border border-gray-200 relative"
-              style={{ borderRadius: "0px" }}
+              className="w-full max-w-[620px] aspect-[16/10] bg-[#e0e0e0] rounded-[10px] overflow-hidden shadow-sm border border-gray-200 relative"
+              style={{ borderRadius: "10px" }}
             >
               {pkg.imageUrl ? (
                 <img 
                   src={pkg.imageUrl} 
                   alt={pkg.name} 
-                  className="w-full h-full object-cover rounded-none" 
-                  style={{ borderRadius: "0px" }}
+                  className="w-full h-full object-cover rounded-[10px]" 
+                  style={{ borderRadius: "10px" }}
                 />
               ) : (
                 <div className="flex items-center justify-center w-full h-full">
@@ -461,52 +493,25 @@ function PackageDetailsContent() {
                 <div className="min-w-[1000px]">
                   <div className="grid divide-x divide-gray-100 border-b border-gray-100" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
                     <div className="p-6 md:p-8 flex items-center bg-white">
-                      <h3 className="text-xl md:text-[32px] font-bold text-[#374151] leading-[1.1]" style={{ color: "#374151" }}>What&apos;s<br className="hidden md:block" /> Included?</h3>
+                      <h3 className="text-xl md:text-[32px] font-bold text-gray-800 leading-[1.1]">What&apos;s<br className="hidden md:block" /> Included?</h3>
                     </div>
                     {columns.map((col: any, idx: number) => {
                       const isPaid = parsePrice(col.price) > 0 || parsePrice(col.recurringAmount) > 0;
-                      const isCustom = !isPaid || col.id === 'col_custom' || String(col.title || '').toLowerCase().includes('quote') || String(col.title || '').toLowerCase().includes('custom') || String(col.price || '').toLowerCase().includes('quote');
-                      const bgHex = isCustom ? "#d9d9d9" : "#eaeaea";
                       return (
                         <div
                           key={idx}
-                          onClick={() => isCustom && router.push("/dashboard/new-project/custom-quote")}
-                          style={{ backgroundColor: bgHex }}
-                          className={`p-6 md:p-8 text-center flex flex-col items-center justify-center ${
-                            isCustom ? "cursor-pointer group hover:opacity-90" : ""
-                          }`}
+                          onClick={() => !isPaid && router.push("/dashboard/new-project/custom-quote")}
+                          className={`p-6 md:p-8 text-center flex flex-col justify-center ${!isPaid ? "cursor-pointer group hover:bg-[#eaeaea] transition-colors" : ""} ${col.id === 'col_custom' || idx === columns.length - 1 ? "bg-[#f5f5f5]" : "bg-[#fafafa]"}`}
                         >
-                          <span
-                            className="text-[11px] md:text-[13px] font-bold uppercase tracking-widest mb-2 text-center"
-                            style={{ color: "#70738a" }}
-                          >
-                            {col.title}
-                          </span>
-                          <div className="flex flex-col items-center justify-center text-center">
-                            {!isCustom ? (
-                              <div className="flex flex-col items-center justify-center text-center">
-                                <span
-                                  className="text-[28px] md:text-[32px] font-bold leading-none text-center"
-                                  style={{ color: "#374151" }}
-                                >
-                                  {formatPrice(parsePrice(col.price || col.recurringAmount))}
-                                </span>
-                                {col.billingType === 'monthly' && (
-                                  <span
-                                    className="text-[10px] md:text-[12px] font-medium uppercase tracking-tighter mt-1 text-center"
-                                    style={{ color: "#70738a" }}
-                                  >
-                                    Per Month
-                                  </span>
-                                )}
+                          <span className="text-[11px] md:text-[13px] font-bold text-gray-400 uppercase tracking-widest mb-2">{col.title}</span>
+                          <div className="text-[#646464]">
+                            {isPaid ? (
+                              <div className="flex flex-col">
+                                <span className="text-[28px] md:text-[32px] font-bold leading-none text-gray-700">{formatPrice(parsePrice(col.price || col.recurringAmount))}</span>
+                                <span className="text-[10px] md:text-[12px] font-medium text-gray-400 uppercase tracking-tighter mt-1">{col.billingType === 'monthly' ? "Per Month" : "Starting Price"}</span>
                               </div>
                             ) : (
-                              <div
-                                className="font-bold text-[18px] md:text-[22px] leading-tight transition-colors text-center"
-                                style={{ color: "#374151" }}
-                              >
-                                {col.price || "Get A Quote"}
-                              </div>
+                              <div className="text-[#646464] group-hover:text-primary-300 font-bold text-[18px] md:text-[22px] leading-tight transition-colors">{col.price || "Get A Quote"}</div>
                             )}
                           </div>
                         </div>
@@ -515,16 +520,21 @@ function PackageDetailsContent() {
                   </div>
                   
                   <div className="divide-y divide-gray-100">
+                    {/* Timeline Row */}
+                    <div className="grid divide-x divide-gray-50 bg-gray-50/40 border-b border-gray-100" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
+                      <div className="p-4 md:p-5 px-6 md:px-8 font-bold text-[#808080] text-[13px] md:text-[15px] flex items-center uppercase tracking-wider">Timeline</div>
+                      {columns.map((col: any, idx: number) => (
+                        <div key={idx} className="p-5 flex items-center justify-center text-center">
+                          <span className="text-[15px] font-bold text-[#646464]">{getTimelineDisplay(col, features, idx)}</span>
+                        </div>
+                      ))}
+                    </div>
+
                     {features
                       .filter((f: any) => f.key !== "timeline" && f.name?.toLowerCase().trim() !== "timeline")
                       .map((feature: any, fIdx: number) => (
                       <div key={fIdx} className="grid divide-x divide-gray-50 hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
-                        <div
-                          className="p-4 md:p-5 px-6 md:px-8 font-bold text-[13px] md:text-[15px] flex items-center"
-                          style={{ color: "#535c6a" }}
-                        >
-                          {feature.name}
-                        </div>
+                        <div className="p-4 md:p-5 px-6 md:px-8 font-bold text-[#808080] text-[13px] md:text-[15px] flex items-center">{feature.name}</div>
                         {columns.map((col: any, cIdx: number) => {
                           let val = feature.values?.[col.id];
                           if (val === undefined && feature.values) {
@@ -544,58 +554,28 @@ function PackageDetailsContent() {
                           const boolVal = typeof val === "boolean" ? val : (val === "true");
 
                           return (
-                            <div key={cIdx} className="p-5 flex items-center justify-center text-center">
+                            <div key={cIdx} className="p-5 flex items-center justify-center">
                               {isLink ? (
                                 <a
                                   href={linkData.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-[13px] font-bold text-[#3535b8] hover:underline text-center"
+                                  className="text-[13px] font-bold text-[#3535b8] hover:underline"
                                 >
                                   {linkData.label}
                                 </a>
                               ) : isBool ? (
                                 boolVal ? <CheckIcon /> : <CrossIcon />
                               ) : val == null || val === "" || val === "-" ? (
-                                <span
-                                  className="text-[14px] font-bold text-center"
-                                  style={{ color: "#3a4252" }}
-                                >
-                                  -
-                                </span>
+                                <span className="text-gray-300">-</span>
                               ) : (
-                                <span
-                                  className="text-[13px] md:text-[14px] font-bold text-center"
-                                  style={{ color: "#3a4252" }}
-                                >
-                                  {String(val)}
-                                </span>
+                                <span className="text-[15px] font-bold text-[#646464]">{String(val)}</span>
                               )}
                             </div>
                           );
                         })}
                       </div>
                     ))}
-
-                    {/* Timeline Row (Placed at the end of features, matching screenshot) */}
-                    <div className="grid divide-x divide-gray-50 hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
-                      <div
-                        className="p-4 md:p-5 px-6 md:px-8 font-bold text-[13px] md:text-[15px] flex items-center"
-                        style={{ color: "#535c6a" }}
-                      >
-                        Timeline
-                      </div>
-                      {columns.map((col: any, idx: number) => (
-                        <div key={idx} className="p-5 flex items-center justify-center text-center">
-                          <span
-                            className="text-[13px] md:text-[14px] font-bold text-center"
-                            style={{ color: "#3a4252" }}
-                          >
-                            {getTimelineDisplay(col, features, idx)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
                   </div>
 
                   <div className="grid divide-x divide-gray-100 border-t border-gray-100 bg-white" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
@@ -618,23 +598,23 @@ function PackageDetailsContent() {
             {/* Payment Section */}
             {selectedTier && (
               <div className="animate-in slide-in-from-bottom duration-700" id="payment-section">
-                <div className="text-center mb-5 md:mb-8">
-                  <h2 className="text-3xl font-bold text-[#4b5563] mb-3" style={{ color: "#4b5563" }}>Complete Your Purchase Securely</h2>
+                <div className="text-center mb-[20px] md:mb-12">
+                  <h1 className="text-[32px] md:text-[42px] font-bold text-gray-800 mb-3">Complete Your Purchase Securely</h1>
                   <p className="text-[#808080] text-lg">Your information is protected and your project starts immediately.</p>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-6 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                   <div className="lg:col-span-2">
                     {/* Project Summary Card */}
-                    <div className="bg-white border border-gray-300 rounded-[10px] shadow-sm p-4 sm:p-6 md:p-8 mb-6 md:mb-8 relative">
+                    <div className="bg-white border border-gray-200 rounded-[10px] shadow-[0px_5px_25px_#0000000D] p-4 sm:p-6 md:p-8 mb-6 md:mb-8 relative">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-8">
                         <div className="bg-[#e0e0e0] px-4 h-7 rounded-full w-fit flex items-center">
-                          <span className="text-[11px] text-[#808080] font-bold leading-none">
+                          <span className="text-[11px] text-[#808080] font-bold uppercase tracking-wider leading-none">
                             Start Date: {new Date().toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}
                           </span>
                         </div>
                         <div className="bg-[#e0e0e0] px-4 h-7 rounded-full w-fit flex items-center gap-1.5">
-                          <span className="text-[11px] text-[#808080] font-bold leading-none">
+                          <span className="text-[11px] text-[#808080] font-bold uppercase tracking-wider leading-none">
                             Estimated Deadline: {(() => {
                               const days = getTimelineDays(selectedTier);
                               const d = new Date();
@@ -648,18 +628,18 @@ function PackageDetailsContent() {
 
                       <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4 sm:mb-6">
                         <div className="flex-1">
-                          <h3 className="text-2xl md:text-3xl font-bold text-[#4b5563] leading-tight mb-3" style={{ color: "#4b5563" }}>
+                          <h3 className="text-2xl md:text-3xl font-bold text-gray-800 leading-tight mb-3">
                             {pkg.name} - {selectedTier?.title || "Select a plan"}
                           </h3>
-                          <div className="text-[13px] text-[#808080] font-medium flex items-center gap-3 flex-wrap">
-                            <span>Project No: #{projectNo}</span>
+                          <div className="text-[13px] text-[#808080] font-bold flex items-center gap-3 flex-wrap">
+                            <span><strong>Project No:</strong> #{projectNo}</span>
                             <span className="hidden sm:inline text-gray-300">|</span>
-                            <span>Timeline: {getDurationLabel(selectedTier)}</span>
+                            <span><strong>Timeline:</strong> {getDurationLabel(selectedTier)}</span>
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           <div className="flex items-center gap-4">
-                            <div className="text-[34px] md:text-[40px] font-bold text-[#4b5563] leading-none" style={{ color: "#4b5563" }}>
+                            <div className="text-[34px] md:text-[40px] font-bold text-gray-800 leading-none">
                               {formatPrice(parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0) + getVatAmount(parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0)))}
                             </div>
                             <div className="relative">
@@ -690,15 +670,25 @@ function PackageDetailsContent() {
                         {pkg.description || "Professional standalone services designed for quick turnaround and high-quality results."}
                       </p>
 
-                      <div className="border-t border-gray-100 pt-6">
-                        <h4 className="text-xs font-bold text-[#808080] mb-4">Features included in this tier:</h4>
-                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-4">
-                          {getIncludedFeatures("one-time").map((f: any, idx: number) => (
-                            <li key={idx} className="flex items-start gap-2 text-[13px] text-[#646464]">
-                              <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      {/* Included Deliverables */}
+                      <div className="border-t border-gray-300 pt-6">
+                        <h4 className="text-base font-bold text-gray-700 mb-4">Included:</h4>
+                        <ul className="space-y-3">
+                          {getIncludedFeatures("one-time").map((feature: any, idx: number) => (
+                            <li key={idx} className="flex items-start gap-3 text-sm text-gray-600">
+                              <svg
+                                className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2.5}
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                               </svg>
-                              <span>{f.name}</span>
+                              <span>
+                                <strong className="font-bold text-gray-700">{feature.name}</strong>
+                                {feature.displayLabel ? `: ${feature.displayLabel}` : ""}
+                              </span>
                             </li>
                           ))}
                         </ul>
@@ -717,7 +707,7 @@ function PackageDetailsContent() {
                       deliverableItems={[
                         {
                           description: `${pkg.name}${selectedTier?.title ? ` - ${selectedTier.title}` : ""}`,
-                          details: pkg.description || "",
+                          details: getIncludedFeatures("one-time").map((f: any) => f.displayLabel ? `${f.name}: ${f.displayLabel}` : f.name).join("\n") || pkg.description || "",
                           amount: parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0),
                           duration: getDurationLabel(selectedTier),
                           unit: "",
@@ -748,23 +738,22 @@ function PackageDetailsContent() {
                         recurringDuration: selectedTier?.period || "month",
                         isRecurring: selectedTier?.billingType === "monthly" || pkg.paymentType?.toLowerCase().includes("month")
                       }}
-                    >
-                      <div className="mt-4">
-                        <button
-                          type="button"
-                          onClick={() => handleSaveOrder(selectedTier)}
-                          disabled={processing}
-                          className="w-full px-6 py-3 bg-white border border-gray-300 text-[#808080] font-bold text-xs uppercase tracking-widest hover:bg-gray-50 rounded-[10px] transition-colors duration-200 flex items-center justify-center gap-2"
-                        >
-                          {processing ? "Processing..." : "Save Order & Pay Later (Generate Invoice)"}
-                        </button>
-                      </div>
-                    </PackageBundlePaymentForm>
+                    />
+
+                    <div className="mt-4">
+                      <button
+                        onClick={() => handleSaveOrder(selectedTier)}
+                        disabled={processing}
+                        className="w-full px-6 py-3 bg-white border border-gray-300 text-[#808080] font-bold text-xs uppercase tracking-widest hover:bg-gray-50 rounded-[10px] transition-colors duration-200 flex items-center justify-center gap-2"
+                      >
+                        {processing ? "Processing..." : "Save Order & Pay Later (Generate Invoice)"}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Sidebar Section */}
-                  <div className="bg-white border border-gray-300 rounded-[10px] shadow-sm p-6 md:p-8 text-center sticky top-28">
-                    <h3 className="text-xl font-bold text-[#4b5563] mb-3" style={{ color: "#4b5563" }}>Questions Before You Pay?</h3>
+                  <div className="bg-white border border-gray-200 rounded-[10px] shadow-[0px_5px_25px_#0000000D] p-6 md:p-8 text-center sticky top-28">
+                    <h3 className="text-xl font-bold text-gray-800 mb-3">Questions Before You Pay?</h3>
                     <p className="text-[13px] text-[#808080] mb-8 leading-relaxed">
                       Our support team is here to help with pricing, payments, or package details—no pressure.
                     </p>

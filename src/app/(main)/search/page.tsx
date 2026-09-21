@@ -83,25 +83,11 @@ function SearchResults() {
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 xl:gap-x-[62px] xl:gap-y-[48px]">
                   {data.projects.map((project: any) => (
                     <div key={project._id} className="bg-white rounded-[6px] p-6 lg:p-8 shadow-[0px_5px_25px_#0000000D] w-full min-h-[221px] flex flex-col justify-between hover:shadow-lg transition-shadow">
-                      <h3 className="text-[26px] md:text-[22px] lg:text-[20px] xl:text-[22px] font-bold text-[#363636] lg:text-[#1A202C] leading-[32px] md:leading-[30px] lg:leading-[26px] xl:leading-[30px] line-clamp-2 mb-0 lg:mb-4">
+                      <h3 className="text-[26px] md:text-[22px] lg:text-[20px] xl:text-[22px] font-bold text-[#363636] lg:text-[#1A202C] leading-[32px] md:leading-[30px] lg:leading-[26px] xl:leading-[30px] line-clamp-2 mb-6 lg:mb-4">
                         {project.name || project.title}
                       </h3>
                       <div className="flex flex-col w-full gap-8 lg:gap-4">
-                        <div className="grid lg:hidden grid-cols-3 w-full">
-                          <div className="flex flex-col gap-1 pr-3 border-r border-gray-200">
-                            <p className="text-[#4343F0] text-[13px] font-bold">Project #</p>
-                            <p className="text-[#363636] text-[14px] font-medium leading-[18px] truncate">{project.number}</p>
-                          </div>
-                          <div className="flex flex-col gap-1 px-3 border-r border-gray-200">
-                            <p className="text-[#4343F0] text-[13px] font-bold">Started</p>
-                            <p className="text-[#363636] text-[14px] font-medium leading-[18px] truncate">{project.started}</p>
-                          </div>
-                          <div className="flex flex-col gap-1 pl-3">
-                            <p className="text-[#4343F0] text-[13px] font-bold">Deadline</p>
-                            <p className="text-[#363636] text-[14px] font-medium leading-[18px] truncate">{project.deadline}</p>
-                          </div>
-                        </div>
-                        <div className="hidden lg:grid grid-cols-3 gap-3 xl:gap-4 flex-1">
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3 xl:gap-4 flex-1">
                           <div className="flex flex-col gap-1">
                             <p className="text-[#5356ff] text-[11px] xl:text-[13px] font-bold">Project #</p>
                             <p className="text-[#363636] text-[13px] xl:text-[15px] font-medium leading-[18px]">{project.number}</p>

@@ -351,42 +351,13 @@ export default function ProjectTabs() {
                   key={p.id}
                   className="bg-white rounded-[6px] p-6 lg:p-8 shadow-[0px_5px_25px_#0000000D] w-full min-h-[221px] flex flex-col justify-between hover:shadow-lg transition-shadow"
                 >
-                  <div className="flex items-start justify-between gap-2 mb-0 lg:mb-4">
+                  <div className="flex items-start justify-between gap-2 mb-6 lg:mb-4">
                     <h3 className="text-[26px] md:text-[22px] lg:text-[20px] xl:text-[22px] font-bold text-[#363636] lg:text-[#1A202C] leading-[32px] md:leading-[30px] lg:leading-[26px] xl:leading-[30px] line-clamp-2">
                       {p.name}
                     </h3>
                   </div>
                   <div className="flex flex-col w-full gap-8 lg:gap-4">
-                    {/* Mobile metadata row (matching Figma design) */}
-                    <div className="grid lg:hidden grid-cols-3 w-full">
-                      <div className="flex flex-col gap-1 pr-3 border-r border-gray-200">
-                        <p className="text-[#4343F0] text-[13px] font-bold">
-                          Project #
-                        </p>
-                        <p className="text-[#363636] text-[14px] font-medium leading-[18px] truncate">
-                          {p.number}
-                        </p>
-                      </div>
-                      <div className="flex flex-col gap-1 px-3 border-r border-gray-200">
-                        <p className="text-[#4343F0] text-[13px] font-bold">
-                          Started
-                        </p>
-                        <p className="text-[#363636] text-[14px] font-medium leading-[18px] truncate">
-                          {p.started}
-                        </p>
-                      </div>
-                      <div className="flex flex-col gap-1 pl-3">
-                        <p className="text-[#4343F0] text-[13px] font-bold">
-                          Deadline
-                        </p>
-                        <p className="text-[#363636] text-[14px] font-medium leading-[18px] truncate">
-                          {p.deadline}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Desktop metadata row */}
-                    <div className="hidden lg:grid grid-cols-3 gap-3 xl:gap-4 flex-1">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3 xl:gap-4 flex-1">
                       <div className="flex flex-col gap-1">
                         <p className="text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
                           Project #
@@ -395,7 +366,7 @@ export default function ProjectTabs() {
                           {p.number}
                         </p>
                       </div>
-                      <div>
+                      <div className="flex flex-col gap-1">
                         <p className="text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
                           Started
                         </p>
@@ -403,12 +374,10 @@ export default function ProjectTabs() {
                           {p.started}
                         </p>
                       </div>
-                      <div>
-                        <div className="flex items-center">
-                          <p className="text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
-                            Estimated Deadline
-                          </p>
-                        </div>
+                      <div className="flex flex-col gap-1">
+                        <p className="text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
+                          Estimated Deadline
+                        </p>
                         <p className="text-[#363636] text-[13px] xl:text-[15px] font-medium leading-[18px]">
                           {p.deadline}
                         </p>

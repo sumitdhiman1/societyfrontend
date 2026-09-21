@@ -419,7 +419,7 @@ export default function AnalysisDetailsPage() {
           currentUrl.searchParams.delete("payment_intent");
           currentUrl.searchParams.delete("payment_intent_client_secret");
           window.history.replaceState(null, "", currentUrl.toString());
-        } catch {}
+        } catch { }
       }, 4500);
 
       return () => {
@@ -1100,17 +1100,17 @@ export default function AnalysisDetailsPage() {
   const rawPayments = Array.isArray(analysisPayments) && analysisPayments.length > 0
     ? analysisPayments
     : (Array.isArray(analysis?.paymentLedger) && analysis.paymentLedger.length > 0
-        ? analysis.paymentLedger.map((entry: any, index: number) => ({
-            _id: entry.transactionId || `ledger-${index}`,
-            id: entry.transactionId || `ledger-${index}`,
-            amount: entry.chargedAmount || entry.amount,
-            currency: entry.chargedCurrency || entry.currency,
-            status: entry.status || "succeeded",
-            exchangeRate: entry.exchangeRate,
-            metadata: { exchangeRate: entry.exchangeRate },
-            createdAt: entry.date,
-          }))
-        : []);
+      ? analysis.paymentLedger.map((entry: any, index: number) => ({
+        _id: entry.transactionId || `ledger-${index}`,
+        id: entry.transactionId || `ledger-${index}`,
+        amount: entry.chargedAmount || entry.amount,
+        currency: entry.chargedCurrency || entry.currency,
+        status: entry.status || "succeeded",
+        exchangeRate: entry.exchangeRate,
+        metadata: { exchangeRate: entry.exchangeRate },
+        createdAt: entry.date,
+      }))
+      : []);
 
   const totalPaidFromTransactions = rawPayments
     .filter((p: any) => ["succeeded", "paid", "completed"].includes(String(p?.status || "").toLowerCase()))
@@ -1131,8 +1131,8 @@ export default function AnalysisDetailsPage() {
   const pendingBalance = isActuallyPaidInFull
     ? 0
     : amountPaid === 0
-    ? resolvedTotalCost
-    : calculatedPending;
+      ? resolvedTotalCost
+      : calculatedPending;
 
   const isFreeAnalysis = Boolean(
     (analysis.isFree === true && baseAmount <= 0 && totalCost <= 0 && amountPaid <= 0 && allAddonDeliverables.length === 0) ||
@@ -1286,19 +1286,19 @@ export default function AnalysisDetailsPage() {
     (analysis.expectedDeadline ? new Date(analysis.expectedDeadline) : null) ||
     (analysis.startDate || analysis.createdAt
       ? (() => {
-          const d = new Date(analysis.startDate || analysis.createdAt);
-          const days =
-            parseDaysFromStr(initialAnalysisDuration) ||
-            Number(analysis.timelineInDays) ||
-            5;
-          d.setDate(d.getDate() + days);
-          return d;
-        })()
+        const d = new Date(analysis.startDate || analysis.createdAt);
+        const days =
+          parseDaysFromStr(initialAnalysisDuration) ||
+          Number(analysis.timelineInDays) ||
+          5;
+        d.setDate(d.getDate() + days);
+        return d;
+      })()
       : (() => {
-          const d = new Date();
-          d.setDate(d.getDate() + 5);
-          return d;
-        })());
+        const d = new Date();
+        d.setDate(d.getDate() + 5);
+        return d;
+      })());
 
   const getAnalysisPayloadForPdf = () => {
     const activeTitle = cleanItemTitle || analysis.title || "Website Analysis";
@@ -1330,10 +1330,10 @@ export default function AnalysisDetailsPage() {
     const deliverableAmount = isFreeAnalysis
       ? 0
       : initialAnalysisPrice > 0
-      ? initialAnalysisPrice
-      : baseAmount > 0
-      ? baseAmount
-      : Number(analysis.price || 0);
+        ? initialAnalysisPrice
+        : baseAmount > 0
+          ? baseAmount
+          : Number(analysis.price || 0);
 
     const calculatedDeadline =
       analysis.deadline ||
@@ -1388,8 +1388,8 @@ export default function AnalysisDetailsPage() {
         details: a.details || "",
         duration: a.duration
           ? (/\b(days?|weeks?|months?|years?|hours?)\b/i.test(String(a.duration))
-              ? String(a.duration).trim()
-              : `${String(a.duration).trim()} ${a.unit || "Days"}`.trim())
+            ? String(a.duration).trim()
+            : `${String(a.duration).trim()} ${a.unit || "Days"}`.trim())
           : "1 Days",
         amount: Number(a.amount || 0),
       })),
@@ -1742,7 +1742,7 @@ export default function AnalysisDetailsPage() {
 
       {/* Messages & Delivery History if any */}
       {analysis.messages && analysis.messages.length > 0 && (
-        <div className="flex flex-col gap-6 w-full recieved-offer-heading-wrap mb-0 md:mb-4">
+        <div className="flex flex-col gap-6 w-full recieved-offer-heading-wrap mb-0">
           {analysis.messages.map((msg: any, idx: number) => {
             const msgId = msg.id || msg._id || `msg-${idx}`;
             const textContent = `${msg.message || ""} ${msg.content?.text || ""} ${msg.text || ""}`.toLowerCase();
@@ -1776,7 +1776,7 @@ export default function AnalysisDetailsPage() {
               const displayText = isDuplicate ? "" : text;
 
               return (
-                <div key={msgId} className="text-center py-2 px-4 my-0 recieved-offer-heading pb-0 md:pb-8">
+                <div key={msgId} className="text-center pt-0 px-4 my-0 recieved-offer-heading pb-0 md:pb-4">
                   <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
                     {title}
                   </h3>
@@ -2028,10 +2028,10 @@ export default function AnalysisDetailsPage() {
               const rawDuration =
                 (calculatedDurationDays > 0
                   ? (calculatedDurationDays >= 30 && calculatedDurationDays % 30 === 0
-                      ? `${calculatedDurationDays / 30} Month${calculatedDurationDays / 30 > 1 ? 's' : ''}`
-                      : calculatedDurationDays >= 7 && calculatedDurationDays % 7 === 0
-                        ? `${calculatedDurationDays / 7} Week${calculatedDurationDays / 7 > 1 ? 's' : ''}`
-                        : `${calculatedDurationDays} Day${calculatedDurationDays > 1 ? "s" : ""}`)
+                    ? `${calculatedDurationDays / 30} Month${calculatedDurationDays / 30 > 1 ? 's' : ''}`
+                    : calculatedDurationDays >= 7 && calculatedDurationDays % 7 === 0
+                      ? `${calculatedDurationDays / 7} Week${calculatedDurationDays / 7 > 1 ? 's' : ''}`
+                      : `${calculatedDurationDays} Day${calculatedDurationDays > 1 ? "s" : ""}`)
                   : (cleanRawDur(content.totalDuration) || cleanRawDur(content.duration) || ""));
 
               const formatOfferDuration = (val: any) => {
@@ -2839,7 +2839,9 @@ export default function AnalysisDetailsPage() {
           </div>
         )}
 
-      <div ref={messagesEndRef} className="h-4 w-full shrink-0 hidden md:block" />
+      {analysis.messages && analysis.messages.length > 0 && (
+        <div ref={messagesEndRef} className="h-4 w-full shrink-0 hidden md:block" />
+      )}
 
       {/* New Message Box Form */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden w-full detail-message-box-main">
@@ -2998,14 +3000,13 @@ export default function AnalysisDetailsPage() {
                     (!messageText.trim() &&
                       attachments.filter((a) => a.status === "done" || !a.status).length === 0))
                 }
-                className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg text-xs font-bold transition-all shadow-sm whitespace-nowrap ${
-                  isLoggedIn &&
+                className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg text-xs font-bold transition-all shadow-sm whitespace-nowrap ${isLoggedIn &&
                   (isSending ||
                     isUploading ||
                     (!messageText.trim() && attachments.filter((a) => a.status === "done" || !a.status).length === 0))
-                    ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
-                    : "bg-[#4343F0] hover:bg-[#3232b7] text-white cursor-pointer active:scale-95"
-                }`}
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
+                  : "bg-[#4343F0] hover:bg-[#3232b7] text-white cursor-pointer active:scale-95"
+                  }`}
               >
                 {isSending ? <LoadingDots text="Sending" /> : isUploading ? "Uploading..." : "Send Message"}
               </button>

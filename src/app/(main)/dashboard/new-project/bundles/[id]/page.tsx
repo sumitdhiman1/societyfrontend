@@ -708,14 +708,14 @@ function BundleDetailsContent() {
             </p>
           </div>
           <div className="lg:w-[50%] flex items-center justify-center lg:justify-end">
-            <div 
-              className="w-full max-w-[620px] aspect-[16/10] bg-[#F0F0F0] rounded-[10px] overflow-hidden shadow-sm border border-gray-200"
-              style={{ borderRadius: "10px" }}
+            <div
+              className="w-full max-w-[620px] aspect-[16/10] bg-[#F0F0F0] overflow-hidden shadow-sm border border-gray-200"
+            // style={{ borderRadius: "10px" }}
             >
               <img
                 alt={pkg.name}
-                className="w-full h-full object-cover rounded-[10px]"
-                style={{ borderRadius: "10px" }}
+                className="w-full h-full object-cover"
+                // style={{ borderRadius: "10px" }}
                 src={
                   pkg.imageUrl ||
                   "http://res.cloudinary.com/dgg6e3flf/image/upload/v1785224007/packages/a_professional_high_fidelity_3d_still_life_scene_for_a_digital_starter_bundle.webp"
@@ -837,7 +837,7 @@ function BundleDetailsContent() {
                           isPaid ? handleTierSelect(col) : router.push("/dashboard/new-project/custom-quote")
                         }
                         className={`w-full max-w-[150px] py-3.5 px-3 rounded-[10px] font-extrabold text-[12px] md:text-[13px] uppercase tracking-wider transition-all duration-300 shadow-md hover:shadow-lg active:scale-95 ${isSelected
-                          ? "bg-[#2D2DA3] text-white"
+                          ? "bg-[#4343f1] text-white"
                           : "bg-[#EAEAEA] text-[#2D2DA3] hover:bg-[#D9D9D9]"
                           }`}
                       >
@@ -972,15 +972,29 @@ function BundleDetailsContent() {
 
                   {/* Title & Price Header */}
                   <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
-                    <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 leading-tight pr-4" style={{ maxWidth: "100%" }}>
-                      {pkg.name} - {selectedTier.title}
-                    </h3>
-                    <div className="items-center gap-6">
-                      <div className="flex flex-col">
+                    <div className="flex flex-col gap-4">
+                      <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 leading-tight pr-4" style={{ maxWidth: "100%" }}>
+                        {pkg.name} - {selectedTier.title}
+                      </h3>
+                      <div className="mb-6 text-sm text-gray-500 flex items-center gap-3 flex-wrap justify-between">
+                        <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+                          <span>
+                            <strong>Project No:</strong> #{projectNo}
+                          </span>
+                          <span className="hidden sm:inline text-gray-300">|</span>
+                          <span>
+                            <strong>Timeline:</strong> {getDurationLabel(selectedTier)}
+                          </span>
+                        </div>
+                      </div>
+
+                    </div>
+                    <div className="items-center gap-6 block md:flex">
+                      <div className="flex flex-col mb-6 md:mb-0">
                         <div className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-800">
                           {formatPrice(parsePrice(selectedTier.price))}
                         </div>
-                        <div className="flex flex-col items-end mt-1">
+                        <div className="flex flex-col text-left md:text-right mt-1">
                           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">One-Time Setup Fee</span>
                           {recurringAmount > 0 && (
                             <span className="text-xs font-semibold text-blue-600 mt-0.5">
@@ -989,33 +1003,20 @@ function BundleDetailsContent() {
                           )}
                         </div>
                       </div>
-
+                      <select
+                        value={currency.toUpperCase()}
+                        onChange={(e) => setCurrency(e.target.value.toLowerCase())}
+                        className="bg-gray-50 border border-gray-300 text-gray-700 font-medium rounded-md px-3 py-1.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-shadow"
+                      >
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                      </select>
                     </div>
                   </div>
 
-                  {/* Project Meta Details */}
-                  <div className="mb-6 text-sm text-gray-500 flex items-center gap-3 flex-wrap justify-between">
-                    <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
-                      <span>
-                        <strong>Project No:</strong> #{projectNo}
-                      </span>
-                      <span className="hidden sm:inline text-gray-300">|</span>
-                      <span>
-                        <strong>Timeline:</strong> {getDurationLabel(selectedTier)}
-                      </span>
-                    </div>
-                    <select
-                      value={currency.toUpperCase()}
-                      onChange={(e) => setCurrency(e.target.value.toLowerCase())}
-                      className="bg-gray-50 border border-gray-300 text-gray-700 font-medium rounded-md px-3 py-1.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-shadow"
-                    >
-                      <option value="USD">USD ($)</option>
-                      <option value="EUR">EUR (€)</option>
-                    </select>
-                  </div>
 
                   {/* Description */}
-                  <div className="mb-8 text-sm text-gray-500 leading-relaxed">
+                  <div className="mb-6 text-sm text-gray-500 leading-relaxed">
                     {pkg.description}
                   </div>
 
@@ -1045,7 +1046,7 @@ function BundleDetailsContent() {
                     </ul>
                   </div>
 
-                  <div className="border-t border-gray-300 my-8"></div>
+                  <div className="border-t border-gray-300 my-6"></div>
 
                   {/* Payment form rendered cleanly within card */}
                   <PackageBundlePaymentForm
@@ -1100,10 +1101,19 @@ function BundleDetailsContent() {
                       billingType: "mixed",
                     }}
                   />
+                  <div className="mt-6">
+                    <button
+                      onClick={() => handleSaveOrder(selectedTier)}
+                      disabled={processing}
+                      className="w-full px-6 py-3 bg-white border border-gray-300 text-gray-600 font-bold text-xs uppercase tracking-widest hover:bg-gray-50 rounded-[10px] transition-all duration-200 shadow-sm active:scale-95"
+                    >
+                      {processing ? "Processing..." : "Save Order & Pay Later (Generate Invoice)"}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Save Order & Pay Later Button */}
-                <div className="mt-6">
+                {/* <div className="mt-6">
                   <button
                     onClick={() => handleSaveOrder(selectedTier)}
                     disabled={processing}
@@ -1111,7 +1121,7 @@ function BundleDetailsContent() {
                   >
                     {processing ? "Processing..." : "Save Order & Pay Later (Generate Invoice)"}
                   </button>
-                </div>
+                </div> */}
               </div>
 
               {/* Support Card */}
