@@ -248,8 +248,9 @@ export default function MyAccountPage() {
         folder: `profile/avatar/${userId}`,
       });
 
-      if (res.isSuccessful && res.data?.url) {
-        const avatarUrl = res.data.url;
+      const uploadedUrl = res?.data?.secure_url || res?.data?.url;
+      if (res.isSuccessful && uploadedUrl) {
+        const avatarUrl = uploadedUrl;
         const updatedUser = { ...user, avatar: avatarUrl };
         setUser(updatedUser);
         authService.updateInternalUser({
