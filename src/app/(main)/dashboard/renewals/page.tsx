@@ -17,7 +17,6 @@ import { paymentService } from "@/lib/paymentService";
 import { authService } from "@/lib/authService";
 import { profileService } from "@/lib/profileService";
 import { countryService } from "@/lib/countryService";
-import { getVatRateForCountry } from "@/lib/vatHelper";
 import { formatDateTimeWithUserTz } from "@/lib/dateUtils";
 import StatusPopup from "@/components/common/StatusPopup";
 import VisaIcon from "@/components/icons/visa";
@@ -117,8 +116,6 @@ function UnifiedRenewalDetailsBox({
       : (userProfile?.billingCountry || userProfile?.country || user?.country || "EE")
   ).trim();
 
-  const vatRate = getVatRateForCountry(activeCountry);
-
   const renewalPrice =
     typeof project.price === "number"
       ? project.price
@@ -126,21 +123,12 @@ function UnifiedRenewalDetailsBox({
         ? project.renewalPrice
         : parseFloat(String(project.price || project.renewalPrice || 100).replace(/[^0-9.]/g, "")) || 100;
 
-  // The renewal item price is EXCL. TAX, so subtotal is the base renewal price
-  const baseSubtotal = project.subtotal !== undefined && Number(project.subtotal) > 0
-    ? Number(project.subtotal)
-    : renewalPrice;
-
-  const vatAmount = vatRate > 0
-    ? Math.round(baseSubtotal * (vatRate / 100) * 100) / 100
-    : 0;
-
-  const totalDueAmount = Math.round((baseSubtotal + vatAmount) * 100) / 100;
+  // The renewal item price already includes all applicable taxes/VAT
+  const totalDueAmount = renewalPrice;
 
   const { currency, conversionRate } = useCurrency();
   const projectCurrency = (project.currency || "USD").toUpperCase();
-  const formattedSubtotal = formatPriceWithCurrency(baseSubtotal, currency, projectCurrency, conversionRate);
-  const formattedVat = formatPriceWithCurrency(vatAmount, currency, projectCurrency, conversionRate);
+  const formattedSubtotal = formatPriceWithCurrency(renewalPrice, currency, projectCurrency, conversionRate);
   const formattedTotal = formatPriceWithCurrency(totalDueAmount > 0 ? totalDueAmount : renewalPrice, currency, projectCurrency, conversionRate);
 
   const handleProcessPayment = async () => {
@@ -166,9 +154,9 @@ function UnifiedRenewalDetailsBox({
           title: `Renewal: ${project.title}`,
           description: `Monthly maintenance renewal for ${project.title}`,
           isRenewal: true,
-          vatRate,
-          vatAmount,
-          subtotal: baseSubtotal,
+          vatRate: 0,
+          vatAmount: 0,
+          subtotal: renewalPrice,
           clientCountry: activeCountry,
         },
       });
@@ -276,10 +264,6 @@ function UnifiedRenewalDetailsBox({
           <div className="flex justify-between text-xs font-semibold text-gray-600">
             <span>Subtotal</span>
             <span>{formattedSubtotal}</span>
-          </div>
-          <div className="flex justify-between text-xs font-semibold text-gray-600">
-            <span>VAT ({vatRate}%)</span>
-            <span>{formattedVat}</span>
           </div>
         </div>
 

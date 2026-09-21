@@ -566,11 +566,11 @@ function BundleDetailsContent() {
         metadata: {
           type: "BUNDLE",
           packageId: bundleId,
-          packageName: pkg.name,
-          tierId: tier.id,
-          tierTitle: tier.title,
-          title: `${pkg.name} - ${tier.title}`,
-          description: pkg.description,
+          packageName: pkg?.name || "",
+          tierId: tier?.id || "",
+          tierTitle: tier?.title || "",
+          title: pkg?.name ? `${pkg.name} - ${tier?.title || ""}` : (tier?.title || "Bundle"),
+          description: pkg?.description || "",
           deliverableItems: deliverableItems,
           lineItems: oneTimeItems,
           recurringLineItems: recurringItems,
@@ -1054,11 +1054,11 @@ function BundleDetailsContent() {
                     type="BUNDLE"
                     entityId={bundleId}
                     entityNumber={projectNo}
-                    title={`${pkg.name} - ${selectedTier.title}`}
-                    description={pkg.description}
+                    title={pkg?.name ? `${pkg.name} - ${selectedTier?.title || ""}` : (selectedTier?.title || "Bundle")}
+                    description={pkg?.description || ""}
                     date={new Date().toISOString()}
-                    totalCost={parsePrice(selectedTier.price)}
-                    depositAmount={parsePrice(selectedTier.price) > 0 ? parsePrice(selectedTier.price) / 2 : undefined}
+                    totalCost={parsePrice(selectedTier?.price)}
+                    depositAmount={parsePrice(selectedTier?.price) > 0 ? parsePrice(selectedTier?.price) / 2 : undefined}
                     deliverableItems={(() => {
                       const oneTimeList = getIncludedFeatures("one-time");
                       const oneTimeDetails = oneTimeList.map((f: any) => f.name).join(", ");
@@ -1066,8 +1066,8 @@ function BundleDetailsContent() {
                       return [
                         {
                           description: "Initial Project Setup & Implementation",
-                          details: oneTimeDetails || `${pkg.name} (${selectedTier.title} Tier)`,
-                          amount: parsePrice(selectedTier.price),
+                          details: oneTimeDetails || `${pkg?.name || "Bundle"} (${selectedTier?.title || "Plan"} Tier)`,
+                          amount: parsePrice(selectedTier?.price),
                           duration: getDurationLabel(selectedTier),
                           unit: "",
                           isAddOn: false,
@@ -1082,9 +1082,9 @@ function BundleDetailsContent() {
                     nativeCurrency="USD"
                     metadata={{
                       packageId: bundleId,
-                      packageName: pkg.name,
-                      tierId: selectedTier.id,
-                      tierTitle: selectedTier.title,
+                      packageName: pkg?.name || "",
+                      tierId: selectedTier?.id || "",
+                      tierTitle: selectedTier?.title || "",
                       lineItems: getIncludedFeatures("one-time")
                         .map((f: any) => f.name)
                         .join(", "),

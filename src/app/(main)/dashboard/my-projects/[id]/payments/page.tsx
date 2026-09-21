@@ -16,6 +16,22 @@ import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
 import CalculatorProjectPayments, { ReceiptModal } from "./CalculatorProjectPayments";
 import { downloadBundlePDF, printBundlePDF } from "@/lib/generateBundlePDF";
 
+function formatDurationStr(duration: any, unit?: string, fallback = "30 Days"): string {
+  if (!duration && duration !== 0) return fallback;
+  const str = String(duration).trim();
+  if (!str || str === "-") return fallback;
+  // If the stored value already contains a unit word, just normalise capitalisation
+  const hasUnit = /\b(day|days|week|weeks|month|months|year|years)\b/i.test(str);
+  if (hasUnit) {
+    // Clean up any accidental double-unit like "2 weeks Days"
+    return str.replace(/(\b\d+\s*(?:weeks?|months?|years?))\s*days?/gi, '$1').trim();
+  }
+  // unit prop provided?
+  if (unit) return `${str} ${unit}`.trim();
+  // Plain number → treat as days
+  return `${str} Days`;
+}
+
 function isCalculatorProject(project: any, quote?: any): boolean {
   if (!project) return false;
   if (project.isCalculator) return true;
@@ -284,7 +300,7 @@ export default function ProjectPaymentsPage() {
     (addon.deliverableItems || []).map((item: any) => ({
       description: item.description || item.title || item.name || "Add-On Deliverable",
       details: item.details || "",
-      duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
+      duration: formatDurationStr(item.duration, item.unit, "1 Days"),
       amount: Number(item.amount ?? 0),
       isAddOn: true,
     }))
@@ -313,7 +329,7 @@ export default function ProjectPaymentsPage() {
       return items.map((item: any) => ({
         description: item.description || item.title || item.name || "Add-On Deliverable",
         details: item.details || "",
-        duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "1 Days",
+        duration: formatDurationStr(item.duration, item.unit, "1 Days"),
         amount: Number(item.amount ?? 0),
         isAddOn: true,
       }));
@@ -365,7 +381,7 @@ export default function ProjectPaymentsPage() {
         return {
           description: item.description || item.title || item.name || "Deliverable",
           details: item.details || "",
-          duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : "30 Days",
+          duration: formatDurationStr(item.duration, item.unit, "30 Days"),
           amount: itemAmount,
           isAddOn: false,
         };

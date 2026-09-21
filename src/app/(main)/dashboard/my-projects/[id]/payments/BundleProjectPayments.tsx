@@ -24,10 +24,19 @@ const isEstoniaClient = (c?: string) => {
   return s === "ee" || s === "est" || s === "estonia";
 };
 
+export function cleanProjectTitle(rawTitle: string): string {
+  if (!rawTitle) return "";
+  let t = rawTitle.trim();
+  t = t.replace(/\s*-\s*([A-Za-z0-9]+)\s*-\s*\1(?=\s*\(|$)/gi, ' - $1');
+  return t;
+}
+
 function formatDurationLabel(raw: any): string {
-  if (!raw) return "2 weeks";
-  const str = String(raw).trim();
+  if (!raw && raw !== 0) return "2 weeks";
+  let str = String(raw).trim();
   if (str === "" || str === "-") return "2 weeks";
+  // Clean up buggy concatenated formats like "3 weeks Days", "3 weeks days", "2 months Days"
+  str = str.replace(/(\b\d+\s*(?:weeks?|months?|years?))\s*days?/gi, '$1').trim();
   return str
     .replace(/\bWeeks\b/g, "weeks")
     .replace(/\bWeek\b/g, "week")
