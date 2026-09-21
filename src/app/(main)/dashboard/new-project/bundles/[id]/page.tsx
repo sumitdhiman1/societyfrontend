@@ -6,12 +6,15 @@ import { packagesService } from "@/lib/packagesService";
 import { useChatWidget } from "@/context/ChatWidgetContext";
 import { useCurrency } from "@/context/CurrencyContext";
 import { authService } from "@/lib/authService";
-import { paymentService } from "@/lib/paymentService";
+import { packageBundlePaymentService } from "@/lib/packageBundlePaymentService";
 import { profileService } from "@/lib/profileService";
 import StatusPopup from "@/components/common/StatusPopup";
-import UnifiedPaymentForm from "@/components/dashboard/UnifiedPaymentForm";
+import PackageBundlePaymentForm from "@/components/dashboard/PackageBundlePaymentForm";
 import { countryService, Country } from "@/lib/countryService";
-import { formatPriceWithCurrency } from "@/lib/currencyUtils";
+import {
+  formatPackageBundlePriceWithCurrency as formatPriceWithCurrency,
+  convertPackageBundleCurrencyAmount,
+} from "@/lib/currencyUtils";
 
 const CheckIcon = () => (
   <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center mx-auto">
@@ -397,13 +400,13 @@ function BundleDetailsContent() {
       const val = Number(daysOrObj.value);
       if (isNaN(val) || val <= 0) return "-";
       const unit = (daysOrObj.type || daysOrObj.unit || "days").toLowerCase();
-      if (unit.startsWith("month")) return `${val} ${val === 1 ? "Month" : "Months"}`;
-      if (unit.startsWith("week")) return `${val} ${val === 1 ? "Week" : "Weeks"}`;
-      return `${val} ${val === 1 ? "Day" : "Days"}`;
+      if (unit.startsWith("month")) return `${val} ${val === 1 ? "month" : "months"}`;
+      if (unit.startsWith("week")) return `${val} ${val === 1 ? "week" : "weeks"}`;
+      return `${val} ${val === 1 ? "day" : "days"}`;
     }
 
     if (typeof daysOrObj === "string" && !/^\d+$/.test(daysOrObj.trim())) {
-      return daysOrObj;
+      return daysOrObj.replace(/\bWeeks\b/g, "weeks").replace(/\bWeek\b/g, "week");
     }
 
     const days = typeof daysOrObj === "number" ? daysOrObj : parseInt(String(daysOrObj).trim(), 10);
@@ -411,13 +414,13 @@ function BundleDetailsContent() {
 
     if (days % 30 === 0) {
       const months = days / 30;
-      return `${months} ${months === 1 ? "Month" : "Months"}`;
+      return `${months} ${months === 1 ? "month" : "months"}`;
     }
     if (days % 7 === 0) {
       const weeks = days / 7;
-      return `${weeks} ${weeks === 1 ? "Week" : "Weeks"}`;
+      return `${weeks} ${weeks === 1 ? "week" : "weeks"}`;
     }
-    return `${days} ${days === 1 ? "Day" : "Days"}`;
+    return `${days} ${days === 1 ? "day" : "days"}`;
   };
 
   const getTimelineDays = (col: any): number => {
@@ -467,19 +470,19 @@ function BundleDetailsContent() {
 
     // 3. Fallback for Digital Starter Bundle tiers
     const title = (col.title || col.label || "").toLowerCase();
-    if (title.includes("starter") || col.id === "col_starter" || col.id === "starter" || idx === 0) return "2 Weeks";
-    if (title.includes("standard") || col.id === "col_standard" || col.id === "professional" || idx === 1) return "6 Weeks";
-    if (title.includes("premium") || col.id === "col_premium" || col.id === "premium" || idx === 2) return "12 Weeks";
+    if (title.includes("starter") || col.id === "col_starter" || col.id === "starter" || idx === 0) return "2 weeks";
+    if (title.includes("standard") || col.id === "col_standard" || col.id === "professional" || idx === 1) return "6 weeks";
+    if (title.includes("premium") || col.id === "col_premium" || col.id === "premium" || idx === 2) return "12 weeks";
 
     return "-";
   };
 
   const getDurationLabel = (tier?: any) => {
     const t = tier || selectedTier;
-    if (!t) return "6 Weeks";
+    if (!t) return "6 weeks";
     const display = getTimelineDisplay(t, features);
     if (display && display !== "-") return display;
-    return t?.period || "6 Weeks";
+    return t?.period ? String(t.period).replace(/\bWeeks\b/g, "weeks").replace(/\bWeek\b/g, "week") : "6 weeks";
   };
 
   const handleTierSelect = (tier: any) => {
@@ -504,9 +507,9 @@ function BundleDetailsContent() {
       authService.redirectToLogin();
       return;
     }
-    const recPrice = parsePrice(tier.recurringAmount ?? tier.recurringPrice);
-    const setupPrice = parsePrice(tier.price);
-    if (!(setupPrice > 0 || recPrice > 0)) {
+    const rawRecPrice = parsePrice(tier.recurringAmount ?? tier.recurringPrice);
+    const rawSetupPrice = parsePrice(tier.price);
+    if (!(rawSetupPrice > 0 || rawRecPrice > 0)) {
       router.push("/dashboard/new-project/custom-quote");
       return;
     }
@@ -514,21 +517,51 @@ function BundleDetailsContent() {
     setSelectedTier(tier);
     setProcessing(true);
     try {
-      const oneTimeItems = getIncludedFeatures("one-time", tier)
-        .map((f: any) => f.name)
-        .join(", ");
+      const user = authService.getUser();
+      const userCountry = user?.country || "";
+      const isEstonia = ["ee", "est", "estonia"].includes(String(userCountry).toLowerCase().trim());
+      const vatRate = isEstonia ? 24 : 0;
 
-      const recurringItems = getIncludedFeatures("monthly", tier)
-        .map((f: any) => f.name)
-        .join(", ");
+      const convertedSetupPrice = convertPackageBundleCurrencyAmount(
+        rawSetupPrice,
+        currency,
+        "USD",
+        conversionRate
+      );
+
+      const convertedRecPrice = rawRecPrice > 0
+        ? convertPackageBundleCurrencyAmount(rawRecPrice, currency, "USD", conversionRate)
+        : 0;
+
+      const vatAmount = vatRate > 0 ? Math.round(convertedSetupPrice * (vatRate / 100) * 100) / 100 : 0;
+      const totalWithVat = Math.round((convertedSetupPrice + vatAmount) * 100) / 100;
+
+      const oneTimeList = getIncludedFeatures("one-time", tier);
+      const oneTimeItems = oneTimeList.map((f: any) => f.name).join(", ");
+
+      const recurringList = getIncludedFeatures("monthly", tier);
+      const recurringItems = recurringList.map((f: any) => f.name).join(", ");
 
       const recurringDuration = tier.recurringTimeline
         ? (typeof tier.recurringTimeline === "object" ? `${tier.recurringTimeline.value} ${tier.recurringTimeline.type}` : "Monthly")
         : "Monthly";
 
-      const res = await paymentService.createOrder({
-        amount: setupPrice,
-        currency: currency,
+      const duration = getDurationLabel(tier);
+
+      const deliverableItems = [
+        {
+          description: "Initial Project Setup & Implementation",
+          details: oneTimeItems || `${pkg.name} (${tier.title} Tier)`,
+          amount: convertedSetupPrice,
+          duration: duration,
+          unit: "",
+          isAddOn: false,
+        },
+      ];
+
+      const res = await packageBundlePaymentService.createOrder({
+        amount: totalWithVat,
+        currency: currency.toUpperCase(),
         creditsToApply: 0,
         metadata: {
           type: "BUNDLE",
@@ -536,15 +569,23 @@ function BundleDetailsContent() {
           packageName: pkg.name,
           tierId: tier.id,
           tierTitle: tier.title,
-          title: pkg.name,
+          title: `${pkg.name} - ${tier.title}`,
           description: pkg.description,
+          deliverableItems: deliverableItems,
           lineItems: oneTimeItems,
           recurringLineItems: recurringItems,
-          recurringAmount: recPrice,
-          fullAmount: setupPrice,
-          duration: getDurationLabel(tier),
+          recurringAmount: convertedRecPrice,
+          subtotal: convertedSetupPrice,
+          vatRate: vatRate,
+          vatAmount: vatAmount,
+          fullAmount: totalWithVat,
+          duration: duration,
+          totalDuration: duration,
           recurringDuration: recurringDuration,
           billingType: "mixed",
+          exchangeRate: conversionRate,
+          conversionRate: conversionRate,
+          clientCountry: userCountry,
         },
       });
 
@@ -954,10 +995,11 @@ function BundleDetailsContent() {
 
                   {/* Project Meta Details */}
                   <div className="mb-6 text-sm text-gray-500 flex items-center gap-3 flex-wrap justify-between">
-                    <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
                       <span>
                         <strong>Project No:</strong> #{projectNo}
                       </span>
+                      <span className="hidden sm:inline text-gray-300">|</span>
                       <span>
                         <strong>Timeline:</strong> {getDurationLabel(selectedTier)}
                       </span>
@@ -1006,7 +1048,7 @@ function BundleDetailsContent() {
                   <div className="border-t border-gray-300 my-8"></div>
 
                   {/* Payment form rendered cleanly within card */}
-                  <UnifiedPaymentForm
+                  <PackageBundlePaymentForm
                     containerClassName=""
                     hideCurrencyToggle={true}
                     type="BUNDLE"

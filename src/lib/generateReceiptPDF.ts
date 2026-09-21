@@ -297,9 +297,18 @@ export function extractReceiptDetails(
     "Custom Web & Digital Solutions Deliverables";
 
   // Total Amount
-  const currency = (payment?.currency || project?.currency || "USD").toUpperCase();
+  const currency = (
+    payment?.currency ||
+    payment?.chargedCurrency ||
+    payment?.metadata?.paymentCurrency ||
+    payment?.metadata?.currency ||
+    project?.currency ||
+    "USD"
+  ).toUpperCase();
   const rawAmount = Number(
     payment?.amount ??
+      payment?.chargedAmount ??
+      payment?.amountPaid ??
       project?.amountPaid ??
       project?.price ??
       project?.totalCost ??
