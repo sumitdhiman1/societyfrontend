@@ -481,10 +481,10 @@ export default function BundleProjectDetails({
       if (attachments.length > 0) {
         uploadedUrls = await Promise.all(
           attachments.map(async (f) => {
-            const res = await mediaService.uploadMedia(f);
+            const res: any = await mediaService.uploadImage({ file: f });
             return {
               name: f.name,
-              url: res.url || res.data?.url || res,
+              url: res?.data?.secure_url || res?.data?.url || res?.url || res || "",
               type: f.type.startsWith("image/") ? "image" : "document",
               size: f.size,
             };
@@ -492,14 +492,9 @@ export default function BundleProjectDetails({
         );
       }
 
-      const res = await projectService.addMessage(projectId, {
-        message: messageText.trim(),
-        attachments: uploadedUrls,
-        sender: auth.fullName || `${auth.firstName || ""} ${auth.lastName || ""}`.trim() || auth.email || "Client",
-        senderRole: "client",
-      });
+      const res = await projectService.addMessage(projectId, messageText.trim(), false, uploadedUrls);
 
-      if (res?.data) {
+      if (res?.data || res) {
         if (onRefreshProject) await onRefreshProject();
         setMessageText("");
         setAttachments([]);
@@ -528,9 +523,7 @@ export default function BundleProjectDetails({
     setIsTogglingRenewal(true);
     try {
       const nextState = !(activeProject.autoRenew ?? true);
-      const res = await projectService.updateProject(projectId, {
-        autoRenew: nextState,
-      });
+      const res = await projectService.toggleAutoRenewal(projectId, nextState);
       if (res) {
         if (onRefreshProject) await onRefreshProject();
         toast.success(`Auto-renewal ${nextState ? "enabled" : "disabled"}.`);
@@ -978,7 +971,7 @@ export default function BundleProjectDetails({
         </div>
       </div>
 
-      {showAuthModal && <AuthPromptModal onClose={() => setShowAuthModal(false)} />}
+      {showAuthModal && <AuthPromptModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />}
     </div>
   );
 }
