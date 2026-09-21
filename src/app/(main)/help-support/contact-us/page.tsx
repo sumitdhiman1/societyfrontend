@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import HttpClient from "@/lib/HttpClient";
 import StatusPopup from "@/components/common/StatusPopup";
 import { supportService } from "@/lib/supportService";
 import { useChatWidget } from "@/context/ChatWidgetContext";
+import Turnstile, { TurnstileRef } from "@/components/common/Turnstile";
 
 const httpClient = new HttpClient();
 
@@ -52,6 +53,8 @@ export default function ContactUsPage() {
     subject: "",
     message: "",
   });
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileRef>(null);
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState({
     isOpen: false,
@@ -107,6 +110,16 @@ export default function ContactUsPage() {
     e.preventDefault();
     if (loading) return;
 
+    if (!turnstileToken) {
+      setPopup({
+        isOpen: true,
+        type: "error",
+        title: "Security Verification Required",
+        message: "Please complete the security check before submitting the form.",
+      });
+      return;
+    }
+
     try {
       setLoading(true);
       const payload = {
@@ -116,6 +129,7 @@ export default function ContactUsPage() {
         phone: formData.phone.trim(),
         subject: formData.subject.trim(),
         message: formData.message.trim(),
+        turnstileToken,
       };
 
       const res: any = await httpClient.post("/contact/submit", payload);
@@ -134,6 +148,8 @@ export default function ContactUsPage() {
           subject: "",
           message: "",
         });
+        setTurnstileToken(null);
+        turnstileRef.current?.reset();
       } else {
         throw new Error(res?.message || "Failed to send message");
       }
@@ -146,6 +162,8 @@ export default function ContactUsPage() {
         title: "Submission Failed",
         message: Array.isArray(errMsg) ? errMsg.join(", ") : errMsg,
       });
+      setTurnstileToken(null);
+      turnstileRef.current?.reset();
     } finally {
       setLoading(false);
     }
@@ -285,10 +303,19 @@ export default function ContactUsPage() {
                 />
               </div>
 
+              <div className="pt-2">
+                <Turnstile
+                  ref={turnstileRef}
+                  onVerify={(token) => setTurnstileToken(token)}
+                  onExpire={() => setTurnstileToken(null)}
+                  onError={() => setTurnstileToken(null)}
+                />
+              </div>
+
               <button
                 type="submit"
-                disabled={loading}
-                className="bg-primary-300 hover:bg-primary-100 text-white font-bold py-3 px-12 rounded-md transition-colors w-full md:w-[350px] mt-4 text-sm disabled:opacity-75 cursor-pointer shadow-sm hover:shadow-md"
+                disabled={loading || !turnstileToken}
+                className="bg-primary-300 hover:bg-primary-100 text-white font-bold py-3 px-12 rounded-md transition-colors w-full md:w-[350px] mt-4 text-sm disabled:opacity-50 cursor-pointer shadow-sm hover:shadow-md"
               >
                 {loading ? "Sending..." : submitBtnText}
               </button>
