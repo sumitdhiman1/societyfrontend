@@ -87,21 +87,7 @@ function SearchResults() {
                         {project.name || project.title}
                       </h3>
                       <div className="flex flex-col w-full gap-8 lg:gap-4">
-                        <div className="flex lg:hidden items-start justify-between w-full border-t border-gray-100 pt-6 md:pt-0 md:border-0">
-                          <div className="flex flex-col gap-1 pr-4 border-r border-gray-100 flex-1">
-                            <p className="text-[#5356ff] text-[13px] font-bold">Project #</p>
-                            <p className="text-[#363636] text-[15px] font-medium leading-[20px]">{project.number}</p>
-                          </div>
-                          <div className="flex flex-col gap-1 px-4 border-r border-gray-100 flex-1">
-                            <p className="text-[#5356ff] text-[13px] font-bold">Started</p>
-                            <p className="text-[#363636] text-[15px] font-medium leading-[20px]">{project.started}</p>
-                          </div>
-                          <div className="flex flex-col gap-1 pl-4 flex-1">
-                            <p className="text-[#5356ff] text-[13px] font-bold">Estimated Deadline</p>
-                            <p className="text-[#363636] text-[15px] font-medium leading-[20px]">{project.deadline}</p>
-                          </div>
-                        </div>
-                        <div className="hidden lg:grid grid-cols-3 gap-3 xl:gap-4 flex-1">
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3 xl:gap-4 flex-1">
                           <div className="flex flex-col gap-1">
                             <p className="text-[#5356ff] text-[11px] xl:text-[13px] font-bold">Project #</p>
                             <p className="text-[#363636] text-[13px] xl:text-[15px] font-medium leading-[18px]">{project.number}</p>
