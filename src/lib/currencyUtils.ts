@@ -12,7 +12,8 @@ export function convertCurrencyAmount(
   amount: number,
   targetCurrency: string,
   sourceCurrency: string = "usd",
-  conversionRate: number = 1.08
+  conversionRate: number = 1.08,
+  roundBy5: boolean = false
 ): number {
   if (!amount || !Number.isFinite(amount) || amount === 0) return 0;
   const isTargetEur = targetCurrency?.toLowerCase() === "eur";
@@ -24,17 +25,17 @@ export function convertCurrencyAmount(
   }
 
   if (isTargetEur && !isSourceEur) {
-    // USD -> EUR (rounded to nearest 5)
+    // USD -> EUR
     const converted = amount / rate;
-    const rounded = roundToNearest5(converted);
-    return Number(rounded.toFixed(2));
+    const finalVal = roundBy5 ? roundToNearest5(converted) : converted;
+    return Number(finalVal.toFixed(2));
   }
 
   if (!isTargetEur && isSourceEur) {
-    // EUR -> USD (rounded to nearest 5)
+    // EUR -> USD
     const converted = amount * rate;
-    const rounded = roundToNearest5(converted);
-    return Number(rounded.toFixed(2));
+    const finalVal = roundBy5 ? roundToNearest5(converted) : converted;
+    return Number(finalVal.toFixed(2));
   }
 
   return Number(amount.toFixed(2));

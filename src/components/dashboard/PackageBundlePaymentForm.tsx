@@ -432,6 +432,7 @@ function PackageBundlePaymentFormContent({
           title: title || extraMetadata?.title,
           lineItems: effectiveLineItems,
           type,
+          projectId: entityId || extraMetadata?.projectId,
           [`${type.toLowerCase()}Id`]: entityId,
           [`${type.toLowerCase()}Number`]: entityNumber,
           billingComponentId,

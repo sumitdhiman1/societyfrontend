@@ -326,6 +326,9 @@ export default function BundleProjectPayments({
 
   const formatCurr = (amt: number, customCurr?: string) => {
     const targetCurr = (customCurr || activeDisplayCurrency).toLowerCase();
+    if (targetCurr === projectNativeCurrency) {
+      return formatActiveCurrency(amt, targetCurr);
+    }
     return formatPriceWithCurrency(amt, targetCurr, projectNativeCurrency, conversionRate);
   };
 
@@ -474,7 +477,7 @@ export default function BundleProjectPayments({
     linkedQuote?.paymentOption === "half" ||
     combinedPayments.some((p: any) => p?.metadata?.isDeposit === "true" || p?.metadata?.paymentOption === "half");
 
-  if (isDepositHalf && rawAmountPaid > 0 && Math.abs(computedTotalCost - (rawAmountPaid * 2)) <= 15) {
+  if (isDepositHalf && combinedPayments.length <= 1 && rawAmountPaid > 0 && Math.abs(computedTotalCost - (rawAmountPaid * 2)) <= 15) {
     computedTotalCost = Math.round(rawAmountPaid * 2 * 100) / 100;
   }
 
@@ -796,6 +799,10 @@ export default function BundleProjectPayments({
                 amountPaid={amountPaid}
                 vatRate={vatRate}
                 hideHeader={true}
+                nativeCurrency={projectNativeCurrency.toUpperCase()}
+                metadata={{
+                  projectId: projectId,
+                }}
                 onPaymentSuccess={async () => {
                   if (refreshPayments) await refreshPayments();
                 }}
