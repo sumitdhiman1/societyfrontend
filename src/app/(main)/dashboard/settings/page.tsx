@@ -57,7 +57,10 @@ export default function SettingsPage() {
 
   const handleToggle = async (key: string) => {
     if (!preferences) return;
-    const currentVal = !!preferences[key];
+    const currentVal =
+      key === "newsletter" || key === "marketing"
+        ? !!(preferences.newsletter ?? preferences.marketing ?? true)
+        : !!(preferences[key] ?? true);
     const newVal = !currentVal;
 
     let updatedPreferences = { ...preferences };
@@ -71,6 +74,7 @@ export default function SettingsPage() {
           quotes: false,
           support: false,
           payments: false,
+          newsletter: false,
           marketing: false,
         };
       } else {
@@ -81,22 +85,27 @@ export default function SettingsPage() {
           quotes: true,
           support: true,
           payments: true,
-          marketing: false,
+          newsletter: true,
+          marketing: true,
         };
       }
     } else {
       updatedPreferences[key] = newVal;
+      if (key === "newsletter" || key === "marketing") {
+        updatedPreferences.newsletter = newVal;
+        updatedPreferences.marketing = newVal;
+      }
       // If user turns on any individual category, master toggle should be true
       if (newVal) {
         updatedPreferences.emailNotifications = true;
       } else {
         // If all individual category toggles are false, master toggle should be false
         const anyActive =
-          (key !== "projects" && updatedPreferences.projects) ||
-          (key !== "quotes" && updatedPreferences.quotes) ||
-          (key !== "support" && updatedPreferences.support) ||
-          (key !== "payments" && updatedPreferences.payments) ||
-          (key !== "marketing" && updatedPreferences.marketing);
+          Boolean(updatedPreferences.projects) ||
+          Boolean(updatedPreferences.quotes) ||
+          Boolean(updatedPreferences.support) ||
+          Boolean(updatedPreferences.payments) ||
+          Boolean(updatedPreferences.newsletter ?? updatedPreferences.marketing);
         if (!anyActive) {
           updatedPreferences.emailNotifications = false;
         }
@@ -171,9 +180,9 @@ export default function SettingsPage() {
                         onChange={() => handleToggle("payments")}
                       />
                       <ToggleRow
-                        label="New Features and Company Related News"
-                        checked={preferences.marketing ?? false}
-                        onChange={() => handleToggle("marketing")}
+                        label="Email Newsletter"
+                        checked={preferences.newsletter ?? preferences.marketing ?? true}
+                        onChange={() => handleToggle("newsletter")}
                       />
                     </>
                   )}
