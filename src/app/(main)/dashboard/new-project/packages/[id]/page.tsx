@@ -199,18 +199,19 @@ function PackageDetailsContent() {
       const vatAmount = vatRate > 0 ? Math.round(convertedPrice * (vatRate / 100) * 100) / 100 : 0;
       const totalWithVat = Math.round((convertedPrice + vatAmount) * 100) / 100;
 
-      const oneTimeItems = features.filter((f: any) => {
-        const val = f.values?.[tier.id];
-        return val && val !== false && (!f.section || f.section === "one-time");
-      }).map((f: any) => f.name).join(", ");
-
       const duration = getDurationLabel(tier);
       const title = `${pkg.name}${tier.title ? ` - ${tier.title}` : ""}`;
+
+      const oneTimeList = getIncludedFeatures("one-time", tier);
+      const oneTimeDetails = oneTimeList
+        .map((f: any) => (f.displayLabel ? `${f.name}: ${f.displayLabel}` : f.name))
+        .join("\n");
+      const oneTimeItems = oneTimeList.map((f: any) => f.name).join(", ");
 
       const deliverableItems = [
         {
           description: title,
-          details: pkg.description || oneTimeItems || "",
+          details: oneTimeDetails || pkg.description || "",
           amount: convertedPrice,
           duration: duration,
           unit: "",
@@ -268,12 +269,43 @@ function PackageDetailsContent() {
     }
   };
 
-  const getIncludedFeatures = (section: "one-time" | "monthly" = "one-time") => {
-    if (!selectedTier) return [];
-    return features.filter((f: any) => {
-      const val = f.values?.[selectedTier.id];
-      return val && val !== false && (section === "one-time" ? (!f.section || f.section === "one-time") : (f.section === "monthly"));
-    });
+  const getFeatureValue = (feature: any, tier: any, colIdx?: number) => {
+    if (!feature || !tier) return null;
+    if (feature.values && typeof feature.values === "object") {
+      if (feature.values[tier.id] !== undefined) return feature.values[tier.id];
+      if (colIdx !== undefined && feature.values[colIdx] !== undefined) return feature.values[colIdx];
+      const matchKey = Object.keys(feature.values).find(
+        (k) => k.toLowerCase() === (tier.id || "").toLowerCase() || k.toLowerCase() === (tier.title || "").toLowerCase()
+      );
+      if (matchKey && feature.values[matchKey] !== undefined) return feature.values[matchKey];
+    }
+    return null;
+  };
+
+  const getIncludedFeatures = (section: "one-time" | "monthly" = "one-time", tier?: any) => {
+    const activeTier = tier || selectedTier;
+    if (!activeTier) return [];
+    return features
+      .map((feature: any) => {
+        const colIdx = columns.findIndex((c: any) => c.id === activeTier.id || c.title?.toLowerCase() === activeTier.title?.toLowerCase());
+        const val = getFeatureValue(feature, activeTier, colIdx >= 0 ? colIdx : undefined);
+        return { feature, val };
+      })
+      .filter((item: { feature: any; val: any }) => item.val && item.val !== false && item.val !== "false" && item.val !== "-")
+      .map((item: { feature: any; val: any }) => {
+        let label = "";
+        if (typeof item.val === "string") {
+          if (item.val.startsWith("__LINK__:")) {
+            label = item.val.replace("__LINK__:", "").split("|")[0];
+          } else if (item.val.toLowerCase() !== "true") {
+            label = item.val;
+          }
+        }
+        return {
+          ...item.feature,
+          displayLabel: label,
+        };
+      });
   };
 
   const formatPrice = (amount: number) => {
@@ -638,15 +670,25 @@ function PackageDetailsContent() {
                         {pkg.description || "Professional standalone services designed for quick turnaround and high-quality results."}
                       </p>
 
-                      <div className="border-t border-gray-100 pt-6">
-                        <h4 className="text-xs font-bold text-[#808080] uppercase tracking-widest mb-4">Features Included in this Tier:</h4>
-                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-4">
-                          {getIncludedFeatures("one-time").map((f: any, idx: number) => (
-                            <li key={idx} className="flex items-start gap-2 text-[13px] text-[#646464]">
-                              <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      {/* Included Deliverables */}
+                      <div className="border-t border-gray-300 pt-6">
+                        <h4 className="text-base font-bold text-gray-700 mb-4">Included:</h4>
+                        <ul className="space-y-3">
+                          {getIncludedFeatures("one-time").map((feature: any, idx: number) => (
+                            <li key={idx} className="flex items-start gap-3 text-sm text-gray-600">
+                              <svg
+                                className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2.5}
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                               </svg>
-                              <span>{f.name}</span>
+                              <span>
+                                <strong className="font-bold text-gray-700">{feature.name}</strong>
+                                {feature.displayLabel ? `: ${feature.displayLabel}` : ""}
+                              </span>
                             </li>
                           ))}
                         </ul>
@@ -665,7 +707,7 @@ function PackageDetailsContent() {
                       deliverableItems={[
                         {
                           description: `${pkg.name}${selectedTier?.title ? ` - ${selectedTier.title}` : ""}`,
-                          details: pkg.description || "",
+                          details: getIncludedFeatures("one-time").map((f: any) => f.displayLabel ? `${f.name}: ${f.displayLabel}` : f.name).join("\n") || pkg.description || "",
                           amount: parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0),
                           duration: getDurationLabel(selectedTier),
                           unit: "",

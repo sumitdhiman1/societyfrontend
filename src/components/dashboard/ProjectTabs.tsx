@@ -357,7 +357,7 @@ export default function ProjectTabs() {
                     </h3>
                   </div>
                   <div className="flex flex-col w-full gap-8 lg:gap-4">
-                    <div className="hidden lg:grid grid-cols-3 gap-3 xl:gap-4 flex-1">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3 xl:gap-4 flex-1">
                       <div className="flex flex-col gap-1">
                         <p className="text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
                           Project #
@@ -366,7 +366,7 @@ export default function ProjectTabs() {
                           {p.number}
                         </p>
                       </div>
-                      <div>
+                      <div className="flex flex-col gap-1">
                         <p className="text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
                           Started
                         </p>
@@ -374,12 +374,10 @@ export default function ProjectTabs() {
                           {p.started}
                         </p>
                       </div>
-                      <div>
-                        <div className="flex items-center">
-                          <p className="text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
-                            Estimated Deadline
-                          </p>
-                        </div>
+                      <div className="flex flex-col gap-1">
+                        <p className="text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
+                          Estimated Deadline
+                        </p>
                         <p className="text-[#363636] text-[13px] xl:text-[15px] font-medium leading-[18px]">
                           {p.deadline}
                         </p>
