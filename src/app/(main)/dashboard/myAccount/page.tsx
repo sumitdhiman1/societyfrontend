@@ -233,6 +233,14 @@ export default function MyAccountPage() {
     if (!files || files.length === 0 || !user) return;
 
     const file = files[0];
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const isSvg = file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg");
+    if (isSvg || !allowedTypes.includes(file.type.toLowerCase())) {
+      alert("Please select a valid PNG, JPEG, or WEBP image. SVG files are not supported.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
     const localUser = authService.getUser();
     const userId = user._id || user.id || localUser?.id || localUser?._id;
 
@@ -659,7 +667,7 @@ export default function MyAccountPage() {
                     ref={fileInputRef}
                     onChange={handleAvatarUpload}
                     className="hidden"
-                    accept="image/*"
+                    accept="image/png, image/jpeg, image/jpg, image/webp"
                   />
                   <div className="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center bg-gray-100 relative">
                     <img
