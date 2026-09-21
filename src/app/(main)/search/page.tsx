@@ -210,7 +210,12 @@ function SearchResults() {
                               <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                           )}
-                          {pkg.isCategory && (
+                          {pkg.isBundle && (
+                            <div className="absolute top-2 right-2 bg-[#5356ff] text-white text-[10px] font-bold px-2.5 py-1 rounded uppercase shadow-sm">
+                              Bundle
+                            </div>
+                          )}
+                          {pkg.isCategory && !pkg.isBundle && (
                             <div className="absolute top-2 right-2 bg-[#5356ff] text-white text-[10px] font-bold px-2 py-1 rounded uppercase">
                               Category
                             </div>
@@ -224,11 +229,15 @@ function SearchResults() {
                         <span
                           className={`text-[11px] font-bold ${isFree
                             ? "text-emerald-700 bg-emerald-50 border border-emerald-200"
+                            : pkg.isBundle
+                            ? "text-[#5356ff] bg-indigo-50 border border-indigo-100"
                             : "text-[#808080] bg-[#e0e0e0]"
                             } px-3 py-1 rounded-full uppercase tracking-wide mb-3`}
                         >
                           {pkg.isCategory
                             ? "Service Category"
+                            : pkg.isBundle
+                            ? "Bundle"
                             : (isFree ? "Free Package" : (pkg.type || "Package"))}
                         </span>
                         <h3 className="text-xl font-bold text-[#646464] mb-3 leading-tight group-hover:text-[#5356ff] transition-colors">

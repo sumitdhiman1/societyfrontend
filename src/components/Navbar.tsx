@@ -622,7 +622,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
             </div>
 
             {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute top-full left-4 right-4 mt-1 bg-white rounded-md shadow-xl border border-gray-100 overflow-hidden z-[100]">
+              <div className="absolute top-full left-4 right-4 mt-1 bg-white rounded-md shadow-xl border border-gray-100 overflow-y-auto max-h-[380px] z-[100]">
                 <ul className="py-2">
                   {suggestions.map((item, i) => (
                     <li key={i}>
@@ -877,7 +877,7 @@ export default function Navbar({ hideMenu = false }: { hideMenu?: boolean }) {
 
               {/* Suggestions dropdown */}
               {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute top-full left-5 right-5 mt-1 bg-white rounded-md shadow-xl border border-gray-100 overflow-hidden z-50">
+                <div className="absolute top-full left-5 right-5 mt-1 bg-white rounded-md shadow-xl border border-gray-100 overflow-y-auto max-h-[350px] z-50">
                   <ul className="py-2">
                     {suggestions.map((item, i) => (
                       <li key={i}>
