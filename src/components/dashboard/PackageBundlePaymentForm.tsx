@@ -77,6 +77,7 @@ export interface PackageBundlePaymentFormProps {
   onDownloadInvoice?: () => void | Promise<void>;
   isDownloadingInvoice?: boolean;
   onPaymentSuccess?: () => void | Promise<void>;
+  children?: React.ReactNode;
 }
 
 function PackageBundlePaymentFormContent({
@@ -106,7 +107,9 @@ function PackageBundlePaymentFormContent({
   onDownloadInvoice,
   isDownloadingInvoice: propIsDownloadingInvoice,
   onPaymentSuccess,
+  children,
 }: PackageBundlePaymentFormProps & { hideHeader?: boolean }) {
+  const isPackagePage = type === "PACKAGE";
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
@@ -980,8 +983,7 @@ function PackageBundlePaymentFormContent({
                     if (formErrors.cardHolderName) setFormErrors((prev: any) => ({ ...prev, cardHolderName: "" }));
                   }}
                   placeholder="John Allen Doe"
-                  className={`w-full bg-gray-100 border ${formErrors.cardHolderName ? "border-red-500 ring-1 ring-red-500" : "border-none"
-                    } rounded-md px-4 py-3 text-sm text-gray-800 placeholder-gray-400 focus:ring-1 focus:ring-gray-300 transition-shadow outline-none`}
+                  className={isPackagePage ? `w-full bg-white border ${formErrors.cardHolderName ? "border-red-500 ring-1 ring-red-500" : "border-gray-300"} rounded-md px-4 h-11 flex items-center text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-gray-400 transition-colors` : `w-full bg-gray-100 border ${formErrors.cardHolderName ? "border-red-500 ring-1 ring-red-500" : "border-none"} rounded-md px-4 py-3 text-sm text-gray-800 placeholder-gray-400 focus:ring-1 focus:ring-gray-300 transition-shadow outline-none`}
                 />
                 {formErrors.cardHolderName && (
                   <span className="text-[10px] text-red-500 font-bold mt-1 block">{formErrors.cardHolderName}</span>
@@ -1091,8 +1093,7 @@ function PackageBundlePaymentFormContent({
               <div>
                 <label className="block text-[15px] font-medium text-[#111827] mb-2">Card number:</label>
                 <div
-                  className={`w-full bg-gray-100 border h-[43px] ${formErrors.cardNumber ? "border-red-500 ring-1 ring-red-500" : "border-none"
-                    } rounded-md px-4 py-3 text-sm focus-within:ring-1 focus-within:ring-gray-300 transition-shadow`}
+                  className={`w-full ${isPackagePage ? "bg-white border border-gray-300 h-11" : "bg-gray-100 border h-[43px]"} ${formErrors.cardNumber ? "border-red-500 ring-1 ring-red-500" : isPackagePage ? "border-gray-300" : "border-none"} rounded-md px-4 flex items-center text-sm ${isPackagePage ? "focus-within:border-gray-400" : "focus-within:ring-1 focus-within:ring-gray-300"} transition-shadow`}
                 >
                   <CardNumberElement
                     options={{ ...stripeElementOptions, showIcon: true }}
@@ -1112,8 +1113,7 @@ function PackageBundlePaymentFormContent({
                 <div>
                   <label className="block text-[15px] font-medium text-[#111827] mb-2">Expiry date:</label>
                   <div
-                    className={`w-full bg-gray-100 border h-[43px] ${formErrors.cardExpiry ? "border-red-500 ring-1 ring-red-500" : "border-none"
-                      } rounded-md px-4 py-3 text-sm focus-within:ring-1 focus-within:ring-gray-300 transition-shadow`}
+                    className={`w-full ${isPackagePage ? "bg-white border border-gray-300 h-11" : "bg-gray-100 border h-[43px]"} ${formErrors.cardExpiry ? "border-red-500 ring-1 ring-red-500" : isPackagePage ? "border-gray-300" : "border-none"} rounded-md px-4 flex items-center text-sm ${isPackagePage ? "focus-within:border-gray-400" : "focus-within:ring-1 focus-within:ring-gray-300"} transition-shadow`}
                   >
                     <CardExpiryElement
                       options={stripeElementOptions}
@@ -1131,8 +1131,7 @@ function PackageBundlePaymentFormContent({
                 <div>
                   <label className="block text-[15px] font-medium text-[#111827] mb-2">CVC:</label>
                   <div
-                    className={`w-full bg-gray-100 border h-[43px] ${formErrors.cardCvc ? "border-red-500 ring-1 ring-red-500" : "border-none"
-                      } rounded-md px-4 py-3 text-sm focus-within:ring-1 focus-within:ring-gray-300 transition-shadow`}
+                    className={`w-full ${isPackagePage ? "bg-white border border-gray-300 h-11" : "bg-gray-100 border h-[43px]"} ${formErrors.cardCvc ? "border-red-500 ring-1 ring-red-500" : isPackagePage ? "border-gray-300" : "border-none"} rounded-md px-4 flex items-center text-sm ${isPackagePage ? "focus-within:border-gray-400" : "focus-within:ring-1 focus-within:ring-gray-300"} transition-shadow`}
                   >
                     <CardCvcElement
                       options={stripeElementOptions}
@@ -1173,7 +1172,7 @@ function PackageBundlePaymentFormContent({
           ) : null}
 
           {!stripePromise && (
-            <div className="p-3 mb-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+            <div className="mt-4 p-3 mb-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
               <span>⚠️ Stripe is not initialized. Please configure <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> in environment.</span>
             </div>
           )}
@@ -1181,7 +1180,7 @@ function PackageBundlePaymentFormContent({
           <button
             onClick={handleSubmit}
             disabled={isProcessing || !stripe || !elements || !stripePromise}
-            className="w-full bg-[#1e293b] hover:bg-[#0f172a] text-white font-medium py-3 rounded-md transition-colors text-sm mt-4 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className={`w-full ${isPackagePage ? "bg-[#3535b8] hover:bg-[#2a2a9a] cursor-pointer" : "bg-[#1e293b] hover:bg-[#0f172a]"} text-white font-medium py-3 rounded-md transition-colors text-sm mt-4 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
           >
             {isProcessing ? (
               <>
@@ -1200,13 +1199,15 @@ function PackageBundlePaymentFormContent({
               `Pay ${formatActiveCurrency(finalPayable, currency)} now`
             )}
           </button>
+
+          {children}
         </div>
       )}
     </div>
   );
 }
 
-export default function PackageBundlePaymentForm(props: PackageBundlePaymentFormProps & { hideHeader?: boolean }) {
+export default function PackageBundlePaymentForm(props: PackageBundlePaymentFormProps & { hideHeader?: boolean; children?: React.ReactNode }) {
   return (
     <Elements stripe={stripePromise}>
       <PackageBundlePaymentFormContent {...props} />

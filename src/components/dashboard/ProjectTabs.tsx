@@ -351,39 +351,40 @@ export default function ProjectTabs() {
                   key={p.id}
                   className="bg-white rounded-[6px] p-6 lg:p-8 shadow-[0px_5px_25px_#0000000D] w-full min-h-[221px] flex flex-col justify-between hover:shadow-lg transition-shadow"
                 >
-                  <div className="flex items-start justify-between gap-2 mb-6 lg:mb-4">
-                    <h3 className="text-[26px] md:text-[22px] lg:text-[20px] xl:text-[22px] font-bold text-[#363636] lg:text-[#1A202C] leading-[32px] md:leading-[30px] lg:leading-[26px] xl:leading-[30px] line-clamp-2">
+                  <div className="flex items-start justify-between gap-2 mb-4 lg:mb-4">
+                    <h3 className="text-[22px] md:text-[22px] lg:text-[20px] xl:text-[22px] font-bold text-[#363636] lg:text-[#1A202C] leading-[28px] md:leading-[30px] lg:leading-[26px] xl:leading-[30px] line-clamp-2">
                       {p.name}
                     </h3>
                   </div>
-                  <div className="flex flex-col w-full gap-8 lg:gap-4">
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3 xl:gap-4 flex-1">
-                      <div className="flex flex-col gap-1">
-                        <p className="text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
+                  <div className="flex flex-col w-full gap-6 sm:gap-8 lg:gap-4">
+                    <div className="grid grid-cols-3 flex-1 lg:gap-3 xl:gap-4">
+                      <div className="flex flex-col gap-1 pr-2.5 sm:pr-3 border-r border-gray-200 lg:border-r-0 lg:pr-0">
+                        <p className="text-[#4343F0] text-[13px] font-bold">
                           Project #
                         </p>
-                        <p className="text-[#363636] text-[13px] xl:text-[15px] font-medium leading-[18px]">
+                        <p className="text-[#363636] text-[14px] xl:text-[15px] font-medium leading-[18px] truncate">
                           {p.number}
                         </p>
                       </div>
-                      <div className="flex flex-col gap-1">
-                        <p className="text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
+                      <div className="flex flex-col gap-1 px-2.5 sm:px-3 border-r border-gray-200 lg:border-r-0 lg:px-0">
+                        <p className="text-[#4343F0] text-[13px] font-bold">
                           Started
                         </p>
-                        <p className="text-[#363636] text-[13px] xl:text-[15px] font-medium leading-[18px]">
+                        <p className="text-[#363636] text-[14px] xl:text-[15px] font-medium leading-[18px] truncate">
                           {p.started}
                         </p>
                       </div>
-                      <div className="flex flex-col gap-1">
-                        <p className="text-[#4343F0] text-[11px] xl:text-[13px] font-bold">
-                          Estimated Deadline
+                      <div className="flex flex-col gap-1 pl-2.5 sm:pl-3 lg:pl-0">
+                        <p className="text-[#4343F0] text-[13px] font-bold">
+                          <span className="lg:hidden">Deadline</span>
+                          <span className="hidden lg:inline">Estimated Deadline</span>
                         </p>
-                        <p className="text-[#363636] text-[13px] xl:text-[15px] font-medium leading-[18px]">
+                        <p className="text-[#363636] text-[14px] xl:text-[15px] font-medium leading-[18px] truncate">
                           {p.deadline}
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-4 lg:gap-[16px] items-center justify-start lg:justify-end w-full">
+                    <div className="flex items-center justify-between lg:justify-end w-full lg:gap-[16px]">
                       <button
                         onClick={() => {
                           const base = (p.infoUrl || `/dashboard/my-projects/${p.id}`).replace(/\/details\/?$/, "").replace(/\/$/, "");
@@ -392,7 +393,7 @@ export default function ProjectTabs() {
                             window.dispatchEvent(new CustomEvent("navigate-to-messages"));
                           }
                         }}
-                        className="bg-[#E3E6F5] text-[#4343F0] flex-1 lg:flex-none lg:w-[105px] lg:h-[38px] py-3 lg:py-0 rounded-[8px] lg:rounded-[6px] text-[14px] lg:text-[13px] font-bold relative hover:bg-[#d4d8f0] lg:hover:bg-[#cdd1ec] transition-colors cursor-pointer"
+                        className="bg-[#ECEEFE] text-[#4343F0] min-w-[122px] lg:min-w-0 lg:w-[105px] py-[16px] px-[30px] lg:py-0 lg:px-0 lg:h-[38px] rounded-[6px] text-[12px] lg:text-[13px] font-semibold lg:font-bold relative hover:bg-[#d4d8f0] lg:hover:bg-[#cdd1ec] transition-colors cursor-pointer flex items-center justify-center"
                       >
                         {p.messages > 0 && (
                           <span className="absolute -top-[10px] -left-[10px] bg-[#363636] text-white rounded-full w-[24px] h-[24px] flex items-center justify-center text-[12px] font-bold">
@@ -403,7 +404,7 @@ export default function ProjectTabs() {
                       </button>
                       <button
                         onClick={() => router.push(p.infoUrl)}
-                        className="bg-[#E3E6F5] text-[#4343F0] flex-1 lg:flex-none lg:w-[75px] lg:h-[38px] py-3 lg:py-0 rounded-[8px] lg:rounded-[6px] text-[14px] lg:text-[13px] font-bold hover:bg-[#d4d8f0] lg:hover:bg-[#cdd1ec] transition-colors"
+                        className="bg-[#ECEEFE] text-[#4343F0] min-w-[122px] lg:min-w-0 lg:w-[75px] py-[16px] px-[30px] lg:py-0 lg:px-0 lg:h-[38px] rounded-[6px] text-[12px] lg:text-[13px] font-semibold lg:font-bold hover:bg-[#d4d8f0] lg:hover:bg-[#cdd1ec] transition-colors cursor-pointer flex items-center justify-center"
                       >
                         Info
                       </button>
