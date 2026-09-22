@@ -1053,7 +1053,7 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; line-height: 1.4;">
               <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Status:</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${d.amountPaid >= d.totalPrice && d.totalPrice > 0 ? "PAID" : d.amountPaid > 0 ? "PARTIALLY PAID" : "DUE"}</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${Number(d.amountPaid || 0) >= Number(d.totalPrice || 0) && Number(d.totalPrice || 0) > 0 ? "PAID" : Number(d.amountPaid || 0) > 0 ? "PARTIALLY PAID" : "DUE"}</span>
             </div>
             `
                 : d.isProject
