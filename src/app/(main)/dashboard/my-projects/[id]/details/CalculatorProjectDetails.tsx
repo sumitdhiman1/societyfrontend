@@ -460,6 +460,17 @@ export default function CalculatorProjectDetails({
     ...activeProject,
     calculatorSpecs: specs,
     quote: linkedQuote,
+    currency: activeDisplayCurrency.toUpperCase(),
+    targetCurrency: activeDisplayCurrency.toUpperCase(),
+    sourceCurrency: projectNativeCurrency.toUpperCase(),
+    nativeCurrency: projectNativeCurrency.toUpperCase(),
+    conversionRate,
+    totalPrice: computedTotalCost,
+    subtotal: totalSubtotal,
+    vatAmount: effectiveVatAmount,
+    vatRate,
+    amountPaid,
+    pendingBalance,
   };
 
   const scrollToBottomMessages = useCallback((behavior: ScrollBehavior = "smooth") => {

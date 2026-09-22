@@ -1417,6 +1417,8 @@ export default function ProjectDetailsPage() {
                           ...project,
                           calculatorSpecs: project?.calculatorSpecs || fetchedQuote?.requirements || fetchedQuote?.calculatorSpecs,
                           quote: fetchedQuote || (typeof project?.quoteId === "object" ? project?.quoteId : null),
+                          currency: (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || project?.currency || "USD").toUpperCase(),
+                          targetCurrency: (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || project?.currency || "USD").toUpperCase(),
                         };
                         await downloadCalculatorProjectPDF(projectPayloadForPdf);
                       } else {
@@ -1461,6 +1463,8 @@ export default function ProjectDetailsPage() {
                         ...project,
                         calculatorSpecs: project?.calculatorSpecs || fetchedQuote?.requirements || fetchedQuote?.calculatorSpecs,
                         quote: fetchedQuote || (typeof project?.quoteId === "object" ? project?.quoteId : null),
+                        currency: (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || project?.currency || "USD").toUpperCase(),
+                        targetCurrency: (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || project?.currency || "USD").toUpperCase(),
                       };
                       printCalculatorProjectPDF(projectPayloadForPdf);
                     } else {

@@ -1,6 +1,7 @@
 import { authService } from "./authService";
 import { countryService } from "./countryService";
 import { getVatRateForCountry } from "./vatHelper";
+import { convertCurrencyAmount } from "./currencyUtils";
 import type { CalculatorSelection } from "./priceCalculatorService";
 import {
   calculateGraphicsRawTimelineDays,
@@ -546,9 +547,90 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
   let validUntilDate = formatPdfDate(validUntilObj);
   
 
-  const currency = (data.currency || "USD").toUpperCase();
+  let activeContextRate: number | undefined = undefined;
+  let activeContextCurrency = "";
+  try {
+    if (typeof window !== "undefined") {
+      const storedRate = localStorage.getItem("app-conversion-rate");
+      if (storedRate && !isNaN(Number(storedRate)) && Number(storedRate) > 0) {
+        activeContextRate = Number(storedRate);
+      }
+      const storedCurr = localStorage.getItem("app-currency");
+      if (storedCurr && storedCurr.trim()) {
+        activeContextCurrency = storedCurr.trim().toUpperCase();
+      }
+    }
+  } catch {}
 
-  const rawTotalPrice = Number(
+  const sourceCurrency = (
+    data.sourceCurrency ||
+    data.nativeCurrency ||
+    data.projectNativeCurrency ||
+    data.quote?.currency ||
+    data.quoteId?.currency ||
+    data.calculatorSpecs?.currency ||
+    data.requirements?.currency ||
+    data.chargedCurrency ||
+    (data.currencySymbol === "€" ? "EUR" : data.currencySymbol === "$" ? "USD" : "") ||
+    data.currency ||
+    "USD"
+  ).toUpperCase();
+
+  const targetCurrency = (
+    data.targetCurrency ||
+    data.activeCurrency ||
+    data.selectedCurrency ||
+    data.currency ||
+    activeContextCurrency ||
+    sourceCurrency
+  ).toUpperCase();
+
+  const conversionRate = Number(
+    data.conversionRate ||
+    activeContextRate ||
+    data.exchangeRate ||
+    1.14776
+  );
+
+  const convert = (amt: number): number => {
+    if (!amt || !Number.isFinite(amt) || amt === 0) return 0;
+    return convertCurrencyAmount(amt, targetCurrency, sourceCurrency, conversionRate);
+  };
+
+  const currency = targetCurrency;
+
+  const explicitVatRate = Number(
+    data.vatRate ??
+      data.vatPercentage ??
+      data.quote?.vatRate ??
+      data.quote?.vatPercentage ??
+      data.quoteId?.vatRate ??
+      data.quoteId?.vatPercentage ??
+      (data.taxPercentage != null ? data.taxPercentage : 0)
+  ) || 0;
+
+  let loggedUserCountry = "";
+  try {
+    const user = authService.getUser();
+    loggedUserCountry = user?.country || user?.clientCountry || user?.billingCountry || "";
+  } catch {}
+
+  const countryStr = String(
+    data.clientCountry ||
+      data.country ||
+      data.client?.country ||
+      data.client?.clientCountry ||
+      data.quote?.clientCountry ||
+      data.quote?.country ||
+      data.quoteId?.clientCountry ||
+      data.quoteId?.country ||
+      loggedUserCountry ||
+      ""
+  );
+  // VAT applies for explicit vatRate or Estonian clients (24%)
+  const vatRate = explicitVatRate > 0 ? explicitVatRate : getVatRateForCountry(countryStr);
+
+  const rawTotalPriceInput = Number(
     data.totalPrice ??
     data.totalCost ??
     data.price ??
@@ -557,6 +639,16 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     data.amountPaid ??
     0
   );
+
+  const rawSubtotalInput = data.subtotal !== undefined && Number(data.subtotal) > 0
+    ? Number(data.subtotal)
+    : 0;
+
+  const rawAmountPaidInput = Number(data.amountPaid || 0);
+
+  const convertedTotalPrice = convert(rawTotalPriceInput);
+  const convertedSubtotal = convert(rawSubtotalInput);
+  const convertedAmountPaid = convert(rawAmountPaidInput);
 
   const selectedOptions: Array<{ question: string; answers: string[] }> = [];
   const isCalculatorEstimatePdf =
@@ -632,10 +724,10 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
           continue;
         }
 
-        // Strip trailing price like ": $9600" or " - $9600" or ": $800.00"
+        // Strip trailing price like ": $9600" or ": €1690" or " - $9600" or ": $800.00"
         const withoutPrice = cleanLine
-          .replace(/:\s*\$[\d,]+(\.\d+)?$/i, "")
-          .replace(/\s*-\s*\$[\d,]+(\.\d+)?$/i, "")
+          .replace(/:\s*[\$€£]?\s*[\d,]+(\.\d+)?\s*[\$€£]?$/i, "")
+          .replace(/\s*-\s*[\$€£]?\s*[\d,]+(\.\d+)?\s*[\$€£]?$/i, "")
           .trim();
 
         if (withoutPrice.includes("?")) {
@@ -777,7 +869,21 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     }
   }
 
-  const totalPrice = rawTotalPrice > 0 ? rawTotalPrice : Number(data.amountPaid || 0);
+  const rawSubtotal = convertedSubtotal > 0
+    ? convertedSubtotal
+    : (vatRate > 0 && convertedTotalPrice > 0
+        ? Math.round((convertedTotalPrice / (1 + vatRate / 100)) * 100) / 100
+        : convertedTotalPrice);
+
+  const vatAmount = data.vatAmount !== undefined && Number(data.vatAmount) > 0 && targetCurrency === sourceCurrency
+    ? Number(data.vatAmount)
+    : (vatRate > 0 && rawSubtotal > 0 ? Math.round((rawSubtotal * (vatRate / 100)) * 100) / 100 : 0);
+
+  const totalPrice = convertedTotalPrice > 0
+    ? (targetCurrency === sourceCurrency && convertedTotalPrice > 0
+        ? convertedTotalPrice
+        : Math.round((rawSubtotal + vatAmount) * 100) / 100)
+    : (rawSubtotal > 0 ? Math.round((rawSubtotal + vatAmount) * 100) / 100 : convertedAmountPaid);
 
   let formattedPrice = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -806,9 +912,10 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     formattedPrice = `${formattedPrice} /month`;
   }
 
-  const scopeOverviewLead = isCalculatorEstimatePdf
-    ? stripCalculatorHtml(getMainCalculatorCategory(categoryKey, categoryName))
-    : "";
+  const scopeOverviewLead =
+    data.scopeOverviewLead ||
+    stripCalculatorHtml(getMainCalculatorCategory(categoryKey, categoryName)) ||
+    "";
 
   let resolvedClientName = clientName;
   let resolvedClientEmail = clientEmail;
@@ -863,39 +970,6 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     return upper === "EE" || upper === "EST" || upper === "ESTONIA";
   };
 
-  const explicitVatRate = Number(
-    data.vatRate ??
-      data.vatPercentage ??
-      data.quoteId?.vatRate ??
-      data.quoteId?.vatPercentage ??
-      (data.taxPercentage != null ? data.taxPercentage : 0)
-  ) || 0;
-
-  let loggedUserCountry = "";
-  try {
-    const user = authService.getUser();
-    loggedUserCountry = user?.country || user?.clientCountry || user?.billingCountry || "";
-  } catch {}
-
-  const countryStr = String(
-    data.clientCountry ||
-      data.country ||
-      data.client?.country ||
-      data.client?.clientCountry ||
-      data.quoteId?.clientCountry ||
-      data.quoteId?.country ||
-      loggedUserCountry ||
-      ""
-  );
-  // VAT applies for explicit vatRate or Estonian clients (24%)
-  const vatRate = explicitVatRate > 0 ? explicitVatRate : getVatRateForCountry(countryStr);
-  const rawSubtotal = data.subtotal !== undefined && Number(data.subtotal) > 0
-    ? Number(data.subtotal)
-    : (vatRate > 0 && totalPrice > 0 ? Math.round((totalPrice / (1 + vatRate / 100)) * 100) / 100 : totalPrice);
-  const vatAmount = data.vatAmount !== undefined && Number(data.vatAmount) > 0
-    ? Number(data.vatAmount)
-    : (vatRate > 0 && rawSubtotal > 0 ? Math.round((rawSubtotal * (vatRate / 100)) * 100) / 100 : 0);
-
   const formattedSubtotal = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency,
@@ -910,9 +984,9 @@ export function extractCalculatorPDFData(data: any): CalculatorPDFData {
     maximumFractionDigits: 2,
   }).format(vatAmount);
 
-  const rawAmountPaid = Number(data.amountPaid || 0);
-  const amountPaid = rawAmountPaid > 0 ? rawAmountPaid : 0;
-  const pendingBalance = Math.max(0, Math.round((totalPrice - amountPaid) * 100) / 100);
+  const amountPaid = convertedAmountPaid > 0 ? convertedAmountPaid : 0;
+  const isPaidInFull = (totalPrice > 0 && amountPaid >= totalPrice - 0.05) || (data.pendingBalance === 0 && amountPaid > 0);
+  const pendingBalance = isPaidInFull ? 0 : Math.max(0, Math.round((totalPrice - amountPaid) * 100) / 100);
 
   const formattedAmountPaid = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -976,7 +1050,7 @@ const LOGO_SVG = `<img width="158" height="50" src="/images/logo.svg" style="dis
 
 function renderSelectedOptionsList(options: Array<{ question: string; answers: string[] }>, isFirstPage: boolean = true): string {
   if (!options.length) return "";
-  const marginTop = isFirstPage ? "20px" : "0px";
+  const marginTop = "0px";
   return `
     <div style="display: flex; flex-direction: column; gap: 15px; margin-top: ${marginTop}; margin-bottom: 20px;">
       ${options
@@ -1135,17 +1209,17 @@ function paginateCalculatorPDF(
 
   // Exact component heights
   const summaryCardHeight = hasVat ? 215 : 135;
-  const footerHeight = 95;
-  const bottomBlockHeight = summaryCardHeight + footerHeight; // ~310px with VAT, ~230px no VAT
+  const footerHeight = 115;  // actual footer renders ~115px (3 text lines + company name + divider)
+  const bottomBlockHeight = summaryCardHeight + footerHeight; // ~330px with VAT, ~250px no VAT
 
   // Maximum content heights for options:
   // Printable area: 1123px - 64px(top) - 48px(bottom) = 1011px.
-  // Page 1 header overhead is ~230px.
-  const page1MaxOptionsSinglePage = 1011 - 230 - bottomBlockHeight - 20; // ~451px with VAT, ~531px no VAT
+  // Page 1 header overhead is ~230px. Extra 20px safety buffer.
+  const page1MaxOptionsSinglePage = 1011 - 230 - bottomBlockHeight - 40; // ~411px with VAT, ~491px no VAT
   const page1MaxOptionsOnly = 1011 - 230 - 30; // ~751px
 
   // Subsequent pages have 0px header overhead.
-  const subsequentMaxOptionsWithSummaryAndFooter = 1011 - bottomBlockHeight - 30; // ~671px with VAT, ~751px no VAT
+  const subsequentMaxOptionsWithSummaryAndFooter = 1011 - bottomBlockHeight - 30; // ~651px with VAT, ~731px no VAT
   const subsequentMaxOptionsOnly = 1011 - 40; // ~971px
 
   // Case 1: Everything fits comfortably on Page 1 (1-page PDF)
@@ -1232,7 +1306,7 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
       page-break-after: ${isLastPage ? "auto" : "always"};
       break-after: ${isLastPage ? "auto" : "page"};
     ">
-      <div style="width: 100%; display: flex; flex-direction: column; flex: 1;">
+      <div style="width: 100%; display: flex; flex-direction: column;">
         ${
           isFirstPage
             ? `
@@ -1330,7 +1404,7 @@ export function getCalculatorProjectHTML(d: CalculatorPDFData): string {
             ? `
         <!-- ── Subtitle / Scope Overview ── -->
         <div style="margin-top: 18px; margin-bottom: 12px;">
-          <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 13px; color: #2A2AA0;">${d.scopeOverviewLead || d.subtitle}</div>
+          <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 15px; line-height: 1.35; color: #2A2AA0;">${d.scopeOverviewLead || d.subtitle}</div>
         </div>`
             : `<div style="margin-top: 18px;"></div>`
         }

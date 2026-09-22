@@ -492,14 +492,24 @@ export default function CalculatorProjectPayments({
     linkedQuote?.paymentOption === "half" ||
     (combinedPayments || []).some((p: any) => p?.metadata?.isDeposit === "true" || p?.metadata?.paymentOption === "half");
 
-  if (isDepositHalf && amountPaid > 0 && Math.abs(computedTotalCost - (amountPaid * 2)) <= 15) {
-    computedTotalCost = Math.round(amountPaid * 2 * 100) / 100;
+  const isBothHalvesPaid =
+    amountPaid > 0 &&
+    (Math.abs(computedTotalCost - amountPaid) <= 15 ||
+      Math.abs(computedTotalCost - amountPaid * (conversionRate || 1.14776)) <= 15 ||
+      amountPaid >= computedTotalCost - 1.0);
+
+  if (isDepositHalf && amountPaid > 0) {
+    if (isBothHalvesPaid) {
+      computedTotalCost = amountPaid;
+    } else if (Math.abs(computedTotalCost - (amountPaid * 2)) <= 15 || Math.abs(computedTotalCost - (amountPaid * 2 * (conversionRate || 1.14776))) <= 15) {
+      computedTotalCost = Math.round(amountPaid * 2 * 100) / 100;
+    }
   }
 
   const totalProjectCost = computedTotalCost;
   const calculatedPending = Math.max(0, Math.round((totalProjectCost - amountPaid) * 100) / 100);
 
-  const isActuallyPaidInFull = totalProjectCost > 0 && amountPaid >= totalProjectCost - 0.009;
+  const isActuallyPaidInFull = totalProjectCost > 0 && (amountPaid >= totalProjectCost - 0.05 || isBothHalvesPaid);
 
   const pendingBalance = isActuallyPaidInFull
     ? 0
@@ -612,6 +622,17 @@ export default function CalculatorProjectPayments({
     ...activeProject,
     calculatorSpecs: specs,
     quote: linkedQuote,
+    currency,
+    targetCurrency: currency,
+    sourceCurrency: projectNativeCurrency.toUpperCase(),
+    nativeCurrency: projectNativeCurrency.toUpperCase(),
+    conversionRate,
+    totalPrice: computedTotalCost,
+    subtotal: totalSubtotal,
+    vatAmount: effectiveVatAmount,
+    vatRate,
+    amountPaid,
+    pendingBalance,
   };
 
   const handleDownloadProject = async (e: React.MouseEvent) => {
@@ -711,11 +732,12 @@ export default function CalculatorProjectPayments({
               successRedirectUrl={`/dashboard/my-projects/${projectId}/payments?success=true`}
               amountPaid={amountPaid}
               isFullyPaid={isFullyPaid}
-              nativeCurrency={projectNativeCurrency || "USD"}
+              nativeCurrency={(projectNativeCurrency || activeProject.currency || "USD").toUpperCase()}
               vatRate={vatRate}
               invoiceId={searchInvoiceId}
               onDownloadInvoice={handleViewInvoice}
               isDownloadingInvoice={isDownloadingInvoice}
+              useCalculatorEndpoints={true}
               metadata={{
                 invoiceId: searchInvoiceId,
                 invoiceNumber: searchInvoiceNumber,

@@ -11,6 +11,7 @@ import {
   CardCvcElement,
 } from "@stripe/react-stripe-js";
 import { paymentService } from "@/lib/paymentService";
+import { calculatorPaymentService } from "@/lib/calculatorPaymentService";
 import { authService } from "@/lib/authService";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -72,6 +73,7 @@ interface UnifiedPaymentFormProps {
   onDownloadInvoice?: () => void | Promise<void>;
   isDownloadingInvoice?: boolean;
   onPaymentSuccess?: () => void | Promise<void>;
+  useCalculatorEndpoints?: boolean;
 }
 
 function PaymentForm({
@@ -101,11 +103,14 @@ function PaymentForm({
   onDownloadInvoice,
   isDownloadingInvoice: propIsDownloadingInvoice,
   onPaymentSuccess,
-}: UnifiedPaymentFormProps & { hideHeader?: boolean }) {
+  useCalculatorEndpoints = false,
+}: UnifiedPaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const activePaymentService = useCalculatorEndpoints ? calculatorPaymentService : paymentService;
 
   const queryAmount = searchParams?.get("amount");
   const hasQueryAmount = !!(queryAmount && !isNaN(Number(queryAmount)) && Number(queryAmount) > 0);
@@ -447,7 +452,7 @@ function PaymentForm({
       const currentVatAmount = getVatAmount(currentPayableSubtotal);
 
       setPaymentStep("gateway");
-      const intentResponse = await paymentService.createPaymentIntent({
+      const intentResponse = await activePaymentService.createPaymentIntent({
         amount: finalAmount,
         currency,
         useCredits,
@@ -582,7 +587,7 @@ function PaymentForm({
 
     if (confirmResponse.paymentIntent?.status === "succeeded") {
       setPaymentStep("confirming");
-      const confirmResult = await paymentService.confirmPayment({ transactionId });
+      const confirmResult = await activePaymentService.confirmPayment({ transactionId });
       if (confirmResult.isSuccessful) {
         setPaymentStep("activating");
         await new Promise((r) => setTimeout(r, 600));
