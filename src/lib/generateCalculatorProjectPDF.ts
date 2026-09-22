@@ -1209,25 +1209,51 @@ function paginateCalculatorPDF(
 
   // Exact component heights
   const summaryCardHeight = hasVat ? 215 : 135;
-  const footerHeight = 115;  // actual footer renders ~115px (3 text lines + company name + divider)
-  const bottomBlockHeight = summaryCardHeight + footerHeight; // ~330px with VAT, ~250px no VAT
+  const footerHeight = 115;
+  const bottomBlockHeight = summaryCardHeight + footerHeight;
 
   // Maximum content heights for options:
   // Printable area: 1123px - 64px(top) - 48px(bottom) = 1011px.
-  // Page 1 header overhead is ~230px. Extra 20px safety buffer.
-  const page1MaxOptionsSinglePage = 1011 - 230 - bottomBlockHeight - 40; // ~411px with VAT, ~491px no VAT
-  const page1MaxOptionsOnly = 1011 - 230 - 30; // ~751px
+  // Page 1 header overhead is ~290px (logo + client details box + scope lead).
+  
+  // 1. Single page capacity (Options + Summary Card + Footer all on Page 1):
+  // When options are short, everything fits on one page cleanly.
+  const page1MaxOptionsWithSummaryAndFooter = hasVat ? 150 : 260;
 
-  // Subsequent pages have 0px header overhead.
-  const subsequentMaxOptionsWithSummaryAndFooter = 1011 - bottomBlockHeight - 30; // ~651px with VAT, ~731px no VAT
+  // 2. Options + Summary Card capacity on Page 1 (Footer moves to Page 2):
+  // When options + summary card fit on Page 1, keep the payment box on Page 1.
+  const page1MaxOptionsWithSummary = 1011 - 290 - summaryCardHeight - 30; // ~476px with VAT, ~556px without VAT
+
+  // 3. Options ONLY capacity on Page 1 (Summary Card + Footer move to Page 2):
+  const page1MaxOptionsOnly = 1011 - 290 - 30; // ~691px
+
+  // Subsequent pages (no header overhead)
+  const subsequentMaxOptionsWithSummaryAndFooter = 1011 - bottomBlockHeight - 40; // ~641px
+  const subsequentMaxOptionsWithSummary = 1011 - summaryCardHeight - 30; // ~766px
   const subsequentMaxOptionsOnly = 1011 - 40; // ~971px
 
-  // Case 1: Everything fits comfortably on Page 1 (1-page PDF)
-  if (totalOptionsHeight <= page1MaxOptionsSinglePage) {
+  // Case 1: Everything (Options + Summary Box + Footer) fits comfortably on Page 1
+  if (totalOptionsHeight <= page1MaxOptionsWithSummaryAndFooter) {
     return [{ pageOptions: options, hasSummaryCard: true }];
   }
 
-  // Case 2: Multi-page document needed. Fill each page to maximum capacity.
+  // Case 2: Options + Summary Box fit on Page 1, but Footer needs its own page
+  if (totalOptionsHeight <= page1MaxOptionsWithSummary) {
+    return [
+      { pageOptions: options, hasSummaryCard: true },
+      { pageOptions: [], hasSummaryCard: false },
+    ];
+  }
+
+  // Case 3: Options fit on Page 1, but Summary Box + Footer must go to Page 2
+  if (totalOptionsHeight <= page1MaxOptionsOnly) {
+    return [
+      { pageOptions: options, hasSummaryCard: false },
+      { pageOptions: [], hasSummaryCard: true },
+    ];
+  }
+
+  // Case 4: Multi-page options (> page1MaxOptionsOnly). Fill each page to maximum capacity.
   const pages: PDFPageItem[] = [];
   let currentOptions: Array<{ question: string; answers: string[] }> = [];
   let currentHeight = 0;
@@ -1249,22 +1275,18 @@ function paginateCalculatorPDF(
     }
   }
 
-  // Determine summary card placement for the final page:
-  const isSinglePageOfOptions = pages.length === 0;
-
-  if (isSinglePageOfOptions) {
-    // All options fit on Page 1, but adding Summary Card + Footer overflows Page 1.
-    // Page 1 keeps ALL options, and Page 2 gets the Summary Card + Footer.
+  // Final options page handling:
+  if (currentHeight <= subsequentMaxOptionsWithSummaryAndFooter) {
+    // Fits remaining options + summary card + footer on this page
+    pages.push({ pageOptions: currentOptions, hasSummaryCard: true });
+  } else if (currentHeight <= subsequentMaxOptionsWithSummary) {
+    // Fits remaining options + summary card, footer moves to next page
+    pages.push({ pageOptions: currentOptions, hasSummaryCard: true });
+    pages.push({ pageOptions: [], hasSummaryCard: false });
+  } else {
+    // Summary card and footer move to next page
     pages.push({ pageOptions: currentOptions, hasSummaryCard: false });
     pages.push({ pageOptions: [], hasSummaryCard: true });
-  } else {
-    // Multiple pages of options: check if the remaining options on the last page fit with the summary card
-    if (currentHeight <= subsequentMaxOptionsWithSummaryAndFooter) {
-      pages.push({ pageOptions: currentOptions, hasSummaryCard: true });
-    } else {
-      pages.push({ pageOptions: currentOptions, hasSummaryCard: false });
-      pages.push({ pageOptions: [], hasSummaryCard: true });
-    }
   }
 
   return pages;
