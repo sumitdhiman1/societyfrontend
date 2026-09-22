@@ -189,12 +189,35 @@ export function extractBundlePDFData(data: any): BundlePDFData {
   const projectNumber = rawProjectNumber.startsWith("#") ? rawProjectNumber : `#${rawProjectNumber}`;
   const referenceNumber = projectNumber;
 
-  const invoiceNumber =
+  let rawInvoiceNum =
     data.invoiceNumber ||
     data.invoiceId ||
-    (isInvoice ? (rawProjectNumber ? `INV-${rawProjectNumber}` : "INV-001") : "");
+    (Array.isArray(data.invoices) && data.invoices[0]?.invoiceNumber ? data.invoices[0].invoiceNumber : "") ||
+    (Array.isArray(data.invoices) && data.invoices[0]?.invoiceId ? data.invoices[0].invoiceId : "") ||
+    (Array.isArray(data.payments) && data.payments[0]?.invoiceNumber ? data.payments[0].invoiceNumber : "") ||
+    (Array.isArray(data.paymentLedger) && data.paymentLedger[0]?.invoiceNumber ? data.paymentLedger[0].invoiceNumber : "") ||
+    data.transaction?.metadata?.invoiceNumber ||
+    data.metadata?.invoiceNumber;
 
-  const invoiceId = data.invoiceId || invoiceNumber;
+  if (!rawInvoiceNum && isInvoice) {
+    if (data._id) {
+      rawInvoiceNum = `INV-2026-${String(data._id).slice(-4).toUpperCase()}`;
+    } else {
+      rawInvoiceNum = "INV-2026-001";
+    }
+  }
+
+  const cleanInvoiceNum = String(rawInvoiceNum || "")
+    .replace(/^Project\s*#?/i, "")
+    .replace(/^#/, "");
+
+  const invoiceNumber = cleanInvoiceNum
+    ? cleanInvoiceNum.toUpperCase().startsWith("INV-")
+      ? cleanInvoiceNum.toUpperCase()
+      : `INV-${cleanInvoiceNum.toUpperCase()}`
+    : "";
+
+  const invoiceId = invoiceNumber;
 
   const title = String(
     data.projectTitle ||
@@ -479,7 +502,7 @@ export function getBundleHTML(d: BundlePDFData): string {
                 ? `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; line-height: 1.4;">
               <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Invoice ID:</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${d.invoiceNumber || d.invoiceId || d.projectNumber || d.referenceNumber}</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${d.invoiceNumber ? (d.invoiceNumber.startsWith('#') ? d.invoiceNumber : `#${d.invoiceNumber}`) : (d.projectNumber || d.referenceNumber)}</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; line-height: 1.4;">
               <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Issued Date:</span>

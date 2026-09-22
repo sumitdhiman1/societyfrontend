@@ -127,14 +127,19 @@ export function extractInvoicePDFData(data: any): InvoicePDFData {
   // Invoice / Project Number
   const rawNum =
     data.invoiceNumber ||
+    data.invoiceId ||
     project.invoiceNumber ||
-    project.projectNumber ||
-    quote.quoteNumber ||
-    project.quoteNumber ||
-    (project._id ? `INV-2026-${project._id.slice(-4).toUpperCase()}` : "INV-2026-001");
+    project.invoiceId ||
+    (Array.isArray(data.invoices) && data.invoices[0]?.invoiceNumber ? data.invoices[0].invoiceNumber : "") ||
+    (Array.isArray(project.invoices) && project.invoices[0]?.invoiceNumber ? project.invoices[0].invoiceNumber : "") ||
+    (Array.isArray(data.payments) && data.payments[0]?.invoiceNumber ? data.payments[0].invoiceNumber : "") ||
+    (Array.isArray(project.payments) && project.payments[0]?.invoiceNumber ? project.payments[0].invoiceNumber : "") ||
+    (Array.isArray(data.paymentLedger) && data.paymentLedger[0]?.invoiceNumber ? data.paymentLedger[0].invoiceNumber : "") ||
+    (Array.isArray(project.paymentLedger) && project.paymentLedger[0]?.invoiceNumber ? project.paymentLedger[0].invoiceNumber : "") ||
+    (project._id ? `INV-2026-${String(project._id).slice(-4).toUpperCase()}` : "INV-2026-001");
   const cleanNum = String(rawNum).replace(/^Project\s*#?/i, "").replace(/^#/, "");
-  const invoiceNumber = `INV-${cleanNum}`;
-  const projectNumber = `Project #${cleanNum}`;
+  const invoiceNumber = cleanNum.toUpperCase().startsWith("INV-") ? cleanNum : `INV-${cleanNum}`;
+  const projectNumber = `Project #${cleanNum.replace(/^INV-/i, "")}`;
 
   // Date
   const rawDate = data.date || data.paymentDate || project.createdAt || quote.createdAt || new Date();

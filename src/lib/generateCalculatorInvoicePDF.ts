@@ -165,14 +165,21 @@ export function extractCalcInvoiceData(data: any): CalcInvoiceData {
   // Invoice Number (Format: #INV-YYYY-XXXXX)
   let rawInvoiceNum =
     data.invoiceNumber ||
+    data.invoiceId ||
     project.invoiceNumber ||
+    project.invoiceId ||
+    (Array.isArray(data.invoices) && data.invoices[0]?.invoiceNumber ? data.invoices[0].invoiceNumber : "") ||
+    (Array.isArray(project.invoices) && project.invoices[0]?.invoiceNumber ? project.invoices[0].invoiceNumber : "") ||
     (Array.isArray(data.payments) && data.payments[0]?.invoiceNumber ? data.payments[0].invoiceNumber : "") ||
-    (project._id ? `INV-2026-${project._id.slice(-4).toUpperCase()}` : "INV-2026-00021");
+    (Array.isArray(project.payments) && project.payments[0]?.invoiceNumber ? project.payments[0].invoiceNumber : "") ||
+    (Array.isArray(data.paymentLedger) && data.paymentLedger[0]?.invoiceNumber ? data.paymentLedger[0].invoiceNumber : "") ||
+    (Array.isArray(project.paymentLedger) && project.paymentLedger[0]?.invoiceNumber ? project.paymentLedger[0].invoiceNumber : "") ||
+    (project._id ? `INV-2026-${String(project._id).slice(-4).toUpperCase()}` : "INV-2026-00021");
 
   // Ensure invoiceNumber has distinct INV- format and does not mimic projectNumber
   if (String(rawInvoiceNum).toUpperCase().startsWith("SOC-") || String(rawInvoiceNum).toUpperCase().startsWith("PRJ-")) {
     rawInvoiceNum = project._id
-      ? `INV-2026-${project._id.slice(-4).toUpperCase()}`
+      ? `INV-2026-${String(project._id).slice(-4).toUpperCase()}`
       : `INV-2026-${cleanProjectNum.replace(/^SOC-2026-/i, "").replace(/^SOC-/i, "")}`;
   }
 

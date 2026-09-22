@@ -921,8 +921,35 @@ export function extractProjectDetails(data: any): ProjectPDFData {
     ];
   }
 
-  const invoiceNumber = data.invoiceNumber || data.invoiceId || "";
-  const invoiceId = data.invoiceId || data.invoiceNumber || "";
+  let rawInvoiceNum =
+    data.invoiceNumber ||
+    data.invoiceId ||
+    (Array.isArray(data.invoices) && data.invoices[0]?.invoiceNumber ? data.invoices[0].invoiceNumber : "") ||
+    (Array.isArray(data.invoices) && data.invoices[0]?.invoiceId ? data.invoices[0].invoiceId : "") ||
+    (Array.isArray(data.payments) && data.payments[0]?.invoiceNumber ? data.payments[0].invoiceNumber : "") ||
+    (Array.isArray(data.paymentLedger) && data.paymentLedger[0]?.invoiceNumber ? data.paymentLedger[0].invoiceNumber : "") ||
+    data.transaction?.metadata?.invoiceNumber ||
+    data.metadata?.invoiceNumber;
+
+  if (!rawInvoiceNum && isInvoice) {
+    if (data._id) {
+      rawInvoiceNum = `INV-2026-${String(data._id).slice(-4).toUpperCase()}`;
+    } else {
+      rawInvoiceNum = "INV-2026-001";
+    }
+  }
+
+  const cleanInvoiceNum = String(rawInvoiceNum || "")
+    .replace(/^Project\s*#?/i, "")
+    .replace(/^#/, "");
+
+  const invoiceNumber = cleanInvoiceNum
+    ? cleanInvoiceNum.toUpperCase().startsWith("INV-")
+      ? cleanInvoiceNum.toUpperCase()
+      : `INV-${cleanInvoiceNum.toUpperCase()}`
+    : "";
+
+  const invoiceId = invoiceNumber;
 
   return {
     rawProjectNumber,
