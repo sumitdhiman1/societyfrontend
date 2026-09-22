@@ -249,7 +249,7 @@ export default function CompanyPage() {
   const renderStars = (rating: number = 5) => {
     const starsCount = Math.max(1, Math.min(5, Math.round(Number(rating) || 5)));
     return Array.from({ length: 5 }).map((_, idx) => (
-      <img src="/images/fivestar.svg" className="" />
+      <img key={`star-${idx}`} src="/images/fivestar.svg" alt="star" className="" />
     ));
   };
 
@@ -388,7 +388,7 @@ export default function CompanyPage() {
               >
                 {testimonials.map((t, index) => (
                   <div
-                    key={t._id || t.id || index}
+                    key={t._id || t.id || `testimonial-${index}`}
                     className="w-[85vw] sm:w-[360px] md:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)] flex-shrink-0 snap-start"
                   >
                     <div
