@@ -158,8 +158,55 @@ export function extractReceiptDetails(
     paymentMethod = "Mastercard 5675";
   }
 
-  // Address logic
-  let cardholderName = "";
+  const sanitizeName = (name: any): string => {
+    if (!name || typeof name !== "string") return "";
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === "—" || trimmed === "-") return "";
+    const lower = trimmed.toLowerCase();
+    if (
+      lower === "society web solutions" ||
+      lower === "society websolutions" ||
+      lower === "society" ||
+      lower === "society app" ||
+      lower === "society web"
+    ) {
+      return "";
+    }
+    return trimmed;
+  };
+
+  const rawPersonCardholder =
+    sanitizeName(payment?.cardholderName) ||
+    sanitizeName(payment?.cardHolderName) ||
+    sanitizeName(payment?.billingDetails?.name) ||
+    sanitizeName(payment?.billing_details?.name) ||
+    sanitizeName(payment?.metadata?.cardholderName) ||
+    sanitizeName(payment?.metadata?.cardHolderName) ||
+    sanitizeName(payment?.metadata?.clientName) ||
+    sanitizeName(payment?.metadata?.name) ||
+    sanitizeName(payment?.clientName) ||
+    sanitizeName(currentUser?.fullName) ||
+    sanitizeName(currentUser?.name) ||
+    sanitizeName(
+      currentUser?.firstName && currentUser?.lastName
+        ? `${currentUser.firstName} ${currentUser.lastName}`
+        : currentUser?.firstName
+    ) ||
+    sanitizeName(project?.client?.fullName) ||
+    sanitizeName(project?.client?.name) ||
+    sanitizeName(
+      project?.client?.firstName && project?.client?.lastName
+        ? `${project.client.firstName} ${project.client.lastName}`
+        : project?.client?.firstName
+    ) ||
+    sanitizeName(project?.clientName) ||
+    sanitizeName(project?.user?.fullName) ||
+    sanitizeName(project?.userName) ||
+    sanitizeName(userProfile?.fullName) ||
+    sanitizeName(userProfile?.name);
+
+  // Address and billing entity logic
+  let cardholderName = rawPersonCardholder || "Valued Client";
   let companyName = "";
   let address = "";
   let city = "";
@@ -168,16 +215,7 @@ export function extractReceiptDetails(
   let country = "";
 
   if (useSeparateBilling) {
-    cardholderName =
-      currentUser?.billingCompanyName ||
-      payment?.cardholderName ||
-      payment?.cardHolderName ||
-      currentUser?.fullName ||
-      project?.client?.fullName ||
-      project?.clientName ||
-      "";
-
-    companyName = currentUser?.companyName || "";
+    companyName = currentUser?.billingCompanyName || currentUser?.companyName || "";
 
     address =
       currentUser?.billingStreetAddress ||
@@ -215,15 +253,6 @@ export function extractReceiptDetails(
       currentUser?.country ||
       "";
   } else {
-    cardholderName =
-      currentUser?.companyName ||
-      currentUser?.fullName ||
-      payment?.cardholderName ||
-      payment?.cardHolderName ||
-      project?.client?.fullName ||
-      project?.clientName ||
-      "";
-
     companyName = currentUser?.companyName || "";
 
     address =
@@ -264,7 +293,7 @@ export function extractReceiptDetails(
     return str.length > 0 && str !== "—" && str !== "-" ? str : fallback;
   };
 
-  cardholderName = formatField(cardholderName || currentUser?.fullName, "Valued Client");
+  cardholderName = formatField(cardholderName, "Valued Client");
   companyName = formatField(companyName, "");
   address = formatField(address, "—");
   city = formatField(city, "—");

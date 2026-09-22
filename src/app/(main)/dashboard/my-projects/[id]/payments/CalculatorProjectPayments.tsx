@@ -632,7 +632,13 @@ export default function CalculatorProjectPayments({
     if (isDownloadingInvoice || isDownloadingPdf) return;
     setIsDownloadingInvoice(true);
     try {
-      await downloadCalculatorProjectPDF(projectPayloadForPdf);
+      const searchInvoiceId = searchParams?.get("invoiceId") || undefined;
+      await downloadCalculatorProjectPDF({
+        ...projectPayloadForPdf,
+        isInvoice: true,
+        invoiceId: searchInvoiceId || activeProject?.invoiceId || activeProject?.invoiceNumber,
+        user: currentUser,
+      });
     } catch (err) {
       console.error("Failed to download project PDF for invoice view:", err);
     } finally {

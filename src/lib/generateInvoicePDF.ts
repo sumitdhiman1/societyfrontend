@@ -392,35 +392,35 @@ export function getInvoiceHTML(d: InvoicePDFData): string {
         <!-- Info Grid: Bill To & Project Info -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 28px;">
           <!-- Bill To -->
-          <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 16px 20px;">
-            <div style="font-size: 11px; font-weight: 800; color: #4343F0; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">
+          <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 18px 22px;">
+            <div style="font-size: 10.5px; font-weight: 700; color: #4343F0; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;">
               BILLED TO
             </div>
-            <div style="font-size: 14px; font-weight: 700; color: #0F172A; margin-bottom: 2px;">
+            <div style="font-size: 15px; font-weight: 700; color: #0F172A; line-height: 1.35; margin-bottom: 4px;">
               ${d.clientName}
             </div>
-            <div style="font-size: 12px; color: #475569; margin-bottom: 4px;">
+            <div style="font-size: 12px; color: #475569; line-height: 1.4; margin-bottom: 3px;">
               ${d.clientEmail}
             </div>
-            ${d.clientAddress ? `<div style="font-size: 11px; color: #64748B;">${d.clientAddress}${d.clientCity ? `, ${d.clientCity}` : ""}${d.clientState ? ` ${d.clientState}` : ""}${d.clientZip ? ` ${d.clientZip}` : ""}</div>` : ""}
-            ${d.clientCountry ? `<div style="font-size: 11px; color: #64748B;">${d.clientCountry}</div>` : ""}
+            ${d.clientAddress ? `<div style="font-size: 12px; color: #64748B; line-height: 1.4; margin-bottom: 3px;">${d.clientAddress}${d.clientCity ? `, ${d.clientCity}` : ""}${d.clientState ? ` ${d.clientState}` : ""}${d.clientZip ? ` ${d.clientZip}` : ""}</div>` : ""}
+            ${d.clientCountry ? `<div style="font-size: 12px; color: #64748B; line-height: 1.4;">${d.clientCountry}</div>` : ""}
           </div>
 
           <!-- Project & Payment Info -->
-          <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 16px 20px;">
-            <div style="font-size: 11px; font-weight: 800; color: #4343F0; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">
+          <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 18px 22px;">
+            <div style="font-size: 10.5px; font-weight: 700; color: #4343F0; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;">
               PROJECT DETAILS
             </div>
-            <div style="font-size: 14px; font-weight: 700; color: #0F172A; margin-bottom: 2px;">
+            <div style="font-size: 15px; font-weight: 700; color: #0F172A; line-height: 1.35; margin-bottom: 4px;">
               ${d.title}
             </div>
-            <div style="font-size: 12px; color: #475569; margin-bottom: 4px;">
+            <div style="font-size: 12px; color: #475569; line-height: 1.4; margin-bottom: 3px;">
               ${d.projectNumber}
             </div>
-            <div style="font-size: 11px; color: #64748B;">
+            <div style="font-size: 12px; color: #64748B; line-height: 1.4; margin-bottom: 3px;">
               Timeline: <span style="font-weight: 600; color: #334155;">${d.duration || "As specified"}</span>
             </div>
-            ${d.paymentMethod ? `<div style="font-size: 11px; color: #64748B; margin-top: 2px;">Method: <span style="font-weight: 600; color: #334155;">${d.paymentMethod}</span></div>` : ""}
+            ${d.paymentMethod ? `<div style="font-size: 12px; color: #64748B; line-height: 1.4;">Method: <span style="font-weight: 600; color: #334155;">${d.paymentMethod}</span></div>` : ""}
           </div>
         </div>
 

@@ -571,6 +571,8 @@ export default function BundleProjectPayments({
     if (isDownloadingInvoice) return;
     setIsDownloadingInvoice(true);
     try {
+      const searchInvoiceId = searchParams?.get("invoiceId") || undefined;
+      const invId = searchInvoiceId || activeProject?.invoiceId || activeProject?.invoiceNumber;
       const payload = {
         ...activeProject,
         quote: linkedQuote,
@@ -578,6 +580,9 @@ export default function BundleProjectPayments({
         sourceCurrency: projectNativeCurrency.toUpperCase(),
         conversionRate,
         isProject: true,
+        isInvoice: true,
+        invoiceId: invId,
+        user: currentUser,
       };
       await downloadBundlePDF(payload);
     } catch (err) {

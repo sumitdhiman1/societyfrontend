@@ -61,10 +61,22 @@ export interface BundlePDFData {
   recurringAmount?: number;
   formattedRecurringAmount?: string;
   isProject?: boolean;
+  isInvoice?: boolean;
+  invoiceNumber?: string;
+  invoiceId?: string;
+  companyName?: string;
+  registrationNumber?: string;
+  vatNumber?: string;
+  phoneNumber?: string;
+  streetAddress?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
 }
 
 export function extractBundlePDFData(data: any): BundlePDFData {
-  const currentUser = authService.getUser();
+  const currentUser = data.user || authService.getUser();
   const clientEmail =
     data.clientEmail ||
     data.client?.email ||
@@ -85,11 +97,70 @@ export function extractBundlePDFData(data: any): BundlePDFData {
       : "") ||
     "Client";
 
-  const clientCompany =
+  const companyName =
+    data.companyName ||
     data.clientCompany ||
     data.client?.companyName ||
-    data.companyName ||
     currentUser?.companyName ||
+    "";
+
+  const registrationNumber =
+    data.registrationNumber ||
+    data.companyRegistrationNumber ||
+    data.client?.registrationNumber ||
+    data.client?.companyRegistrationNumber ||
+    currentUser?.companyRegistrationNumber ||
+    currentUser?.registrationNumber ||
+    "";
+
+  const vatNumber =
+    data.vatNumber ||
+    data.taxId ||
+    data.vatId ||
+    data.client?.vatNumber ||
+    data.client?.taxId ||
+    currentUser?.vatNumber ||
+    currentUser?.taxId ||
+    "";
+
+  const phoneNumber =
+    data.phoneNumber ||
+    data.businessPhoneNumber ||
+    data.phone ||
+    data.client?.phone ||
+    data.client?.phoneNumber ||
+    data.client?.businessPhoneNumber ||
+    currentUser?.businessPhoneNumber ||
+    currentUser?.phoneNumber ||
+    currentUser?.phone ||
+    "";
+
+  const streetAddress =
+    data.streetAddress ||
+    data.address ||
+    data.client?.streetAddress ||
+    data.client?.address ||
+    currentUser?.streetAddress ||
+    currentUser?.address ||
+    "";
+
+  const city =
+    data.city ||
+    data.client?.city ||
+    currentUser?.city ||
+    "";
+
+  const state =
+    data.state ||
+    data.client?.state ||
+    currentUser?.state ||
+    "";
+
+  const zipCode =
+    data.zipCode ||
+    data.postalCode ||
+    data.client?.zipCode ||
+    currentUser?.zipCode ||
     "";
 
   const clientCountry =
@@ -99,16 +170,11 @@ export function extractBundlePDFData(data: any): BundlePDFData {
     currentUser?.country ||
     "";
 
-  const title = String(
-    data.projectTitle ||
-    data.title ||
-    data.name ||
-    data.bundleName ||
-    data.packageName ||
-    "Local Business Growth Bundle"
-  ).trim();
-
-  const isProject = data.isProject !== false && Boolean(data.projectNumber || data._id || data.id);
+  const isInvoice =
+    data.isInvoice === true ||
+    Boolean(data.invoiceId) ||
+    Boolean(data.invoiceNumber) ||
+    String(data.type || "").toUpperCase() === "INVOICE";
 
   const rawProjectNumber = String(
     data.projectNumber ||
@@ -122,6 +188,24 @@ export function extractBundlePDFData(data: any): BundlePDFData {
 
   const projectNumber = rawProjectNumber.startsWith("#") ? rawProjectNumber : `#${rawProjectNumber}`;
   const referenceNumber = projectNumber;
+
+  const invoiceNumber =
+    data.invoiceNumber ||
+    data.invoiceId ||
+    (isInvoice ? (rawProjectNumber ? `INV-${rawProjectNumber}` : "INV-001") : "");
+
+  const invoiceId = data.invoiceId || invoiceNumber;
+
+  const title = String(
+    data.projectTitle ||
+    data.title ||
+    data.name ||
+    data.bundleName ||
+    data.packageName ||
+    "Local Business Growth Bundle"
+  ).trim();
+
+  const isProject = data.isProject !== false && Boolean(data.projectNumber || data._id || data.id);
 
   const submittedDate = formatSubmittedDate(data.createdAt || data.startDate || data.submittedDate || new Date());
   const validUntilDate = formatSubmittedDate(
@@ -281,8 +365,20 @@ export function extractBundlePDFData(data: any): BundlePDFData {
     rawProjectNumber,
     clientEmail,
     clientName,
-    clientCompany,
+    clientCompany: companyName,
     clientCountry,
+    companyName,
+    registrationNumber,
+    vatNumber,
+    phoneNumber,
+    streetAddress,
+    city,
+    state,
+    zipCode,
+    country: clientCountry,
+    isInvoice,
+    invoiceNumber,
+    invoiceId,
     status,
     submittedDate,
     deadlineDate,
@@ -314,6 +410,9 @@ const LOGO_SVG = `<img width="158" height="50" src="/images/logo.svg" style="dis
 export function getBundleHTML(d: BundlePDFData): string {
   const cleanTitle = d.title.replace(/^Bundle Title:\s*/i, "").replace(/^Project Title:\s*/i, "");
 
+  const addressParts = [d.streetAddress, d.city, d.state, d.zipCode, d.country || d.clientCountry].filter(Boolean);
+  const fullAddress = addressParts.length > 0 ? addressParts.join(", ") : "";
+
   return `
     <div class="pdf-page" style="
       width: 794px;
@@ -336,7 +435,7 @@ export function getBundleHTML(d: BundlePDFData): string {
             ${LOGO_SVG}
           </div>
           <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; margin: 0; padding: 0; white-space: nowrap;">
-            <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.01em; color: #2A2AA0; margin: 0 0 10px 0; line-height: 1; padding: 0;">${d.isProject ? "PROJECT DETAILS" : "PROJECT QUOTE"}</div>
+            <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.01em; color: #2A2AA0; margin: 0 0 10px 0; line-height: 1; padding: 0;">${d.isInvoice ? "INVOICE" : d.isProject ? "PROJECT DETAILS" : "PROJECT QUOTE"}</div>
             <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 13.5px; line-height: 1.3; color: #1E293B; margin-bottom: 3px;">Society Web Solutions</div>
             <div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.45; color: #64748B;">1645 Palm Beach Lakes Blvd</div>
             <div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.45; color: #64748B; margin-bottom: 2px;">West Palm Beach, FL, US</div>
@@ -346,7 +445,7 @@ export function getBundleHTML(d: BundlePDFData): string {
           </div>
         </header>
 
-        <!-- ── Quote / Client Summary Card ── -->
+        <!-- ── Quote / Client / Invoice Summary Card ── -->
         <section style="
           box-sizing: border-box;
           width: 100%;
@@ -358,44 +457,68 @@ export function getBundleHTML(d: BundlePDFData): string {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
+          gap: 20px;
         ">
-          <!-- Prepared For / Client -->
-          <div style="display: flex; flex-direction: column;">
-            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 10.5px; letter-spacing: 0.08em; color: #94A3B8; text-transform: uppercase; margin: 0 0 8px 0;">${d.isProject ? "CLIENT" : "PREPARED FOR"}</div>
-            <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 15.5px; line-height: 1.3; color: #0F172A; margin: 0 0 3px 0;">${d.clientName}</div>
-            ${d.clientCompany ? `<div style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; line-height: 1.4; color: #475569;">${d.clientCompany}</div>` : ""}
-            ${d.clientEmail ? `<div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.4; color: #64748B;">${d.clientEmail}</div>` : ""}
+          <!-- Prepared For / Client / Billed To -->
+          <div style="display: flex; flex-direction: column; flex: 1; min-width: 0;">
+            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 10.5px; letter-spacing: 0.08em; color: #94A3B8; text-transform: uppercase; margin: 0 0 8px 0;">${d.isInvoice ? "BILLED TO" : d.isProject ? "CLIENT" : "PREPARED FOR"}</div>
+            <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 15px; line-height: 1.35; color: #0F172A; margin: 0 0 4px 0;">${d.clientName}</div>
+            ${d.companyName ? `<div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12.5px; line-height: 1.4; color: #1E293B; margin-bottom: 3px;">${d.companyName}</div>` : ""}
+            ${d.registrationNumber ? `<div style="font-family: Inter, sans-serif; font-size: 11.5px; line-height: 1.4; color: #64748B; margin-bottom: 3px;">Reg: ${d.registrationNumber}</div>` : ""}
+            ${d.vatNumber ? `<div style="font-family: Inter, sans-serif; font-size: 11.5px; line-height: 1.4; color: #64748B; margin-bottom: 3px;">VAT / Tax ID: ${d.vatNumber}</div>` : ""}
+            ${fullAddress ? `<div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.4; color: #64748B; margin-bottom: 3px;">${fullAddress}</div>` : ""}
+            ${d.clientEmail ? `<div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.4; color: #64748B; margin-bottom: 3px;">${d.clientEmail}</div>` : ""}
+            ${d.phoneNumber ? `<div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.4; color: #64748B;">${d.phoneNumber}</div>` : ""}
           </div>
 
-          <!-- Quote Details / Project Details -->
-          <div style="width: 240px; display: flex; flex-direction: column;">
-            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 10.5px; letter-spacing: 0.08em; color: #94A3B8; text-transform: uppercase; margin: 0 0 8px 0;">${d.isProject ? "PROJECT SUMMARY" : "QUOTE DETAILS"}</div>
+          <!-- Quote Details / Project Details / Invoice Details -->
+          <div style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column;">
+            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 10.5px; letter-spacing: 0.08em; color: #94A3B8; text-transform: uppercase; margin: 0 0 8px 0;">${d.isInvoice ? "INVOICE DETAILS" : d.isProject ? "PROJECT SUMMARY" : "QUOTE DETAILS"}</div>
             ${
-              d.isProject
+              d.isInvoice
                 ? `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; line-height: 1.4;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Invoice ID:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${d.invoiceNumber || d.invoiceId || d.projectNumber || d.referenceNumber}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; line-height: 1.4;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Issued Date:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: #0F172A;">${d.submittedDate}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; line-height: 1.4;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Due Date:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: #0F172A;">${d.deadlineDate || d.validUntilDate || "Upon Receipt"}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; line-height: 1.4;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Status:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${d.amountPaid >= d.totalPrice && d.totalPrice > 0 ? "PAID" : d.amountPaid > 0 ? "PARTIALLY PAID" : "DUE"}</span>
+            </div>
+            `
+                : d.isProject
+                ? `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; line-height: 1.4;">
               <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Project ID:</span>
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${d.projectNumber || d.referenceNumber}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; line-height: 1.4;">
               <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Submitted:</span>
               <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: #0F172A;">${d.submittedDate}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; justify-content: space-between; align-items: center; line-height: 1.4;">
               <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Est. Deadline:</span>
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #13663A;">${d.deadlineDate}</span>
             </div>
             `
                 : `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; line-height: 1.4;">
               <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Ref Number:</span>
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${d.referenceNumber || d.projectNumber}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; line-height: 1.4;">
               <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Issued On:</span>
               <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: #0F172A;">${d.submittedDate}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; justify-content: space-between; align-items: center; line-height: 1.4;">
               <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Valid Until:</span>
               <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: #0F172A;">${d.validUntilDate || d.deadlineDate}</span>
             </div>
@@ -499,11 +622,35 @@ export function getBundleHTML(d: BundlePDFData): string {
                 : ""
             }
 
-            <!-- Total Cost Row -->
+            <!-- Total Cost / Invoice Total Row -->
             <div style="background-color: #2A2AA0; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 58px; box-sizing: border-box; ${d.vatRate && d.vatRate > 0 && d.vatAmount && d.vatAmount > 0 ? "border-top: 1px solid #3E3EE8;" : "border-top: 1px solid #1E293B;"}">
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; letter-spacing: 0.06em; color: #FFFFFF; text-transform: uppercase; white-space: nowrap;">${d.isProject ? "INVESTMENT TOTAL" : "TOTAL COST"}</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; letter-spacing: 0.06em; color: #FFFFFF; text-transform: uppercase; white-space: nowrap;">${d.isInvoice ? "INVOICE TOTAL" : d.isProject ? "INVESTMENT TOTAL" : "TOTAL COST"}</span>
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 20px; color: #FFFFFF; white-space: nowrap; margin-left: 16px; position: relative; top: -2px; line-height: 1;">${d.formattedPrice}</span>
             </div>
+
+            ${
+              d.isInvoice && d.amountPaid > 0
+                ? `
+            <!-- Amount Paid Row -->
+            <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; box-sizing: border-box;">
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">AMOUNT PAID</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #10B981; white-space: nowrap; position: relative; top: -1.5px; line-height: 1;">${d.formattedAmountPaid}</span>
+            </div>
+            `
+                : ""
+            }
+
+            ${
+              d.isInvoice && d.pendingBalance > 0
+                ? `
+            <!-- Balance Due Row -->
+            <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; box-sizing: border-box;">
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">BALANCE DUE</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #EF4444; white-space: nowrap; position: relative; top: -1.5px; line-height: 1;">${d.formattedPendingBalance}</span>
+            </div>
+            `
+                : ""
+            }
           </div>
         </div>
       </div>
@@ -647,7 +794,7 @@ export async function downloadBundlePDF(data: any, customFilename?: string): Pro
   const blob = await generateBundlePDF(data);
   const pdfData = extractBundlePDFData(data);
   const cleanNum = (pdfData.rawProjectNumber || pdfData.referenceNumber || pdfData.projectNumber || "1").replace(/[^a-zA-Z0-9-_]/g, "");
-  const prefix = pdfData.isProject ? "Project_Details" : "Project_Quote";
+  const prefix = pdfData.isInvoice ? "Invoice" : pdfData.isProject ? "Project_Details" : "Project_Quote";
   const filename = customFilename || (cleanNum ? `${prefix}_${cleanNum}.pdf` : `${prefix}.pdf`);
 
   const url = URL.createObjectURL(blob);

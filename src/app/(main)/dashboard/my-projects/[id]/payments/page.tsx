@@ -531,6 +531,8 @@ export default function ProjectPaymentsPage() {
     if (isDownloadingInvoice || isDownloadingPdf) return;
     setIsDownloadingInvoice(true);
     try {
+      const searchInvoiceId = searchParams?.get("invoiceId") || undefined;
+      const invId = searchInvoiceId || activeProject?.invoiceId || activeProject?.invoiceNumber;
       if (isBundle) {
         await downloadBundlePDF({
           ...activeProject,
@@ -539,15 +541,26 @@ export default function ProjectPaymentsPage() {
           sourceCurrency: (activeProject?.currency || fetchedQuote?.currency || payments[0]?.currency || "USD").toUpperCase(),
           conversionRate,
           isProject: true,
+          isInvoice: true,
+          invoiceId: invId,
+          user: currentUser,
         });
       } else if (isCalc) {
         await downloadCalculatorProjectPDF({
           ...activeProject,
           calculatorSpecs: activeProject?.calculatorSpecs || fetchedQuote?.requirements || fetchedQuote?.calculatorSpecs,
           quote: fetchedQuote || (typeof activeProject?.quoteId === "object" ? activeProject?.quoteId : null),
+          isInvoice: true,
+          invoiceId: invId,
+          user: currentUser,
         });
       } else {
-        await downloadProjectDetailsPDF(activeProject);
+        await downloadProjectDetailsPDF({
+          ...activeProject,
+          isInvoice: true,
+          invoiceId: invId,
+          user: currentUser,
+        });
       }
     } catch (err) {
       console.error("Failed to download project PDF for invoice view:", err);

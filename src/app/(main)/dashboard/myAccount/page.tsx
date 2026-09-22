@@ -791,8 +791,8 @@ export default function MyAccountPage() {
                 />
 
                 {/* Row 3: Country | State / Province */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-gray-700">Country</label>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-bold text-gray-700">Country</label>
                   <CountrySearchSelect
                     value={user?.country || ""}
                     onChange={(val) => updateField("country", val)}
@@ -832,109 +832,6 @@ export default function MyAccountPage() {
                 <InfoBox
                   title="Info"
                   text="The information saved here identifies the details of the business associated with this SWSCRM account and all client services"
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 4. Billing Details */}
-        <section className="mb-6">
-          <SectionHeader title="Billing Details" />
-          <div className="border border-gray-300 rounded-[4px] p-8 md:p-10">
-            <div className="flex flex-col lg:flex-row gap-12">
-              {/* Left Content Area */}
-              <div className="flex-1">
-                {/* Switch Toggle Container Box */}
-                <div className="flex items-center gap-3 mb-8 bg-gray-50 p-4 rounded-[10px] border border-gray-200">
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={user?.useSeparateBillingAddress || false}
-                      onChange={(e) => updateField("useSeparateBillingAddress", e.target.checked)}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-300"></div>
-                  </label>
-                  <div className="flex flex-col">
-                    <h4 className="text-sm font-bold text-gray-700">
-                      Use separate billing address
-                    </h4>
-                    <p className="text-[11px] text-gray-400 font-medium">
-                      Enable this if your billing information differs from your business details.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Expanded Billing Form Fields */}
-                {user?.useSeparateBillingAddress && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mb-10 animate-in fade-in duration-300">
-                    <InputField
-                      label="Billing Company Name"
-                      value={user?.billingCompanyName || ""}
-                      onChange={(e: any) => updateField("billingCompanyName", e.target.value)}
-                    />
-                    <InputField
-                      label="Billing Registration Number"
-                      value={user?.billingRegistrationNumber || ""}
-                      onChange={(e: any) => updateField("billingRegistrationNumber", e.target.value)}
-                    />
-
-                    <InputField
-                      label="Billing VAT Number / Tax ID"
-                      value={user?.billingVatNumber || user?.billingTaxId || ""}
-                      onChange={(e: any) => {
-                        updateField("billingVatNumber", e.target.value);
-                        updateField("billingTaxId", e.target.value);
-                      }}
-                    />
-                    <InputField
-                      label="Billing Phone Number"
-                      value={user?.billingPhoneNumber || ""}
-                      onChange={(e: any) => updateField("billingPhoneNumber", e.target.value)}
-                    />
-
-                    <div className="flex flex-col gap-2">
-                      <label className="text-xs font-bold text-gray-700">Billing Country</label>
-                      <CountrySearchSelect
-                        value={user?.billingCountry || ""}
-                        onChange={(val) => updateField("billingCountry", val)}
-                        countries={countriesList}
-                        placeholder="Select country..."
-                      />
-                    </div>
-                    <InputField
-                      label="Billing State / Province"
-                      value={user?.billingState || ""}
-                      onChange={(e: any) => updateField("billingState", e.target.value)}
-                    />
-
-                    <InputField
-                      label="Billing City"
-                      value={user?.billingCity || ""}
-                      onChange={(e: any) => updateField("billingCity", e.target.value)}
-                    />
-                    <InputField
-                      label="Billing ZIP / Postal Code"
-                      value={user?.billingZipCode || ""}
-                      onChange={(e: any) => updateField("billingZipCode", e.target.value)}
-                    />
-
-                    <InputField
-                      label="Billing Street Address"
-                      value={user?.billingStreetAddress || ""}
-                      onChange={(e: any) => updateField("billingStreetAddress", e.target.value)}
-                    />
-                    <div className="hidden md:block" />
-                  </div>
-                )}
-              </div>
-
-              {/* Info Sidebar (Right) */}
-              <div className="w-full lg:w-[320px]">
-                <InfoBox
-                  title="Billing Information"
-                  text="This address will be used for all invoices and payment receipts generated by the system. If disabled, your business details will be used instead."
                 />
               </div>
             </div>

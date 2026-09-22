@@ -126,17 +126,41 @@ export default class HttpClient {
         });
 
         if (!response.ok) {
-          let errorData = { message: "Unknown error" };
+          let errorData: any = { message: "Unknown error" };
           try {
-            errorData = await response.json();
+            const errText = await response.text();
+            if (errText && errText.trim() !== "") {
+              try {
+                errorData = JSON.parse(errText);
+              } catch {
+                errorData = { message: errText };
+              }
+            } else {
+              errorData = { message: `HTTP ${response.status}` };
+            }
           } catch {
             errorData = { message: `HTTP ${response.status}` };
           }
           throw new HttpError(errorData, response.status);
         }
 
-        const data = await response.json();
-        data.isSuccessful = true;
+        let data: any = {};
+        try {
+          const text = await response.text();
+          if (text && text.trim() !== "") {
+            try {
+              data = JSON.parse(text);
+            } catch {
+              data = { data: text };
+            }
+          }
+        } catch {
+          data = {};
+        }
+
+        if (data && typeof data === "object") {
+          data.isSuccessful = true;
+        }
 
         if (cacheTTL && typeof globalThis.window !== "undefined") {
           HttpClient.cache.set(url, { data, timestamp: Date.now() });
@@ -254,10 +278,10 @@ export default class HttpClient {
   }
 
   async delete<T = any>(path: string, data?: any): Promise<T> {
-    return this.sendRequest<T>("DELETE", path, data ?? null);
+    return this.sendRequest<T>("DELETE", path, data);
   }
 
-  private async sendRequest<T = any>(method: string, path: string, data: any): Promise<T> {
+  private async sendRequest<T = any>(method: string, path: string, data?: any): Promise<T> {
     let authToken: string | undefined;
     const execute = async () => {
       const url = this.baseUrl + path;
@@ -265,23 +289,56 @@ export default class HttpClient {
       const isFormData = data instanceof FormData;
       
       const headers = { ...config.headers };
-      if (!isFormData) {
+      if (!isFormData && data !== undefined && data !== null) {
         headers["Content-Type"] = "application/json";
       }
+
+      const hasBody = data !== undefined && data !== null;
+      const body = isFormData ? data : hasBody ? JSON.stringify(data) : undefined;
 
       const response = await fetch(url, {
         method,
         headers,
         credentials: "include",
-        body: isFormData ? data : JSON.stringify(data),
+        body,
       });
 
       if (!response.ok) {
-        throw new HttpError(await response.json(), response.status);
+        let errorData: any = { message: "Unknown error" };
+        try {
+          const errText = await response.text();
+          if (errText && errText.trim() !== "") {
+            try {
+              errorData = JSON.parse(errText);
+            } catch {
+              errorData = { message: errText };
+            }
+          } else {
+            errorData = { message: `HTTP ${response.status}` };
+          }
+        } catch {
+          errorData = { message: `HTTP ${response.status}` };
+        }
+        throw new HttpError(errorData, response.status);
       }
 
-      const result = await response.json();
-      result.isSuccessful = true;
+      let result: any = {};
+      try {
+        const text = await response.text();
+        if (text && text.trim() !== "") {
+          try {
+            result = JSON.parse(text);
+          } catch {
+            result = { data: text };
+          }
+        }
+      } catch {
+        result = {};
+      }
+
+      if (result && typeof result === "object") {
+        result.isSuccessful = true;
+      }
       return result;
     };
 

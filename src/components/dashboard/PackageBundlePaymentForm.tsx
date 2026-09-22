@@ -157,6 +157,8 @@ function PackageBundlePaymentFormContent({
     cvc: { complete: false, error: null },
   });
 
+  const [userProfile, setUserProfile] = useState<any>(null);
+
   useEffect(() => {
     const initData = async () => {
       setIsLoadingMethods(true);
@@ -183,9 +185,10 @@ function PackageBundlePaymentFormContent({
           const { profileService } = await import("@/lib/profileService");
           const profile = await profileService.getMyProfile();
           if (profile?.data) {
+            setUserProfile(profile.data);
             setAvailableCredits(profile.data.credits || 0);
             setUserCountry(profile.data.country || profile.data.billingCountry || "US");
-            authService.updateInternalUser({ credits: profile.data.credits || 0 });
+            authService.updateInternalUser(profile.data);
           } else if (user.credits !== undefined) {
             setAvailableCredits(user.credits);
           }
@@ -280,7 +283,10 @@ function PackageBundlePaymentFormContent({
 
     setLocalDownloadingInvoice(true);
     try {
+      const currentUser = userProfile || authService.getUser() || {};
       const payload = {
+        isInvoice: true,
+        invoiceId: invoiceId || entityNumber,
         projectNumber: entityNumber,
         title: title || description,
         description: description,
@@ -292,7 +298,22 @@ function PackageBundlePaymentFormContent({
         amountPaid: convertedAmountPaid,
         pendingBalance: activePendingBalance,
         currency: currency.toUpperCase(),
-        clientEmail: clientEmail,
+        clientEmail: clientEmail || currentUser?.email,
+        clientName:
+          currentUser?.fullName ||
+          (currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ""}`.trim() : "") ||
+          cardholderName ||
+          "Client",
+        companyName: currentUser?.companyName,
+        registrationNumber: currentUser?.companyRegistrationNumber || currentUser?.registrationNumber,
+        vatNumber: currentUser?.vatNumber || currentUser?.taxId,
+        phoneNumber: currentUser?.businessPhoneNumber || currentUser?.phoneNumber || currentUser?.phone,
+        streetAddress: currentUser?.streetAddress || currentUser?.address,
+        city: currentUser?.city,
+        state: currentUser?.state,
+        zipCode: currentUser?.zipCode || currentUser?.postalCode,
+        country: currentUser?.country || currentUser?.clientCountry || currentUser?.billingCountry || userCountry,
+        user: currentUser,
         targetCurrency: currency.toUpperCase(),
         conversionRate: conversionRate,
         recurringAmount: extraMetadata?.recurringAmount,
@@ -520,7 +541,7 @@ function PackageBundlePaymentFormContent({
 
     const resolvedProjectId =
       targetProjectId ||
-      metadata?.projectId ||
+      extraMetadata?.projectId ||
       (type !== "BUNDLE" && entityId && entityId.length === 24 ? entityId : undefined);
 
     const targetUrl = resolvedProjectId

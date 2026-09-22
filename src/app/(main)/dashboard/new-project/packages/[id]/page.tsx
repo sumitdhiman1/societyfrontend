@@ -89,7 +89,7 @@ function PackageDetailsContent() {
           if (res?.data) {
             setCountry(res.data.country || res.data.billingCountry || "US");
             setUserCredits(res.data.credits || 0);
-            authService.updateInternalUser({ credits: res.data.credits || 0 });
+            authService.updateInternalUser(res.data);
           } else if (currentUser.credits !== undefined) {
             setUserCredits(currentUser.credits);
           }

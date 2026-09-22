@@ -1071,13 +1071,7 @@ export function getCalculatorInvoiceHTML(d: CalcInvoiceData): string {
             </div>
             <div class="invoice-meta-row">
               <span class="invoice-meta-label">Status:</span>
-              <span class="invoice-meta-value ${
-                d.status === "PAID"
-                  ? "status-paid"
-                  : d.status === "PARTIALLY PAID"
-                  ? "status-partial"
-                  : "status-pending"
-              }">${d.status}</span>
+              <span class="invoice-meta-value">${d.status}</span>
             </div>
           </div>
         </section>

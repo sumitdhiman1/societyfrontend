@@ -58,6 +58,10 @@ export class PaymentService {
     return this.client.post("/payments/set-default-method", { paymentMethodId });
   }
 
+  async removePaymentMethod(paymentMethodId: string) {
+    return this.client.delete(`/payments/methods/${paymentMethodId}`);
+  }
+
   async exportHistory(options?: { from?: string; to?: string }) {
     let url = "/payments/export";
     const params = new URLSearchParams();

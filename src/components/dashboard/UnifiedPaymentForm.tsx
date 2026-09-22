@@ -295,6 +295,8 @@ function PaymentForm({
     setLocalDownloadingInvoice(true);
     try {
       await downloadProjectDetailsPDF({
+        isInvoice: true,
+        invoiceId: invoiceId || entityNumber,
         projectNumber: entityNumber,
         title: title || description,
         description: description,
@@ -317,7 +319,7 @@ function PaymentForm({
 
   const getPayableAmount = () => {
     let amount = totalCost;
-    if (paymentOption === "half") amount = effectiveDepositAmount;
+    if (paymentOption === "half") amount = getDepositHalfAmount();
     else if (paymentOption === "custom" && customAmount) amount = parseFloat(customAmount);
 
     if (paymentOption !== "custom") {
