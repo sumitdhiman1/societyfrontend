@@ -329,7 +329,7 @@ export default function CompanyPage() {
             <div className="flex flex-col lg:flex-row lg:items-center w-full justify-between gap-8 lg:gap-8">
               {/* Left text block */}
               <div className="w-full lg:flex-1 flex flex-col gap-3 md:gap-4 shrink-0">
-                <h2 className="text-2xl sm:text-3xl md:text-[38px] lg:text-[48px] font-semibold text-[#363636] leading-tight md:leading-[48px] tracking-[-0.03em]">
+                <h2 className="font-['Inter'] font-semibold text-[48px] leading-[100%] tracking-[-3%] sm:text-3xl lg:text-[48px] text-[#363636] leading-tight md:leading-[48px] tracking-[-0.03em]">
                   Leading the new generation of web companies.
                 </h2>
                 <p className="text-[18px] font-semibold text-[#363636] leading-relaxed sm:leading-[27px]">
