@@ -261,11 +261,11 @@ export default function CompanyPage() {
           <img src="/images/about.png" className="company-bg absolute right-0 top-[33%] h-full w-auto object-cover object-right opacity-90 z-0 scale-[2] 2xl:scale-[2.9] origin-right translate-y-[5%]" alt="Hero background" />
           <div className="company-bg-overlay absolute inset-0 bg-gradient-to-b from-[#00102E] to-[#0E2549]/0 to-transparent z-0"></div>
           <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] relative z-10 text-left w-full flex flex-col items-start gap-3 md:gap-[16px]">
-            <span className="text-[#9aa0aa] text-lg sm:text-[25px] font-bold leading-normal sm:leading-[30px]">About us</span>
+            <span className="md:text-[#9aa0aa] text-white text-lg sm:text-[25px] font-bold leading-normal sm:leading-[30px]">About us</span>
             <h1 className="text-3xl sm:text-4xl md:text-[48px] font-bold text-white leading-tight sm:leading-[48px] md:leading-[64px] max-w-[720px]">
               World class websites and online marketing.
             </h1>
-            <p className="text-[#9aa0aa] text-base sm:text-[18px] font-normal leading-relaxed sm:leading-[26px] mt-0 md:mt-2">
+            <p className="md:text-[#9aa0aa] text-white text-base sm:text-[18px] font-normal leading-relaxed sm:leading-[26px] mt-0 md:mt-2">
               Society Web Solutions provides an all-in-one business class
               <br className="hidden sm:block" />
               service oriented around web presence success.
@@ -329,7 +329,7 @@ export default function CompanyPage() {
             <div className="flex flex-col lg:flex-row lg:items-center w-full justify-between gap-8 lg:gap-8">
               {/* Left text block */}
               <div className="w-full lg:flex-1 flex flex-col gap-3 md:gap-4 shrink-0">
-                <h2 className="font-['Inter'] font-semibold text-[48px] leading-[100%] tracking-[-3%] sm:text-3xl lg:text-[48px] text-[#363636] leading-tight md:leading-[48px] tracking-[-0.03em]">
+                <h2 className="text-2xl sm:text-3xl md:text-[40px] lg:text-[48px] font-bold text-[#363636] leading-tight sm:leading-[40px] md:leading-[54px] lg:leading-[58px]">
                   Leading the new generation of web companies.
                 </h2>
                 <p className="text-[18px] font-semibold text-[#363636] leading-relaxed sm:leading-[27px]">
