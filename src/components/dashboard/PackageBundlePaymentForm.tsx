@@ -240,11 +240,8 @@ function PackageBundlePaymentFormContent({
   const activeTotalWithVat = convertedSubtotal + activeVatAmount;
   const activePendingBalance = Math.max(0, activeTotalWithVat - convertedAmountPaid);
 
-  const convertedDepositAmount = depositAmount && Number(depositAmount) > 0
-    ? convertCurrencyAmount(Number(depositAmount), currency, nativeCurrency || "USD", conversionRate)
-    : (convertedSubtotal > 0 && amountPaid <= 0 ? convertedSubtotal / 2 : 0);
-  const depositWithVat = convertedDepositAmount * (1 + activeVatRate / 100);
-  const canPayDepositHalf = amountPaid <= 0 && convertedDepositAmount > 0 && depositWithVat < activePendingBalance - 0.009;
+  const depositHalfAmount = Math.round((activePendingBalance / 2) * 100) / 100;
+  const canPayDepositHalf = amountPaid <= 0 && depositHalfAmount > 0 && depositHalfAmount < activePendingBalance - 0.009;
 
   useEffect(() => {
     const paramAmount = searchParams?.get("amount");
@@ -316,8 +313,7 @@ function PackageBundlePaymentFormContent({
 
   const getPayableAmount = () => {
     if (paymentOption === "half") {
-      const halfAmount = Math.round((activePendingBalance / 2) * 100) / 100;
-      return Math.min(halfAmount, activePendingBalance);
+      return Math.min(depositHalfAmount, activePendingBalance);
     }
     if (paymentOption === "custom" && customAmount) {
       return parseFloat(customAmount) || 0;
@@ -450,7 +446,7 @@ function PackageBundlePaymentFormContent({
           fullAmount: activeTotalWithVat,
           paymentOption,
           isDeposit: paymentOption === "half" ? "true" : "false",
-          depositAmount: convertedDepositAmount,
+          depositAmount: depositHalfAmount,
           clientCountry: getActiveCountryCode(),
         },
       });
@@ -469,7 +465,12 @@ function PackageBundlePaymentFormContent({
         setPaymentStep("activating");
         await new Promise((r) => setTimeout(r, 600));
         setPaymentStep("success");
-        handlePaymentSuccess("Payment completed using your credits.", finalCredits);
+        const pId =
+          intentResponse.data?.projectId ||
+          intentResponse.data?.project?._id ||
+          intentResponse.projectId ||
+          intentResponse.project?._id;
+        handlePaymentSuccess("Payment completed using your credits.", finalCredits, pId);
         return;
       }
 
@@ -494,7 +495,7 @@ function PackageBundlePaymentFormContent({
     }
   };
 
-  const handlePaymentSuccess = (msg: string, creditsUsed: number) => {
+  const handlePaymentSuccess = (msg: string, creditsUsed: number, targetProjectId?: string) => {
     setPopup({
       isOpen: true,
       type: "success",
@@ -516,9 +517,19 @@ function PackageBundlePaymentFormContent({
         console.error("Failed to execute onPaymentSuccess callback:", err);
       }
     }
-    if (successRedirectUrl) {
-      setTimeout(() => router.push(successRedirectUrl), 2000);
-    }
+
+    const resolvedProjectId =
+      targetProjectId ||
+      metadata?.projectId ||
+      (type !== "BUNDLE" && entityId && entityId.length === 24 ? entityId : undefined);
+
+    const targetUrl = resolvedProjectId
+      ? `/dashboard/my-projects/${resolvedProjectId}/details`
+      : successRedirectUrl && successRedirectUrl !== "/dashboard/my-projects"
+      ? successRedirectUrl
+      : "/dashboard/my-projects";
+
+    setTimeout(() => router.push(targetUrl), 1800);
   };
 
   const confirmStripePayment = async (clientSecret: string, transactionId: string, creditsUsed: number) => {
@@ -560,12 +571,18 @@ function PackageBundlePaymentFormContent({
 
     if (confirmResponse.paymentIntent?.status === "succeeded") {
       setPaymentStep("confirming");
-      const confirmResult = await packageBundlePaymentService.confirmPayment({ transactionId });
-      if (confirmResult.isSuccessful) {
+      const confirmResult: any = await packageBundlePaymentService.confirmPayment({ transactionId });
+      if (confirmResult.isSuccessful || confirmResult.success) {
         setPaymentStep("activating");
         await new Promise((r) => setTimeout(r, 600));
         setPaymentStep("success");
-        handlePaymentSuccess("Your payment has been processed successfully.", creditsUsed);
+        const pId =
+          confirmResult.data?.projectId ||
+          confirmResult.data?.project?._id ||
+          confirmResult.data?.project?.id ||
+          confirmResult.projectId ||
+          confirmResult.project?._id;
+        handlePaymentSuccess("Your payment has been processed successfully.", creditsUsed, pId);
       } else {
         throw new Error("Payment succeeded but server confirmation failed. Please contact support.");
       }
@@ -772,7 +789,7 @@ function PackageBundlePaymentFormContent({
                   onChange={() => setPaymentOption("half")}
                 />
                 <span className="text-gray-600 text-sm">
-                  Deposit half: <span className="font-medium">{formatActiveCurrency(depositWithVat, currency)}</span>
+                  Deposit half: <span className="font-medium">{formatActiveCurrency(depositHalfAmount, currency)}</span>
                 </span>
               </label>
             )}

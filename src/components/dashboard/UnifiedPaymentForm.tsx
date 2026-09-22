@@ -237,13 +237,17 @@ function PaymentForm({
     return Math.max(0, currentSubtotal + getVatAmount(currentSubtotal) - amountPaid);
   };
 
-  const effectiveDepositAmount = Number(depositAmount) > 0
-    ? Number(depositAmount)
-    : (totalCost > 0 && amountPaid <= 0 ? totalCost / 2 : 0);
+  const getDepositHalfAmount = () => {
+    const pendingWithVat = convertCurrencyAmount(
+      getPendingWithVat(),
+      currency,
+      nativeCurrency || "USD",
+      conversionRate
+    );
+    return Math.round((pendingWithVat / 2) * 100) / 100;
+  };
 
-  const getDepositWithVat = () => effectiveDepositAmount * (1 + getActiveVatRate() / 100);
-
-  const canPayDepositHalf = amountPaid <= 0 && effectiveDepositAmount > 0 && getDepositWithVat() < getPendingWithVat() - 0.009;
+  const canPayDepositHalf = amountPaid <= 0 && getDepositHalfAmount() > 0 && getDepositHalfAmount() < convertCurrencyAmount(getPendingWithVat(), currency, nativeCurrency || "USD", conversionRate) - 0.009;
 
   useEffect(() => {
     const currentDeliverablesSum = getPayableDeliverablesSum();
@@ -464,6 +468,9 @@ function PaymentForm({
           vatRate: currentVatRate,
           vatAmount: currentVatAmount,
           subtotal: currentPayableSubtotal,
+          paymentOption,
+          isDeposit: paymentOption === "half" ? "true" : "false",
+          depositAmount: getDepositHalfAmount(),
           clientCountry: getActiveCountryCode(),
         },
       });
@@ -820,7 +827,7 @@ function PaymentForm({
                   onChange={() => setPaymentOption("half")}
                 />
                 <span className="text-gray-600 text-sm">
-                  Deposit half: <span className="font-medium">{formatPrice(effectiveDepositAmount * (1 + getActiveVatRate() / 100))}</span>
+                  Deposit half: <span className="font-medium">{formatActiveCurrency(getDepositHalfAmount(), currency)}</span>
                 </span>
               </label>
             )}

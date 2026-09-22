@@ -3,7 +3,6 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import HttpClient from "@/lib/HttpClient";
 
 const httpClient = new HttpClient();
@@ -129,18 +128,6 @@ function UnsubscribeContent() {
 
   return (
     <div className="w-full max-w-lg mx-auto bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 p-8 sm:p-10 text-center">
-      {/* Brand Logo Header */}
-      <div className="flex justify-center mb-6">
-        <Image
-          src="https://res.cloudinary.com/dgg6e3flf/image/upload/v1787290054/society_brand/society_email_brand_logo.svg"
-          alt="Society"
-          width={150}
-          height={40}
-          className="h-9 w-auto"
-          priority
-        />
-      </div>
-
       {status === "loading" && (
         <div className="py-8 space-y-4">
           <SpinnerIcon className="w-12 h-12 text-[#2A2AA0] mx-auto" />
@@ -174,7 +161,7 @@ function UnsubscribeContent() {
               className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-all shadow-sm"
             >
               {resubscribing ? <SpinnerIcon className="w-4 h-4 text-gray-700" /> : <RotateCcwIcon className="w-4 h-4" />}
-              Resubscribe by mistake
+              Resubscribe
             </button>
 
             <Link
