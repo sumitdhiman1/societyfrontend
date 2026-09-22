@@ -13,12 +13,15 @@ declare global {
           "error-callback"?: (error?: any) => void;
           "expired-callback"?: () => void;
           theme?: "light" | "dark" | "auto";
-          size?: "normal" | "compact" | "flexible";
+          size?: "normal" | "compact" | "invisible" | "flexible";
+          appearance?: "always" | "execute" | "interaction-only";
           [key: string]: any;
         }
       ) => string;
       reset: (widgetId?: string) => void;
       remove: (widgetId?: string) => void;
+      execute: (container?: HTMLElement | string, params?: any) => void;
+      getResponse: (widgetId?: string) => string | undefined;
     };
     onloadTurnstileCallback?: () => void;
   }
@@ -27,6 +30,8 @@ declare global {
 export interface TurnstileRef {
   reset: () => void;
   remove: () => void;
+  execute: () => void;
+  getResponse: () => string | undefined;
 }
 
 export interface TurnstileProps {
@@ -35,7 +40,8 @@ export interface TurnstileProps {
   onExpire?: () => void;
   onError?: (error?: any) => void;
   theme?: "light" | "dark" | "auto";
-  size?: "normal" | "compact" | "flexible";
+  size?: "normal" | "compact" | "invisible" | "flexible";
+  appearance?: "always" | "execute" | "interaction-only";
   className?: string;
 }
 
@@ -50,6 +56,7 @@ export const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(
       onError,
       theme = "light",
       size = "normal",
+      appearance,
       className = "",
     },
     ref
@@ -93,6 +100,25 @@ export const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(
             console.error("Turnstile remove error:", e);
           }
         }
+      },
+      execute: () => {
+        if (typeof window !== "undefined" && window.turnstile && widgetIdRef.current) {
+          try {
+            window.turnstile.execute(widgetIdRef.current);
+          } catch (e) {
+            console.error("Turnstile execute error:", e);
+          }
+        }
+      },
+      getResponse: () => {
+        if (typeof window !== "undefined" && window.turnstile && widgetIdRef.current) {
+          try {
+            return window.turnstile.getResponse(widgetIdRef.current);
+          } catch (e) {
+            console.error("Turnstile getResponse error:", e);
+          }
+        }
+        return undefined;
       },
     }));
 
@@ -146,10 +172,14 @@ export const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(
       }
 
       try {
-        const widgetId = window.turnstile.render(containerRef.current, {
+        const isInvisible = size === "invisible";
+        const validSize = size === "invisible" ? "flexible" : size;
+
+        const renderParams: any = {
           sitekey: resolvedSiteKey,
           theme,
-          size,
+          size: validSize,
+          appearance: appearance || (isInvisible ? "interaction-only" : "always"),
           callback: (token: string) => {
             if (onVerifyRef.current) onVerifyRef.current(token);
           },
@@ -160,7 +190,9 @@ export const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(
             console.error("Turnstile verification error:", err);
             if (onErrorRef.current) onErrorRef.current(err);
           },
-        });
+        };
+
+        const widgetId = window.turnstile.render(containerRef.current, renderParams);
         widgetIdRef.current = widgetId;
       } catch (err) {
         console.error("Failed to render Cloudflare Turnstile widget:", err);
@@ -177,10 +209,15 @@ export const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(
           widgetIdRef.current = null;
         }
       };
-    }, [isScriptLoaded, resolvedSiteKey, theme, size]);
+    }, [isScriptLoaded, resolvedSiteKey, theme, size, appearance]);
+
+    const isInvisible = size === "invisible";
 
     return (
-      <div className={`turnstile-container ${className}`}>
+      <div
+        className={`turnstile-container ${isInvisible ? "hidden" : ""} ${className}`}
+        style={isInvisible ? { display: "none" } : undefined}
+      >
         <div ref={containerRef} />
       </div>
     );
