@@ -573,7 +573,7 @@ function PackageBundlePaymentFormContent({
   };
 
   return (
-    <div className={containerClassName !== undefined ? containerClassName : "bg-white border border-gray-300 rounded-lg p-4 sm:p-6 md:p-8"}>
+    <div className={containerClassName !== undefined ? containerClassName : ""}>
       <StatusPopup
         isOpen={popup.isOpen}
         onClose={() => setPopup({ ...popup, isOpen: false })}

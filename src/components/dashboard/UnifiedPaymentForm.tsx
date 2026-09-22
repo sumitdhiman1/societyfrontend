@@ -22,7 +22,7 @@ import { getVatRateForCountry, isEstoniaCountry } from "@/lib/vatHelper";
 import { convertCurrencyAmount, formatPriceWithCurrency, formatActiveCurrency } from "@/lib/currencyUtils";
 import { downloadProjectDetailsPDF } from "@/lib/generateProjectDetailsPDF";
 
-const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
   : null;
 
@@ -106,11 +106,11 @@ function PaymentForm({
   const elements = useElements();
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const queryAmount = searchParams?.get("amount");
   const hasQueryAmount = !!(queryAmount && !isNaN(Number(queryAmount)) && Number(queryAmount) > 0);
   const hasAlreadyPaid = amountPaid > 0;
-  
+
   const [paymentOption, setPaymentOption] = useState<string>(
     hasQueryAmount || hasAlreadyPaid ? "custom" : "full"
   );
@@ -118,8 +118,8 @@ function PaymentForm({
     hasQueryAmount
       ? Number(queryAmount).toFixed(2)
       : hasAlreadyPaid
-      ? totalCost.toFixed(2)
-      : ""
+        ? totalCost.toFixed(2)
+        : ""
   );
   const [cardholderName, setCardholderName] = useState("");
   const { currency, setCurrency, conversionRate } = useCurrency();
@@ -237,8 +237,8 @@ function PaymentForm({
     return Math.max(0, currentSubtotal + getVatAmount(currentSubtotal) - amountPaid);
   };
 
-  const effectiveDepositAmount = Number(depositAmount) > 0 
-    ? Number(depositAmount) 
+  const effectiveDepositAmount = Number(depositAmount) > 0
+    ? Number(depositAmount)
     : (totalCost > 0 && amountPaid <= 0 ? totalCost / 2 : 0);
 
   const getDepositWithVat = () => effectiveDepositAmount * (1 + getActiveVatRate() / 100);
@@ -315,7 +315,7 @@ function PaymentForm({
     let amount = totalCost;
     if (paymentOption === "half") amount = effectiveDepositAmount;
     else if (paymentOption === "custom" && customAmount) amount = parseFloat(customAmount);
-    
+
     if (paymentOption !== "custom") {
       const pendingWithVat = convertCurrencyAmount(
         getPendingWithVat(),
@@ -335,7 +335,7 @@ function PaymentForm({
       const withVat = vatRate > 0 ? amount * (1 + vatRate / 100) : amount;
       return withVat;
     }
-    
+
     return amount;
   };
 
@@ -545,14 +545,14 @@ function PaymentForm({
     const billing_details = billingSameAsBusiness
       ? {}
       : {
-          address: {
-            line1: billingAddress.line1,
-            city: billingAddress.city,
-            state: billingAddress.state,
-            postal_code: billingAddress.postal_code,
-            country: billingAddress.country,
-          },
-        };
+        address: {
+          line1: billingAddress.line1,
+          city: billingAddress.city,
+          state: billingAddress.state,
+          postal_code: billingAddress.postal_code,
+          country: billingAddress.country,
+        },
+      };
 
     setPaymentStep("bank_auth");
     const confirmResponse = await stripe.confirmCardPayment(clientSecret, {
@@ -605,91 +605,89 @@ function PaymentForm({
 
       {!hideHeader && (
         <div className="mb-6">
-        <div className="flex flex-col lg:flex-row justify-between items-start mb-6 gap-6">
-          <div className="flex-1 min-w-0 order-2 lg:order-1">
-            <div className="flex items-center gap-4 mb-4">
-              <h2 className="text-lg font-bold text-gray-800">Secure Payment</h2>
-              {!hideCurrencyToggle && (
-                <div className="flex bg-gray-100 rounded-lg p-1">
-                  <button
-                    type="button"
-                    onClick={() => setCurrency("usd")}
-                    className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
-                      currency === "usd" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"
-                    }`}
-                  >
-                    USD
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrency("eur")}
-                    className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
-                      currency === "eur" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"
-                    }`}
-                  >
-                    EUR
-                  </button>
-                </div>
-              )}
-            </div>
-            <p
-              className="text-sm sm:text-base font-semibold text-gray-700 mb-4 leading-relaxed line-clamp-2"
-              title={title || description}
-            >
-              {title || description}
-            </p>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] sm:text-xs text-gray-500">
-              <span className="whitespace-nowrap">
-                {type === "ANALYSIS" ? "Analysis No:" : "Project No:"} <span className="text-gray-700 font-medium">#{entityNumber}</span>
-              </span>
-              {Boolean((projectSubtotal + getVatAmount(projectSubtotal)) > 0 || amountPaid > 0) && (
-                <>
-                  <span className="hidden sm:inline text-gray-300">|</span>
-                  <button
-                    type="button"
-                    disabled={isDownloadingInvoiceState}
-                    onClick={handleDownloadInvoiceClick}
-                    className="text-xs sm:text-sm font-semibold text-[#4343F0] hover:text-[#3232b7] underline decoration-[#4343F0]/40 hover:decoration-[#4343F0] underline-offset-2 whitespace-nowrap cursor-pointer transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
-                  >
-                    {isDownloadingInvoiceState ? (
-                      <>
-                        <div className="w-3 h-3 border-2 border-[#4343F0] border-t-transparent rounded-full animate-spin" />
-                        <span>Downloading Invoice...</span>
-                      </>
-                    ) : (
-                      "View invoice"
-                    )}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="w-full sm:w-60 shrink-0 order-1 lg:order-2 space-y-1.5 text-xs sm:text-sm">
-            <div className="flex justify-between items-center font-semibold">
-              <span className="text-gray-900">Total Cost</span>
-              <span className="text-gray-900 font-bold">
-                {formatPrice(projectSubtotal + getVatAmount(projectSubtotal))}
-              </span>
+          <div className="flex flex-col lg:flex-row justify-between items-start mb-6 gap-6">
+            <div className="flex-1 min-w-0 order-2 lg:order-1">
+              <div className="flex items-center gap-4 mb-4">
+                <h2 className="text-lg font-bold text-gray-800">Secure Payment</h2>
+                {!hideCurrencyToggle && (
+                  <div className="flex bg-gray-100 rounded-lg p-1">
+                    <button
+                      type="button"
+                      onClick={() => setCurrency("usd")}
+                      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "usd" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"
+                        }`}
+                    >
+                      USD
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCurrency("eur")}
+                      className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "eur" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"
+                        }`}
+                    >
+                      EUR
+                    </button>
+                  </div>
+                )}
+              </div>
+              <p
+                className="text-sm sm:text-base font-semibold text-gray-700 mb-4 leading-relaxed line-clamp-2"
+                title={title || description}
+              >
+                {title || description}
+              </p>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] sm:text-xs text-gray-500">
+                <span className="whitespace-nowrap">
+                  {type === "ANALYSIS" ? "Analysis No:" : "Project No:"} <span className="text-gray-700 font-medium">#{entityNumber}</span>
+                </span>
+                {Boolean((projectSubtotal + getVatAmount(projectSubtotal)) > 0 || amountPaid > 0) && (
+                  <>
+                    <span className="hidden sm:inline text-gray-300">|</span>
+                    <button
+                      type="button"
+                      disabled={isDownloadingInvoiceState}
+                      onClick={handleDownloadInvoiceClick}
+                      className="text-xs sm:text-sm font-semibold text-[#4343F0] hover:text-[#3232b7] underline decoration-[#4343F0]/40 hover:decoration-[#4343F0] underline-offset-2 whitespace-nowrap cursor-pointer transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+                    >
+                      {isDownloadingInvoiceState ? (
+                        <>
+                          <div className="w-3 h-3 border-2 border-[#4343F0] border-t-transparent rounded-full animate-spin" />
+                          <span>Downloading Invoice...</span>
+                        </>
+                      ) : (
+                        "View invoice"
+                      )}
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
 
-            <div className="flex justify-between items-center text-green-600">
-              <span className="font-medium">Paid to Date</span>
-              <span className="font-semibold">
-                {formatPrice(amountPaid)}
-              </span>
-            </div>
+            <div className="w-full sm:w-60 shrink-0 order-1 lg:order-2 space-y-1.5 text-xs sm:text-sm">
+              <div className="flex justify-between items-center font-semibold">
+                <span className="text-gray-900">Total Cost</span>
+                <span className="text-gray-900 font-bold">
+                  {formatPrice(projectSubtotal + getVatAmount(projectSubtotal))}
+                </span>
+              </div>
 
-            <div className={`flex justify-between items-center pt-1 border-t border-gray-100 font-semibold ${Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid) > 0.009 ? "text-red-600" : "text-gray-600"}`}>
-              <span>Pending Balance</span>
-              <span className="font-bold">
-                {formatPrice(Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid))}
-              </span>
+              <div className="flex justify-between items-center text-green-600">
+                <span className="font-medium">Paid to Date</span>
+                <span className="font-semibold">
+                  {formatPrice(amountPaid)}
+                </span>
+              </div>
+
+              <div className={`flex justify-between items-center pt-1 border-t border-gray-100 font-semibold ${Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid) > 0.009 ? "text-red-600" : "text-gray-600"}`}>
+                <span>Pending Balance</span>
+                <span className="font-bold">
+                  {formatPrice(Math.max(0, (projectSubtotal + getVatAmount(projectSubtotal)) - amountPaid))}
+                </span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
 
       {deliverableItems && deliverableItems.length > 0 && (
         <div className="border border-gray-200 rounded-lg overflow-x-auto mb-10">
@@ -753,15 +751,15 @@ function PaymentForm({
                 </tr>
               )}
               {getActiveVatRate() > 0 && getVatAmount(projectSubtotal) > 0 && (
-              <tr className="bg-gray-50/70">
-                <td className="py-2.5 px-3 sm:px-6"></td>
-                <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
-                  VAT ({getActiveVatRate()}%):
-                </td>
-                <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
-                  {formatPrice(getVatAmount(projectSubtotal))}
-                </td>
-              </tr>
+                <tr className="bg-gray-50/70">
+                  <td className="py-2.5 px-3 sm:px-6"></td>
+                  <td className="py-2.5 px-3 sm:px-6 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">
+                    VAT ({getActiveVatRate()}%):
+                  </td>
+                  <td className="py-2.5 px-3 sm:px-6 text-right text-xs font-semibold text-gray-700">
+                    {formatPrice(getVatAmount(projectSubtotal))}
+                  </td>
+                </tr>
               )}
               <tr className="bg-blue-50/50 border-t border-gray-200">
                 <td className="py-3 px-3 sm:px-6"></td>
@@ -786,7 +784,7 @@ function PaymentForm({
             <div>
               <h4 className="text-amber-800 font-bold mb-1">Payment System Offline</h4>
               <p className="text-amber-700 text-sm">
-                The secure checkout is currently being configured. Please contact our support team at 
+                The secure checkout is currently being configured. Please contact our support team at
                 <span className="font-bold"> support@society.com</span> to complete your payment manually.
               </p>
             </div>
@@ -809,9 +807,8 @@ function PaymentForm({
             {canPayDepositHalf && (
               <label className="flex items-center gap-3 cursor-pointer group">
                 <div
-                  className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                    paymentOption === "half" ? "border-gray-800" : "border-gray-300"
-                  }`}
+                  className={`w-5 h-5 rounded-full border flex items-center justify-center ${paymentOption === "half" ? "border-gray-800" : "border-gray-300"
+                    }`}
                 >
                   {paymentOption === "half" && <div className="w-3 h-3 rounded-full bg-gray-600" />}
                 </div>
@@ -830,9 +827,8 @@ function PaymentForm({
 
             <label className="flex items-center gap-3 cursor-pointer group">
               <div
-                className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                  paymentOption === "full" ? "border-gray-800" : "border-gray-300"
-                }`}
+                className={`w-5 h-5 rounded-full border flex items-center justify-center ${paymentOption === "full" ? "border-gray-800" : "border-gray-300"
+                  }`}
               >
                 {paymentOption === "full" && <div className="w-3 h-3 rounded-full bg-gray-600" />}
               </div>
@@ -854,9 +850,8 @@ function PaymentForm({
             <div className="flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-3 cursor-pointer group">
                 <div
-                  className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                    paymentOption === "custom" ? "border-gray-800" : "border-gray-300"
-                  }`}
+                  className={`w-5 h-5 rounded-full border flex items-center justify-center ${paymentOption === "custom" ? "border-gray-800" : "border-gray-300"
+                    }`}
                 >
                   {paymentOption === "custom" && <div className="w-3 h-3 rounded-full bg-gray-600" />}
                 </div>
@@ -883,9 +878,8 @@ function PaymentForm({
                           setCustomAmount(e.target.value);
                           if (formErrors.amount) setFormErrors((prev: any) => ({ ...prev, amount: "" }));
                         }}
-                        className={`w-full bg-white border ${
-                          formErrors.amount ? "border-red-500" : "border-gray-300"
-                        } rounded-md py-1.5 px-3 text-sm focus:ring-1 focus:ring-gray-300 outline-none transition-shadow`}
+                        className={`w-full bg-white border ${formErrors.amount ? "border-red-500" : "border-gray-300"
+                          } rounded-md py-1.5 px-3 text-sm focus:ring-1 focus:ring-gray-300 outline-none transition-shadow`}
                         placeholder="Amount"
                       />
                     </div>
@@ -932,9 +926,8 @@ function PaymentForm({
                   </div>
                   <div className="flex items-center">
                     <label
-                      className={`relative inline-flex items-center ${
-                        availableCredits > 0 ? "cursor-pointer" : "cursor-not-allowed opacity-40"
-                      }`}
+                      className={`relative inline-flex items-center ${availableCredits > 0 ? "cursor-pointer" : "cursor-not-allowed opacity-40"
+                        }`}
                     >
                       <span className="sr-only">Apply Credits</span>
                       <input
@@ -965,17 +958,15 @@ function PaymentForm({
                 {savedMethods.map((method) => (
                   <label
                     key={method.id}
-                    className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all ${
-                      selectedMethod === method.id
-                        ? "border-indigo-600 bg-indigo-50/30 ring-1 ring-indigo-600"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
+                    className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all ${selectedMethod === method.id
+                      ? "border-indigo-600 bg-indigo-50/30 ring-1 ring-indigo-600"
+                      : "border-gray-200 hover:border-gray-300"
+                      }`}
                   >
                     <div className="flex items-center gap-4">
                       <div
-                        className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                          selectedMethod === method.id ? "border-indigo-600" : "border-gray-300"
-                        }`}
+                        className={`w-5 h-5 rounded-full border flex items-center justify-center ${selectedMethod === method.id ? "border-indigo-600" : "border-gray-300"
+                          }`}
                       >
                         {selectedMethod === method.id && <div className="w-2.5 h-2.5 rounded-full bg-indigo-600" />}
                       </div>
@@ -1001,16 +992,14 @@ function PaymentForm({
                 ))}
 
                 <label
-                  className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-all ${
-                    selectedMethod === "new"
-                      ? "border-indigo-600 bg-indigo-50/30 ring-1 ring-indigo-600"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
+                  className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-all ${selectedMethod === "new"
+                    ? "border-indigo-600 bg-indigo-50/30 ring-1 ring-indigo-600"
+                    : "border-gray-200 hover:border-gray-300"
+                    }`}
                 >
                   <div
-                    className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                      selectedMethod === "new" ? "border-indigo-600" : "border-gray-300"
-                    }`}
+                    className={`w-5 h-5 rounded-full border flex items-center justify-center ${selectedMethod === "new" ? "border-indigo-600" : "border-gray-300"
+                      }`}
                   >
                     {selectedMethod === "new" && <div className="w-2.5 h-2.5 rounded-full bg-indigo-600" />}
                   </div>
@@ -1042,9 +1031,8 @@ function PaymentForm({
                     if (formErrors.cardHolderName) setFormErrors((prev: any) => ({ ...prev, cardHolderName: "" }));
                   }}
                   placeholder="John Allen Doe"
-                  className={`w-full bg-gray-100 border ${
-                    formErrors.cardHolderName ? "border-red-500 ring-1 ring-red-500" : "border-none"
-                  } rounded-md px-4 py-3 text-sm text-gray-800 placeholder-gray-400 focus:ring-1 focus:ring-gray-300 transition-shadow outline-none`}
+                  className={`w-full bg-gray-100 border ${formErrors.cardHolderName ? "border-red-500 ring-1 ring-red-500" : "border-none"
+                    } rounded-md px-4 py-3 text-sm text-gray-800 placeholder-gray-400 focus:ring-1 focus:ring-gray-300 transition-shadow outline-none`}
                 />
                 {formErrors.cardHolderName && (
                   <span className="text-[10px] text-red-500 font-bold mt-1 block">{formErrors.cardHolderName}</span>
@@ -1080,9 +1068,8 @@ function PaymentForm({
                         setBillingAddress({ ...billingAddress, line1: e.target.value });
                         setFormErrors((prev: any) => ({ ...prev, billingAddress: "" }));
                       }}
-                      className={`w-full bg-white border ${
-                        formErrors.billingAddress ? "border-red-500 focus:ring-red-300" : "border-gray-300 focus:ring-indigo-300"
-                      } rounded-md px-4 py-2 text-sm text-gray-800 outline-none focus:ring-2`}
+                      className={`w-full bg-white border ${formErrors.billingAddress ? "border-red-500 focus:ring-red-300" : "border-gray-300 focus:ring-indigo-300"
+                        } rounded-md px-4 py-2 text-sm text-gray-800 outline-none focus:ring-2`}
                     />
                     {formErrors.billingLine1 && <span className="text-[10px] text-red-500">{formErrors.billingLine1}</span>}
                   </div>
@@ -1095,9 +1082,8 @@ function PaymentForm({
                         setBillingAddress({ ...billingAddress, city: e.target.value });
                         setFormErrors((prev: any) => ({ ...prev, billingCity: "" }));
                       }}
-                      className={`w-full bg-white border ${
-                        formErrors.billingCity ? "border-red-500 focus:ring-red-300" : "border-gray-300 focus:ring-indigo-300"
-                      } rounded-md px-4 py-2 text-sm text-gray-800 outline-none focus:ring-2`}
+                      className={`w-full bg-white border ${formErrors.billingCity ? "border-red-500 focus:ring-red-300" : "border-gray-300 focus:ring-indigo-300"
+                        } rounded-md px-4 py-2 text-sm text-gray-800 outline-none focus:ring-2`}
                     />
                   </div>
                   <div>
@@ -1109,9 +1095,8 @@ function PaymentForm({
                         setBillingAddress({ ...billingAddress, state: e.target.value });
                         setFormErrors((prev: any) => ({ ...prev, billingState: "" }));
                       }}
-                      className={`w-full bg-white border ${
-                        formErrors.billingState ? "border-red-500 focus:ring-red-300" : "border-gray-300 focus:ring-indigo-300"
-                      } rounded-md px-4 py-2 text-sm text-gray-800 outline-none focus:ring-2`}
+                      className={`w-full bg-white border ${formErrors.billingState ? "border-red-500 focus:ring-red-300" : "border-gray-300 focus:ring-indigo-300"
+                        } rounded-md px-4 py-2 text-sm text-gray-800 outline-none focus:ring-2`}
                     />
                   </div>
                   <div>
@@ -1123,9 +1108,8 @@ function PaymentForm({
                         setBillingAddress({ ...billingAddress, postal_code: e.target.value });
                         setFormErrors((prev: any) => ({ ...prev, billingZip: "" }));
                       }}
-                      className={`w-full bg-white border ${
-                        formErrors.billingZip ? "border-red-500 focus:ring-red-300" : "border-gray-300 focus:ring-indigo-300"
-                      } rounded-md px-4 py-2 text-sm text-gray-800 outline-none focus:ring-2`}
+                      className={`w-full bg-white border ${formErrors.billingZip ? "border-red-500 focus:ring-red-300" : "border-gray-300 focus:ring-indigo-300"
+                        } rounded-md px-4 py-2 text-sm text-gray-800 outline-none focus:ring-2`}
                     />
                   </div>
                   <div>
@@ -1138,7 +1122,7 @@ function PaymentForm({
                       {countriesList && countriesList.length > 0 ? (
                         countriesList.map((c) => (
                           <option key={c.iso2 || c._id} value={c.iso2}>
-                            {c.flagEmoji ? `${c.flagEmoji} ` : ""}{c.name} ({c.iso2}){['EE','EST','ESTONIA'].includes((c.iso2 || '').toUpperCase()) && c.vatRate > 0 ? ` - ${c.vatRate}% VAT` : ""}
+                            {c.flagEmoji ? `${c.flagEmoji} ` : ""}{c.name} ({c.iso2}){['EE', 'EST', 'ESTONIA'].includes((c.iso2 || '').toUpperCase()) && c.vatRate > 0 ? ` - ${c.vatRate}% VAT` : ""}
                           </option>
                         ))
                       ) : (
@@ -1158,9 +1142,8 @@ function PaymentForm({
               <div>
                 <label className="block text-[15px] font-medium text-[#111827] mb-2">Card number:</label>
                 <div
-                  className={`w-full bg-gray-100 border ${
-                    formErrors.cardNumber ? "border-red-500 ring-1 ring-red-500" : "border-none"
-                  } rounded-md px-4 py-3 text-sm focus-within:ring-1 focus-within:ring-gray-300 transition-shadow`}
+                  className={`w-full bg-gray-100 border ${formErrors.cardNumber ? "border-red-500 ring-1 ring-red-500" : "border-none"
+                    } rounded-md px-4 py-3 text-sm focus-within:ring-1 focus-within:ring-gray-300 transition-shadow`}
                 >
                   <CardNumberElement
                     options={{ ...stripeElementOptions, showIcon: true }}
@@ -1180,9 +1163,8 @@ function PaymentForm({
                 <div>
                   <label className="block text-[15px] font-medium text-[#111827] mb-2">Expiry date:</label>
                   <div
-                    className={`w-full bg-gray-100 border ${
-                      formErrors.cardExpiry ? "border-red-500 ring-1 ring-red-500" : "border-none"
-                    } rounded-md px-4 py-3 text-sm focus-within:ring-1 focus-within:ring-gray-300 transition-shadow`}
+                    className={`w-full bg-gray-100 border ${formErrors.cardExpiry ? "border-red-500 ring-1 ring-red-500" : "border-none"
+                      } rounded-md px-4 py-3 text-sm focus-within:ring-1 focus-within:ring-gray-300 transition-shadow`}
                   >
                     <CardExpiryElement
                       options={stripeElementOptions}
@@ -1200,9 +1182,8 @@ function PaymentForm({
                 <div>
                   <label className="block text-[15px] font-medium text-[#111827] mb-2">CVC:</label>
                   <div
-                    className={`w-full bg-gray-100 border ${
-                      formErrors.cardCvc ? "border-red-500 ring-1 ring-red-500" : "border-none"
-                    } rounded-md px-4 py-3 text-sm focus-within:ring-1 focus-within:ring-gray-300 transition-shadow`}
+                    className={`w-full bg-gray-100 border ${formErrors.cardCvc ? "border-red-500 ring-1 ring-red-500" : "border-none"
+                      } rounded-md px-4 py-3 text-sm focus-within:ring-1 focus-within:ring-gray-300 transition-shadow`}
                   >
                     <CardCvcElement
                       options={stripeElementOptions}
