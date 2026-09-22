@@ -58,6 +58,17 @@ export const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(
     const widgetIdRef = useRef<string | null>(null);
     const [isScriptLoaded, setIsScriptLoaded] = useState(false);
 
+    // Store callbacks in refs to prevent widget re-mounting when parent re-renders
+    const onVerifyRef = useRef(onVerify);
+    const onExpireRef = useRef(onExpire);
+    const onErrorRef = useRef(onError);
+
+    useEffect(() => {
+      onVerifyRef.current = onVerify;
+      onExpireRef.current = onExpire;
+      onErrorRef.current = onError;
+    });
+
     const resolvedSiteKey =
       siteKey ||
       process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY ||
@@ -107,7 +118,7 @@ export const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(
 
         script.onerror = (err) => {
           console.error("Failed to load Cloudflare Turnstile script:", err);
-          if (onError) onError(err);
+          if (onErrorRef.current) onErrorRef.current(err);
         };
 
         document.head.appendChild(script);
@@ -120,7 +131,7 @@ export const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(
           setIsScriptLoaded(true);
         };
       }
-    }, [onError]);
+    }, []);
 
     useEffect(() => {
       if (!isScriptLoaded || !containerRef.current || !window.turnstile) return;
@@ -140,20 +151,20 @@ export const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(
           theme,
           size,
           callback: (token: string) => {
-            if (onVerify) onVerify(token);
+            if (onVerifyRef.current) onVerifyRef.current(token);
           },
           "expired-callback": () => {
-            if (onExpire) onExpire();
+            if (onExpireRef.current) onExpireRef.current();
           },
           "error-callback": (err: any) => {
             console.error("Turnstile verification error:", err);
-            if (onError) onError(err);
+            if (onErrorRef.current) onErrorRef.current(err);
           },
         });
         widgetIdRef.current = widgetId;
       } catch (err) {
         console.error("Failed to render Cloudflare Turnstile widget:", err);
-        if (onError) onError(err);
+        if (onErrorRef.current) onErrorRef.current(err);
       }
 
       return () => {
@@ -166,7 +177,7 @@ export const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(
           widgetIdRef.current = null;
         }
       };
-    }, [isScriptLoaded, resolvedSiteKey, theme, size, onVerify, onExpire, onError]);
+    }, [isScriptLoaded, resolvedSiteKey, theme, size]);
 
     return (
       <div className={`turnstile-container ${className}`}>
