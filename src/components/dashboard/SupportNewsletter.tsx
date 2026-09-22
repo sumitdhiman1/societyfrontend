@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import StatusPopup from "@/components/common/StatusPopup";
 import HttpClient from "@/lib/HttpClient";
+import Turnstile, { TurnstileRef } from "@/components/common/Turnstile";
 
 const httpClient = new HttpClient();
 
@@ -21,6 +22,21 @@ export default function SupportNewsletter({
 }: SupportNewsletterProps) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileRef>(null);
+
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+  }, []);
+
+  const handleTurnstileExpire = useCallback(() => {
+    setTurnstileToken(null);
+  }, []);
+
+  const handleTurnstileError = useCallback(() => {
+    setTurnstileToken(null);
+  }, []);
+
   const [popup, setPopup] = useState({
     isOpen: false,
     type: "success" as "success" | "error",
@@ -44,8 +60,23 @@ export default function SupportNewsletter({
 
     try {
       setLoading(true);
+
+      let activeToken = turnstileToken || turnstileRef.current?.getResponse();
+      if (!activeToken) {
+        turnstileRef.current?.execute();
+        for (let i = 0; i < 15; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          activeToken = turnstileRef.current?.getResponse();
+          if (activeToken) {
+            setTurnstileToken(activeToken);
+            break;
+          }
+        }
+      }
+
       const res: any = await httpClient.post("/newsletter/subscribe", {
         email,
+        turnstileToken: activeToken,
       });
 
       if (res.success) {
@@ -57,6 +88,8 @@ export default function SupportNewsletter({
             res.message || "You have successfully joined our mailing list.",
         });
         setEmail("");
+        setTurnstileToken(null);
+        turnstileRef.current?.reset();
       } else {
         throw new Error(res.message || "Subscription failed");
       }
@@ -80,6 +113,8 @@ export default function SupportNewsletter({
         title,
         message: error?.response?.data?.message || message,
       });
+      setTurnstileToken(null);
+      turnstileRef.current?.reset();
     } finally {
       setLoading(false);
     }
@@ -98,6 +133,14 @@ export default function SupportNewsletter({
         type={popup.type}
         title={popup.title}
         message={popup.message}
+      />
+
+      <Turnstile
+        ref={turnstileRef}
+        size="invisible"
+        onVerify={handleTurnstileVerify}
+        onExpire={handleTurnstileExpire}
+        onError={handleTurnstileError}
       />
 
       <div

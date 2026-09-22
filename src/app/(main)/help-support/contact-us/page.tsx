@@ -122,7 +122,21 @@ export default function ContactUsPage() {
     e.preventDefault();
     if (loading) return;
 
-    if (!turnstileToken) {
+    let activeToken = turnstileToken || turnstileRef.current?.getResponse();
+
+    if (!activeToken) {
+      turnstileRef.current?.execute();
+      for (let i = 0; i < 15; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        activeToken = turnstileRef.current?.getResponse();
+        if (activeToken) {
+          setTurnstileToken(activeToken);
+          break;
+        }
+      }
+    }
+
+    if (!activeToken) {
       setPopup({
         isOpen: true,
         type: "error",
@@ -141,7 +155,7 @@ export default function ContactUsPage() {
         phone: formData.phone.trim(),
         subject: formData.subject.trim(),
         message: formData.message.trim(),
-        turnstileToken,
+        turnstileToken: activeToken,
       };
 
       const res: any = await httpClient.post("/contact/submit", payload);
@@ -315,18 +329,17 @@ export default function ContactUsPage() {
                 />
               </div>
 
-              <div className="pt-2">
-                <Turnstile
-                  ref={turnstileRef}
-                  onVerify={handleTurnstileVerify}
-                  onExpire={handleTurnstileExpire}
-                  onError={handleTurnstileError}
-                />
-              </div>
+              <Turnstile
+                ref={turnstileRef}
+                size="invisible"
+                onVerify={handleTurnstileVerify}
+                onExpire={handleTurnstileExpire}
+                onError={handleTurnstileError}
+              />
 
               <button
                 type="submit"
-                disabled={loading || !turnstileToken}
+                disabled={loading}
                 className="bg-primary-300 hover:bg-primary-100 text-white font-bold py-3 px-12 rounded-md transition-colors w-full md:w-[350px] mt-4 text-sm disabled:opacity-50 cursor-pointer shadow-sm hover:shadow-md"
               >
                 {loading ? "Sending..." : submitBtnText}
