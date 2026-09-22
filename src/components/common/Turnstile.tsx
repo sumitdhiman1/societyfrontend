@@ -172,10 +172,14 @@ export const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(
       }
 
       try {
+        const isInvisible = size === "invisible";
+        const validSize = size === "invisible" ? "flexible" : size;
+
         const renderParams: any = {
           sitekey: resolvedSiteKey,
           theme,
-          size,
+          size: validSize,
+          appearance: appearance || (isInvisible ? "interaction-only" : "always"),
           callback: (token: string) => {
             if (onVerifyRef.current) onVerifyRef.current(token);
           },
@@ -187,10 +191,6 @@ export const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(
             if (onErrorRef.current) onErrorRef.current(err);
           },
         };
-
-        if (appearance) {
-          renderParams.appearance = appearance;
-        }
 
         const widgetId = window.turnstile.render(containerRef.current, renderParams);
         widgetIdRef.current = widgetId;
@@ -209,7 +209,7 @@ export const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(
           widgetIdRef.current = null;
         }
       };
-    }, [isScriptLoaded, resolvedSiteKey, theme, size]);
+    }, [isScriptLoaded, resolvedSiteKey, theme, size, appearance]);
 
     const isInvisible = size === "invisible";
 
