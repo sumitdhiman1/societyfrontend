@@ -265,14 +265,14 @@ export default function CompanyPage() {
       {/* ── Hero Section ────────────────────────────────────────────── */}
       <main className="flex-grow overflow-hidden">
         <section className="relative h-[420px] sm:h-[436px] bg-[#00102E] flex items-center overflow-hidden">
-          <img src="/images/image.png" className="company-bg absolute right-0 top-[33%] h-full w-auto object-cover object-right opacity-90 z-0 scale-[2] origin-right translate-y-[5%]" alt="Hero background" />
+          <img src="/images/about.png" className="company-bg absolute right-0 top-[33%] h-full w-auto object-cover object-right opacity-90 z-0 scale-[2] 2xl:scale-[2.9] origin-right translate-y-[5%]" alt="Hero background" />
           <div className="company-bg-overlay absolute inset-0 bg-gradient-to-b from-[#00102E] to-[#0E2549]/0 to-transparent z-0"></div>
           <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] relative z-10 text-left w-full flex flex-col items-start gap-3 md:gap-[16px]">
-            <span className="text-[#FFFFFF] text-lg sm:text-[22px] font-bold leading-normal sm:leading-[30px]">About us</span>
-            <h1 className="text-3xl sm:text-4xl md:text-[56px] font-bold text-white leading-tight sm:leading-[48px] md:leading-[64px] max-w-[720px]">
+            <span className="text-[#9aa0aa] text-lg sm:text-[25px] font-bold leading-normal sm:leading-[30px]">About us</span>
+            <h1 className="text-3xl sm:text-4xl md:text-[48px] font-bold text-white leading-tight sm:leading-[48px] md:leading-[64px] max-w-[720px]">
               World class websites and online marketing.
             </h1>
-            <p className="text-[#FFFFFF] text-base sm:text-[18px] font-normal leading-relaxed sm:leading-[26px] mt-0 md:mt-2">
+            <p className="text-[#9aa0aa] text-base sm:text-[18px] font-normal leading-relaxed sm:leading-[26px] mt-0 md:mt-2">
               Society Web Solutions provides an all-in-one business class
               <br className="hidden sm:block" />
               service oriented around web presence success.
@@ -295,7 +295,7 @@ export default function CompanyPage() {
                   Our company is all about a process of building your business&apos; web presence to complete excellence. We create completely custom recommendations for each business based on the business&apos; goals, budget, timeline, competition, and other factors involved.
                 </p>
               </div>
-              <div className="flex flex-col gap-[13px] text-[#363636] text-[16px] leading-[27px] font-normal w-full lg:w-[55%] lg:pt-[44px]">
+              <div className="flex flex-col gap-[13px] text-[#363636] text-[16px] leading-[27px] font-normal w-full lg:w-[49%] lg:pt-[44px]">
                 <p>
                   Often our clients first need to create a consistent brand style between their logo, website, social media, advertising, etc. Our graphic design team is excellent at working directly with business owners to create quick concepts and revisions until the right design direction is found. For custom web development projects we&apos;re ready to create preliminary designs before any commitments.
                 </p>
@@ -336,7 +336,7 @@ export default function CompanyPage() {
             <div className="flex flex-col lg:flex-row lg:items-center w-full justify-between gap-8 lg:gap-8">
               {/* Left text block */}
               <div className="w-full lg:flex-1 flex flex-col gap-3 md:gap-4 shrink-0">
-                <h2 className="text-2xl sm:text-3xl md:text-[38px] lg:text-[42px] font-semibold text-[#363636] leading-tight md:leading-[48px] tracking-[-0.03em]">
+                <h2 className="text-2xl sm:text-3xl md:text-[38px] lg:text-[48px] font-semibold text-[#363636] leading-tight md:leading-[48px] tracking-[-0.03em]">
                   Leading the new generation of web companies.
                 </h2>
                 <p className="text-[18px] font-semibold text-[#363636] leading-relaxed sm:leading-[27px]">
@@ -346,13 +346,13 @@ export default function CompanyPage() {
                   <br />
                   long-term online success.
                 </p>
-                <p className="text-[16px] text-[#363636] font-normal leading-[27px]">
+                <p className="text-[16px] text-[#363636] font-normal leading-[27px] lg:max-w-[439px]">
                   Society Web Solutions provides a completely client-focused service built on trust and a long-term vision. We&apos;ll always be dedicated to your business goals as if they were our own. We&apos;re here to adapt to your situation and provide the most efficient solutions possible.
                 </p>
               </div>
 
               {/* Right white card */}
-              <div className="w-full lg:w-[878px] lg:h-[416px] bg-white rounded-[20px] shadow-sm flex flex-col sm:flex-row overflow-hidden shrink-0">
+              <div className="w-full lg:w-[868px] lg:h-[416px] bg-white rounded-[20px] shadow-sm flex flex-col sm:flex-row overflow-hidden shrink-0">
                 <div className="relative w-full sm:w-[395px] h-[220px] sm:h-full shrink-0">
                   <Image
                     src="/assets/company/foundationimage.jpg"
