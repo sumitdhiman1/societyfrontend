@@ -21,6 +21,7 @@ export default function SupportNewsletter({
   gridClassName = "",
 }: SupportNewsletterProps) {
   const [email, setEmail] = useState("");
+  const [hp, setHp] = useState("");
   const [loading, setLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const turnstileRef = useRef<TurnstileRef>(null);
@@ -64,7 +65,7 @@ export default function SupportNewsletter({
       let activeToken = turnstileToken || turnstileRef.current?.getResponse();
       if (!activeToken) {
         turnstileRef.current?.execute();
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < 20; i++) {
           await new Promise((resolve) => setTimeout(resolve, 100));
           activeToken = turnstileRef.current?.getResponse();
           if (activeToken) {
@@ -74,9 +75,14 @@ export default function SupportNewsletter({
         }
       }
 
+      if (!activeToken) {
+        throw new Error("Security verification is processing. Please try clicking Subscribe again.");
+      }
+
       const res: any = await httpClient.post("/newsletter/subscribe", {
         email,
         turnstileToken: activeToken,
+        hp,
       });
 
       if (res.success) {
@@ -88,6 +94,7 @@ export default function SupportNewsletter({
             res.message || "You have successfully joined our mailing list.",
         });
         setEmail("");
+        setHp("");
         setTurnstileToken(null);
         turnstileRef.current?.reset();
       } else {
@@ -103,8 +110,8 @@ export default function SupportNewsletter({
         title = "Already Subscribed";
         message = "This email is already active in our mailing list.";
       } else if (status === 400) {
-        title = "Invalid Email";
-        message = "The email address provided is invalid.";
+        title = "Verification Failed";
+        message = error?.response?.data?.message || "Security verification failed. Please try again.";
       }
 
       setPopup({
@@ -206,21 +213,48 @@ export default function SupportNewsletter({
             </h3>
             <form
               onSubmit={handleSubscribe}
-              className="flex w-full max-w-[400px] md:max-w-none shadow-sm rounded-lg overflow-hidden bg-[#F0F0FF] h-[54px] md:h-[50px] border border-[#36363622]"
+              className="flex items-center w-full max-w-[400px] md:max-w-none h-[54px] md:h-[50px] relative rounded-[8px] overflow-hidden"
+              style={{ borderRadius: "8px", overflow: "hidden" }}
             >
+              {/* Hidden honeypot field for bot trapping */}
+              <input
+                type="text"
+                name="company_website_url_hp"
+                value={hp}
+                onChange={(e) => setHp(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+                style={{ position: "absolute", left: "-9999px", opacity: 0, pointerEvents: "none" }}
+                aria-hidden="true"
+              />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email Address"
                 disabled={loading}
-                className="w-full px-4 md:px-4 bg-transparent text-gray-700 text-sm placeholder-gray-500 outline-none disabled:opacity-50 font-sans"
+                style={{
+                  borderTopLeftRadius: "8px",
+                  borderBottomLeftRadius: "8px",
+                  borderTopRightRadius: "0px",
+                  borderBottomRightRadius: "0px",
+                  borderRight: "none",
+                }}
+                className="flex-1 min-w-0 h-full px-4 md:px-5 bg-[#F0F0FF] border border-r-0 border-[#36363622] text-gray-700 text-sm placeholder-gray-500 outline-none focus:border-[#4343F0] disabled:opacity-50 font-sans"
                 required
               />
               <button
                 type="submit"
                 disabled={loading}
-                className="bg-[#4343F0] hover:bg-[#3232b7] text-white font-bold px-6 md:px-8 text-sm h-full whitespace-nowrap shrink-0 disabled:opacity-75 flex items-center justify-center min-w-[110px] md:min-w-[100px] transition-colors font-sans cursor-pointer"
+                style={{
+                  borderTopLeftRadius: "0px",
+                  borderBottomLeftRadius: "0px",
+                  borderTopRightRadius: "8px",
+                  borderBottomRightRadius: "8px",
+                  border: "none",
+                  margin: 0,
+                }}
+                className="bg-[#4343F0] hover:bg-[#3232b7] text-white font-bold h-full px-6 md:px-8 text-sm whitespace-nowrap shrink-0 disabled:opacity-75 flex items-center justify-center min-w-[110px] md:min-w-[100px] transition-all font-sans cursor-pointer"
               >
                 {loading ? (
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
