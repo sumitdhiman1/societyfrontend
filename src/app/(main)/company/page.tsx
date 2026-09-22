@@ -249,14 +249,7 @@ export default function CompanyPage() {
   const renderStars = (rating: number = 5) => {
     const starsCount = Math.max(1, Math.min(5, Math.round(Number(rating) || 5)));
     return Array.from({ length: 5 }).map((_, idx) => (
-      <svg
-        key={idx}
-        className={`w-[16.66px] h-[16.66px] ${idx < starsCount ? "text-[#D1AC40] fill-current" : "text-gray-300 fill-current"
-          } shrink-0`}
-        viewBox="0 0 20 20"
-      >
-        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-      </svg>
+      <img src="/images/fivestar.svg" className="" />
     ));
   };
 
@@ -295,7 +288,7 @@ export default function CompanyPage() {
                   Our company is all about a process of building your business&apos; web presence to complete excellence. We create completely custom recommendations for each business based on the business&apos; goals, budget, timeline, competition, and other factors involved.
                 </p>
               </div>
-              <div className="flex flex-col gap-[13px] text-[#363636] text-[16px] leading-[27px] font-normal w-full lg:w-[49%] lg:pt-[44px]">
+              <div className="flex flex-col gap-[13px] text-[#363636] text-[16px] leading-[27px] font-normal w-full lg:w-[49%]">
                 <p>
                   Often our clients first need to create a consistent brand style between their logo, website, social media, advertising, etc. Our graphic design team is excellent at working directly with business owners to create quick concepts and revisions until the right design direction is found. For custom web development projects we&apos;re ready to create preliminary designs before any commitments.
                 </p>
@@ -336,7 +329,7 @@ export default function CompanyPage() {
             <div className="flex flex-col lg:flex-row lg:items-center w-full justify-between gap-8 lg:gap-8">
               {/* Left text block */}
               <div className="w-full lg:flex-1 flex flex-col gap-3 md:gap-4 shrink-0">
-                <h2 className="text-2xl sm:text-3xl md:text-[38px] lg:text-[48px] font-semibold text-[#363636] leading-tight md:leading-[48px] tracking-[-0.03em]">
+                <h2 className="font-['Inter'] font-semibold text-[48px] leading-[100%] tracking-[-3%] sm:text-3xl lg:text-[48px] text-[#363636] leading-tight md:leading-[48px] tracking-[-0.03em]">
                   Leading the new generation of web companies.
                 </h2>
                 <p className="text-[18px] font-semibold text-[#363636] leading-relaxed sm:leading-[27px]">
@@ -399,12 +392,12 @@ export default function CompanyPage() {
                     className="w-[85vw] sm:w-[360px] md:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)] flex-shrink-0 snap-start"
                   >
                     <div
-                      className="bg-white rounded-[20px] p-6 lg:p-[28px] flex flex-col gap-3 h-auto md:h-full md:min-h-[300px] lg:min-h-[340px]"
+                      className="bg-white rounded-[20px] p-6 lg:p-[28px] flex flex-col gap-2 h-auto md:h-full md:min-h-[300px] lg:min-h-[340px]"
                     // style={{
                     //   boxShadow: "0px 4px 44px 0px rgba(194, 194, 194, 0.25)",
                     // }}
                     >
-                      <h3 className="font-bold text-[#363636] text-lg sm:text-[20px] leading-snug uppercase opacity-80 truncate text-left m-0">
+                      <h3 className="font-bold text-[#000000] text-lg sm:text-[20px] leading-snug uppercase opacity-80 truncate text-left m-0">
                         {getTestimonialTitle(t)}
                       </h3>
                       <div className="flex gap-[2px]">
