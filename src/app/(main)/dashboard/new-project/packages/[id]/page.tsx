@@ -78,7 +78,7 @@ function PackageDetailsContent() {
 
   useEffect(() => {
     setProjectNo(Math.random().toString(36).substring(2, 9).toUpperCase());
-    
+
     const initUser = async () => {
       const currentUser = authService.getUser();
       if (currentUser) {
@@ -427,9 +427,9 @@ function PackageDetailsContent() {
         title={status.title}
         message={status.message}
       />
-      
+
       <main className="flex-grow w-full max-w-[1536px] mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] pt-8 md:pt-12 pb-8 md:pb-16">
-        
+
         {/* Hero Section */}
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-8 md:gap-12 mb-8 md:mb-16">
           <div className="lg:w-[50%] flex flex-col">
@@ -437,15 +437,15 @@ function PackageDetailsContent() {
             <p className="text-[#808080] leading-relaxed text-base md:text-lg max-w-xl font-medium">{pkg.description || "Professional standalone services designed for quick turnaround and high-quality results."}</p>
           </div>
           <div className="lg:w-[50%] flex items-center justify-center lg:justify-end">
-            <div 
+            <div
               className="w-full max-w-[620px] aspect-[16/10] bg-[#e0e0e0] rounded-none overflow-hidden shadow-sm border border-gray-200 relative"
               style={{ borderRadius: "0px" }}
             >
               {pkg.imageUrl ? (
-                <img 
-                  src={pkg.imageUrl} 
-                  alt={pkg.name} 
-                  className="w-full h-full object-cover rounded-none" 
+                <img
+                  src={pkg.imageUrl}
+                  alt={pkg.name}
+                  className="w-full h-full object-cover rounded-none"
                   style={{ borderRadius: "0px" }}
                 />
               ) : (
@@ -519,54 +519,54 @@ function PackageDetailsContent() {
                       );
                     })}
                   </div>
-                  
+
                   <div className="divide-y divide-gray-100">
                     {features
                       .filter((f: any) => f.key !== "timeline" && f.name?.toLowerCase().trim() !== "timeline")
                       .map((feature: any, fIdx: number) => (
-                      <div key={fIdx} className="grid divide-x divide-gray-50 hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
-                        <div className="p-4 md:p-5 px-6 md:px-8 font-bold text-[13px] md:text-[15px] flex items-center" style={{ color: "#535c6a" }}>{feature.name}</div>
-                        {columns.map((col: any, cIdx: number) => {
-                          let val = feature.values?.[col.id];
-                          if (val === undefined && feature.values) {
-                            const match = Object.keys(feature.values).find(k => k.toLowerCase() === String(col.id).toLowerCase());
-                            if (match) val = feature.values[match];
-                          }
+                        <div key={fIdx} className="grid divide-x divide-gray-50 hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
+                          <div className="p-4 md:p-5 px-6 md:px-8 font-bold text-[13px] md:text-[15px] flex items-center" style={{ color: "#535c6a" }}>{feature.name}</div>
+                          {columns.map((col: any, cIdx: number) => {
+                            let val = feature.values?.[col.id];
+                            if (val === undefined && feature.values) {
+                              const match = Object.keys(feature.values).find(k => k.toLowerCase() === String(col.id).toLowerCase());
+                              if (match) val = feature.values[match];
+                            }
 
-                          let isLink = false;
-                          let linkData = { label: '', url: '' };
-                          if (typeof val === 'string' && val.startsWith('__LINK__:')) {
-                            isLink = true;
-                            const parts = val.replace('__LINK__:', '').split('|');
-                            linkData = { label: parts[0] || '', url: parts[1] || '' };
-                          }
+                            let isLink = false;
+                            let linkData = { label: '', url: '' };
+                            if (typeof val === 'string' && val.startsWith('__LINK__:')) {
+                              isLink = true;
+                              const parts = val.replace('__LINK__:', '').split('|');
+                              linkData = { label: parts[0] || '', url: parts[1] || '' };
+                            }
 
-                          const isBool = typeof val === "boolean" || val === "true" || val === "false";
-                          const boolVal = typeof val === "boolean" ? val : (val === "true");
+                            const isBool = typeof val === "boolean" || val === "true" || val === "false";
+                            const boolVal = typeof val === "boolean" ? val : (val === "true");
 
-                          return (
-                            <div key={cIdx} className="p-5 flex items-center justify-center">
-                              {isLink ? (
-                                <a
-                                  href={linkData.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-[13px] font-bold text-[#3535b8] hover:underline text-center"
-                                >
-                                  {linkData.label}
-                                </a>
-                              ) : isBool ? (
-                                boolVal ? <CheckIcon /> : <CrossIcon />
-                              ) : val == null || val === "" || val === "-" ? (
-                                <span className="text-[14px] font-bold text-center" style={{ color: "#3a4252" }}>-</span>
-                              ) : (
-                                <span className="text-[13px] md:text-[14px] font-bold text-center" style={{ color: "#3a4252" }}>{String(val)}</span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
+                            return (
+                              <div key={cIdx} className="p-5 flex items-center justify-center">
+                                {isLink ? (
+                                  <a
+                                    href={linkData.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[13px] font-bold text-[#3535b8] hover:underline text-center"
+                                  >
+                                    {linkData.label}
+                                  </a>
+                                ) : isBool ? (
+                                  boolVal ? <CheckIcon /> : <CrossIcon />
+                                ) : val == null || val === "" || val === "-" ? (
+                                  <span className="text-[14px] font-bold text-center" style={{ color: "#3a4252" }}>-</span>
+                                ) : (
+                                  <span className="text-[13px] md:text-[14px] font-bold text-center" style={{ color: "#3a4252" }}>{String(val)}</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
 
                     {/* Timeline Row at bottom */}
                     <div className="grid divide-x divide-gray-50 border-t border-gray-100 bg-gray-50/20" style={{ gridTemplateColumns: `minmax(200px, 300px) repeat(${columns.length}, 1fr)` }}>
@@ -644,8 +644,8 @@ function PackageDetailsContent() {
                               {formatPrice(parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0) + getVatAmount(parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0)))}
                             </div>
                             <div className="relative">
-                              <select 
-                                value={currency.toUpperCase()} 
+                              <select
+                                value={currency.toUpperCase()}
                                 onChange={(e) => setCurrency(e.target.value.toLowerCase())}
                                 className="bg-white border border-gray-300 text-[#646464] text-xs font-bold rounded px-3 py-2 outline-none appearance-none pr-8 cursor-pointer shadow-sm hover:border-gray-400 transition-colors"
                               >
@@ -667,13 +667,14 @@ function PackageDetailsContent() {
                         </div>
                       </div>
 
-                      <p className="text-[14px] text-[#808080] leading-relaxed mb-8 border-t border-gray-100 pt-6">
+                      <p className="mb-6 text-sm text-gray-500 leading-relaxed">
                         {pkg.description || "Professional standalone services designed for quick turnaround and high-quality results."}
                       </p>
+                      <div className="border-t border-gray-300 mb-6"></div>
 
                       {/* Included Deliverables */}
-                      <div className="border-t border-gray-300 pt-6">
-                        <h4 className="text-xs font-bold text-[#808080] mb-4">Features included in this tier:</h4>
+                      <div >
+                        <h4 className="text-base font-bold text-gray-700 mb-4">Features included in this tier:</h4>
                         <ul className="space-y-3">
                           {getIncludedFeatures("one-time").map((feature: any, idx: number) => (
                             <li key={idx} className="flex items-start gap-3 text-sm text-gray-600">
@@ -694,63 +695,64 @@ function PackageDetailsContent() {
                           ))}
                         </ul>
                       </div>
-                    </div>
 
-                    <PackageBundlePaymentForm
-                      type="PACKAGE"
-                      entityId={packageId}
-                      entityNumber={projectNo}
-                      title={`${pkg.name} - ${selectedTier?.title || ""}`}
-                      description={pkg.description}
-                      date={new Date().toISOString()}
-                      totalCost={parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0)}
-                      depositAmount={parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0) > 0 ? parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0) / 2 : undefined}
-                      deliverableItems={[
-                        {
-                          description: `${pkg.name}${selectedTier?.title ? ` - ${selectedTier.title}` : ""}`,
-                          details: getIncludedFeatures("one-time").map((f: any) => f.displayLabel ? `${f.name}: ${f.displayLabel}` : f.name).join("\n") || pkg.description || "",
-                          amount: parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0),
+                      <div className="my-6"></div>
+                      <PackageBundlePaymentForm
+                        type="PACKAGE"
+                        entityId={packageId}
+                        entityNumber={projectNo}
+                        title={`${pkg.name} - ${selectedTier?.title || ""}`}
+                        description={pkg.description}
+                        date={new Date().toISOString()}
+                        totalCost={parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0)}
+                        depositAmount={parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0) > 0 ? parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0) / 2 : undefined}
+                        deliverableItems={[
+                          {
+                            description: `${pkg.name}${selectedTier?.title ? ` - ${selectedTier.title}` : ""}`,
+                            details: getIncludedFeatures("one-time").map((f: any) => f.displayLabel ? `${f.name}: ${f.displayLabel}` : f.name).join("\n") || pkg.description || "",
+                            amount: parsePrice(selectedTier?.price || selectedTier?.recurringAmount || 0),
+                            duration: getDurationLabel(selectedTier),
+                            unit: "",
+                            isAddOn: false
+                          }
+                        ]}
+                        clientEmail={email}
+                        successRedirectUrl="/dashboard/my-projects"
+                        amountPaid={0}
+                        startDate={new Date().toISOString()}
+                        deadline={(() => {
+                          const days = getTimelineDays(selectedTier);
+                          const d = new Date();
+                          d.setDate(d.getDate() + days);
+                          return d.toISOString();
+                        })()}
+                        nativeCurrency="USD"
+                        hideHeader={true}
+                        metadata={{
+                          packageId,
+                          packageName: pkg.name,
+                          tierId: selectedTier?.id,
+                          tierTitle: selectedTier?.title,
+                          projectNo,
                           duration: getDurationLabel(selectedTier),
-                          unit: "",
-                          isAddOn: false
-                        }
-                      ]}
-                      clientEmail={email}
-                      successRedirectUrl="/dashboard/my-projects"
-                      amountPaid={0}
-                      startDate={new Date().toISOString()}
-                      deadline={(() => {
-                        const days = getTimelineDays(selectedTier);
-                        const d = new Date();
-                        d.setDate(d.getDate() + days);
-                        return d.toISOString();
-                      })()}
-                      nativeCurrency="USD"
-                      hideHeader={true}
-                      metadata={{
-                        packageId,
-                        packageName: pkg.name,
-                        tierId: selectedTier?.id,
-                        tierTitle: selectedTier?.title,
-                        projectNo,
-                        duration: getDurationLabel(selectedTier),
-                        billingType: selectedTier?.billingType || (pkg.paymentType?.toLowerCase().includes("month") ? "monthly" : "fixed"),
-                        recurringAmount: parsePrice(selectedTier?.recurringAmount || selectedTier?.recurringPrice || selectedTier?.price || 0),
-                        recurringDuration: selectedTier?.period || "month",
-                        isRecurring: selectedTier?.billingType === "monthly" || pkg.paymentType?.toLowerCase().includes("month")
-                      }}
-                    >
-                      <div className="mt-4">
-                        <button
-                          type="button"
-                          onClick={() => handleSaveOrder(selectedTier)}
-                          disabled={processing}
-                          className="w-full px-6 py-3 bg-white border border-gray-300 text-[#808080] font-bold text-xs uppercase tracking-widest hover:bg-gray-50 rounded-[10px] transition-colors duration-200 flex items-center justify-center gap-2 cursor-pointer"
-                        >
-                          {processing ? "Processing..." : "Save Order & Pay Later (Generate Invoice)"}
-                        </button>
-                      </div>
-                    </PackageBundlePaymentForm>
+                          billingType: selectedTier?.billingType || (pkg.paymentType?.toLowerCase().includes("month") ? "monthly" : "fixed"),
+                          recurringAmount: parsePrice(selectedTier?.recurringAmount || selectedTier?.recurringPrice || selectedTier?.price || 0),
+                          recurringDuration: selectedTier?.period || "month",
+                          isRecurring: selectedTier?.billingType === "monthly" || pkg.paymentType?.toLowerCase().includes("month")
+                        }}
+                      >
+                        <div className="mt-4">
+                          <button
+                            type="button"
+                            onClick={() => handleSaveOrder(selectedTier)}
+                            disabled={processing}
+                            className="w-full px-6 py-3 bg-white border border-gray-300 text-[#808080] font-bold text-xs uppercase tracking-widest hover:bg-gray-50 rounded-[10px] transition-colors duration-200 flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            {processing ? "Processing..." : "Save Order & Pay Later (Generate Invoice)"}
+                          </button>
+                        </div>
+                      </PackageBundlePaymentForm>
+                    </div>
                   </div>
 
                   {/* Sidebar Section */}
@@ -759,8 +761,8 @@ function PackageDetailsContent() {
                     <p className="text-[13px] text-[#808080] mb-8 leading-relaxed">
                       Our support team is here to help with pricing, payments, or package details—no pressure.
                     </p>
-                    <button 
-                      onClick={openChat} 
+                    <button
+                      onClick={openChat}
                       className="w-full bg-[#3535b8] hover:bg-[#2a2a9a] text-white py-3.5 rounded-[10px] font-bold text-sm transition-all shadow-md active:scale-95 cursor-pointer"
                     >
                       Contact Support

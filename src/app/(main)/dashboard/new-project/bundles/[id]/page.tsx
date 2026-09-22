@@ -976,7 +976,7 @@ function BundleDetailsContent() {
                       <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 leading-tight pr-4" style={{ maxWidth: "100%" }}>
                         {pkg.name} - {selectedTier.title}
                       </h3>
-                      <div className="mb-6 text-sm text-gray-500 flex items-center gap-3 flex-wrap justify-between">
+                      <div className="text-sm text-gray-500 flex items-center gap-3 flex-wrap justify-between">
                         <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
                           <span>
                             <strong>Project No:</strong> #{projectNo}

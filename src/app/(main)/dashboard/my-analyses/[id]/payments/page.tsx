@@ -58,10 +58,10 @@ function ReceiptModal({
 
   const dateFormatted = (payment?.createdAt || analysis.createdAt)
     ? new Date(payment?.createdAt || analysis.createdAt).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    })
     : "13 Sept 2026";
 
   const handlePrint = () => {
@@ -279,7 +279,7 @@ export default function AnalysisPaymentsPage() {
       const cleanupTimer = setTimeout(() => {
         try {
           window.history.replaceState(null, "", `/dashboard/my-analyses/${analysisId}/payments`);
-        } catch {}
+        } catch { }
       }, 4500);
 
       return () => {
@@ -382,32 +382,32 @@ export default function AnalysisPaymentsPage() {
     (activeAnalysis.deliverableItems?.[0]?.details && !isGenericDesc(activeAnalysis.deliverableItems?.[0]?.details))
       ? activeAnalysis.deliverableItems?.[0]?.details
       : (matchedProduct?.shortDescription ||
-         matchedProduct?.description ||
-         matchedProduct?.longDescription ||
-         activeAnalysis.shortDescription ||
-         activeAnalysis.product?.shortDescription ||
-         activeAnalysis.product?.description ||
-         (activeAnalysis.description && !activeAnalysis.description.startsWith("Analysis for ") ? activeAnalysis.description : "") ||
-         (dynamicAnalysisTitle.toLowerCase().includes("check")
-           ? "An offer to check the completed work of any other web professionals, including your own in-house staff and/or partners. Fully custom and manual checking by our quality assurance team. Serves as a third, objective perspective on the quality of work completed."
-           : "Our classic analysis offer covering branding, UI/UX, functionalities, AI potentiality, tech stack, speed, and SEO. A manual review using a custom process created by Society Web Solutions, checking every important part of your website. Delivered as a custom PDF report within 5 days."));
+        matchedProduct?.description ||
+        matchedProduct?.longDescription ||
+        activeAnalysis.shortDescription ||
+        activeAnalysis.product?.shortDescription ||
+        activeAnalysis.product?.description ||
+        (activeAnalysis.description && !activeAnalysis.description.startsWith("Analysis for ") ? activeAnalysis.description : "") ||
+        (dynamicAnalysisTitle.toLowerCase().includes("check")
+          ? "An offer to check the completed work of any other web professionals, including your own in-house staff and/or partners. Fully custom and manual checking by our quality assurance team. Serves as a third, objective perspective on the quality of work completed."
+          : "Our classic analysis offer covering branding, UI/UX, functionalities, AI potentiality, tech stack, speed, and SEO. A manual review using a custom process created by Society Web Solutions, checking every important part of your website. Delivered as a custom PDF report within 5 days."));
 
   // 1. Regular items
   const regularItems = (activeAnalysis.deliverableItems && activeAnalysis.deliverableItems.length > 0)
     ? activeAnalysis.deliverableItems.map((item: any) => ({
-        description: item.description || item.title || item.name || dynamicAnalysisTitle,
-        details: !isGenericDesc(item.details) ? item.details : dynamicAnalysisDesc,
-        duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : (activeAnalysis.timelineInDays ? `${activeAnalysis.timelineInDays} Days` : "7 Days"),
-        amount: Number(item.amount ?? (activeAnalysis.addons?.length ? 0 : (activeAnalysis.price ?? activeAnalysis.totalCost ?? 0))),
-        isAddOn: false,
-      }))
+      description: item.description || item.title || item.name || dynamicAnalysisTitle,
+      details: !isGenericDesc(item.details) ? item.details : dynamicAnalysisDesc,
+      duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") ? "" : "Days")}`.trim() : (activeAnalysis.timelineInDays ? `${activeAnalysis.timelineInDays} Days` : "7 Days"),
+      amount: Number(item.amount ?? (activeAnalysis.addons?.length ? 0 : (activeAnalysis.price ?? activeAnalysis.totalCost ?? 0))),
+      isAddOn: false,
+    }))
     : [{
-        description: dynamicAnalysisTitle,
-        details: dynamicAnalysisDesc,
-        duration: activeAnalysis.timelineInDays ? `${activeAnalysis.timelineInDays} Days` : "5 Days",
-        amount: Number(activeAnalysis.basePrice ?? (activeAnalysis.addons?.length ? 0 : (activeAnalysis.price ?? activeAnalysis.totalCost ?? 0))),
-        isAddOn: false,
-      }];
+      description: dynamicAnalysisTitle,
+      details: dynamicAnalysisDesc,
+      duration: activeAnalysis.timelineInDays ? `${activeAnalysis.timelineInDays} Days` : "5 Days",
+      amount: Number(activeAnalysis.basePrice ?? (activeAnalysis.addons?.length ? 0 : (activeAnalysis.price ?? activeAnalysis.totalCost ?? 0))),
+      isAddOn: false,
+    }];
 
   // 2. Addon items from activeAnalysis.addons
   const addonItemsFromAddons = (activeAnalysis.addons || []).flatMap((addon: any) =>
@@ -527,17 +527,17 @@ export default function AnalysisPaymentsPage() {
     const deliverableAmount = isFree
       ? 0
       : baseCost > 0
-      ? baseCost
-      : Number(activeAnalysis.price || 0);
+        ? baseCost
+        : Number(activeAnalysis.price || 0);
 
     const timelineDays = parseInt(String(activeAnalysis.timelineInDays || activeAnalysis.totalDuration || "5"), 10) || 5;
 
     const rawUrls = (activeAnalysis.targetWebsiteUrl || activeAnalysis.websiteUrl || "").trim();
     const submittedUrls = rawUrls
       ? rawUrls
-          .split(/[\n,;]+/)
-          .map((u: string) => u.trim())
-          .filter(Boolean)
+        .split(/[\n,;]+/)
+        .map((u: string) => u.trim())
+        .filter(Boolean)
       : [];
 
     const calculatedDeadline =
@@ -545,9 +545,9 @@ export default function AnalysisPaymentsPage() {
       activeAnalysis.estimatedDeadline ||
       (activeAnalysis.startDate || activeAnalysis.createdAt
         ? new Date(
-            new Date(activeAnalysis.startDate || activeAnalysis.createdAt).getTime() +
-              timelineDays * 24 * 60 * 60 * 1000
-          ).toISOString()
+          new Date(activeAnalysis.startDate || activeAnalysis.createdAt).getTime() +
+          timelineDays * 24 * 60 * 60 * 1000
+        ).toISOString()
         : new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString());
 
     return {
@@ -596,8 +596,8 @@ export default function AnalysisPaymentsPage() {
         name: a.description || a.title || "Add-on Task",
         duration: a.duration
           ? (/\b(days?|weeks?|months?|years?|hours?)\b/i.test(String(a.duration))
-              ? String(a.duration).trim()
-              : `${String(a.duration).trim()} ${a.unit || "Days"}`.trim())
+            ? String(a.duration).trim()
+            : `${String(a.duration).trim()} ${a.unit || "Days"}`.trim())
           : "1 Days",
         amount: Number(a.amount || 0),
       })),
@@ -749,22 +749,20 @@ export default function AnalysisPaymentsPage() {
                         <button
                           type="button"
                           onClick={() => setCurrency("usd")}
-                          className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
-                            currency === "usd"
+                          className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "usd"
                               ? "bg-white shadow text-gray-800"
                               : "text-gray-500 hover:text-gray-700"
-                          }`}
+                            }`}
                         >
                           USD
                         </button>
                         <button
                           type="button"
                           onClick={() => setCurrency("eur")}
-                          className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
-                            currency === "eur"
+                          className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "eur"
                               ? "bg-white shadow text-gray-800"
                               : "text-gray-500 hover:text-gray-700"
-                          }`}
+                            }`}
                         >
                           EUR
                         </button>
