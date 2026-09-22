@@ -740,9 +740,8 @@ export async function generateBundlePDF(data: any): Promise<Blob> {
 
     const pageImgData = canvas.toDataURL("image/png");
 
-    if (imgHeight <= pageHeight + 40 || imgHeight <= pageHeight * 1.12) {
-      const fitH = Math.min(imgHeight, pageHeight);
-      pdf.addImage(pageImgData, "PNG", 0, 0, imgWidth, fitH, undefined, "FAST");
+    if (imgHeight <= pageHeight + 25) {
+      pdf.addImage(pageImgData, "PNG", 0, 0, imgWidth, imgHeight, undefined, "FAST");
     } else {
       let heightLeft = imgHeight;
       let position = 0;

@@ -989,7 +989,7 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
       background-color: #FFFFFF;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       color: #202124;
-      padding: 64px 78px 48px;
+      padding: 44px 54px 32px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -999,15 +999,15 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
       <div style="width: 100%; display: flex; flex-direction: column; flex: 1;">
         <!-- ── Main Header ── -->
         <header style="width: 100%; display: flex; flex-direction: row; justify-content: space-between; align-items: flex-start; margin: 0; padding: 0; box-sizing: border-box;">
-          <div class="header-logo" style="display: flex; flex-direction: column; align-items: flex-start; margin: 0; padding-top: 10px;">
+          <div class="header-logo" style="display: flex; flex-direction: column; align-items: flex-start; margin: 0; padding-top: 6px;">
             ${LOGO_SVG}
           </div>
           <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; margin: 0; padding: 0; white-space: nowrap;">
-            <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.01em; color: #2A2AA0; margin: 0 0 10px 0; line-height: 1; padding: 0;">${d.isInvoice ? "INVOICE" : d.isProject ? "PROJECT DETAILS" : "PROJECT QUOTE"}</div>
-            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 13.5px; line-height: 1.3; color: #1E293B; margin-bottom: 3px;">Society Web Solutions</div>
-            <div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.45; color: #64748B;">1645 Palm Beach Lakes Blvd</div>
-            <div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.45; color: #64748B; margin-bottom: 2px;">West Palm Beach, FL, US</div>
-            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; line-height: 1.45; color: #2A2AA0;">
+            <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -0.01em; color: #2A2AA0; margin: 0 0 8px 0; line-height: 1; padding: 0;">${d.isInvoice ? "INVOICE" : d.isProject ? "PROJECT DETAILS" : "PROJECT QUOTE"}</div>
+            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 13px; line-height: 1.3; color: #1E293B; margin-bottom: 2px;">Society Web Solutions</div>
+            <div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 11.5px; line-height: 1.4; color: #64748B;">1645 Palm Beach Lakes Blvd</div>
+            <div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 11.5px; line-height: 1.4; color: #64748B; margin-bottom: 2px;">West Palm Beach, FL, US</div>
+            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 11.5px; line-height: 1.4; color: #2A2AA0;">
               contact@societywebsolutions.com
             </div>
           </div>
@@ -1020,8 +1020,8 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
           background: #F8FAFC;
           border: 1px solid #E2E8F0;
           border-radius: 8px;
-          padding: 18px 22px;
-          margin: 24px 0 0 0;
+          padding: 14px 18px;
+          margin: 16px 0 0 0;
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
@@ -1029,66 +1029,66 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
         ">
           <!-- Prepared For / Client / Billed To -->
           <div style="display: flex; flex-direction: column; flex: 1; min-width: 0;">
-            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 10.5px; letter-spacing: 0.08em; color: #94A3B8; text-transform: uppercase; margin: 0 0 8px 0;">${d.isInvoice ? "BILLED TO" : d.isProject ? "CLIENT" : "PREPARED FOR"}</div>
-            <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 15px; line-height: 1.35; color: #0F172A; margin: 0 0 4px 0;">${d.clientName}</div>
-            ${d.companyName ? `<div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12.5px; line-height: 1.4; color: #1E293B; margin-bottom: 3px;">${d.companyName}</div>` : ""}
-            ${d.registrationNumber ? `<div style="font-family: Inter, sans-serif; font-size: 11.5px; line-height: 1.4; color: #64748B; margin-bottom: 3px;">Reg: ${d.registrationNumber}</div>` : ""}
-            ${d.vatNumber ? `<div style="font-family: Inter, sans-serif; font-size: 11.5px; line-height: 1.4; color: #64748B; margin-bottom: 3px;">VAT / Tax ID: ${d.vatNumber}</div>` : ""}
-            ${fullAddress ? `<div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.4; color: #64748B; margin-bottom: 3px;">${fullAddress}</div>` : ""}
-            ${d.clientEmail ? `<div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.4; color: #64748B; margin-bottom: 3px;">${d.clientEmail}</div>` : ""}
-            ${d.phoneNumber ? `<div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 12px; line-height: 1.4; color: #64748B;">${d.phoneNumber}</div>` : ""}
+            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 10px; letter-spacing: 0.08em; color: #94A3B8; text-transform: uppercase; margin: 0 0 6px 0;">${d.isInvoice ? "BILLED TO" : d.isProject ? "CLIENT" : "PREPARED FOR"}</div>
+            <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14px; line-height: 1.3; color: #0F172A; margin: 0 0 3px 0;">${d.clientName}</div>
+            ${d.companyName ? `<div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; line-height: 1.35; color: #1E293B; margin-bottom: 2px;">${d.companyName}</div>` : ""}
+            ${d.registrationNumber ? `<div style="font-family: Inter, sans-serif; font-size: 11px; line-height: 1.35; color: #64748B; margin-bottom: 2px;">Reg: ${d.registrationNumber}</div>` : ""}
+            ${d.vatNumber ? `<div style="font-family: Inter, sans-serif; font-size: 11px; line-height: 1.35; color: #64748B; margin-bottom: 2px;">VAT / Tax ID: ${d.vatNumber}</div>` : ""}
+            ${fullAddress ? `<div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 11.5px; line-height: 1.35; color: #64748B; margin-bottom: 2px;">${fullAddress}</div>` : ""}
+            ${d.clientEmail ? `<div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 11.5px; line-height: 1.35; color: #64748B; margin-bottom: 2px;">${d.clientEmail}</div>` : ""}
+            ${d.phoneNumber ? `<div style="font-family: Inter, sans-serif; font-weight: 400; font-size: 11.5px; line-height: 1.35; color: #64748B;">${d.phoneNumber}</div>` : ""}
           </div>
 
           <!-- Quote Details / Project Details / Invoice Summary -->
           <div style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column;">
-            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 10.5px; letter-spacing: 0.08em; color: #94A3B8; text-transform: uppercase; margin: 0 0 8px 0;">${d.isInvoice ? "INVOICE DETAILS" : d.isProject ? "PROJECT SUMMARY" : "QUOTE DETAILS"}</div>
+            <div style="font-family: Inter, sans-serif; font-weight: 600; font-size: 10px; letter-spacing: 0.08em; color: #94A3B8; text-transform: uppercase; margin: 0 0 6px 0;">${d.isInvoice ? "INVOICE DETAILS" : d.isProject ? "PROJECT SUMMARY" : "QUOTE DETAILS"}</div>
             ${
               d.isInvoice
                 ? `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; line-height: 1.4;">
-              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Invoice ID:</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${d.invoiceNumber || d.invoiceId || d.projectNumber || d.referenceNumber}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; line-height: 1.35;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 11.5px; color: #64748B;">Invoice ID:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11.5px; color: #0F172A;">${d.invoiceNumber || d.invoiceId || d.projectNumber || d.referenceNumber}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; line-height: 1.4;">
-              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Issued Date:</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: #0F172A;">${d.submittedDate}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; line-height: 1.35;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 11.5px; color: #64748B;">Issued Date:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 11.5px; color: #0F172A;">${d.submittedDate}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; line-height: 1.4;">
-              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Due Date:</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: #0F172A;">${d.deadlineDate || d.validUntilDate || "Upon Receipt"}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; line-height: 1.35;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 11.5px; color: #64748B;">Due Date:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 11.5px; color: #0F172A;">${d.deadlineDate || d.validUntilDate || "Upon Receipt"}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; line-height: 1.4;">
-              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Status:</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${Number(d.amountPaid || 0) >= Number(d.totalPrice || 0) && Number(d.totalPrice || 0) > 0 ? "PAID" : Number(d.amountPaid || 0) > 0 ? "PARTIALLY PAID" : "DUE"}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; line-height: 1.35;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 11.5px; color: #64748B;">Status:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11.5px; color: #0F172A;">${Number(d.amountPaid || 0) >= Number(d.totalPrice || 0) && Number(d.totalPrice || 0) > 0 ? "PAID" : Number(d.amountPaid || 0) > 0 ? "PARTIALLY PAID" : "DUE"}</span>
             </div>
             `
                 : d.isProject
                 ? `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; line-height: 1.4;">
-              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Project ID:</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${d.projectNumber || d.referenceNumber}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; line-height: 1.35;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 11.5px; color: #64748B;">Project ID:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11.5px; color: #0F172A;">${d.projectNumber || d.referenceNumber}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; line-height: 1.4;">
-              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Submitted:</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: #0F172A;">${d.submittedDate}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; line-height: 1.35;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 11.5px; color: #64748B;">Submitted:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 11.5px; color: #0F172A;">${d.submittedDate}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; line-height: 1.4;">
-              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Est. Deadline:</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #13663A;">${d.deadlineDate}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; line-height: 1.35;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 11.5px; color: #64748B;">Est. Deadline:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11.5px; color: #13663A;">${d.deadlineDate}</span>
             </div>
             `
                 : `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; line-height: 1.4;">
-              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Ref Number:</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; color: #0F172A;">${d.referenceNumber || d.projectNumber}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; line-height: 1.35;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 11.5px; color: #64748B;">Ref Number:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11.5px; color: #0F172A;">${d.referenceNumber || d.projectNumber}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; line-height: 1.4;">
-              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Issued On:</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: #0F172A;">${d.submittedDate}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; line-height: 1.35;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 11.5px; color: #64748B;">Issued On:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 11.5px; color: #0F172A;">${d.submittedDate}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; line-height: 1.4;">
-              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 12px; color: #64748B;">Valid Until:</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: #0F172A;">${d.validUntilDate || d.deadlineDate}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; line-height: 1.35;">
+              <span style="font-family: Inter, sans-serif; font-weight: 500; font-size: 11.5px; color: #64748B;">Valid Until:</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 600; font-size: 11.5px; color: #0F172A;">${d.validUntilDate || d.deadlineDate}</span>
             </div>
             `
             }
@@ -1096,19 +1096,19 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
         </section>
 
         <!-- ── Project Overview & Scope ── -->
-        <div style="margin-top: 18px; margin-bottom: 16px;">
-          <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 15px; color: #2A2AA0; margin-bottom: 6px;">${cleanTitle}</div>
-          ${d.description ? `<p style="font-family: Inter, sans-serif; font-size: 12px; color: #475569; line-height: 1.5; margin: 0; white-space: pre-line;">${d.description}</p>` : ""}
+        <div style="margin-top: 14px; margin-bottom: 12px;">
+          <div style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14px; color: #2A2AA0; margin-bottom: 4px;">${cleanTitle}</div>
+          ${d.description ? `<p style="font-family: Inter, sans-serif; font-size: 11.5px; color: #475569; line-height: 1.45; margin: 0; white-space: pre-line;">${d.description}</p>` : ""}
         </div>
 
         <!-- ── Deliverables Table ── -->
-        <div style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; margin-bottom: 20px; background: #FFFFFF;">
+        <div style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; margin-bottom: 16px; background: #FFFFFF;">
           <table style="width: 100%; border-collapse: collapse; text-align: left;">
             <thead>
               <tr style="background: #2A2AA0; border-bottom: 1px solid #2A2AA0;">
-                <th style="padding: 12px 18px; font-family: Inter, sans-serif; font-size: 10.5px; font-weight: 700; color: #FFFFFF; text-transform: uppercase; letter-spacing: 0.08em; text-align: left; width: 55%;">DELIVERABLES &amp; WORK SCOPE</th>
-                <th style="padding: 12px 18px; font-family: Inter, sans-serif; font-size: 10.5px; font-weight: 700; color: #FFFFFF; text-transform: uppercase; letter-spacing: 0.08em; text-align: center; width: 22%;">Duration</th>
-                <th style="padding: 12px 18px; font-family: Inter, sans-serif; font-size: 10.5px; font-weight: 700; color: #FFFFFF; text-transform: uppercase; letter-spacing: 0.08em; text-align: right; width: 23%;">Amount</th>
+                <th style="padding: 10px 16px; font-family: Inter, sans-serif; font-size: 10px; font-weight: 700; color: #FFFFFF; text-transform: uppercase; letter-spacing: 0.08em; text-align: left; width: 55%;">DELIVERABLES &amp; WORK SCOPE</th>
+                <th style="padding: 10px 16px; font-family: Inter, sans-serif; font-size: 10px; font-weight: 700; color: #FFFFFF; text-transform: uppercase; letter-spacing: 0.08em; text-align: center; width: 22%;">Duration</th>
+                <th style="padding: 10px 16px; font-family: Inter, sans-serif; font-size: 10px; font-weight: 700; color: #FFFFFF; text-transform: uppercase; letter-spacing: 0.08em; text-align: right; width: 23%;">Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -1116,14 +1116,14 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
                 .map(
                   (item: { name: string; details?: string; duration: string; amount: number; formattedAmount?: string }, idx: number) => `
                 <tr style="background-color: #FFFFFF; border-top: ${idx > 0 ? "1px solid #F1F5F9" : "none"};">
-                  <td style="padding: 14px 18px; vertical-align: top; text-align: left;">
-                    <div style="font-family: Inter, sans-serif; font-size: 13px; font-weight: 600; color: #0F172A; line-height: 1.4;">${item.name}</div>
-                    ${item.details ? `<div style="font-family: Inter, sans-serif; font-size: 11px; color: #64748B; line-height: 1.4; margin-top: 3px;">${item.details}</div>` : ""}
+                  <td style="padding: 11px 16px; vertical-align: top; text-align: left;">
+                    <div style="font-family: Inter, sans-serif; font-size: 12.5px; font-weight: 600; color: #0F172A; line-height: 1.35;">${item.name}</div>
+                    ${item.details ? `<div style="font-family: Inter, sans-serif; font-size: 10.5px; color: #64748B; line-height: 1.35; margin-top: 2px;">${item.details}</div>` : ""}
                   </td>
-                  <td style="padding: 14px 18px; vertical-align: top; font-family: Inter, sans-serif; font-size: 12.5px; font-weight: 500; color: #475569; text-align: center; white-space: nowrap;">
+                  <td style="padding: 11px 16px; vertical-align: top; font-family: Inter, sans-serif; font-size: 12px; font-weight: 500; color: #475569; text-align: center; white-space: nowrap;">
                     ${item.duration}
                   </td>
-                  <td style="padding: 14px 18px; vertical-align: top; font-family: Inter, sans-serif; font-size: 13px; font-weight: 700; color: #0F172A; text-align: right; white-space: nowrap;">
+                  <td style="padding: 11px 16px; vertical-align: top; font-family: Inter, sans-serif; font-size: 12.5px; font-weight: 700; color: #0F172A; text-align: right; white-space: nowrap;">
                     ${item.formattedAmount || new Intl.NumberFormat("en-US", { style: "currency", currency: (d.currency || "USD").toUpperCase(), minimumFractionDigits: 2 }).format(item.amount)}
                   </td>
                 </tr>
@@ -1134,7 +1134,7 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
                 d.addons && d.addons.length > 0
                   ? `
                 <tr class="table-subheading" style="background-color: #E2E8F0; border-top: 1px solid #CBD5E1; border-bottom: 1px solid #CBD5E1;">
-                  <td colspan="3" style="padding: 10px 18px; font-family: Inter, sans-serif; font-size: 10.5px; font-weight: 700; color: #202124; text-transform: uppercase; letter-spacing: 0.08em; text-align: left;">
+                  <td colspan="3" style="padding: 8px 16px; font-family: Inter, sans-serif; font-size: 10px; font-weight: 700; color: #202124; text-transform: uppercase; letter-spacing: 0.08em; text-align: left;">
                     ADD-ON TASKS
                   </td>
                 </tr>
@@ -1142,14 +1142,14 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
                   .map(
                     (addon: { name: string; details?: string; duration: string; amount: number }, aIdx: number) => `
                   <tr style="background-color: #FFFFFF; border-top: ${aIdx > 0 ? "1px solid #F1F5F9" : "none"}; border-bottom: 1px solid #E2E8F0;">
-                    <td style="padding: 14px 18px; vertical-align: top; text-align: left;">
-                      <div style="font-family: Inter, sans-serif; font-size: 13px; font-weight: 600; color: #0F172A; line-height: 1.4;">${addon.name}</div>
-                      ${addon.details ? `<div style="font-family: Inter, sans-serif; font-size: 11px; color: #64748B; line-height: 1.4; margin-top: 3px;">${addon.details}</div>` : ""}
+                    <td style="padding: 11px 16px; vertical-align: top; text-align: left;">
+                      <div style="font-family: Inter, sans-serif; font-size: 12.5px; font-weight: 600; color: #0F172A; line-height: 1.35;">${addon.name}</div>
+                      ${addon.details ? `<div style="font-family: Inter, sans-serif; font-size: 10.5px; color: #64748B; line-height: 1.35; margin-top: 2px;">${addon.details}</div>` : ""}
                     </td>
-                    <td style="padding: 14px 18px; vertical-align: top; font-family: Inter, sans-serif; font-size: 12.5px; font-weight: 500; color: #475569; text-align: center; white-space: nowrap;">
+                    <td style="padding: 11px 16px; vertical-align: top; font-family: Inter, sans-serif; font-size: 12px; font-weight: 500; color: #475569; text-align: center; white-space: nowrap;">
                       ${addon.duration}
                     </td>
-                    <td style="padding: 14px 18px; vertical-align: top; font-family: Inter, sans-serif; font-size: 13px; font-weight: 700; color: #0F172A; text-align: right; white-space: nowrap;">
+                    <td style="padding: 11px 16px; vertical-align: top; font-family: Inter, sans-serif; font-size: 12.5px; font-weight: 700; color: #0F172A; text-align: right; white-space: nowrap;">
                       ${new Intl.NumberFormat("en-US", { style: "currency", currency: (d.currency || "USD").toUpperCase(), minimumFractionDigits: 2 }).format(addon.amount)}
                     </td>
                   </tr>
@@ -1163,7 +1163,7 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
                 d.recurringDeliverables && d.recurringDeliverables.length > 0
                   ? `
                 <tr class="table-subheading" style="background-color: #E2E8F0; border-top: 1px solid #CBD5E1; border-bottom: 1px solid #CBD5E1;">
-                  <td colspan="3" style="padding: 10px 18px; font-family: Inter, sans-serif; font-size: 10.5px; font-weight: 700; color: #202124; text-transform: uppercase; letter-spacing: 0.08em; text-align: left;">
+                  <td colspan="3" style="padding: 8px 16px; font-family: Inter, sans-serif; font-size: 10px; font-weight: 700; color: #202124; text-transform: uppercase; letter-spacing: 0.08em; text-align: left;">
                     MONTHLY MAINTENANCE &amp; RECURRING SERVICES
                   </td>
                 </tr>
@@ -1171,14 +1171,14 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
                   .map(
                     (item: { name: string; details?: string; duration: string; amount: number; formattedAmount?: string }, aIdx: number) => `
                   <tr style="background-color: #FFFFFF; border-top: ${aIdx > 0 ? "1px solid #F1F5F9" : "none"}; border-bottom: 1px solid #E2E8F0;">
-                    <td style="padding: 14px 18px; vertical-align: top; text-align: left;">
-                      <div style="font-family: Inter, sans-serif; font-size: 13px; font-weight: 600; color: #0F172A; line-height: 1.4;">${item.name}</div>
-                      ${item.details ? `<div style="font-family: Inter, sans-serif; font-size: 11px; color: #64748B; line-height: 1.4; margin-top: 3px;">${item.details}</div>` : ""}
+                    <td style="padding: 11px 16px; vertical-align: top; text-align: left;">
+                      <div style="font-family: Inter, sans-serif; font-size: 12.5px; font-weight: 600; color: #0F172A; line-height: 1.35;">${item.name}</div>
+                      ${item.details ? `<div style="font-family: Inter, sans-serif; font-size: 10.5px; color: #64748B; line-height: 1.35; margin-top: 2px;">${item.details}</div>` : ""}
                     </td>
-                    <td style="padding: 14px 18px; vertical-align: top; font-family: Inter, sans-serif; font-size: 12.5px; font-weight: 500; color: #475569; text-align: center; white-space: nowrap;">
+                    <td style="padding: 11px 16px; vertical-align: top; font-family: Inter, sans-serif; font-size: 12px; font-weight: 500; color: #475569; text-align: center; white-space: nowrap;">
                       ${item.duration}
                     </td>
-                    <td style="padding: 14px 18px; vertical-align: top; font-family: Inter, sans-serif; font-size: 13px; font-weight: 700; color: #0F172A; text-align: right; white-space: nowrap;">
+                    <td style="padding: 11px 16px; vertical-align: top; font-family: Inter, sans-serif; font-size: 12.5px; font-weight: 700; color: #0F172A; text-align: right; white-space: nowrap;">
                       ${item.formattedAmount ? `${item.formattedAmount} / mo` : `${new Intl.NumberFormat("en-US", { style: "currency", currency: (d.currency || "USD").toUpperCase(), minimumFractionDigits: 2 }).format(item.amount)} / mo`}
                     </td>
                   </tr>
@@ -1193,45 +1193,45 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
         </div>
 
         <!-- ── Summary Box (Bottom-Right) ── -->
-        <div style="display: flex; justify-content: flex-end; margin-top: 20px; margin-bottom: 24px;">
-          <div style="width: 380px; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border: 1px solid #1E293B;">
+        <div style="display: flex; justify-content: flex-end; margin-top: 14px; margin-bottom: 16px;">
+          <div style="width: 360px; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border: 1px solid #1E293B;">
             <!-- Timeline Row -->
-            <div style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; box-sizing: border-box;">
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">ESTIMATED TIMELINE</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap; position: relative; top: -1.5px; line-height: 1;">${d.duration}</span>
+            <div style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; height: 38px; box-sizing: border-box;">
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 10.5px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">ESTIMATED TIMELINE</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 13.5px; color: #FFFFFF; white-space: nowrap; position: relative; top: -1px; line-height: 1;">${d.duration}</span>
             </div>
 
             ${
               d.vatRate && d.vatRate > 0 && d.vatAmount && d.vatAmount > 0
                 ? `
             <!-- Subtotal Row -->
-            <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; box-sizing: border-box;">
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">SUBTOTAL</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap; position: relative; top: -1.5px; line-height: 1;">${d.formattedSubtotal}</span>
+            <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; height: 38px; box-sizing: border-box;">
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 10.5px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">SUBTOTAL</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 13.5px; color: #FFFFFF; white-space: nowrap; position: relative; top: -1px; line-height: 1;">${d.formattedSubtotal}</span>
             </div>
 
             <!-- VAT Row -->
-            <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; box-sizing: border-box;">
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">VAT (${d.vatRate}%)</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap; position: relative; top: -1.5px; line-height: 1;">${d.formattedVatAmount}</span>
+            <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; height: 38px; box-sizing: border-box;">
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 10.5px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">VAT (${d.vatRate}%)</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 13.5px; color: #FFFFFF; white-space: nowrap; position: relative; top: -1px; line-height: 1;">${d.formattedVatAmount}</span>
             </div>
             `
                 : ""
             }
 
             <!-- Total Cost Row -->
-            <div style="background-color: #2A2AA0; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 58px; box-sizing: border-box; ${d.vatRate && d.vatRate > 0 && d.vatAmount && d.vatAmount > 0 ? "border-top: 1px solid #3E3EE8;" : "border-top: 1px solid #1E293B;"}">
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; letter-spacing: 0.06em; color: #FFFFFF; text-transform: uppercase; white-space: nowrap;">${d.isInvoice ? "INVOICE TOTAL" : d.isProject ? "INVESTMENT TOTAL" : "TOTAL COST"}</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 20px; color: #FFFFFF; white-space: nowrap; margin-left: 16px; position: relative; top: -2px; line-height: 1;">${d.formattedPrice}</span>
+            <div style="background-color: #2A2AA0; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; height: 50px; box-sizing: border-box; ${d.vatRate && d.vatRate > 0 && d.vatAmount && d.vatAmount > 0 ? "border-top: 1px solid #3E3EE8;" : "border-top: 1px solid #1E293B;"}">
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11.5px; letter-spacing: 0.06em; color: #FFFFFF; text-transform: uppercase; white-space: nowrap;">${d.isInvoice ? "INVOICE TOTAL" : d.isProject ? "INVESTMENT TOTAL" : "TOTAL COST"}</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 18px; color: #FFFFFF; white-space: nowrap; margin-left: 14px; position: relative; top: -1.5px; line-height: 1;">${d.formattedPrice}</span>
             </div>
 
             ${
               hasRecurring
                 ? `
             <!-- Monthly Retainer Row -->
-            <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; box-sizing: border-box;">
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">MONTHLY RETAINER</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap; position: relative; top: -1.5px; line-height: 1;">${d.formattedRecurringAmount} / mo</span>
+            <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; height: 38px; box-sizing: border-box;">
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 10.5px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">MONTHLY RETAINER</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 13.5px; color: #FFFFFF; white-space: nowrap; position: relative; top: -1px; line-height: 1;">${d.formattedRecurringAmount} / mo</span>
             </div>
             `
                 : ""
@@ -1241,17 +1241,17 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
       </div>
 
       <!-- ── Footer ── -->
-      <footer style="width: 100%; margin-top: auto; padding-top: 20px;">
+      <footer style="width: 100%; margin-top: auto; padding-top: 12px;">
         <!-- Divider Line -->
-        <div style="border-top: 1px solid #E5E7EB; margin-bottom: 14px; width: 100%;"></div>
+        <div style="border-top: 1px solid #E5E7EB; margin-bottom: 10px; width: 100%;"></div>
 
         <!-- Footer (Centered) -->
-        <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-bottom: 2px;">
-          <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 9.5px; line-height: 1.5; color: #94A3B8; margin: 0;">${d.isInvoice ? "This document serves as an official commercial invoice for agreed digital services." : d.isProject ? "This document serves as a record of project details and agreed deliverables." : "Acceptance of this quote binds the client to the agreed delivery timeline and total investment."}</p>
-          <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 9.5px; line-height: 1.5; color: #94A3B8; margin: 0;">Note: Time spent waiting for client replies does not count towards project deadlines.</p>
-          <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 9.5px; line-height: 1.5; color: #94A3B8; margin: 0;">For inquiries, please reach out to <span style="font-weight: 600; color: #64748B;">contact@societywebsolutions.com</span></p>
-          <div style="margin-top: 12px; text-align: center;">
-            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.14em; color: #CBD5E1; text-transform: uppercase;">SOCIETY WEB SOLUTIONS</span>
+        <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 3px; padding-bottom: 2px;">
+          <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 9px; line-height: 1.4; color: #94A3B8; margin: 0;">${d.isInvoice ? "This document serves as an official commercial invoice for agreed digital services." : d.isProject ? "This document serves as a record of project details and agreed deliverables." : "Acceptance of this quote binds the client to the agreed delivery timeline and total investment."}</p>
+          <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 9px; line-height: 1.4; color: #94A3B8; margin: 0;">Note: Time spent waiting for client replies does not count towards project deadlines.</p>
+          <p style="font-family: Inter, sans-serif; font-weight: 400; font-size: 9px; line-height: 1.4; color: #94A3B8; margin: 0;">For inquiries, please reach out to <span style="font-weight: 600; color: #64748B;">contact@societywebsolutions.com</span></p>
+          <div style="margin-top: 8px; text-align: center;">
+            <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 10px; letter-spacing: 0.14em; color: #CBD5E1; text-transform: uppercase;">SOCIETY WEB SOLUTIONS</span>
           </div>
         </div>
       </footer>
@@ -1308,9 +1308,8 @@ export async function downloadProjectDetailsPDF(data: any, customFilename?: stri
 
       const pageImgData = canvas.toDataURL("image/png");
 
-      if (imgHeight <= pageHeight + 40 || imgHeight <= pageHeight * 1.12) {
-        const fitH = Math.min(imgHeight, pageHeight);
-        pdf.addImage(pageImgData, "PNG", 0, 0, imgWidth, fitH, undefined, "FAST");
+      if (imgHeight <= pageHeight + 25) {
+        pdf.addImage(pageImgData, "PNG", 0, 0, imgWidth, imgHeight, undefined, "FAST");
       } else {
         // Multi-page slicing if needed
         let heightLeft = imgHeight;
@@ -1319,7 +1318,7 @@ export async function downloadProjectDetailsPDF(data: any, customFilename?: stri
         pdf.addImage(pageImgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
         heightLeft -= pageHeight;
 
-        while (heightLeft > 50) {
+        while (heightLeft > 40) {
           position -= pageHeight;
           pdf.addPage();
           pdf.addImage(pageImgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
