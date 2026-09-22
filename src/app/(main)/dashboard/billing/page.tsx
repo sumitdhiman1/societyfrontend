@@ -619,14 +619,13 @@ export default function BillingPage() {
           </div>
         </section>
 
-        {/* 2. Billing Details Section */}
+        {/* 2. Billing Details Section (Commented out) */}
+        {/*
         <section className="mb-8">
           <SectionHeader title="Billing Details" />
           <div className="border border-gray-300 rounded-[4px] p-8 md:p-10 bg-white shadow-sm">
             <div className="flex flex-col lg:flex-row gap-12">
-              {/* Left Content Area */}
               <div className="flex-1">
-                {/* Switch Toggle Container Box */}
                 <div className="flex items-center gap-3 mb-8 bg-gray-50 p-4 rounded-[10px] border border-gray-200">
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -652,7 +651,6 @@ export default function BillingPage() {
                   </div>
                 </div>
 
-                {/* Expanded Billing Form Fields */}
                 {billingForm.useSeparateBillingAddress && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mb-6 animate-in fade-in duration-300">
                     <InputField
@@ -721,7 +719,6 @@ export default function BillingPage() {
                 )}
               </div>
 
-              {/* Info Sidebar (Right) */}
               <div className="w-full lg:w-[320px]">
                 <InfoBox
                   title="Card & Receipt Billing"
@@ -732,7 +729,6 @@ export default function BillingPage() {
           </div>
         </section>
 
-        {/* Save Billing Details Button */}
         <div className="flex items-center gap-4">
           <button
             type="button"
@@ -753,6 +749,7 @@ export default function BillingPage() {
             </span>
           )}
         </div>
+        */}
 
         <div className="mt-16">
           <SupportNewsletter noPadding />

@@ -699,15 +699,21 @@ export function extractProjectDetails(data: any): ProjectPDFData {
 
   let duration = "";
   if (totalDays > 0) {
-    duration = `${totalDays} Days`;
+    duration = `${totalDays} days`;
   } else if (data.timelineInDays) {
-    duration = `${data.timelineInDays} Days`;
+    duration = `${data.timelineInDays} days`;
   } else if (data.totalDuration || data.timeline || data.estimatedTimeline || data.duration) {
-    duration = String(data.totalDuration || data.timeline || data.estimatedTimeline || data.duration);
+    duration = String(data.totalDuration || data.timeline || data.estimatedTimeline || data.duration)
+      .replace(/\bWeeks\b/g, "weeks")
+      .replace(/\bWeek\b/g, "week")
+      .replace(/\bDays\b/g, "days")
+      .replace(/\bDay\b/g, "day")
+      .replace(/\bMonths\b/g, "months")
+      .replace(/\bMonth\b/g, "month");
   } else if (data.calculatorSpecs?.estimatedTimeline) {
     duration = String(data.calculatorSpecs.estimatedTimeline);
   } else {
-    duration = "14 Days";
+    duration = "14 days";
   }
 
   const rawTotalCost = Number(
@@ -1226,23 +1232,6 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
             <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; box-sizing: border-box;">
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">MONTHLY RETAINER</span>
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap; position: relative; top: -1.5px; line-height: 1;">${d.formattedRecurringAmount} / mo</span>
-            </div>
-            `
-                : ""
-            }
-
-            ${
-              d.isInvoice && d.amountPaid && d.amountPaid > 0
-                ? `
-            <!-- Amount Paid Row -->
-            <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; box-sizing: border-box;">
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">AMOUNT PAID</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #10B981; white-space: nowrap; position: relative; top: -1.5px; line-height: 1;">${d.formattedAmountPaid}</span>
-            </div>
-            <!-- Balance Due Row -->
-            <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; box-sizing: border-box;">
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">BALANCE DUE</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: ${(d.pendingBalance || 0) > 0 ? '#F59E0B' : '#FFFFFF'}; white-space: nowrap; position: relative; top: -1.5px; line-height: 1;">${d.formattedPendingBalance}</span>
             </div>
             `
                 : ""

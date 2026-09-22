@@ -476,25 +476,10 @@ export function getInvoiceHTML(d: InvoicePDFData): string {
             }
             <div style="height: 1px; background-color: #CBD5E1; margin: 8px 0 10px 0;"></div>
             
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 800; color: #0F172A; margin-bottom: ${d.amountPaid ? "8px" : "0"};">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 800; color: #0F172A;">
               <span>Total Cost:</span>
               <span style="font-size: 16px; color: #202794;">${formatCurrency(d.totalAmount, d.currency)}${d.isMarketing ? " /month" : ""}</span>
             </div>
-
-            ${
-              d.amountPaid !== undefined && d.amountPaid > 0
-                ? `
-              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #16A34A; margin-top: 6px;">
-                <span style="font-weight: 600;">Paid to Date:</span>
-                <span style="font-weight: 700;">${formatCurrency(d.amountPaid, d.currency)}</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #DC2626; margin-top: 4px;">
-                <span style="font-weight: 600;">Balance Due:</span>
-                <span style="font-weight: 700;">${formatCurrency(d.pendingBalance || 0, d.currency)}</span>
-              </div>
-            `
-                : ""
-            }
           </div>
         </div>
       </div>

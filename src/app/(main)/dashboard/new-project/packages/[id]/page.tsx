@@ -286,6 +286,12 @@ function PackageDetailsContent() {
     const activeTier = tier || selectedTier;
     if (!activeTier) return [];
     return features
+      .filter(
+        (feature: any) =>
+          feature.key !== "timeline" &&
+          feature.name?.toLowerCase().trim() !== "timeline" &&
+          !/timeline|duration/i.test(feature.name || feature.key || "")
+      )
       .map((feature: any) => {
         const colIdx = columns.findIndex((c: any) => c.id === activeTier.id || c.title?.toLowerCase() === activeTier.title?.toLowerCase());
         const val = getFeatureValue(feature, activeTier, colIdx >= 0 ? colIdx : undefined);
@@ -336,13 +342,19 @@ function PackageDetailsContent() {
       const val = Number(daysOrObj.value);
       if (isNaN(val) || val <= 0) return "-";
       const unit = (daysOrObj.type || daysOrObj.unit || "days").toLowerCase();
-      if (unit.startsWith("month")) return `${val} ${val === 1 ? "Month" : "Months"}`;
-      if (unit.startsWith("week")) return `${val} ${val === 1 ? "Week" : "Weeks"}`;
-      return `${val} ${val === 1 ? "Day" : "Days"}`;
+      if (unit.startsWith("month")) return `${val} ${val === 1 ? "month" : "months"}`;
+      if (unit.startsWith("week")) return `${val} ${val === 1 ? "week" : "weeks"}`;
+      return `${val} ${val === 1 ? "day" : "days"}`;
     }
 
     if (typeof daysOrObj === "string" && !/^\d+$/.test(daysOrObj.trim())) {
-      return daysOrObj;
+      return daysOrObj
+        .replace(/\bWeeks\b/g, "weeks")
+        .replace(/\bWeek\b/g, "week")
+        .replace(/\bDays\b/g, "days")
+        .replace(/\bDay\b/g, "day")
+        .replace(/\bMonths\b/g, "months")
+        .replace(/\bMonth\b/g, "month");
     }
 
     const days = typeof daysOrObj === "number" ? daysOrObj : parseInt(String(daysOrObj).trim(), 10);
@@ -350,13 +362,13 @@ function PackageDetailsContent() {
 
     if (days % 30 === 0) {
       const months = days / 30;
-      return `${months} ${months === 1 ? "Month" : "Months"}`;
+      return `${months} ${months === 1 ? "month" : "months"}`;
     }
     if (days % 7 === 0) {
       const weeks = days / 7;
-      return `${weeks} ${weeks === 1 ? "Week" : "Weeks"}`;
+      return `${weeks} ${weeks === 1 ? "week" : "weeks"}`;
     }
-    return `${days} ${days === 1 ? "Day" : "Days"}`;
+    return `${days} ${days === 1 ? "day" : "days"}`;
   };
 
   const getTimelineDays = (col: any): number => {
@@ -403,16 +415,16 @@ function PackageDetailsContent() {
     }
 
     // 3. Fallback to period if available
-    if (col.period) return col.period;
+    if (col.period) return String(col.period).replace(/\bWeeks\b/g, "weeks").replace(/\bWeek\b/g, "week");
 
     return "-";
   };
 
   const getDurationLabel = (tier: any) => {
-    if (!tier) return "1 Week";
+    if (!tier) return "1 week";
     const display = getTimelineDisplay(tier, features);
     if (display && display !== "-") return display;
-    return tier.period || "1 Week";
+    return tier.period ? String(tier.period).replace(/\bWeeks\b/g, "weeks").replace(/\bWeek\b/g, "week") : "1 week";
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#F8F9FB] text-gray-400 font-bold uppercase tracking-widest text-sm">Loading Checkout...</div>;
@@ -509,7 +521,9 @@ function PackageDetailsContent() {
                             {isPaid ? (
                               <div className="flex flex-col items-center">
                                 <span className="text-[28px] md:text-[32px] font-bold leading-none text-[#374151]" style={{ color: "#374151" }}>{formatPrice(parsePrice(col.price || col.recurringAmount))}</span>
-                                <span className="text-[10px] md:text-[12px] font-medium uppercase tracking-tighter mt-1" style={{ color: "#70738a" }}>{col.billingType === 'monthly' ? "Per Month" : "Starting Price"}</span>
+                                {col.billingType === 'monthly' && (
+                                  <span className="text-[10px] md:text-[12px] font-medium uppercase tracking-tighter mt-1" style={{ color: "#70738a" }}>Per Month</span>
+                                )}
                               </div>
                             ) : (
                               <div className="font-bold text-[18px] md:text-[22px] leading-tight text-[#374151]" style={{ color: "#374151" }}>{col.price || "Get A Quote"}</div>

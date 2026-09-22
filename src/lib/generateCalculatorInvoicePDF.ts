@@ -496,16 +496,10 @@ function paginateCalculatorInvoice(
   const totalItemsHeight = heights.reduce((sum, h) => sum + h, 0);
 
   const hasVat = d.vatRate > 0 && d.vatAmount > 0;
-  const hasPartialPayment =
-    typeof d.pendingBalance === "number" &&
-    d.pendingBalance > 0.009 &&
-    typeof d.amountPaid === "number" &&
-    d.amountPaid > 0.009;
 
   let summaryCardHeight = 110;
   if (d.duration) summaryCardHeight += 44;
   if (hasVat) summaryCardHeight += 44;
-  if (hasPartialPayment) summaryCardHeight += 88;
 
   const footerHeight = 100;
   const page1MaxContent = 680;
@@ -590,11 +584,6 @@ function paginateCalculatorInvoice(
 
 function renderInvoiceSummaryCard(d: CalcInvoiceData): string {
   const hasVat = d.vatRate > 0 && d.vatAmount > 0;
-  const hasPartialPayment =
-    typeof d.pendingBalance === "number" &&
-    d.pendingBalance > 0.009 &&
-    typeof d.amountPaid === "number" &&
-    d.amountPaid > 0.009;
 
   return `
     <div class="invoice-summary-container" style="display: flex; justify-content: flex-end; margin-top: 24px; margin-bottom: 20px; width: 100%;">
@@ -620,20 +609,6 @@ function renderInvoiceSummaryCard(d: CalcInvoiceData): string {
         <div class="summary-row" style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; border-top: 1px solid #1E293B;">
           <span class="summary-label" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">VAT (${d.vatRate}%)</span>
           <span class="summary-value" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${fmtCurrency(d.vatAmount, d.currency)}</span>
-        </div>
-            `
-            : ""
-        }
-        ${
-          hasPartialPayment
-            ? `
-        <div class="summary-row" style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; border-top: 1px solid #1E293B;">
-          <span class="summary-label" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">PAID TO DATE</span>
-          <span class="summary-value" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${fmtCurrency(d.amountPaid, d.currency)}</span>
-        </div>
-        <div class="summary-row" style="background-color: #0B1220; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; border-top: 1px solid #1E293B;">
-          <span class="summary-label" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">BALANCE DUE</span>
-          <span class="summary-value" style="font-family: 'Inter', sans-serif; font-weight: 700; font-size: 14.5px; color: #FFFFFF; white-space: nowrap;">${fmtCurrency(d.pendingBalance, d.currency)}</span>
         </div>
             `
             : ""

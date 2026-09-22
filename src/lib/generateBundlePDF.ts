@@ -627,30 +627,6 @@ export function getBundleHTML(d: BundlePDFData): string {
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 12px; letter-spacing: 0.06em; color: #FFFFFF; text-transform: uppercase; white-space: nowrap;">${d.isInvoice ? "INVOICE TOTAL" : d.isProject ? "INVESTMENT TOTAL" : "TOTAL COST"}</span>
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 20px; color: #FFFFFF; white-space: nowrap; margin-left: 16px; position: relative; top: -2px; line-height: 1;">${d.formattedPrice}</span>
             </div>
-
-            ${
-              d.isInvoice && d.amountPaid > 0
-                ? `
-            <!-- Amount Paid Row -->
-            <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; box-sizing: border-box;">
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">AMOUNT PAID</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #10B981; white-space: nowrap; position: relative; top: -1.5px; line-height: 1;">${d.formattedAmountPaid}</span>
-            </div>
-            `
-                : ""
-            }
-
-            ${
-              d.isInvoice && d.pendingBalance > 0
-                ? `
-            <!-- Balance Due Row -->
-            <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: 44px; box-sizing: border-box;">
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">BALANCE DUE</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14.5px; color: #EF4444; white-space: nowrap; position: relative; top: -1.5px; line-height: 1;">${d.formattedPendingBalance}</span>
-            </div>
-            `
-                : ""
-            }
           </div>
         </div>
       </div>
