@@ -266,8 +266,7 @@ export default function CompanyPage() {
               World class websites and online marketing.
             </h1>
             <p className="md:text-[#9aa0aa] text-white text-base sm:text-[18px] font-normal leading-relaxed sm:leading-[26px] mt-0 md:mt-2">
-              Society Web Solutions provides an all-in-one business class
-              <br className="hidden sm:block" />
+              Society Web Solutions provides an all-in-one business class <br className="hidden sm:block" />
               service oriented around web presence success.
             </p>
           </div>
@@ -329,7 +328,7 @@ export default function CompanyPage() {
             <div className="flex flex-col lg:flex-row lg:items-center w-full justify-between gap-8 lg:gap-8">
               {/* Left text block */}
               <div className="w-full lg:flex-1 flex flex-col gap-3 md:gap-4 shrink-0">
-                <h2 className="text-2xl sm:text-3xl md:text-[40px] lg:text-[48px] font-bold text-[#363636] leading-tight sm:leading-[40px] md:leading-[54px] lg:leading-[58px]">
+                <h2 className="text-2xl sm:text-3xl md:text-[40px] lg:text-[48px] font-semibold text-[#363636] leading-tight sm:leading-[40px] md:leading-[54px] lg:leading-[58px]">
                   Leading the new generation of web companies.
                 </h2>
                 <p className="text-[18px] font-semibold text-[#363636] leading-relaxed sm:leading-[27px]">
