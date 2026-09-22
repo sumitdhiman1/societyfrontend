@@ -1154,6 +1154,10 @@ export default function QuoteDetailsPage() {
       totalCost: quoteResolvedTotalCost > 0 ? quoteResolvedTotalCost : (quote?.totalCost || quoteSubtotal),
       calculatorSpecs: quote?.calculatorSpecs || quote?.requirements,
       user: quote?.user || (user ? { name: user.fullName || user.name, fullName: user.fullName || user.name, email: user.email } : undefined),
+      targetCurrency: (currency || "USD").toUpperCase(),
+      sourceCurrency: (effectiveQuoteSourceCurrency || quote?.currency || "USD").toUpperCase(),
+      nativeCurrency: (effectiveQuoteSourceCurrency || quote?.currency || "USD").toUpperCase(),
+      conversionRate,
     };
   };
 

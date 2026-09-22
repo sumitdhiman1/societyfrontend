@@ -17,7 +17,7 @@ import { useChatWidget } from "@/context/ChatWidgetContext";
 import { useCurrency } from "@/context/CurrencyContext";
 import { authService } from "@/lib/authService";
 import { countryService, Country } from "@/lib/countryService";
-import { paymentService } from "@/lib/paymentService";
+import { calculatorPaymentService } from "@/lib/calculatorPaymentService";
 import { getVatRateForCountry } from "@/lib/vatHelper";
 import { priceCalculatorService, CalculatorCategory, CalculatorConfig, CalculatorSelection } from "@/lib/priceCalculatorService";
 import {
@@ -1280,6 +1280,29 @@ const CalculatorPaymentForm = ({
     setIsProcessing(true);
     setPaymentStep("preparing");
     try {
+      const sortedQuestions = [...(category?.questions || [])].sort(
+        (a: any, b: any) => (a.order || 0) - (b.order || 0)
+      );
+      const tier = getSelectedTier(
+        selections,
+        getTierQuestionKey(categoryKey || ""),
+        sortedQuestions
+      );
+      const baselineDays =
+        categoryKey === "graphics"
+          ? calculateGraphicsRawTimelineDays(
+              sortedQuestions.find((sq: any) => isGraphicsItemsQuestion(sq)),
+              selections,
+              tier
+            )
+          : categoryKey === "seo"
+          ? calculateSeoRawTimelineDays(
+              sortedQuestions.find((sq: any) => sq.key === "SEO_ITEMS" || sq.key === "2"),
+              selections,
+              tier
+            )
+          : undefined;
+
       // Enrich selections with human-readable question/answer text from the loaded category config
       const rawSelections = selectionsToArray(selections);
       const enrichedSelections = rawSelections.map((sel: any) => {
@@ -1289,7 +1312,15 @@ const CalculatorPaymentForm = ({
         if (sel.answerKeys && sel.answerKeys.length > 0 && question?.answers) {
           sel.answerKeys.forEach((k: string) => {
             const ans = question.answers.find((a: any) => a.key === k);
-            if (ans?.text) answerTexts.push(ans.text);
+            if (ans) {
+              const formattedAns = formatCalculatorAnswerLabel(ans.text, question.key, {
+                categoryKey,
+                roleId: question.roleId,
+                metadata: ans.metadata,
+                baselineDays,
+              });
+              answerTexts.push(formattedAns || ans.text);
+            }
           });
         }
         return {
@@ -1370,7 +1401,7 @@ const CalculatorPaymentForm = ({
       console.log("================================================================");
 
       setPaymentStep("gateway");
-      const intentRes = await paymentService.createPaymentIntent(paymentPayload);
+      const intentRes = await calculatorPaymentService.createPaymentIntent(paymentPayload);
 
       if (!intentRes.isSuccessful || !intentRes.data) {
         throw new Error(intentRes.message || "Failed to initialize payment.");
@@ -1395,7 +1426,7 @@ const CalculatorPaymentForm = ({
 
       if (confirmRes.paymentIntent?.status === "succeeded") {
         setPaymentStep("confirming");
-        const confirmResult = await paymentService.confirmPayment({ transactionId });
+        const confirmResult = await calculatorPaymentService.confirmPayment({ transactionId });
         if (confirmResult.isSuccessful) {
           setPaymentStep("activating");
           await new Promise((r) => setTimeout(r, 600));

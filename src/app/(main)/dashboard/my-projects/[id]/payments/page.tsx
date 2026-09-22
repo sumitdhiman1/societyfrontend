@@ -515,6 +515,11 @@ export default function ProjectPaymentsPage() {
           ...activeProject,
           calculatorSpecs: activeProject?.calculatorSpecs || fetchedQuote?.requirements || fetchedQuote?.calculatorSpecs,
           quote: fetchedQuote || (typeof activeProject?.quoteId === "object" ? activeProject?.quoteId : null),
+          currency: (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || activeProject?.currency || "USD").toUpperCase(),
+          targetCurrency: (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || activeProject?.currency || "USD").toUpperCase(),
+          sourceCurrency: (activeProject?.currency || fetchedQuote?.currency || payments[0]?.currency || "USD").toUpperCase(),
+          nativeCurrency: (activeProject?.currency || fetchedQuote?.currency || payments[0]?.currency || "USD").toUpperCase(),
+          conversionRate,
         });
       } else {
         await downloadProjectDetailsPDF(activeProject);
@@ -550,6 +555,11 @@ export default function ProjectPaymentsPage() {
           ...activeProject,
           calculatorSpecs: activeProject?.calculatorSpecs || fetchedQuote?.requirements || fetchedQuote?.calculatorSpecs,
           quote: fetchedQuote || (typeof activeProject?.quoteId === "object" ? activeProject?.quoteId : null),
+          currency: (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || activeProject?.currency || "USD").toUpperCase(),
+          targetCurrency: (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || activeProject?.currency || "USD").toUpperCase(),
+          sourceCurrency: (activeProject?.currency || fetchedQuote?.currency || payments[0]?.currency || "USD").toUpperCase(),
+          nativeCurrency: (activeProject?.currency || fetchedQuote?.currency || payments[0]?.currency || "USD").toUpperCase(),
+          conversionRate,
           isInvoice: true,
           invoiceId: invId,
           user: currentUser,

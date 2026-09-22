@@ -367,7 +367,14 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
                   onClick={async (e) => {
                     e.preventDefault();
                     if (isCalculatorProject(quoteDetails)) {
-                      await downloadCalculatorProjectPDF(quoteDetails);
+                      await downloadCalculatorProjectPDF({
+                        ...quoteDetails,
+                        currency,
+                        targetCurrency: currency,
+                        sourceCurrency: quoteSourceCurrency.toUpperCase(),
+                        nativeCurrency: quoteSourceCurrency.toUpperCase(),
+                        conversionRate,
+                      });
                     } else {
                       await downloadProjectDetailsPDF(quoteDetails);
                     }
