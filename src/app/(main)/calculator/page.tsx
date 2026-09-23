@@ -1291,17 +1291,17 @@ const CalculatorPaymentForm = ({
       const baselineDays =
         categoryKey === "graphics"
           ? calculateGraphicsRawTimelineDays(
-              sortedQuestions.find((sq: any) => isGraphicsItemsQuestion(sq)),
-              selections,
-              tier
-            )
+            sortedQuestions.find((sq: any) => isGraphicsItemsQuestion(sq)),
+            selections,
+            tier
+          )
           : categoryKey === "seo"
-          ? calculateSeoRawTimelineDays(
+            ? calculateSeoRawTimelineDays(
               sortedQuestions.find((sq: any) => sq.key === "SEO_ITEMS" || sq.key === "2"),
               selections,
               tier
             )
-          : undefined;
+            : undefined;
 
       // Enrich selections with human-readable question/answer text from the loaded category config
       const rawSelections = selectionsToArray(selections);
@@ -1990,23 +1990,23 @@ export default function CalculatorPage() {
     <div className="bg-[#00102E] min-h-screen flex flex-col font-sans relative">
 
       {/* Hero Section */}
-      <div className="relative flex items-center text-white overflow-hidden w-full min-h-[280px] md:min-h-[406px]">
+      <div className="relative flex items-center text-white overflow-hidden w-full min-h-[280px] md:min-h-[491px]">
         <Image
           src="/images/calculator_hero.jpg"
           alt="Price calculator hero background"
           fill
           priority
-          className="object-cover object-center opacity-[.85]"
+          className="object-cover object-center opacity-[.4]"
         />
         <div className="absolute inset-0 z-0 bg-gradient-to-r from-[#00102E] via-[#00102E]/90 to-[#00102E]/75 md:via-[#00102E]/60 md:to-transparent opacity-90"></div>
         <div className="mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] text-left relative z-10 max-w-[1536px] w-full">
           <div className="flex flex-row justify-center items-center">
             <div className="w-full text-left">
-              <p className="text-gray-300 text-sm md:text-base font-medium mb-3">Calculator</p>
-              <h1 className="text-4xl md:text-[52px] font-bold mb-4 leading-tight tracking-tight text-white">
+              <p className="text-[#E5E7EB] text-sm font-medium text-[18px] leading-[26px] tracking-[0%] align-middle mb-[16px] md:mb-[24px]">Calculator</p>
+              <h1 className="text-4xl md:text-[56px] leading-[40px] md:leading-[62.5px] tracking-[0%] font-bold mb-[16px] md:mb-[24px] text-white">
                 Instantly create your price quote.
               </h1>
-              <p className="text-base md:text-xl text-gray-200 font-normal leading-relaxed max-w-2xl">
+              <p className="fmax-w-2xl font-normal text-[15px] leading-[24px] md:text-[18px] md:leading-[29.25px] tracking-[0%] align-middle text-[#E5E7EB]">
                 Already know the details of your project? There&apos;s an easy way to get started!{" "}
               </p>
             </div>
@@ -2018,7 +2018,7 @@ export default function CalculatorPage() {
 
         {/* Category Selection Section */}
         <div
-          className={`calculator-category-section w-full transition-colors duration-300 ${selectedCategoryKey ? "py-6 md:py-10" : "bg-[#00102E] py-8 md:py-20"
+          className={`calculator-category-section w-full transition-colors duration-300 ${selectedCategoryKey ? "py-6 md:py-[80px]" : "bg-[#00102E] py-8 md:py-20"
             }`}
           style={selectedCategoryKey ? calculatorDarkBg : undefined}
         >
