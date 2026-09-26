@@ -1753,10 +1753,14 @@ export default function QuoteDetailsPage() {
                       {/* Header above offer card */}
                       <div className="text-center pt-2 pb-8 px-4 my-0 recieved-offer-heading">
                         <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
-                          {isAccepted ? "Accepted Proposal Overview" : "You received an offer"}
+                          {isAccepted ? "Proposal Accepted" : "You Received an Offer"}
                         </h3>
                         <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
-                          {isAccepted ? "Overview of the accepted proposal deliverables and financial breakdown." : "We’ve prepared a custom proposal for your project."}
+                          {isAccepted
+                            ? "Confirmed! You accepted the offered quote."
+                            : lineItems.length > 0
+                            ? `Your project manager has created a new offer containing ${lineItems.length} deliverable item(s).`
+                            : "Your project manager has created a new offer."}
                         </p>
                       </div>
 

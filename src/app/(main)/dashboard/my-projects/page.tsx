@@ -6,6 +6,7 @@ import { authService } from "@/lib/authService";
 import { projectService } from "@/lib/projectService";
 import { useTimezone } from "@/context/TimezoneContext";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
+import { getPauseReasonConfig } from "@/lib/pauseReasonMapping";
 
 export default function MyProjectsPage() {
   const router = useRouter();
@@ -219,7 +220,9 @@ export default function MyProjectsPage() {
                           return "bg-gray-100 text-gray-700 border-gray-200";
                         })()
                           }`}>
-                          {project.status}
+                          {project.status === "paused"
+                            ? (getPauseReasonConfig(project.pauseReason, project.pauseNote).badge || "PAUSED")
+                            : project.status}
                         </span>
                       </div>
                       <button

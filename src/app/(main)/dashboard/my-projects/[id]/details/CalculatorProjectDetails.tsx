@@ -29,6 +29,7 @@ import {
 import { useCurrency } from "@/context/CurrencyContext";
 import { useTimezone } from "@/context/TimezoneContext";
 import { toast } from "sonner";
+import { getPauseReasonConfig } from "@/lib/pauseReasonMapping";
 
 const isEstoniaClient = (c?: string) => {
   if (!c) return false;
@@ -690,23 +691,20 @@ export default function CalculatorProjectDetails({
   return (
     <div className="flex flex-col gap-6 md:gap-8 w-full font-sans">
       {/* Paused / Monthly Banners */}
-      {activeProject.status === "paused" && (
-        <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <span className="text-2xl" aria-hidden="true">⏸</span>
-          <div className="flex-1">
-            <h4 className="font-bold text-amber-800 text-sm">Project Paused</h4>
-            <p className="text-amber-700 text-xs mt-0.5">
-              This project is currently paused. The estimated deadline does not count while paused.
-              {activeProject.pauseReason && (
-                <span className="ml-1 capitalize">
-                  Reason: {activeProject.pauseReason.replace(/_/g, " ")}.
-                </span>
-              )}{" "}
-              Your project manager will resume work once the pending item is resolved.
-            </p>
+      {activeProject.status === "paused" && (() => {
+        const pauseConfig = getPauseReasonConfig(activeProject.pauseReason, activeProject.pauseNote);
+        return (
+          <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <span className="text-2xl" aria-hidden="true">{pauseConfig.icon || "⏸"}</span>
+            <div className="flex-1">
+              <h4 className="font-bold text-amber-800 text-sm">{pauseConfig.badge || pauseConfig.header}</h4>
+              <p className="text-amber-700 text-xs mt-0.5">
+                {activeProject.pauseNote || pauseConfig.defaultMessage}
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {activeProject.status === "completed" && isMonthlyProject && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
@@ -747,7 +745,7 @@ export default function CalculatorProjectDetails({
                   return "bg-gray-100 text-gray-700 border-gray-200";
                 })()}`}
               >
-                {activeProject.status || "ACTIVE"}
+                {activeProject.status === "paused" ? (getPauseReasonConfig(activeProject.pauseReason, activeProject.pauseNote).badge || "PAUSED") : (activeProject.status || "ACTIVE")}
               </span>
             </div>
 
@@ -1169,29 +1167,231 @@ export default function CalculatorProjectDetails({
               if (isSystemMsg && !hasFileAttachments && !isQuoteProposal) {
                 const rawTitle = msg.content?.systemText || msg.message || "Notification";
                 let cleanTitle = rawTitle.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}⏸▶️💳🛠️🎉✅🔄👤🚀📌🔔]/gu, "").trim();
-                if (cleanTitle.toLowerCase() === "action required: payment" || cleanTitle.toLowerCase() === "payment required") {
-                  cleanTitle = "Project paused";
-                } else if (cleanTitle.toLowerCase().startsWith("project status updated to active") || cleanTitle.toLowerCase() === "active") {
-                  cleanTitle = "Project resumed";
+                const rawTextCandidate = msg.content?.text || msg.text || (msg.message !== rawTitle && msg.message !== cleanTitle ? msg.message : "");
+                const lowerTitle = cleanTitle.toLowerCase();
+                const lowerRaw = rawTitle.toLowerCase();
+                const lowerText = rawTextCandidate.toLowerCase();
+
+                const isDeadlineAdjusted =
+                  lowerTitle.includes("deadline adjusted") ||
+                  lowerRaw.includes("deadline adjusted") ||
+                  lowerText.includes("deadline has been extended") ||
+                  lowerText.includes("deadline adjusted");
+
+                const isManagerAssigned =
+                  !isDeadlineAdjusted &&
+                  (lowerTitle.includes("manager assigned") ||
+                  lowerRaw.includes("manager assigned") ||
+                  lowerText.includes("assigned as project manager") ||
+                  lowerText.includes("assigned as analysis manager") ||
+                  lowerText.includes("assigned to your project") ||
+                  lowerText.includes("assigned to your analysis"));
+
+                const isReactivated =
+                  !isDeadlineAdjusted &&
+                  !isManagerAssigned &&
+                  (lowerTitle.includes("reactivate") ||
+                  lowerRaw.includes("reactivate") ||
+                  lowerText.includes("reactivate") ||
+                  lowerTitle.includes("reactivated") ||
+                  lowerRaw.includes("reactivated") ||
+                  lowerText.includes("reactivated"));
+
+                const isResumed =
+                  !isDeadlineAdjusted &&
+                  !isManagerAssigned &&
+                  !isReactivated &&
+                  (lowerTitle.includes("resumed") ||
+                  lowerRaw.includes("resumed") ||
+                  lowerText.includes("resumed") ||
+                  lowerTitle.startsWith("project status updated to active") ||
+                  lowerTitle.startsWith("project status: active") ||
+                  lowerTitle === "active");
+
+                const isCompleted =
+                  lowerTitle.includes("completed") ||
+                  lowerRaw.includes("completed") ||
+                  lowerText.includes("completed") ||
+                  lowerTitle === "order completed";
+
+                const isOfferReceived =
+                  !isDeadlineAdjusted &&
+                  !isManagerAssigned &&
+                  !isReactivated &&
+                  !isResumed &&
+                  !isCompleted &&
+                  (lowerTitle.includes("offer received") ||
+                  lowerRaw.includes("offer received") ||
+                  lowerTitle.includes("you received an offer") ||
+                  lowerRaw.includes("you received an offer") ||
+                  lowerText.includes("you received an offer") ||
+                  lowerText.includes("created a new offer") ||
+                  lowerText.includes("sent you a new offer"));
+
+                const isProposalAccepted =
+                  !isDeadlineAdjusted &&
+                  !isManagerAssigned &&
+                  !isReactivated &&
+                  !isResumed &&
+                  !isCompleted &&
+                  (lowerTitle.includes("proposal accepted") ||
+                  lowerRaw.includes("proposal accepted") ||
+                  lowerTitle.includes("add-on proposal accepted") ||
+                  lowerRaw.includes("add-on proposal accepted") ||
+                  lowerText.includes("proposal accepted") ||
+                  lowerText.includes("accepted the offered quote"));
+
+                const isProposalDeclined =
+                  !isDeadlineAdjusted &&
+                  !isManagerAssigned &&
+                  !isReactivated &&
+                  !isResumed &&
+                  !isCompleted &&
+                  (lowerTitle.includes("proposal declined") ||
+                  lowerRaw.includes("proposal declined") ||
+                  lowerTitle.includes("offer declined") ||
+                  lowerRaw.includes("offer declined") ||
+                  lowerText.includes("proposal declined") ||
+                  lowerText.includes("the offer was declined") ||
+                  lowerText.includes("offer was declined"));
+
+                const isModificationsRequested =
+                  !isDeadlineAdjusted &&
+                  !isManagerAssigned &&
+                  !isReactivated &&
+                  !isResumed &&
+                  !isCompleted &&
+                  (lowerTitle.includes("modification requested") ||
+                  lowerTitle.includes("modifications requested") ||
+                  lowerRaw.includes("modification requested") ||
+                  lowerRaw.includes("modifications requested") ||
+                  lowerText.includes("modifications requested") ||
+                  lowerText.includes("requested modifications"));
+
+                let pauseConfig = null;
+
+                if (isDeadlineAdjusted) {
+                  cleanTitle = "Deadline Adjusted";
+                } else if (isManagerAssigned) {
+                  cleanTitle = "Project Manager Assigned";
+                } else if (isReactivated) {
+                  cleanTitle = "Project Reactivated";
+                } else if (isResumed) {
+                  cleanTitle = "Project Resumed";
+                } else if (isCompleted) {
+                  cleanTitle = "Order Completed";
+                } else if (isOfferReceived) {
+                  cleanTitle = "You Received an Offer";
+                } else if (isProposalAccepted) {
+                  cleanTitle = "Proposal Accepted";
+                } else if (isProposalDeclined) {
+                  cleanTitle = "Proposal Declined";
+                } else if (isModificationsRequested) {
+                  cleanTitle = "Modifications Requested";
+                } else if (
+                  lowerTitle.includes("action required") ||
+                  lowerTitle.includes("payment") ||
+                  lowerTitle.includes("approval") ||
+                  lowerTitle.includes("content") ||
+                  lowerTitle.includes("review") ||
+                  lowerTitle.includes("paused") ||
+                  lowerTitle === "project paused" ||
+                  lowerTitle === "analysis paused" ||
+                  Boolean((msg as any)?.pauseReason || (msg.content as any)?.pauseReason)
+                ) {
+                  pauseConfig = getPauseReasonConfig(
+                    (msg as any)?.pauseReason || (msg.content as any)?.pauseReason || activeProject?.pauseReason,
+                    rawTextCandidate || rawTitle
+                  );
+                  cleanTitle = pauseConfig.header;
                 } else if (cleanTitle.length > 0) {
                   cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1).toLowerCase();
                 }
 
-                const rawTextCandidate = msg.content?.text || msg.text || (msg.message !== rawTitle && msg.message !== cleanTitle ? msg.message : "");
+                let finalTitle = cleanTitle;
+                if (pauseConfig) {
+                  finalTitle = pauseConfig.badge || pauseConfig.header;
+                }
+
                 const isDuplicate =
                   rawTextCandidate.trim().toLowerCase() === cleanTitle.trim().toLowerCase() ||
                   rawTextCandidate.trim().toLowerCase() === rawTitle.trim().toLowerCase() ||
                   rawTextCandidate.trim().toLowerCase().startsWith("project status updated to active");
-                const rawText = isDuplicate ? "" : rawTextCandidate;
+
+                let rawText = rawTextCandidate;
+                if (isDeadlineAdjusted || finalTitle === "Deadline Adjusted" || cleanTitle === "Deadline Adjusted") {
+                  finalTitle = "Deadline Adjusted";
+                  rawText = rawTextCandidate || "The project deadline has been extended by 0 day(s), 0 hour(s) and 0 minute(s), because the project has been paused for that long.";
+                } else if (isOfferReceived || finalTitle === "You Received an Offer" || cleanTitle === "You Received an Offer") {
+                  finalTitle = "You Received an Offer";
+                  if (rawTextCandidate && rawTextCandidate.toLowerCase().includes("containing")) {
+                    rawText = rawTextCandidate;
+                  } else {
+                    const deliverables = (msg as any)?.content?.deliverableItems || (msg as any)?.content?.items || [];
+                    const count = (msg as any)?.content?.deliverableCount || deliverables.length || 0;
+                    rawText = count > 0
+                      ? `Your project manager has created a new offer containing ${count} deliverable item(s).`
+                      : rawTextCandidate || "Your project manager has created a new offer.";
+                  }
+                } else if (isProposalAccepted || finalTitle === "Proposal Accepted" || cleanTitle === "Proposal Accepted") {
+                  finalTitle = "Proposal Accepted";
+                  rawText = "Confirmed! You accepted the offered quote.";
+                } else if (isProposalDeclined || finalTitle === "Proposal Declined" || cleanTitle === "Proposal Declined") {
+                  finalTitle = "Proposal Declined";
+                  rawText = "The offer was declined.";
+                } else if (isModificationsRequested || finalTitle === "Modifications Requested" || cleanTitle === "Modifications Requested") {
+                  finalTitle = "Modifications Requested";
+                  rawText = "The client requested modifications.";
+                } else if (isManagerAssigned || finalTitle === "Project Manager Assigned" || cleanTitle === "Project Manager Assigned") {
+                  finalTitle = "Project Manager Assigned";
+                  let name = "";
+                  if (rawTextCandidate) {
+                    const match = rawTextCandidate.match(/^([^.]+?)\s+has been assigned/i);
+                    if (match && match[1]) {
+                      name = match[1].trim();
+                    }
+                  }
+                  if (!name && (activeProject?.assignedManagers?.[0] as any)?.fullName) {
+                    name = (activeProject.assignedManagers[0] as any).fullName;
+                  }
+                  if (name) {
+                    rawText = `${name} has been assigned to your project.`;
+                  } else {
+                    rawText = "Project manager has been assigned to your project.";
+                  }
+                } else if (isReactivated || finalTitle === "Project Reactivated" || cleanTitle === "Project Reactivated") {
+                  finalTitle = "Project Reactivated";
+                  rawText = "Your project has been reactivated by the project manager.";
+                } else if (isResumed || finalTitle === "Project Resumed" || cleanTitle === "Project Resumed") {
+                  finalTitle = "Project Resumed";
+                  rawText = "Your project has been resumed.";
+                } else if (isCompleted || finalTitle === "Order Completed" || cleanTitle === "Order Completed") {
+                  finalTitle = "Order Completed";
+                  rawText = "Your order has been completed! Click here if you need further assistance.";
+                } else if (isDuplicate) {
+                  rawText = pauseConfig ? pauseConfig.defaultMessage : "";
+                } else if (!rawText && pauseConfig) {
+                  rawText = pauseConfig.defaultMessage;
+                }
 
                 return (
                   <div key={msgId} ref={isLast ? lastMessageRef : null} className="text-center py-2 px-4 my-0">
-                    <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
-                      {cleanTitle}
+                    <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-2">
+                      {finalTitle}
                     </h3>
                     {rawText ? (
                       <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
-                        {capitalizeCurrencyInText(rawText)}
+                        {rawText.includes("Click here") ? (
+                          <>
+                            {rawText.split("Click here")[0]}
+                            <Link href="/help-support" className="text-[#4343F0] hover:underline font-semibold">
+                              Click here
+                            </Link>
+                            {rawText.split("Click here")[1]}
+                          </>
+                        ) : (
+                          capitalizeCurrencyInText(rawText)
+                        )}
                       </p>
                     ) : null}
                   </div>
