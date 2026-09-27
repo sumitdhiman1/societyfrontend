@@ -1068,7 +1068,7 @@ export default function CalculatorProjectDetails({
         {displayMessages.length > 0 && (
           <div className="flex flex-col gap-6 w-full">
             {displayMessages.map((msg: any, idx: number) => {
-              const msgId = msg.id || `msg-${idx}`;
+              const msgId = msg.id ? `${msg.id}-${idx}` : (msg._id ? `${msg._id}-${idx}` : `msg-${idx}`);
               const isLast = idx === displayMessages.length - 1;
               const isQuoteProposal = msg.type === "quote_proposal" || msg.content?.type === "quote_proposal";
 

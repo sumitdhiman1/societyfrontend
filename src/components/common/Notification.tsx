@@ -45,9 +45,22 @@ const Notification = ({
         pagination: {},
       };
       if (append) {
-        setNotifications((prev) => [...prev, ...items]);
+        setNotifications((prev) => {
+          const existingIds = new Set(prev.map((n) => String(n._id || n.id)));
+          const fresh = items.filter((n: any) => !existingIds.has(String(n._id || n.id)));
+          return [...prev, ...fresh];
+        });
       } else {
-        setNotifications(items);
+        const seen = new Set();
+        const unique: any[] = [];
+        for (const n of items) {
+          const id = String(n._id || n.id);
+          if (!seen.has(id)) {
+            seen.add(id);
+            unique.push(n);
+          }
+        }
+        setNotifications(unique);
       }
       setHasMore(pagination.currentPage < pagination.totalPages);
       setCurrentPage(page);
@@ -188,9 +201,9 @@ const Notification = ({
                 No notifications yet
               </div>
             ) : (
-              notifications.map((n) => (
+              notifications.map((n, idx) => (
                 <div
-                  key={n._id}
+                  key={`notif-dropdown-${n._id || n.id || idx}-${idx}`}
                   className={`px-4 sm:px-8 py-3.5 sm:py-5 border-b border-gray-100 flex items-center gap-3.5 sm:gap-5 transition-colors ${n.isRead ? "bg-white" : "bg-[#f7faff] hover:bg-blue-100/50"}`}
                 >
                   <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-500 flex items-center justify-center shrink-0">

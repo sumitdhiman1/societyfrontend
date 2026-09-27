@@ -52,9 +52,22 @@ export default function NotificationsPage() {
       if (res?.data) {
         const newNotifications = res.data.notifications || [];
         if (append) {
-          setNotifications(prev => [...prev, ...newNotifications]);
+          setNotifications(prev => {
+            const existingIds = new Set(prev.map(n => String(n._id || n.id)));
+            const fresh = newNotifications.filter((n: any) => !existingIds.has(String(n._id || n.id)));
+            return [...prev, ...fresh];
+          });
         } else {
-          setNotifications(newNotifications);
+          const seen = new Set();
+          const unique: any[] = [];
+          for (const n of newNotifications) {
+            const id = String(n._id || n.id);
+            if (!seen.has(id)) {
+              seen.add(id);
+              unique.push(n);
+            }
+          }
+          setNotifications(unique);
         }
 
         if (res.data.pagination) {
@@ -208,9 +221,9 @@ export default function NotificationsPage() {
             </div>
           ) : (
             <div className="flex flex-col divide-y divide-gray-100">
-              {notifications.map((notif) => (
+              {notifications.map((notif, idx) => (
                 <div
-                  key={notif._id}
+                  key={`notif-page-${notif._id || notif.id || idx}-${idx}`}
                   className={`px-8 py-6 border-b border-gray-100 transition-colors flex items-center gap-5 ${!notif.isRead ? "bg-blue-50/50 hover:bg-blue-100/50" : "bg-white hover:bg-gray-50"}`}
                   onClick={() => handleNotificationClick(notif)}
                 >

@@ -285,6 +285,26 @@ export default function QuoteDetailsPage() {
   >([]);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
+  const [actionModal, setActionModal] = useState<{
+    isOpen: boolean;
+    action: "accept" | "decline" | "request_modification" | null;
+    proposalId: string | null;
+    title: string;
+    description: string;
+    placeholder: string;
+    required: boolean;
+  }>({
+    isOpen: false,
+    action: null,
+    proposalId: null,
+    title: "",
+    description: "",
+    placeholder: "",
+    required: false,
+  });
+  const [actionComment, setActionComment] = useState("");
+  const [isActionLoading, setIsActionLoading] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -811,61 +831,61 @@ export default function QuoteDetailsPage() {
     if (!currentUser) return;
     if (!quote) return;
 
-    setIsDeclining(true);
-    try {
-      const res = await quoteService.updateQuote(quote._id, {
-        action: "deny",
-        username: currentUser?.fullName || user?.fullName,
-        userAvatar: currentUser?.avatar || user?.avatar,
-      });
-
-      if (res.isSuccessful || res.statusCode === 200) {
-        toast.success("Proposal declined");
-        if (res.data) setQuote(res.data);
-        else refreshQuote(true);
-      } else {
-        toast.error(res.message || "Failed to decline proposal");
-      }
-    } catch (e: any) {
-      console.error("Failed to decline proposal:", e);
-      toast.error(e?.message || "Failed to decline proposal");
-    } finally {
-      setIsDeclining(false);
-    }
+    setActionModal({
+      isOpen: true,
+      action: "decline",
+      proposalId: quote._id,
+      title: "Decline Offer",
+      description: "Are you sure you want to decline this offer? You can provide a reason below.",
+      placeholder: "Reason for declining (optional)...",
+      required: false,
+    });
   };
 
-  const handleRequestModification = async () => {
+  const handleActionSubmit = async () => {
     const currentUser = requireAuth();
-    if (!currentUser) return;
+    if (!currentUser || !quote) return;
 
-    if (!messageText.trim() || !quote) {
-      if (messageInputRef.current) {
-        messageInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-        const textarea = messageInputRef.current.querySelector("textarea");
-        if (textarea) textarea.focus();
-      }
-      return;
-    }
+    if (actionModal.action && (!actionModal.required || actionComment.trim())) {
+      setIsActionLoading(true);
+      try {
+        let res;
+        const username = currentUser?.fullName || currentUser?.username || user?.fullName || "User";
+        const avatar = currentUser?.avatar || user?.avatar;
 
-    setIsSending(true);
-    try {
-      const res = await quoteService.updateQuote(quote._id, {
-        action: "request_modification",
-        userComments: messageText.trim(),
-        username: currentUser?.fullName || user?.fullName,
-        userAvatar: currentUser?.avatar || user?.avatar,
-      });
-      if (res.isSuccessful || res.statusCode === 200) {
-        setMessageText("");
-        if (res.data) setQuote(res.data);
-        else refreshQuote(true);
-        toast.success("Modification request sent");
+        if (actionModal.action === "decline") {
+          res = await quoteService.updateQuote(quote._id, {
+            action: "decline",
+            rejectionReason: actionComment.trim(),
+            userComments: actionComment.trim(),
+            username,
+            userAvatar: avatar,
+          });
+        } else if (actionModal.action === "request_modification") {
+          res = await quoteService.updateQuote(quote._id, {
+            action: "request_modification",
+            modificationRequests: actionComment.trim(),
+            userComments: actionComment.trim(),
+            username,
+            userAvatar: avatar,
+          });
+        }
+
+        if (res && (res.isSuccessful || res.statusCode === 200 || res.data)) {
+          toast.success(actionModal.action === "decline" ? "Offer declined successfully" : "Modification request sent");
+          setActionModal({ ...actionModal, isOpen: false });
+          setActionComment("");
+          if (res.data) setQuote(res.data);
+          else refreshQuote(true);
+        } else {
+          toast.error(res?.message || `Failed to ${actionModal.action} offer`);
+        }
+      } catch (error: any) {
+        console.error(`Failed to handle ${actionModal.action}:`, error);
+        toast.error(error?.message || `Failed to ${actionModal.action} offer`);
+      } finally {
+        setIsActionLoading(false);
       }
-    } catch (e) {
-      console.error("Failed to send modification request:", e);
-      toast.error("Failed to send modification request");
-    } finally {
-      setIsSending(false);
     }
   };
 
@@ -994,6 +1014,36 @@ export default function QuoteDetailsPage() {
       allMessages.push(fallbackProposalMsg);
     }
   }
+
+  // Deduplicate any consecutive duplicate messages (e.g. from simultaneous text + quote_action events)
+  const deduplicatedMessages: any[] = [];
+  for (let idx = 0; idx < allMessages.length; idx++) {
+    const current = allMessages[idx];
+    const prev = deduplicatedMessages[deduplicatedMessages.length - 1];
+
+    if (prev && current) {
+      const currentText = String(current.content?.text || current.content?.comments || current.text || current.message || "").trim();
+      const prevText = String(prev.content?.text || prev.content?.comments || prev.text || prev.message || "").trim();
+      const currentSender = current.userId || current.sender || current.senderId || "";
+      const prevSender = prev.userId || prev.sender || prev.senderId || "";
+
+      const currentTime = new Date(current.timestamp || current.createdAt || 0).getTime();
+      const prevTime = new Date(prev.timestamp || prev.createdAt || 0).getTime();
+      const isWithin10Secs = Math.abs(currentTime - prevTime) < 10000 || (!currentTime && !prevTime);
+
+      if (
+        currentText &&
+        prevText &&
+        currentText.toLowerCase() === prevText.toLowerCase() &&
+        currentSender === prevSender &&
+        isWithin10Secs
+      ) {
+        continue;
+      }
+    }
+    deduplicatedMessages.push(current);
+  }
+  allMessages = deduplicatedMessages;
 
   // Financial and Deliverable extraction for the accepted quote / proposal overview
   const rawProposalItems =
@@ -1554,7 +1604,7 @@ export default function QuoteDetailsPage() {
                     return (
                       <div key={msgId} className="text-center py-2 px-4 my-0" ref={isLast ? messagesEndRef : null}>
                         <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
-                          Project created
+                          Project Created
                         </h3>
                         <p className="text-sm font-medium text-gray-500 mb-5 max-w-xl mx-auto leading-relaxed">
                           Great news! Your quote has been converted into an active project.
@@ -1701,6 +1751,12 @@ export default function QuoteDetailsPage() {
                       (m.content?.action === "accepted" || m.action === "accepted")
                   );
 
+                  const wasModRequestedAfterThis = messagesUntilNextProposal.some(
+                    (m: any) =>
+                      (m.type === "quote_action" || m.type === "action") &&
+                      (m.content?.action === "modification_requested" || m.action === "modification_requested" || (m.content?.text && m.content.text.toLowerCase().includes("modification")))
+                  );
+
                   const isAccepted =
                     hasAcceptedLocally ||
                     content.status === "accepted" ||
@@ -1723,10 +1779,16 @@ export default function QuoteDetailsPage() {
                       !content.isNewProposal &&
                       (!content.actionsAvailable || content.actionsAvailable.length === 0));
 
-                  const isSuperseded =
-                    !isDeclined && !isAccepted && (hasLaterProposal || content.status === "superseded");
+                  const isModRequested =
+                    content.status === "modification_requested" ||
+                    wasModRequestedAfterThis ||
+                    (!hasLaterProposal && quote.status?.toLowerCase() === "revision_requested");
 
-                  const canAct = !hasLaterProposal && !isAccepted && !isDeclined;
+                  const isSuperseded =
+                    !isDeclined && !isAccepted && !isModRequested && (hasLaterProposal || content.status === "superseded");
+
+                  const canAct = !hasLaterProposal && !isAccepted && !isDeclined && !isModRequested;
+                  const targetProposalId = msg.id || msg._id || (msg as any).content?.id || (quote as any)._id;
 
                   const cleanExpires = (val: any) => {
                     if (!val || val === "Not specified" || val === "N/A" || val === "-") return "N/A";
@@ -1758,9 +1820,7 @@ export default function QuoteDetailsPage() {
                         <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
                           {isAccepted
                             ? "Confirmed! You accepted the offered quote."
-                            : lineItems.length > 0
-                            ? `Your project manager has created a new offer containing ${lineItems.length} deliverable item(s).`
-                            : "Your project manager has created a new offer."}
+                            : "We’ve prepared a custom proposal for your project."}
                         </p>
                       </div>
 
@@ -1949,42 +2009,134 @@ export default function QuoteDetailsPage() {
 
                             {/* Action Buttons (Accept, Request Modifications, Decline) */}
                             {canAct && (
-                              <div className="flex flex-col sm:flex-row gap-4 justify-between w-full pt-6 mt-6 border-t border-gray-100">
-                                <button
-                                  type="button"
-                                  onClick={handleAcceptQuote}
-                                  disabled={isAccepting || isDeclining || hasAcceptedLocally}
-                                  className="flex-1 bg-[#327334] hover:bg-[#285c29] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
-                                >
-                                  {isAccepting ? <LoadingDots text="Accepting" /> : "Accept Proposal"}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={handleRequestModification}
-                                  disabled={isAccepting || isDeclining || hasAcceptedLocally}
-                                  className="flex-1 bg-[#1C446F] hover:bg-[#153455] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all cursor-pointer text-center"
-                                >
-                                  Request Modifications
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={handleDeclineQuote}
-                                  disabled={isAccepting || isDeclining || hasAcceptedLocally}
-                                  className="flex-1 bg-[#7D1A1A] hover:bg-[#651515] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
-                                >
-                                  {isDeclining ? <LoadingDots text="Declining" /> : "Decline Proposal"}
-                                </button>
-                              </div>
+                              <>
+                                <div className="flex flex-col sm:flex-row gap-4 justify-between w-full pt-6 mt-6 border-t border-gray-100">
+                                  <button
+                                    type="button"
+                                    onClick={handleAcceptQuote}
+                                    disabled={isAccepting || isActionLoading || hasAcceptedLocally}
+                                    className="flex-1 bg-[#327334] hover:bg-[#285c29] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
+                                  >
+                                    {isAccepting ? <LoadingDots text="Accepting" /> : "Accept Proposal"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const currentUser = requireAuth();
+                                      if (!currentUser) return;
+                                      setActionModal({
+                                        isOpen: true,
+                                        action: "request_modification",
+                                        proposalId: targetProposalId,
+                                        title: "Request Modifications",
+                                        description: "Please describe the modifications you would like for this offer.",
+                                        placeholder: "Describe your requested changes...",
+                                        required: true,
+                                      });
+                                    }}
+                                    disabled={isAccepting || isActionLoading || hasAcceptedLocally}
+                                    className="flex-1 bg-[#3B4BEF] hover:bg-[#2F3EC4] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
+                                  >
+                                    Request Modifications
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const currentUser = requireAuth();
+                                      if (!currentUser) return;
+                                      setActionModal({
+                                        isOpen: true,
+                                        action: "decline",
+                                        proposalId: targetProposalId,
+                                        title: "Decline Offer",
+                                        description: "Are you sure you want to decline this offer? You can provide a reason below.",
+                                        placeholder: "Reason for declining (optional)...",
+                                        required: false,
+                                      });
+                                    }}
+                                    disabled={isAccepting || isActionLoading || hasAcceptedLocally}
+                                    className="flex-1 bg-[#7D1A1A] hover:bg-[#651515] text-white text-sm font-bold py-3.5 px-8 rounded-md shadow-sm transition-all disabled:opacity-50 cursor-pointer text-center"
+                                  >
+                                    Decline Proposal
+                                  </button>
+                                </div>
+
+                                {/* Inline Action Modal for Proposal */}
+                                {actionModal.isOpen && (actionModal.proposalId === targetProposalId || !actionModal.proposalId) && (
+                                  <div className="w-full mt-6 animate-in fade-in slide-in-from-top-4 duration-300">
+                                    <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                                      <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100 bg-gray-50/50">
+                                        <div className="flex items-center gap-4">
+                                          {user?.avatar ? (
+                                            <img src={user.avatar} alt="User" className="w-12 h-12 rounded-full object-cover shadow-sm ring-2 ring-white" />
+                                          ) : (
+                                            <div className="w-12 h-12 rounded-full bg-[#0D1939] flex items-center justify-center text-white font-bold text-base shadow-sm ring-2 ring-white">
+                                              {(user?.fullName || "U").charAt(0).toUpperCase()}
+                                            </div>
+                                          )}
+                                          <div>
+                                            <h3 className="font-bold text-gray-800 text-base">{user?.fullName || "User"}</h3>
+                                            <p className="text-xs text-gray-500">{actionModal.title}</p>
+                                          </div>
+                                        </div>
+                                        <span className="text-xs text-gray-400 font-medium">{formatQuoteDate(new Date())}</span>
+                                      </div>
+                                      <div className="p-6">
+                                        {actionModal.description && <p className="text-gray-600 text-sm mb-3 font-medium">{actionModal.description}</p>}
+                                        <textarea
+                                          className="w-full min-h-[120px] text-gray-700 text-sm leading-relaxed resize-none focus:outline-none placeholder-gray-400 bg-transparent border border-gray-200 rounded-lg p-3 focus:border-[#3B4BEF] transition-colors"
+                                          placeholder={actionModal.placeholder}
+                                          value={actionComment}
+                                          onChange={(e) => setActionComment(e.target.value)}
+                                          autoFocus
+                                        />
+                                      </div>
+                                      <div className="px-6 pb-6 pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-end gap-3">
+                                        <div className="flex gap-3 w-full sm:w-auto">
+                                          <button
+                                            type="button"
+                                            onClick={() => setActionModal({ ...actionModal, isOpen: false })}
+                                            className="flex-1 sm:flex-none px-6 py-2.5 bg-[#7A1C1C] hover:bg-[#631616] text-white font-bold text-sm rounded-md transition-colors shadow-sm cursor-pointer"
+                                            disabled={isActionLoading}
+                                          >
+                                            Cancel
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={handleActionSubmit}
+                                            disabled={isActionLoading || (actionModal.required && !actionComment.trim())}
+                                            className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-md text-sm font-bold transition-all shadow-sm cursor-pointer ${
+                                              isActionLoading
+                                                ? "bg-gray-400 cursor-not-allowed"
+                                                : actionModal.action === "decline"
+                                                  ? "bg-[#C62828] hover:bg-[#B71C1C]"
+                                                  : "bg-[#3B4BEF] hover:bg-[#2F3EC4]"
+                                            }`}
+                                          >
+                                            {isActionLoading ? "Processing..." : actionModal.action === "decline" ? "Decline Offer" : "Send Request"}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      {/* Fallback Quote Declined section only if no quote_action message exists in the feed */}
-                      {isDeclined && !allMessages.some((m: any) => (m.type === "quote_action" || m.type === "action") && (m.content?.action === "denied" || m.content?.action === "declined" || m.action === "denied" || m.action === "declined")) && (
+                      {/* Fallback Quote Declined section only if no quote_action or system_notification message exists in the feed */}
+                      {isDeclined && !allMessages.some((m: any) => {
+                        const text = `${m.message || ""} ${m.content?.systemText || ""} ${m.content?.text || ""} ${m.content?.action || ""} ${m.action || ""}`.toLowerCase();
+                        return (
+                          (m.type === "system_notification" || m.isSystemMessage || m.type === "quote_action" || m.type === "action") &&
+                          (text.includes("quote declined") || text.includes("declined") || text.includes("denied"))
+                        );
+                      }) && (
                         <div className="text-center pt-8 pb-2 px-4 my-0 w-full">
                           <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
-                            Quote declined
+                            Quote Declined
                           </h2>
                           <p className="text-xs sm:text-sm font-normal text-gray-500 max-w-lg mx-auto leading-relaxed">
                             The offered quote has been declined.
@@ -1993,10 +2145,16 @@ export default function QuoteDetailsPage() {
                       )}
 
                       {/* Fallback Project Created section only if no accept message exists in the feed */}
-                      {isAccepted && !allMessages.some((m: any) => (m.type === "quote_action" && m.content?.action === "accepted") || (m.type === "system_notification" && (m.content?.systemText?.toLowerCase().includes("project created") || m.text?.toLowerCase().includes("project created")))) && (
+                      {isAccepted && !allMessages.some((m: any) => {
+                        const text = `${m.message || ""} ${m.content?.systemText || ""} ${m.content?.text || ""} ${m.content?.action || ""} ${m.action || ""}`.toLowerCase();
+                        return (
+                          (m.type === "system_notification" || m.isSystemMessage || m.type === "quote_action" || m.type === "action") &&
+                          (text.includes("project created") || text.includes("accepted") || text.includes("active project"))
+                        );
+                      }) && (
                         <div className="text-center pt-8 pb-2 px-4 my-0 w-full">
                           <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
-                            Project created
+                            Project Created
                           </h2>
                           <p className="text-xs sm:text-sm font-normal text-gray-500 mb-5 max-w-lg mx-auto leading-relaxed">
                             Great news! Your quote has been converted into an active project.
@@ -2027,24 +2185,42 @@ export default function QuoteDetailsPage() {
                 // Quote Action (Chronological Decline or Acceptance Event)
                 if (msg.type === "quote_action" || msg.type === "action") {
                   const action = msg.content?.action || msg.action;
-                  if (action === "denied" || action === "declined") {
-                    return (
-                      <div key={msgId} ref={isLast ? messagesEndRef : null} className="text-center py-2 px-4 my-0">
-                        <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
-                          Quote declined
-                        </h3>
-                        <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
-                          The offered quote has been declined.
-                        </p>
-                      </div>
-                    );
-                  }
+                  const commentText = (msg.content?.text || msg.content?.comments || msg.content?.userComments || msg.text || "").trim();
+                  const isGenericDeclinedText = !commentText || commentText === "The offered quote has been declined." || commentText.toLowerCase() === "quote declined";
 
-                  if (action === "accepted") {
+                  if (action === "denied" || action === "declined") {
+                    if (isGenericDeclinedText) {
+                      const hasSystemNotificationForDeclined = allMessages.some(
+                        (m: any) => (m.type === "system_notification" || m.isSystemMessage) &&
+                          `${m.message || ""} ${m.content?.systemText || ""}`.toLowerCase().includes("declined")
+                      );
+                      if (hasSystemNotificationForDeclined) {
+                        return null; // System notification already renders the banner
+                      }
+                      return (
+                        <div key={msgId} ref={isLast ? messagesEndRef : null} className="text-center py-2 px-4 my-0">
+                          <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
+                            Quote Declined
+                          </h3>
+                          <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
+                            The offered quote has been declined.
+                          </p>
+                        </div>
+                      );
+                    }
+                    // Has specific custom reason comment -> fall through to regular message bubble below
+                  } else if (action === "accepted") {
+                    const hasSystemNotificationForAccepted = allMessages.some(
+                      (m: any) => (m.type === "system_notification" || m.isSystemMessage) &&
+                        `${m.message || ""} ${m.content?.systemText || ""}`.toLowerCase().includes("project created")
+                    );
+                    if (hasSystemNotificationForAccepted) {
+                      return null;
+                    }
                     return (
                       <div key={msgId} ref={isLast ? messagesEndRef : null} className="text-center py-2 px-4 my-0">
                         <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
-                          Project created
+                          Project Created
                         </h3>
                         <p className="text-sm font-medium text-gray-500 mb-5 leading-relaxed max-w-xl mx-auto">
                           Great news! Your quote has been converted into an active project.
@@ -2068,9 +2244,11 @@ export default function QuoteDetailsPage() {
                         </button>
                       </div>
                     );
+                  } else if (action === "modification_requested") {
+                    // Fall through to regular message bubble below
+                  } else {
+                    return null;
                   }
-
-                  return null;
                 }
 
                 // Regular User / Staff Message

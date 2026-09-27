@@ -1746,7 +1746,7 @@ export default function AnalysisDetailsPage() {
       {analysis.messages && analysis.messages.length > 0 && (
         <div className="flex flex-col gap-6 w-full recieved-offer-heading-wrap mb-0">
           {analysis.messages.map((msg: any, idx: number) => {
-            const msgId = msg.id || msg._id || `msg-${idx}`;
+            const msgId = msg.id ? `${msg.id}-${idx}` : (msg._id ? `${msg._id}-${idx}` : `msg-${idx}`);
             const textContent = `${msg.message || ""} ${msg.content?.text || ""} ${msg.text || ""}`.toLowerCase();
             if (textContent.includes("declined the add-on proposal")) {
               return null;

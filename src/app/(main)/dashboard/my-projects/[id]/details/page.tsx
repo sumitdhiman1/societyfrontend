@@ -1595,7 +1595,7 @@ export default function ProjectDetailsPage() {
         {displayMessages.length > 0 && (
           <div className="flex flex-col gap-6 w-full">
             {displayMessages.map((msg: any, idx: number) => {
-              const msgId = msg.id || `msg-${idx}`;
+              const msgId = msg.id ? `${msg.id}-${idx}` : (msg._id ? `${msg._id}-${idx}` : `msg-${idx}`);
               const isLast = idx === displayMessages.length - 1;
 
               // Check for quote proposal in this message

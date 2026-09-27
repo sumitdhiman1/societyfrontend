@@ -174,6 +174,124 @@ export const PAUSE_REASON_MAPPINGS: Record<string, PauseReasonConfig> = {
       accent: 'text-amber-700',
     },
   },
+  quote_request_submitted: {
+    header: 'Quote Request Submitted',
+    badge: 'Quote Request Submitted',
+    actionTitle: 'Quote Request Submitted',
+    defaultMessage:
+      'Thank you for submitting your request! Our team is reviewing and will provide a custom quote shortly.',
+    icon: '📝',
+    theme: {
+      bg: 'bg-blue-50',
+      border: 'border-blue-300',
+      text: 'text-blue-800',
+      accent: 'text-blue-700',
+    },
+  },
+  custom_quote_sent: {
+    header: 'You Received an Offer',
+    badge: 'You Received an Offer',
+    actionTitle: 'Custom Quote Sent',
+    defaultMessage: 'We’ve prepared a custom proposal for your project.',
+    icon: '🎁',
+    theme: {
+      bg: 'bg-blue-50',
+      border: 'border-blue-300',
+      text: 'text-blue-800',
+      accent: 'text-blue-700',
+    },
+  },
+  quote_converted: {
+    header: 'Project Created',
+    badge: 'Project Created',
+    actionTitle: 'Quote Converted into Project',
+    defaultMessage: 'Great news! Your quote has been converted into an active project.',
+    icon: '🚀',
+    theme: {
+      bg: 'bg-emerald-50',
+      border: 'border-emerald-300',
+      text: 'text-emerald-800',
+      accent: 'text-emerald-700',
+    },
+  },
+  quote_declined: {
+    header: 'Quote Declined',
+    badge: 'Quote Declined',
+    actionTitle: 'Quote Declined',
+    defaultMessage: 'The offered quote has been declined.',
+    icon: '❌',
+    theme: {
+      bg: 'bg-red-50',
+      border: 'border-red-300',
+      text: 'text-red-800',
+      accent: 'text-red-700',
+    },
+  },
+  reopening_requested: {
+    header: 'Reopening Requested',
+    badge: 'Reopening Requested',
+    actionTitle: 'Reopening Requested',
+    defaultMessage: 'The client requested to reopen this quote.',
+    icon: '🔄',
+    theme: {
+      bg: 'bg-amber-50',
+      border: 'border-amber-300',
+      text: 'text-amber-800',
+      accent: 'text-amber-700',
+    },
+  },
+  payment_received: {
+    header: 'Payment Received',
+    badge: 'Payment Received',
+    actionTitle: 'Payment Received',
+    defaultMessage: 'Payment received. Your project is now active.',
+    icon: '💳',
+    theme: {
+      bg: 'bg-emerald-50',
+      border: 'border-emerald-300',
+      text: 'text-emerald-800',
+      accent: 'text-emerald-700',
+    },
+  },
+  payment_request_issued: {
+    header: 'Payment Request Issued',
+    badge: 'Payment Request',
+    actionTitle: 'Payment Request Issued',
+    defaultMessage: 'A payment request has been issued for your project.',
+    icon: '💰',
+    theme: {
+      bg: 'bg-blue-50',
+      border: 'border-blue-300',
+      text: 'text-blue-800',
+      accent: 'text-blue-700',
+    },
+  },
+  monthly_renewal_request: {
+    header: 'Monthly Renewal Request',
+    badge: 'Monthly Renewal Request',
+    actionTitle: 'Monthly Renewal Request',
+    defaultMessage: 'A renewal of your monthly subscription has been requested.',
+    icon: '🔄',
+    theme: {
+      bg: 'bg-blue-50',
+      border: 'border-blue-300',
+      text: 'text-blue-800',
+      accent: 'text-blue-700',
+    },
+  },
+  payment_failed: {
+    header: 'Payment Failed',
+    badge: 'Payment Failed',
+    actionTitle: 'Payment Failed',
+    defaultMessage: 'Payment attempt failed.',
+    icon: '⚠️',
+    theme: {
+      bg: 'bg-red-50',
+      border: 'border-red-300',
+      text: 'text-red-800',
+      accent: 'text-red-700',
+    },
+  },
   default: {
     header: 'Project Paused',
     badge: 'Project Paused',
@@ -195,6 +313,99 @@ export const PAUSE_REASON_MAPPINGS: Record<string, PauseReasonConfig> = {
 export function getPauseReasonConfig(reason?: string, messageText?: string): PauseReasonConfig {
   const r = (reason || '').toLowerCase().trim();
   const m = (messageText || '').toLowerCase().trim();
+
+  if (
+    r.includes('quote_request_submitted') ||
+    r.includes('quote request submitted') ||
+    m.includes('quote request submitted') ||
+    m.includes('submitting your request') ||
+    m.includes('reviewing and will provide a custom quote')
+  ) {
+    return PAUSE_REASON_MAPPINGS.quote_request_submitted;
+  }
+
+  if (
+    r.includes('custom_quote_sent') ||
+    r.includes('custom quote sent') ||
+    m.includes('custom quote sent') ||
+    m.includes('prepared a custom proposal') ||
+    m.includes("we’ve prepared a custom proposal") ||
+    m.includes("we've prepared a custom proposal")
+  ) {
+    return PAUSE_REASON_MAPPINGS.custom_quote_sent;
+  }
+
+  if (
+    r.includes('quote_converted') ||
+    r.includes('quote converted') ||
+    m.includes('quote converted') ||
+    m.includes('converted into an active project') ||
+    m.includes('converted into a project')
+  ) {
+    return PAUSE_REASON_MAPPINGS.quote_converted;
+  }
+
+  if (
+    r.includes('quote_declined') ||
+    r.includes('quote declined') ||
+    m.includes('quote declined') ||
+    m.includes('offered quote has been declined') ||
+    m.includes('the offered quote has been declined')
+  ) {
+    return PAUSE_REASON_MAPPINGS.quote_declined;
+  }
+
+  if (
+    r.includes('reopening_requested') ||
+    r.includes('reopening requested') ||
+    r.includes('reopen') ||
+    m.includes('reopening requested') ||
+    m.includes('reopen this quote') ||
+    m.includes('requested to reopen this quote')
+  ) {
+    return PAUSE_REASON_MAPPINGS.reopening_requested;
+  }
+
+  if (
+    r.includes('payment_failed') ||
+    r.includes('payment failed') ||
+    m.includes('payment failed') ||
+    m.includes('payment attempt') ||
+    m.includes('payment failed.') ||
+    m.includes('failed.')
+  ) {
+    return PAUSE_REASON_MAPPINGS.payment_failed;
+  }
+
+  if (
+    r.includes('payment_received') ||
+    r.includes('payment received') ||
+    m.includes('payment received') ||
+    m.includes('payment of') ||
+    m.includes('received. your project is now active') ||
+    m.includes('payment received for invoice')
+  ) {
+    return PAUSE_REASON_MAPPINGS.payment_received;
+  }
+
+  if (
+    r.includes('monthly_renewal_request') ||
+    r.includes('monthly renewal request') ||
+    r.includes('renewal request') ||
+    m.includes('monthly renewal request') ||
+    m.includes('renewal of your monthly subscription')
+  ) {
+    return PAUSE_REASON_MAPPINGS.monthly_renewal_request;
+  }
+
+  if (
+    r.includes('payment_request') ||
+    r.includes('payment request') ||
+    m.includes('payment request') ||
+    m.includes('payment request has been issued')
+  ) {
+    return PAUSE_REASON_MAPPINGS.payment_request_issued;
+  }
 
   if (
     r.includes('payment') ||

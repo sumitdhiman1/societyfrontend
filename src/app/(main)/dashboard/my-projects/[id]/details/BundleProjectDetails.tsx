@@ -22,6 +22,7 @@ import {
 import { useCurrency } from "@/context/CurrencyContext";
 import { useTimezone } from "@/context/TimezoneContext";
 import { toast } from "sonner";
+import { getPauseReasonConfig } from "@/lib/pauseReasonMapping";
 
 const isEstoniaClient = (c?: string) => {
   if (!c) return false;
@@ -517,6 +518,58 @@ export default function BundleProjectDetails({
     setAttachments((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  const handleAcceptProposal = async (proposalId: string) => {
+    if (actionLoadingRef.current || isActionLoading) return;
+    actionLoadingRef.current = true;
+    setIsActionLoading(true);
+    try {
+      const username = currentUser?.fullName || currentUser?.username || "User";
+      const avatar = currentUser?.avatar;
+      const res = await projectService.acceptProposal(projectId, proposalId, username, avatar);
+      if (res && (res.statusCode === 200 || res.statusCode === 201 || res.isSuccessful || res.data)) {
+        toast.success("Add-on proposal accepted successfully!");
+        if (onRefreshProject) await onRefreshProject();
+      } else {
+        toast.error(res?.message || "Failed to accept proposal");
+      }
+    } catch (error: any) {
+      console.error("Failed to accept proposal:", error);
+      toast.error(error?.message || "Failed to accept proposal");
+    } finally {
+      actionLoadingRef.current = false;
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleActionSubmit = async () => {
+    if (actionModal.proposalId && actionModal.action && (!actionModal.required || actionComment.trim())) {
+      setIsActionLoading(true);
+      try {
+        let res;
+        const username = currentUser?.fullName || currentUser?.username || "User";
+        const avatar = currentUser?.avatar;
+        if (actionModal.action === "decline") {
+          res = await projectService.declineProposal(projectId, actionModal.proposalId, actionComment || "", username, avatar);
+        } else if (actionModal.action === "request_modification") {
+          res = await projectService.requestProposalModification(projectId, actionModal.proposalId, actionComment, username, avatar);
+        }
+        if (res && (res.statusCode === 200 || res.statusCode === 201 || res.isSuccessful || res.data)) {
+          toast.success(actionModal.action === "decline" ? "Offer declined successfully" : "Modification request sent");
+          setActionModal({ ...actionModal, isOpen: false });
+          setActionComment("");
+          if (onRefreshProject) await onRefreshProject();
+        } else {
+          toast.error(res?.message || `Failed to ${actionModal.action} offer`);
+        }
+      } catch (error: any) {
+        console.error(`Failed to handle ${actionModal.action}:`, error);
+        toast.error(error?.message || `Failed to ${actionModal.action} offer`);
+      } finally {
+        setIsActionLoading(false);
+      }
+    }
+  };
+
   const handleAutoRenewalToggle = async () => {
     const auth = requireAuth();
     if (!auth) return;
@@ -761,30 +814,529 @@ export default function BundleProjectDetails({
             {/* Messages Scroll Area */}
             <div
               ref={messagesContainerRef}
-              className="flex-grow overflow-y-auto space-y-3.5 pr-2 mb-4 scrollbar-thin scrollbar-thumb-gray-200"
+              className="flex-grow overflow-y-auto space-y-4 pr-2 mb-4 scrollbar-thin scrollbar-thumb-gray-200"
             >
-              {(!activeProject.messages || activeProject.messages.length === 0) ? (
-                <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400">
-                  <div className="w-10 h-10 rounded-full bg-blue-50 text-[#4343F0] flex items-center justify-center mb-2">
-                    💬
-                  </div>
-                  <p className="text-xs font-semibold text-gray-600">No messages yet</p>
-                  <p className="text-[11px] text-gray-400 mt-1 max-w-xs">
-                    Use the chat box below to discuss project requirements, timelines, or ask questions.
-                  </p>
-                </div>
-              ) : (
-                activeProject.messages.map((msg: any, idx: number) => {
-                  const isUser = msg.senderRole === "client" || msg.sender === currentUser?.email;
-                  const isPaidReq = isExactPaymentRequestPaid(msg, activeProject, payments);
+              {(() => {
+                const displayMessages = (activeProject.messages || []).filter((msg: any) => {
+                  if (msg.isInternal || msg.content?.isInternal || msg.type === "internal_note" || msg.content?.type === "internal_note") {
+                    return false;
+                  }
+                  const rawTitle = (msg.content?.systemText || msg.message || "").toLowerCase();
+                  const cleanTitle = rawTitle
+                    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}⏸▶️💳🛠️🎉✅🔄👤🚀📌🔔]/gu, "")
+                    .trim();
+                  if (
+                    cleanTitle === "project created" ||
+                    cleanTitle === "project requirements" ||
+                    cleanTitle === "financial & scope overview" ||
+                    cleanTitle === "scope of work"
+                  ) {
+                    return false;
+                  }
+                  return true;
+                });
 
+                if (displayMessages.length === 0) {
+                  return (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400">
+                      <div className="w-10 h-10 rounded-full bg-blue-50 text-[#4343F0] flex items-center justify-center mb-2">
+                        💬
+                      </div>
+                      <p className="text-xs font-semibold text-gray-600">No messages yet</p>
+                      <p className="text-[11px] text-gray-400 mt-1 max-w-xs">
+                        Use the chat box below to discuss project requirements, timelines, or ask questions.
+                      </p>
+                    </div>
+                  );
+                }
+
+                return displayMessages.map((msg: any, idx: number) => {
+                  const msgId = msg.id ? `${msg.id}-${idx}` : (msg._id ? `${msg._id}-${idx}` : `msg-${idx}`);
+                  const isLast = idx === displayMessages.length - 1;
+                  const isQuoteProposal = msg.type === "quote_proposal" || msg.content?.type === "quote_proposal";
+
+                  // Payment Request
+                  const isPaymentRequest =
+                    msg.type === "payment_request" ||
+                    msg.content?.type === "payment_request" ||
+                    (msg.content?.systemText?.toLowerCase().includes("payment request") ||
+                      msg.message?.toLowerCase().includes("payment request"));
+
+                  if (isPaymentRequest) {
+                    const content = typeof msg.content === "object" && msg.content !== null ? msg.content : {};
+                    let rawAmount = content.amount ?? msg.amount ?? content.total ?? content.price ?? content.invoice?.amount;
+                    if (rawAmount === undefined || rawAmount === null || rawAmount === "" || Number(rawAmount) === 0) {
+                      const textSearch = `${content.text || ""} ${content.systemText || ""} ${msg.message || ""}`;
+                      const match = textSearch.match(/(?:due:\s*\$|request:\s*|\$|amount:\s*|payment:\s*)(\d+(?:\.\d+)?)/i) ||
+                        textSearch.match(/\$(\d+(?:\.\d+)?)/) ||
+                        textSearch.match(/(\d+(?:\.\d+)?)\s*(?:USD|EUR|\$)/i) ||
+                        textSearch.match(/(\d+(?:\.\d+)?)/);
+                      if (match && match[1]) rawAmount = Number(match[1]);
+                      else if (activeProject?.amountDue) rawAmount = activeProject.amountDue;
+                    }
+                    const reqAmount = Number(rawAmount || 0);
+                    const reqCurrency = (content.currency || msg.currency || activeDisplayCurrency || projectNativeCurrency || "USD").toUpperCase();
+                    const description = content.description || msg.description || content.note || content.message || content.text;
+                    const invId = asId(content.invoiceId || msg.invoiceId);
+                    const invNum = content.invoiceNumber || msg.invoiceNumber;
+                    const currentMsgId = asId(msg.id || msg._id || msgId);
+                    const isPaidReq = isExactPaymentRequestPaid(msg, activeProject, payments);
+
+                    const payParams = new URLSearchParams();
+                    if (reqAmount > 0) payParams.set("amount", String(reqAmount));
+                    if (invId) payParams.set("invoiceId", invId);
+                    if (invNum) payParams.set("invoiceNumber", String(invNum));
+                    if (currentMsgId) payParams.set("messageId", currentMsgId);
+                    if (description) payParams.set("description", String(description));
+                    const payUrl = `/dashboard/my-projects/${projectId}/payments?${payParams.toString()}`;
+
+                    return (
+                      <div
+                        key={msgId}
+                        ref={isLast ? lastMessageRef : null}
+                        className="w-full bg-[#F4F8FF] border border-[#DCE8FE] rounded-2xl p-4 sm:p-5 my-2 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div className="flex items-start sm:items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-[#DBEAFE] text-[#2563EB] flex items-center justify-center shrink-0">
+                            <svg className="w-5 h-5 text-[#2563EB]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <rect x="2" y="7" width="14" height="11" rx="2.5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              <circle cx="6.5" cy="12.5" r="1.5" strokeWidth="2" />
+                              <path d="M7 4h11.5A2.5 2.5 0 0121 6.5V14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-[#1E3A8A] text-sm mb-0.5">Payment Request</h4>
+                            {description ? (
+                              <p className="text-xs text-[#3B82F6] font-medium mb-1">{description}</p>
+                            ) : null}
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-lg font-black text-[#1E3A8A]">
+                                {reqCurrency === "EUR" ? "€" : "$"}{reqAmount.toFixed(0)}
+                              </span>
+                              <span className="text-[10px] font-bold text-[#3B82F6] uppercase">{reqCurrency}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="shrink-0">
+                          {isPaidReq ? (
+                            <span className="inline-flex items-center gap-1 px-4 py-1.5 bg-green-50 text-green-700 font-bold text-xs rounded-lg border border-green-200">
+                              ✓ Paid
+                            </span>
+                          ) : (
+                            <Link
+                              href={payUrl}
+                              className="inline-block px-5 py-2 bg-[#4343F0] hover:bg-[#3232b7] text-white font-bold text-xs rounded-lg shadow-sm transition-all text-center"
+                            >
+                              Pay Now
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // System notifications
+                  const isSystemMsg = msg.type === "system_notification" || msg.isSystem || msg.sender === "system" || msg.role === "system";
+                  const messageAttachments = (msg.attachments && msg.attachments.length > 0) ? msg.attachments : (msg.content?.attachedFiles || msg.attachedFiles || []);
+                  const hasFileAttachments = Array.isArray(messageAttachments) && messageAttachments.length > 0;
+
+                  if (isSystemMsg && !hasFileAttachments && !isQuoteProposal) {
+                    const rawTitle = msg.content?.systemText || msg.message || "Notification";
+                    let cleanTitle = rawTitle.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}⏸▶️💳🛠️🎉✅🔄👤🚀📌🔔]/gu, "").trim();
+                    const rawTextCandidate = msg.content?.text || msg.text || (msg.message !== rawTitle && msg.message !== cleanTitle ? msg.message : "");
+                    const lowerTitle = cleanTitle.toLowerCase();
+                    const lowerRaw = rawTitle.toLowerCase();
+                    const lowerText = rawTextCandidate.toLowerCase();
+
+                    const isDeadlineAdjusted =
+                      lowerTitle.includes("deadline adjusted") ||
+                      lowerRaw.includes("deadline adjusted") ||
+                      lowerText.includes("deadline has been extended") ||
+                      lowerText.includes("deadline adjusted");
+
+                    const isManagerAssigned =
+                      !isDeadlineAdjusted &&
+                      (lowerTitle.includes("manager assigned") ||
+                      lowerRaw.includes("manager assigned") ||
+                      lowerText.includes("assigned as project manager") ||
+                      lowerText.includes("assigned to your project"));
+
+                    const isReactivated =
+                      !isDeadlineAdjusted &&
+                      !isManagerAssigned &&
+                      (lowerTitle.includes("reactivate") || lowerRaw.includes("reactivate") || lowerText.includes("reactivate"));
+
+                    const isResumed =
+                      !isDeadlineAdjusted &&
+                      !isManagerAssigned &&
+                      !isReactivated &&
+                      (lowerTitle.includes("resumed") || lowerRaw.includes("resumed") || lowerText.includes("resumed") || lowerTitle.startsWith("project status updated to active") || lowerTitle === "active");
+
+                    const isCompletedMsg =
+                      lowerTitle.includes("completed") || lowerRaw.includes("completed") || lowerText.includes("completed");
+
+                    const isOfferReceived =
+                      !isDeadlineAdjusted &&
+                      !isManagerAssigned &&
+                      !isReactivated &&
+                      !isResumed &&
+                      !isCompletedMsg &&
+                      (lowerTitle.includes("offer received") ||
+                      lowerRaw.includes("offer received") ||
+                      lowerTitle.includes("you received an offer") ||
+                      lowerRaw.includes("you received an offer") ||
+                      lowerText.includes("you received an offer") ||
+                      lowerText.includes("created a new offer"));
+
+                    const isProposalAccepted =
+                      !isDeadlineAdjusted &&
+                      !isManagerAssigned &&
+                      !isReactivated &&
+                      !isResumed &&
+                      !isCompletedMsg &&
+                      (lowerTitle.includes("proposal accepted") ||
+                      lowerRaw.includes("proposal accepted") ||
+                      lowerText.includes("accepted the offered quote"));
+
+                    const isProposalDeclined =
+                      !isDeadlineAdjusted &&
+                      !isManagerAssigned &&
+                      !isReactivated &&
+                      !isResumed &&
+                      !isCompletedMsg &&
+                      (lowerTitle.includes("proposal declined") ||
+                      lowerRaw.includes("proposal declined") ||
+                      lowerTitle.includes("offer declined") ||
+                      lowerText.includes("the offer was declined"));
+
+                    const isModificationsRequested =
+                      !isDeadlineAdjusted &&
+                      !isManagerAssigned &&
+                      !isReactivated &&
+                      !isResumed &&
+                      !isCompletedMsg &&
+                      (lowerTitle.includes("modification requested") ||
+                      lowerTitle.includes("modifications requested") ||
+                      lowerText.includes("requested modifications") ||
+                      lowerText.includes("modifications requested"));
+
+                    let finalTitle = cleanTitle;
+                    let rawText = rawTextCandidate;
+
+                    if (isDeadlineAdjusted) {
+                      finalTitle = "Deadline Adjusted";
+                      rawText = rawTextCandidate || "The project deadline has been extended by 0 day(s), 0 hour(s) and 0 minute(s), because the project has been paused for that long.";
+                    } else if (isOfferReceived) {
+                      finalTitle = "You Received an Offer";
+                      if (rawTextCandidate && rawTextCandidate.toLowerCase().includes("containing")) {
+                        rawText = rawTextCandidate;
+                      } else {
+                        const deliverables = (msg as any)?.content?.deliverableItems || (msg as any)?.content?.items || [];
+                        const count = (msg as any)?.content?.deliverableCount || deliverables.length || 0;
+                        rawText = count > 0
+                          ? `Your project manager has created a new offer containing ${count} deliverable item(s).`
+                          : rawTextCandidate || "Your project manager has created a new offer.";
+                      }
+                    } else if (isProposalAccepted) {
+                      finalTitle = "Proposal Accepted";
+                      rawText = "Confirmed! You accepted the offered quote.";
+                    } else if (isProposalDeclined) {
+                      finalTitle = "Proposal Declined";
+                      rawText = "The offer was declined.";
+                    } else if (isModificationsRequested) {
+                      finalTitle = "Modifications Requested";
+                      rawText = "The client requested modifications.";
+                    } else if (isManagerAssigned) {
+                      finalTitle = "Project Manager Assigned";
+                      rawText = rawTextCandidate || "Project manager has been assigned to your project.";
+                    } else if (isReactivated) {
+                      finalTitle = "Project Reactivated";
+                      rawText = "Your project has been reactivated by the project manager.";
+                    } else if (isResumed) {
+                      finalTitle = "Project Resumed";
+                      rawText = "Your project has been resumed.";
+                    } else if (isCompletedMsg) {
+                      finalTitle = "Order Completed";
+                      rawText = "Your order has been completed! Click here if you need further assistance.";
+                    }
+
+                    return (
+                      <div key={msgId} ref={isLast ? lastMessageRef : null} className="text-center py-2 px-3 my-1">
+                        <h4 className="text-base sm:text-lg font-bold text-[#0D1939] tracking-tight mb-1">
+                          {finalTitle}
+                        </h4>
+                        {rawText ? (
+                          <p className="text-xs font-medium text-gray-500 leading-relaxed max-w-lg mx-auto">
+                            {rawText.includes("Click here") ? (
+                              <>
+                                {rawText.split("Click here")[0]}
+                                <Link href="/help-support" className="text-[#4343F0] hover:underline font-semibold">
+                                  Click here
+                                </Link>
+                                {rawText.split("Click here")[1]}
+                              </>
+                            ) : (
+                              capitalizeCurrencyInText(rawText)
+                            )}
+                          </p>
+                        ) : null}
+                      </div>
+                    );
+                  }
+
+                  // Quote Proposals (Add-ons)
+                  if (isQuoteProposal) {
+                    const content = msg.content || {};
+                    const items = content.deliverableItems || content.items || msg.deliverableItems || [];
+                    const subsequentMessages = displayMessages.slice(idx + 1);
+                    const nextProposalIdx = subsequentMessages.findIndex((m: any) => m.type === "quote_proposal" || m.content?.type === "quote_proposal");
+                    const relevantSubsequent = nextProposalIdx !== -1 ? subsequentMessages.slice(0, nextProposalIdx) : subsequentMessages;
+
+                    const wasAcceptedAfterThis = relevantSubsequent.some((m: any) => {
+                      const text = `${m.message || ""} ${m.content?.systemText || ""} ${m.content?.text || ""}`.toLowerCase();
+                      return (
+                        (m.type === "system_notification" || m.isSystem || m.type === "quote_action") &&
+                        (text.includes("accepted") || text.includes("add-on proposal accepted") || text.includes("offer was accepted"))
+                      );
+                    });
+
+                    const wasDeclinedAfterThis = relevantSubsequent.some((m: any) => {
+                      const text = `${m.message || ""} ${m.content?.systemText || ""} ${m.content?.text || ""}`.toLowerCase();
+                      return (
+                        (m.type === "system_notification" || m.isSystem || m.type === "quote_action") &&
+                        (text.includes("declined") || text.includes("proposal declined") || text.includes("offer was declined"))
+                      );
+                    });
+
+                    const wasModRequestedAfterThis = relevantSubsequent.some((m: any) => {
+                      const text = `${m.message || ""} ${m.content?.systemText || ""} ${m.content?.text || ""}`.toLowerCase();
+                      return (
+                        (m.type === "system_notification" || m.isSystem || m.type === "quote_action") &&
+                        (text.includes("modification") || text.includes("requested modification"))
+                      );
+                    });
+
+                    const hasLaterProposal = subsequentMessages.some(
+                      (m: any) => m.type === "quote_proposal" || m.content?.type === "quote_proposal"
+                    );
+
+                    const isAccepted = content.status === "accepted" || wasAcceptedAfterThis;
+                    const isDeclined = content.status === "declined" || wasDeclinedAfterThis;
+                    const isModRequested = content.status === "modification_requested" || wasModRequestedAfterThis;
+                    const hasExplicitlyNoActions = Array.isArray(content.actionsAvailable) && content.actionsAvailable.length === 0;
+                    const canAct = !isAccepted && !isDeclined && !isModRequested && !hasLaterProposal && !hasExplicitlyNoActions;
+                    const targetProposalId = msg._id || msg.id;
+
+                    const pBase = Number(content.subtotal || content.baseAmount || 0) || items.reduce((s: number, it: any) => s + (Number(it.amount ?? it.cost) || 0), 0) || Number(content.total || 0);
+                    const pVatRate = Number(content.vatRate ?? 0);
+                    const pVatAmount = Number(content.vatAmount ?? (pVatRate > 0 ? (pBase * pVatRate) / 100 : 0));
+                    const pTotal = Number(content.totalCost ?? content.total ?? (pBase + pVatAmount));
+
+                    const calculatedDurationDays = items.reduce((sum: number, it: any) => {
+                      const dur = String(it.duration || "").toLowerCase();
+                      const match = dur.match(/(\d+(\.\d+)?)/);
+                      const val = match ? parseFloat(match[0]) : 0;
+                      if (dur.includes("week")) return sum + val * 7;
+                      if (dur.includes("month")) return sum + val * 30;
+                      return sum + val;
+                    }, 0);
+
+                    const totalOfferDuration = calculatedDurationDays > 0
+                      ? (calculatedDurationDays >= 30 && calculatedDurationDays % 30 === 0
+                          ? `${calculatedDurationDays / 30} Month${calculatedDurationDays / 30 > 1 ? "s" : ""}`
+                          : calculatedDurationDays >= 7 && calculatedDurationDays % 7 === 0
+                            ? `${calculatedDurationDays / 7} Week${calculatedDurationDays / 7 > 1 ? "s" : ""}`
+                            : `${calculatedDurationDays} Day${calculatedDurationDays > 1 ? "s" : ""}`)
+                      : (content.totalDuration || content.duration || "");
+
+                    return (
+                      <div key={msgId} ref={isLast ? lastMessageRef : null} className="w-full">
+                        <div className="bg-white border border-gray-200 rounded-xl shadow-xs p-5 sm:p-6">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs text-gray-500 font-medium">
+                                Submitted - {formatSubmittedDateTz(msg.createdAt)}
+                              </span>
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                                isAccepted ? "border-green-400 text-green-600 bg-green-50" :
+                                isDeclined ? "border-red-400 text-red-600 bg-red-50" :
+                                isModRequested ? "border-orange-400 text-orange-600 bg-orange-50" :
+                                "border-blue-400 text-blue-600 bg-blue-50/60"
+                              }`}>
+                                {isAccepted ? "Accepted" : isDeclined ? "Declined" : isModRequested ? "Modification Requested" : "Add-On Offer"}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="border-t border-gray-100 mb-4" />
+
+                          <div className="pb-3 flex flex-col sm:flex-row justify-between items-start gap-1">
+                            <h3 className="text-lg font-bold text-gray-900">Add-on proposal</h3>
+                            <span className="text-xs text-gray-400 font-medium">From: {msg.username || "Project Manager"}</span>
+                          </div>
+
+                          {content.description && (
+                            <div className="mb-4 text-xs text-gray-600 leading-relaxed font-medium">{content.description}</div>
+                          )}
+
+                          {/* Items table */}
+                          {items.length > 0 && (
+                            <div className="border border-gray-200 rounded-lg overflow-hidden mb-4">
+                              <table className="w-full text-xs text-left">
+                                <thead>
+                                  <tr className="border-b border-gray-200 bg-gray-50/80">
+                                    <th className="px-4 py-2.5 font-bold text-gray-700">Item</th>
+                                    <th className="px-4 py-2.5 text-center font-bold text-gray-700">Duration</th>
+                                    <th className="px-4 py-2.5 text-right font-bold text-gray-700">Amount</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                  {items.map((it: any, sIdx: number) => (
+                                    <tr key={sIdx} className="hover:bg-gray-50/50">
+                                      <td className="px-4 py-3 font-semibold text-gray-900">
+                                        {it.description || it.title || it.name}
+                                        {it.details && <div className="text-[10px] text-gray-400 font-normal">{it.details}</div>}
+                                      </td>
+                                      <td className="px-4 py-3 text-center text-gray-600 font-medium whitespace-nowrap">
+                                        {it.duration ? (String(it.duration).toLowerCase().includes("day") ? it.duration : `${it.duration} Days`) : "-"}
+                                      </td>
+                                      <td className="px-4 py-3 text-right font-bold text-gray-900">
+                                        {formatCurr(Number(it.amount ?? it.cost ?? 0))}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+
+                          {/* Totals & Duration */}
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 pt-1 pb-2">
+                            <div>
+                              {totalOfferDuration ? (
+                                <div className="flex items-center gap-1.5 text-xs">
+                                  <span className="text-gray-700 font-bold">Total Duration:</span>
+                                  <span className="font-extrabold text-gray-900">{totalOfferDuration}</span>
+                                </div>
+                              ) : null}
+                            </div>
+                            <div className="flex flex-col items-end gap-1 text-xs min-w-[180px]">
+                              {pVatRate > 0 && pVatAmount > 0 && (
+                                <div className="flex justify-between w-full gap-4 text-gray-600">
+                                  <span>Base Amount:</span>
+                                  <span className="font-bold">{formatCurr(pBase)}</span>
+                                </div>
+                              )}
+                              {pVatRate > 0 && pVatAmount > 0 && (
+                                <div className="flex justify-between w-full gap-4 text-gray-600">
+                                  <span>VAT ({pVatRate}%):</span>
+                                  <span className="font-bold">{formatCurr(pVatAmount)}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between w-full gap-4 pt-1 border-t border-gray-100 font-bold text-gray-900">
+                                <span>Total Cost:</span>
+                                <span className="font-black text-sm">{formatCurr(pTotal)}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          {canAct && !actionModal.isOpen && (
+                            <div className="border-t border-gray-100 mt-4 pt-4 flex flex-wrap items-center justify-between gap-2.5">
+                              <button
+                                type="button"
+                                onClick={() => targetProposalId && handleAcceptProposal(targetProposalId)}
+                                disabled={isActionLoading}
+                                className="px-5 py-2 bg-[#317336] hover:bg-[#285d2c] text-white text-xs font-bold rounded-lg transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
+                              >
+                                Accept Offer
+                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => targetProposalId && setActionModal({
+                                    isOpen: true,
+                                    action: "request_modification",
+                                    proposalId: targetProposalId,
+                                    title: "Request Modifications",
+                                    description: "Please describe the modifications you would like for this offer.",
+                                    placeholder: "Describe your requested changes...",
+                                    required: true
+                                  })}
+                                  disabled={isActionLoading}
+                                  className="px-4 py-2 bg-[#3B4BEF] hover:bg-[#2F3EC4] text-white text-xs font-bold rounded-lg transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
+                                >
+                                  Request Modifications
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => targetProposalId && setActionModal({
+                                    isOpen: true,
+                                    action: "decline",
+                                    proposalId: targetProposalId,
+                                    title: "Decline Add-On Offer",
+                                    description: "Are you sure you want to decline this offer? You can provide a reason below.",
+                                    placeholder: "Reason for declining (optional)...",
+                                    required: false
+                                  })}
+                                  disabled={isActionLoading}
+                                  className="px-4 py-2 bg-[#7A1C1C] hover:bg-[#631616] text-white text-xs font-bold rounded-lg transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
+                                >
+                                  Decline Offer
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Inline Action Modal for Proposal */}
+                          {actionModal.isOpen && actionModal.proposalId === targetProposalId && (
+                            <div className="w-full mt-4 bg-gray-50/80 border border-gray-200 rounded-xl p-4 animate-in fade-in duration-200">
+                              <h4 className="font-bold text-gray-900 text-sm mb-1">{actionModal.title}</h4>
+                              <p className="text-xs text-gray-500 mb-3">{actionModal.description}</p>
+                              <textarea
+                                value={actionComment}
+                                onChange={(e) => setActionComment(e.target.value)}
+                                placeholder={actionModal.placeholder}
+                                className="w-full text-xs p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4343F0]/20 focus:border-[#4343F0] bg-white min-h-[80px]"
+                              />
+                              <div className="flex justify-end gap-2 mt-3">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActionModal({ ...actionModal, isOpen: false });
+                                    setActionComment("");
+                                  }}
+                                  className="px-3.5 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-50"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={handleActionSubmit}
+                                  disabled={isActionLoading || (actionModal.required && !actionComment.trim())}
+                                  className={`px-4 py-1.5 text-white text-xs font-bold rounded-lg disabled:opacity-50 ${
+                                    actionModal.action === "decline" ? "bg-[#7A1C1C] hover:bg-[#631616]" : "bg-[#3B4BEF] hover:bg-[#2F3EC4]"
+                                  }`}
+                                >
+                                  {isActionLoading ? "Submitting..." : "Submit"}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Regular user / team messages
+                  const isUser = msg.senderRole === "client" || msg.sender === currentUser?.email;
                   return (
                     <div
                       key={msg._id || idx}
                       className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
                     >
                       <div className="flex items-center gap-1.5 mb-1 px-1">
-                        <span className="text-[11px] font-bold text-gray-700">{msg.sender || "Team Member"}</span>
+                        <span className="text-[11px] font-bold text-gray-700">{msg.username || msg.sender || "Team Member"}</span>
                         <span className="text-[10px] text-gray-400">
                           {msg.createdAt ? formatMessageTimestampTz(msg.createdAt) : ""}
                         </span>
@@ -818,8 +1370,8 @@ export default function BundleProjectDetails({
                       </div>
                     </div>
                   );
-                })
-              )}
+                });
+              })()}
               <div ref={messagesEndRef} />
             </div>
 
