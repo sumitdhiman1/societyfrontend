@@ -14,16 +14,20 @@ export default function RequestAnalysis() {
   const [settings, setSettings] = useState<any>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const turnstileRef = useRef<TurnstileRef>(null);
+  const tokenRef = useRef<string | null>(null);
 
   const handleTurnstileVerify = useCallback((token: string) => {
+    tokenRef.current = token;
     setTurnstileToken(token);
   }, []);
 
   const handleTurnstileExpire = useCallback(() => {
+    tokenRef.current = null;
     setTurnstileToken(null);
   }, []);
 
   const handleTurnstileError = useCallback(() => {
+    tokenRef.current = null;
     setTurnstileToken(null);
   }, []);
 
@@ -109,29 +113,19 @@ export default function RequestAnalysis() {
 
     setIsSubmitting(true);
     try {
-      let activeToken = turnstileToken || turnstileRef.current?.getResponse();
+      let activeToken = tokenRef.current || turnstileRef.current?.getResponse();
       if (!activeToken) {
-        turnstileRef.current?.execute();
-        for (let i = 0; i < 20; i++) {
+        try { turnstileRef.current?.execute(); } catch { /* ignore if already executing */ }
+        for (let i = 0; i < 100; i++) {
           await new Promise((resolve) => setTimeout(resolve, 100));
-          activeToken = turnstileRef.current?.getResponse();
-          if (activeToken) {
-            setTurnstileToken(activeToken);
-            break;
-          }
+          activeToken = tokenRef.current || turnstileRef.current?.getResponse();
+          if (activeToken) break;
         }
       }
 
       if (!activeToken) {
-        if (
-          process.env.NODE_ENV === "development" ||
-          (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"))
-        ) {
-          activeToken = "test-token";
-        } else {
-          alert("Security verification is processing. Please try clicking again.");
-          return;
-        }
+        alert("Security verification could not complete. Please refresh the page and try again.");
+        return;
       }
 
       const response: any = await requestAnalysisService.submitRequest({

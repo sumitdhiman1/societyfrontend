@@ -25,16 +25,20 @@ export default function SupportNewsletter({
   const [loading, setLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const turnstileRef = useRef<TurnstileRef>(null);
+  const tokenRef = useRef<string | null>(null);
 
   const handleTurnstileVerify = useCallback((token: string) => {
+    tokenRef.current = token;
     setTurnstileToken(token);
   }, []);
 
   const handleTurnstileExpire = useCallback(() => {
+    tokenRef.current = null;
     setTurnstileToken(null);
   }, []);
 
   const handleTurnstileError = useCallback(() => {
+    tokenRef.current = null;
     setTurnstileToken(null);
   }, []);
 
@@ -62,21 +66,18 @@ export default function SupportNewsletter({
     try {
       setLoading(true);
 
-      let activeToken = turnstileToken || turnstileRef.current?.getResponse();
+      let activeToken = tokenRef.current || turnstileRef.current?.getResponse();
       if (!activeToken) {
-        turnstileRef.current?.execute();
-        for (let i = 0; i < 20; i++) {
+        try { turnstileRef.current?.execute(); } catch { /* ignore if already executing */ }
+        for (let i = 0; i < 100; i++) {
           await new Promise((resolve) => setTimeout(resolve, 100));
-          activeToken = turnstileRef.current?.getResponse();
-          if (activeToken) {
-            setTurnstileToken(activeToken);
-            break;
-          }
+          activeToken = tokenRef.current || turnstileRef.current?.getResponse();
+          if (activeToken) break;
         }
       }
 
       if (!activeToken) {
-        throw new Error("Security verification is processing. Please try clicking Subscribe again.");
+        throw new Error("Security verification could not complete. Please refresh the page and try again.");
       }
 
       const res: any = await httpClient.post("/newsletter/subscribe", {

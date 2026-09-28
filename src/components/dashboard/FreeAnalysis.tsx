@@ -13,16 +13,21 @@ export default function FreeAnalysis() {
   const [settings, setSettings] = useState<any>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const turnstileRef = useRef<TurnstileRef>(null);
+  // tokenRef always stays in sync so async loops can read the latest value
+  const tokenRef = useRef<string | null>(null);
 
   const handleTurnstileVerify = useCallback((token: string) => {
+    tokenRef.current = token;
     setTurnstileToken(token);
   }, []);
 
   const handleTurnstileExpire = useCallback(() => {
+    tokenRef.current = null;
     setTurnstileToken(null);
   }, []);
 
   const handleTurnstileError = useCallback(() => {
+    tokenRef.current = null;
     setTurnstileToken(null);
   }, []);
 
@@ -90,28 +95,21 @@ export default function FreeAnalysis() {
 
     setLoading(true);
     try {
-      let activeToken = turnstileToken || turnstileRef.current?.getResponse();
+      // Check if we already have a valid token from a previous challenge
+      let activeToken = tokenRef.current || turnstileRef.current?.getResponse();
       if (!activeToken) {
-        turnstileRef.current?.execute();
-        for (let i = 0; i < 20; i++) {
+        // Trigger the challenge (interaction-only: runs silently, shows UI only if needed)
+        try { turnstileRef.current?.execute(); } catch { /* ignore if already executing */ }
+        // Poll up to 10s for the callback to fire
+        for (let i = 0; i < 100; i++) {
           await new Promise((resolve) => setTimeout(resolve, 100));
-          activeToken = turnstileRef.current?.getResponse();
-          if (activeToken) {
-            setTurnstileToken(activeToken);
-            break;
-          }
+          activeToken = tokenRef.current || turnstileRef.current?.getResponse();
+          if (activeToken) break;
         }
       }
 
       if (!activeToken) {
-        if (
-          process.env.NODE_ENV === "development" ||
-          typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
-        ) {
-          activeToken = "test-token";
-        } else {
-          throw new Error("Security verification is processing. Please try clicking again.");
-        }
+        throw new Error("Security verification could not complete. Please refresh the page and try again.");
       }
 
       const user = authService.getUser();
@@ -172,15 +170,17 @@ export default function FreeAnalysis() {
         title: "Submission Failed",
         message: errorMsg,
       });
-      setTurnstileToken(null);
-      turnstileRef.current?.reset();
+      if (error?.response?.status) {
+        setTurnstileToken(null);
+        turnstileRef.current?.reset();
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-[1536px] w-full mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] mt-8 md:mt-32 mb-8 md:mb-0">
+    <div className="max-w-[1536px] w-full mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px] mt-8 md:mt-32 mb-8 md:mb-0 relative">
       <StatusPopup
         isOpen={!!status}
         onClose={() => setStatus(null)}
