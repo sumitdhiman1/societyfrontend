@@ -86,41 +86,56 @@ export default function SupportNewsletter({
         hp,
       });
 
-      if (res.success) {
+      if (res.success || res.statusCode === 201 || res.statusCode === 200) {
         setPopup({
           isOpen: true,
           type: "success",
           title: "Subscribed!",
-          message:
-            res.message || "You have successfully joined our mailing list.",
+          message: res.message || "You have successfully joined our mailing list.",
         });
         setEmail("");
         setHp("");
+        tokenRef.current = null;
         setTurnstileToken(null);
         turnstileRef.current?.reset();
       } else {
-        throw new Error(res.message || "Subscription failed");
+        // Map known status codes to user-friendly messages
+        const statusCode = res.statusCode;
+        let title = "Subscription Failed";
+        let message = res.message || "An error occurred while subscribing. Please try again.";
+
+        if (statusCode === 409) {
+          title = "Already Subscribed";
+          message = "This email is already subscribed to our mailing list.";
+        } else if (statusCode === 400) {
+          title = "Verification Failed";
+          message = res.message || "Security verification failed. Please try again.";
+        } else if (statusCode === 422) {
+          title = "Invalid Email";
+          message = res.message || "Please enter a valid email address.";
+        }
+
+        setPopup({ isOpen: true, type: "error", title, message });
+        tokenRef.current = null;
+        setTurnstileToken(null);
+        turnstileRef.current?.reset();
       }
     } catch (error: any) {
       console.error("Newsletter Subscription Error:", error);
-      const status = error?.response?.status;
+      const statusCode = error?.status || error?.response?.status;
       let title = "Subscription Failed";
-      let message = "An error occurred while subscribing. Please try again.";
+      let message = error?.message || "An error occurred while subscribing. Please try again.";
 
-      if (status === 409) {
+      if (statusCode === 409) {
         title = "Already Subscribed";
-        message = "This email is already active in our mailing list.";
-      } else if (status === 400) {
+        message = "This email is already subscribed to our mailing list.";
+      } else if (statusCode === 400) {
         title = "Verification Failed";
-        message = error?.response?.data?.message || "Security verification failed. Please try again.";
+        message = error?.data?.message || error?.response?.data?.message || "Security verification failed. Please try again.";
       }
 
-      setPopup({
-        isOpen: true,
-        type: "error",
-        title,
-        message: error?.response?.data?.message || message,
-      });
+      setPopup({ isOpen: true, type: "error", title, message });
+      tokenRef.current = null;
       setTurnstileToken(null);
       turnstileRef.current?.reset();
     } finally {
