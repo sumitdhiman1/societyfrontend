@@ -8,9 +8,11 @@ import DeadlineTooltip from "@/components/common/DeadlineTooltip";
 import { getProjectEstimatedDeadline } from "@/lib/calculatorUtils";
 import { requestAnalysisService, savePendingAnalysisId, savePendingAnalysisInfo, claimPendingAnalyses } from "@/lib/requestAnalysisService";
 import { authService } from "@/lib/authService";
+import { useCurrency } from "@/context/CurrencyContext";
 
 function AnalysisLayoutContent({ children }: { children: React.ReactNode }) {
   const { analysis, isLoading, refreshAnalysis } = useAnalysis();
+  const { currency, setCurrency } = useCurrency();
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
@@ -20,6 +22,16 @@ function AnalysisLayoutContent({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (analysis) {
       savePendingAnalysisInfo(analysis);
+      // If guest user without a saved preference, initialize currency from the analysis
+      if (!authService.isAuthenticated() && typeof window !== "undefined") {
+        const saved = localStorage.getItem("app-currency");
+        if (!saved) {
+          const initial = (analysis.currency || analysis.client?.currency || analysis.client?.preferredCurrency || "usd").toLowerCase();
+          if (initial === "eur" || initial === "usd") {
+            setCurrency(initial);
+          }
+        }
+      }
     }
     if (analysisId) {
       if (typeof window !== "undefined") {
@@ -30,7 +42,7 @@ function AnalysisLayoutContent({ children }: { children: React.ReactNode }) {
         claimPendingAnalyses();
       }
     }
-  }, [analysisId, analysis]);
+  }, [analysisId, analysis, setCurrency]);
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -192,7 +204,7 @@ function AnalysisLayoutContent({ children }: { children: React.ReactNode }) {
               ))}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-8 mb-4 sm:mb-3 text-[11px] sm:text-sm font-medium text-[#363636] mt-4 md:mt-0">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-6 mb-4 sm:mb-3 text-[11px] sm:text-sm font-medium text-[#363636] mt-4 md:mt-0">
               <div className="flex items-center">
                 <span className="text-[#88909D] mr-2">Start Date:</span>
                 <span className="font-bold">
@@ -209,6 +221,33 @@ function AnalysisLayoutContent({ children }: { children: React.ReactNode }) {
                     : "Ongoing"}
                 </span>
                 <DeadlineTooltip position="left" />
+              </div>
+              {/* Currency Toggle (USD / EUR) */}
+              <div className="flex items-center bg-white border border-gray-300 rounded-lg p-0.5 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setCurrency("usd")}
+                  className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                    (currency || "usd").toLowerCase() === "usd"
+                      ? "bg-[#4343F0] text-white shadow-xs"
+                      : "text-gray-500 hover:text-gray-800"
+                  }`}
+                  title="Switch currency to USD ($)"
+                >
+                  USD
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrency("eur")}
+                  className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                    (currency || "usd").toLowerCase() === "eur"
+                      ? "bg-[#4343F0] text-white shadow-xs"
+                      : "text-gray-500 hover:text-gray-800"
+                  }`}
+                  title="Switch currency to EUR (€)"
+                >
+                  EUR
+                </button>
               </div>
             </div>
           </div>

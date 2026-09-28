@@ -728,7 +728,13 @@ export default function AnalysisDetailsPage() {
   const formatCurrency = (amt: any, customSourceCurrency?: string) => {
     const val = Number(amt);
     if (isNaN(val)) return "$0.00";
-    const targetCurrency = (currentUser?.currency || currentUser?.preferredCurrency || contextCurrency || "USD").toUpperCase();
+    const targetCurrency = (
+      contextCurrency ||
+      (typeof window !== "undefined" ? localStorage.getItem("app-currency") : "") ||
+      currentUser?.currency ||
+      currentUser?.preferredCurrency ||
+      "USD"
+    ).toUpperCase();
     let resolvedSrc = customSourceCurrency;
     if (!resolvedSrc) {
       const addonCurrency = (
@@ -744,7 +750,8 @@ export default function AnalysisDetailsPage() {
       }
     }
     const srcCurrency = (resolvedSrc || targetCurrency).toUpperCase();
-    return formatPriceWithCurrency(val, targetCurrency, srcCurrency, conversionRate);
+    const rate = conversionRate || 1.14776;
+    return formatPriceWithCurrency(val, targetCurrency, srcCurrency, rate);
   };
 
   const formatSubmittedDate = (date: any) => {
@@ -2147,9 +2154,15 @@ export default function AnalysisDetailsPage() {
                       {description ? (
                         <p className="text-xs sm:text-sm text-[#3B82F6] font-medium mb-1.5">{description}</p>
                       ) : null}
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-xl sm:text-2xl font-black text-[#1E3A8A]">{currency === "EUR" ? "€" : "$"}{amount.toFixed(0)}</span>
-                        <span className="text-[11px] font-bold text-[#3B82F6] uppercase">{currency}</span>
+                      <div className="flex items-baseline gap-1.5 flex-wrap">
+                        <span className="text-xl sm:text-2xl font-black text-[#1E3A8A]">
+                          {formatCurrency(amount, currency)}
+                        </span>
+                        {currency.toUpperCase() !== (contextCurrency || "USD").toUpperCase() && (
+                          <span className="text-xs text-[#3B82F6] font-semibold">
+                            ({currency === "EUR" ? "€" : "$"}{amount.toFixed(2)} {currency})
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
