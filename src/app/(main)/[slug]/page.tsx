@@ -8,7 +8,7 @@ export default async function ShortLinkPage({ params }: ShortLinkPageProps) {
   const { slug } = await params;
   if (!slug) notFound();
 
-  const apiUrl = (process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001').replace(/\/$/, '');
+  const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1').replace(/\/$/, '');
 
   // 1. Check if the slug matches an Analysis Project
   try {
@@ -18,10 +18,9 @@ export default async function ShortLinkPage({ params }: ShortLinkPageProps) {
 
     if (res.ok) {
       const json = await res.json();
-      const analysis = json?.data?.data || json?.data || json;
-      const targetId = analysis?._id || analysis?.id || analysis?.projectId;
-      if (targetId) {
-        redirect(`/dashboard/my-analyses/${targetId}/details`);
+      const analysis = json?.data;
+      if (analysis?._id) {
+        redirect(`/dashboard/my-analyses/${analysis._id}/details`);
       }
     }
   } catch (error: any) {

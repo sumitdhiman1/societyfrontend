@@ -179,6 +179,8 @@ export class RequestAnalysisService {
     clientId?: string;
     phoneNumber?: string;
     companyName?: string;
+    turnstileToken?: string;
+    token?: string;
   }) {
     const client = new HttpClient();
     return await client.post("/request-analysis", data);

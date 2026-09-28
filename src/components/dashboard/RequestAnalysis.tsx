@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { requestAnalysisService } from "@/lib/requestAnalysisService";
 import { authService } from "@/lib/authService";
 import AnalysisIllustration from "./AnalysisIllustration";
+import Turnstile, { TurnstileRef } from "@/components/common/Turnstile";
 
 export default function RequestAnalysis() {
   const [websiteUrl, setWebsiteUrl] = useState("");
@@ -11,6 +12,20 @@ export default function RequestAnalysis() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [settings, setSettings] = useState<any>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileRef>(null);
+
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+  }, []);
+
+  const handleTurnstileExpire = useCallback(() => {
+    setTurnstileToken(null);
+  }, []);
+
+  const handleTurnstileError = useCallback(() => {
+    setTurnstileToken(null);
+  }, []);
 
   useEffect(() => {
     const syncUserEmail = () => {
@@ -75,19 +90,73 @@ export default function RequestAnalysis() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
+    const trimmedEmail = email.trim();
+    const trimmedWebsite = websiteUrl.trim();
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!trimmedEmail || !emailRegex.test(trimmedEmail)) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+
+    const websiteRegex = /^(https?:\/\/)?([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(\/.*)?$/i;
+    if (!trimmedWebsite || !websiteRegex.test(trimmedWebsite)) {
+      alert("Please enter a valid website URL or domain (e.g. example.com or https://example.com).");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const response = await requestAnalysisService.submitRequest({ email, websiteUrl });
-      if (response.statusCode === 201) {
+      let activeToken = turnstileToken || turnstileRef.current?.getResponse();
+      if (!activeToken) {
+        turnstileRef.current?.execute();
+        for (let i = 0; i < 20; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          activeToken = turnstileRef.current?.getResponse();
+          if (activeToken) {
+            setTurnstileToken(activeToken);
+            break;
+          }
+        }
+      }
+
+      if (!activeToken) {
+        if (
+          process.env.NODE_ENV === "development" ||
+          (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"))
+        ) {
+          activeToken = "test-token";
+        } else {
+          alert("Security verification is processing. Please try clicking again.");
+          return;
+        }
+      }
+
+      const response: any = await requestAnalysisService.submitRequest({
+        email: trimmedEmail,
+        websiteUrl: trimmedWebsite,
+        turnstileToken: activeToken,
+      });
+
+      if (response.statusCode === 201 || response.isSuccessful) {
         setWebsiteUrl("");
         const user = authService.getUser();
         setEmail(user?.email || "");
+        setTurnstileToken(null);
+        turnstileRef.current?.reset();
         closePopup();
       } else {
-        console.error("Submission failed:", response.message);
+        alert(response.message || "Submission failed. Please try again.");
+        setTurnstileToken(null);
+        turnstileRef.current?.reset();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting analysis request:", error);
+      alert(error?.response?.data?.message || error?.message || "An unexpected error occurred. Please try again.");
+      setTurnstileToken(null);
+      turnstileRef.current?.reset();
     } finally {
       setIsSubmitting(false);
     }
@@ -95,6 +164,13 @@ export default function RequestAnalysis() {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] backdrop-blur-sm px-4">
+      <Turnstile
+        ref={turnstileRef}
+        size="invisible"
+        onVerify={handleTurnstileVerify}
+        onExpire={handleTurnstileExpire}
+        onError={handleTurnstileError}
+      />
       <div className="relative bg-white rounded-[10px] shadow-2xl w-full max-w-[1051px] lg:h-[382px] max-h-[90vh] overflow-y-auto lg:overflow-hidden">
         <button
           onClick={closePopup}

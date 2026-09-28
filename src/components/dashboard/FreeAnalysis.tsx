@@ -1,15 +1,31 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { requestAnalysisService, savePendingAnalysisId } from "@/lib/requestAnalysisService";
 import { authService } from "@/lib/authService";
 import StatusPopup from "@/components/common/StatusPopup";
+import Turnstile, { TurnstileRef } from "@/components/common/Turnstile";
 
 export default function FreeAnalysis() {
   const [website, setWebsite] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<any>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileRef>(null);
+
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+  }, []);
+
+  const handleTurnstileExpire = useCallback(() => {
+    setTurnstileToken(null);
+  }, []);
+
+  const handleTurnstileError = useCallback(() => {
+    setTurnstileToken(null);
+  }, []);
+
   const [status, setStatus] = useState<{ type: "success" | "error"; title: string; message: string } | null>(null);
 
   useEffect(() => {
@@ -46,8 +62,58 @@ export default function FreeAnalysis() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+
+    const trimmedEmail = email.trim();
+    const trimmedWebsite = website.trim();
+
+    // Frontend validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!trimmedEmail || !emailRegex.test(trimmedEmail)) {
+      setStatus({
+        type: "error",
+        title: "Invalid Email",
+        message: "Please enter a valid email address.",
+      });
+      return;
+    }
+
+    const websiteRegex = /^(https?:\/\/)?([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(\/.*)?$/i;
+    if (!trimmedWebsite || !websiteRegex.test(trimmedWebsite)) {
+      setStatus({
+        type: "error",
+        title: "Invalid Website",
+        message: "Please enter a valid website URL or domain (e.g. example.com or https://example.com).",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
+      let activeToken = turnstileToken || turnstileRef.current?.getResponse();
+      if (!activeToken) {
+        turnstileRef.current?.execute();
+        for (let i = 0; i < 20; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          activeToken = turnstileRef.current?.getResponse();
+          if (activeToken) {
+            setTurnstileToken(activeToken);
+            break;
+          }
+        }
+      }
+
+      if (!activeToken) {
+        if (
+          process.env.NODE_ENV === "development" ||
+          typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+        ) {
+          activeToken = "test-token";
+        } else {
+          throw new Error("Security verification is processing. Please try clicking again.");
+        }
+      }
+
       const user = authService.getUser();
       let clientName: string | undefined;
       let clientId: string | undefined;
@@ -64,17 +130,18 @@ export default function FreeAnalysis() {
         companyName = user.companyName || undefined;
       }
 
-      const res = await requestAnalysisService.submitRequest({
-        email: email.trim(),
-        websiteUrl: website.trim(),
+      const res: any = await requestAnalysisService.submitRequest({
+        email: trimmedEmail,
+        websiteUrl: trimmedWebsite,
         clientName,
         fullName: clientName,
         clientId,
         phoneNumber,
         companyName,
+        turnstileToken: activeToken,
       });
 
-      if (res.statusCode === 201) {
+      if (res.statusCode === 201 || res.isSuccessful) {
         if (res.data?._id || res.data?.id) {
           savePendingAnalysisId(res.data._id || res.data.id);
         }
@@ -86,20 +153,27 @@ export default function FreeAnalysis() {
         setWebsite("");
         const currentUser = authService.getUser();
         setEmail(currentUser?.email || "");
+        setTurnstileToken(null);
+        turnstileRef.current?.reset();
       } else {
         setStatus({
           type: "error",
           title: "Submission Failed",
           message: res.message || "Something went wrong. Please try again later.",
         });
+        setTurnstileToken(null);
+        turnstileRef.current?.reset();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting analysis request:", error);
+      const errorMsg = error?.response?.data?.message || error?.message || "An unexpected error occurred. Please try again.";
       setStatus({
         type: "error",
-        title: "Error",
-        message: "An unexpected error occurred. Please try again.",
+        title: "Submission Failed",
+        message: errorMsg,
       });
+      setTurnstileToken(null);
+      turnstileRef.current?.reset();
     } finally {
       setLoading(false);
     }
@@ -113,6 +187,14 @@ export default function FreeAnalysis() {
         type={status?.type || "success"}
         title={status?.title || ""}
         message={status?.message || ""}
+      />
+
+      <Turnstile
+        ref={turnstileRef}
+        size="invisible"
+        onVerify={handleTurnstileVerify}
+        onExpire={handleTurnstileExpire}
+        onError={handleTurnstileError}
       />
 
       <div className="mb-0 md:mb-12 w-full font-sans" style={{ fontFamily: "var(--font-inter), sans-serif" }}>

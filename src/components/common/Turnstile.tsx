@@ -215,8 +215,21 @@ export const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(
 
     return (
       <div
-        className={`turnstile-container ${isInvisible ? "hidden" : ""} ${className}`}
-        style={isInvisible ? { display: "none" } : undefined}
+        className={`turnstile-container ${className}`}
+        style={
+          isInvisible
+            ? {
+                position: "absolute",
+                left: "-9999px",
+                top: "-9999px",
+                width: "1px",
+                height: "1px",
+                opacity: 0,
+                pointerEvents: "none",
+                overflow: "hidden",
+              }
+            : undefined
+        }
       >
         <div ref={containerRef} />
       </div>
