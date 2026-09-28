@@ -92,6 +92,66 @@ const sanitizeAnalysisText = (text: string): string => {
     .replace(/project/gi, "analysis");
 };
 
+export const getAnalysisDomain = (analysisObj: any): string => {
+  if (!analysisObj) return "";
+
+  const arrayTarget =
+    (Array.isArray(analysisObj.targetWebsiteUrls) && analysisObj.targetWebsiteUrls[0]) ||
+    (Array.isArray(analysisObj.targetUrls) && analysisObj.targetUrls[0]) ||
+    (Array.isArray(analysisObj.websites) && analysisObj.websites[0]);
+
+  const raw = String(
+    arrayTarget ||
+    analysisObj.targetWebsiteUrl ||
+    analysisObj.websiteUrl ||
+    analysisObj.domain ||
+    analysisObj.targetUrl ||
+    analysisObj.website ||
+    ""
+  ).trim();
+
+  if (raw) {
+    const firstItem = raw.split(/[\r\n,;|]+/)[0]?.trim() || raw;
+    const cleanDomain = firstItem
+      .replace(/^https?:\/\//i, "")
+      .replace(/^www\./i, "")
+      .split("/")[0]
+      .split("?")[0]
+      .split("#")[0]
+      .trim();
+
+    if (cleanDomain) return cleanDomain;
+  }
+
+  if (analysisObj.description) {
+    const descMatch = String(analysisObj.description).match(/(?:Analysis for|for)\s+([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+    if (descMatch && descMatch[1]) {
+      return descMatch[1].trim();
+    }
+  }
+
+  if (analysisObj.slug && typeof analysisObj.slug === "string") {
+    const cleanSlug = analysisObj.slug.replace(/-\d+$/, "").replace(/-/g, ".");
+    if (cleanSlug.includes(".")) {
+      return cleanSlug;
+    }
+  }
+
+  return "";
+};
+
+export const formatAnalysisDownloadFileName = (baseFileName: string, analysisObj: any): string => {
+  const domain = getAnalysisDomain(analysisObj);
+  const cleanName = (baseFileName || "file").trim();
+  if (!domain) return cleanName;
+
+  if (cleanName.toLowerCase().startsWith(domain.toLowerCase())) {
+    return cleanName;
+  }
+
+  return `${domain} - ${cleanName}`;
+};
+
 const renderStatusMessageText = (rawText: string, attachments?: any[]) => {
   if (!rawText) return null;
   const text = sanitizeAnalysisText(rawText);
@@ -760,7 +820,9 @@ export default function AnalysisDetailsPage() {
 
           const url = res.data?.secure_url || res.data?.url || res.secure_url || "";
           if (!url) throw new Error("Failed to get URL");
-          updateAttachment(att.id, { status: "done", url });
+          // Use originalName from upload response (real name before sanitization)
+          const resolvedName = res.data?.originalName || res.data?.original_filename || att.name;
+          updateAttachment(att.id, { status: "done", url, name: resolvedName });
         } catch (error) {
           console.error("Upload failed for file:", att.name, error);
           toast.error(`Upload failed for ${att.name}`);
@@ -801,9 +863,9 @@ export default function AnalysisDetailsPage() {
       return;
     }
 
-    const uploadedUrls = attachments.filter((a) => a.status === "done" && a.url).map((a) => a.url);
+    const uploadedAttachments = attachments.filter((a) => a.status === "done" && a.url).map((a) => ({ url: a.url, name: a.name }));
 
-    if (messageText.trim() || uploadedUrls.length > 0) {
+    if (messageText.trim() || uploadedAttachments.length > 0) {
       setIsSending(true);
       try {
         const aId = analysis._id || analysis.id;
@@ -811,7 +873,7 @@ export default function AnalysisDetailsPage() {
           aId,
           messageText,
           false,
-          uploadedUrls
+          uploadedAttachments
         );
         if (res && (res.isSuccessful || res.success || res.statusCode === 200 || res.statusCode === 201 || res.data)) {
           setMessageText("");
@@ -2157,7 +2219,7 @@ export default function AnalysisDetailsPage() {
               const senderAvatar = isClient ? (msg.userAvatar || currentUser?.avatar) : (msg.userAvatar || itemManagerAvatar);
               const senderInitial = (senderName || "A").charAt(0).toUpperCase();
               const messageBody = msg.message || content.text || content.projectDescription || content.description || "";
-              const attachmentList = (msg.attachments && msg.attachments.length > 0) ? msg.attachments : (content?.attachedFiles || (msg as any).attachedFiles || []);
+              const attachmentList = (content?.attachedFiles && content.attachedFiles.length > 0) ? content.attachedFiles : ((msg as any).attachedFiles || (msg.attachments && msg.attachments.length > 0 ? msg.attachments : []));
 
               const actions = (content.actionsAvailable && content.actionsAvailable.length > 0)
                 ? content.actionsAvailable
@@ -2342,12 +2404,14 @@ export default function AnalysisDetailsPage() {
                               const isSvg = url.toLowerCase().includes(".svg");
                               const isPdf = url.toLowerCase().includes(".pdf");
 
+                              const downloadName = formatAnalysisDownloadFileName(filename, analysis);
+
                               return (
                                 <a
                                   key={aIdx}
                                   href={safeUrl}
-                                  onClick={(e) => downloadFile(e, safeUrl, filename)}
-                                  download={filename}
+                                  onClick={(e) => downloadFile(e, safeUrl, downloadName)}
+                                  download={downloadName}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
@@ -2356,7 +2420,7 @@ export default function AnalysisDetailsPage() {
                                     {isImg ? (
                                       <img
                                         src={safeUrl}
-                                        alt={filename}
+                                        alt={downloadName}
                                         className={
                                           isSvg
                                             ? "w-full h-full object-contain p-2.5 group-hover:scale-105 transition-transform duration-300"
@@ -2391,7 +2455,7 @@ export default function AnalysisDetailsPage() {
                                     </div>
                                   </div>
                                   <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex items-center justify-center h-10 min-h-[40px]">
-                                    <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={filename}>{filename}</span>
+                                    <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={downloadName}>{downloadName}</span>
                                   </div>
                                 </a>
                               );
@@ -2697,12 +2761,14 @@ export default function AnalysisDetailsPage() {
                               const isSvg = url.toLowerCase().includes(".svg");
                               const isPdf = url.toLowerCase().includes(".pdf");
 
+                              const downloadName = formatAnalysisDownloadFileName(filename, analysis);
+
                               return (
                                 <a
                                   key={aIdx}
                                   href={safeUrl}
-                                  onClick={(e) => downloadFile(e, safeUrl, filename)}
-                                  download={filename}
+                                  onClick={(e) => downloadFile(e, safeUrl, downloadName)}
+                                  download={downloadName}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
@@ -2711,7 +2777,7 @@ export default function AnalysisDetailsPage() {
                                     {isImg ? (
                                       <img
                                         src={safeUrl}
-                                        alt={filename}
+                                        alt={downloadName}
                                         className={
                                           isSvg
                                             ? "w-full h-full object-contain p-2.5 group-hover:scale-105 transition-transform duration-300"
@@ -2746,7 +2812,7 @@ export default function AnalysisDetailsPage() {
                                     </div>
                                   </div>
                                   <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex items-center justify-center h-10 min-h-[40px]">
-                                    <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={filename}>{filename}</span>
+                                    <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={downloadName}>{downloadName}</span>
                                   </div>
                                 </a>
                               );
@@ -2874,7 +2940,7 @@ export default function AnalysisDetailsPage() {
               ? (msg.username && msg.username !== "Staff" && msg.username !== "Analysis Team" && msg.username !== "Client" ? msg.username : clientName || "You")
               : (msg.username && msg.username !== "Staff" && msg.username !== "Client" && msg.username !== "Analysis Team" ? msg.username : fallbackManagerName);
             const senderAvatar = isClient ? (msg.userAvatar || currentUser?.avatar) : (msg.userAvatar || fallbackManagerAvatar);
-            const rawAttachments = msg.attachments || msg.content?.attachedFiles || msg.attachedFiles || (msg.content as any)?.attachedFilesUrl || msg.attachedFilesUrl || [];
+            const rawAttachments = (msg.content?.attachedFiles && msg.content.attachedFiles.length > 0) ? msg.content.attachedFiles : (msg.attachedFiles || msg.attachments || (msg.content as any)?.attachedFilesUrl || msg.attachedFilesUrl || []);
             const attachmentList = Array.isArray(rawAttachments) ? rawAttachments : [];
 
             const isDeliveryMsg = Boolean(
@@ -2932,19 +2998,21 @@ export default function AnalysisDetailsPage() {
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full">
                         {attachmentList.map((att: any, attIdx: number) => {
                           const url = typeof att === "string" ? att : (att.url || att.secure_url || att.path);
-                          const name = typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "file") : (att.name || att.filename || decodeURIComponent((url || "").split("/").pop() || "file"));
+                          const name = typeof att === "string" ? decodeURIComponent(url.split("/").pop() || "file") : (att.filename || att.name || decodeURIComponent((url || "").split("/").pop() || "file"));
                           if (!url) return null;
                           const safeUrl = getSafeUrl(url);
                           const isImg = isImageUrl(url);
                           const isSvg = url.toLowerCase().includes(".svg");
                           const isPdf = url.toLowerCase().includes(".pdf");
 
+                          const downloadName = formatAnalysisDownloadFileName(name, analysis);
+
                           return (
                             <a
                               key={url + attIdx}
                               href={safeUrl}
-                              onClick={(e) => downloadFile(e, safeUrl, name)}
-                              download={name}
+                              onClick={(e) => downloadFile(e, safeUrl, downloadName)}
+                              download={downloadName}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
@@ -2953,7 +3021,7 @@ export default function AnalysisDetailsPage() {
                                 {isImg ? (
                                   <img
                                     src={safeUrl}
-                                    alt={name}
+                                    alt={downloadName}
                                     className={
                                       isSvg
                                         ? "w-full h-full object-contain p-2.5 group-hover:scale-105 transition-transform duration-300"
@@ -2988,7 +3056,7 @@ export default function AnalysisDetailsPage() {
                                 </div>
                               </div>
                               <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex items-center justify-center h-10 min-h-[40px]">
-                                <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={name}>{name}</span>
+                                <span className="text-[10px] font-medium text-gray-600 truncate px-2" title={downloadName}>{downloadName}</span>
                               </div>
                             </a>
                           );

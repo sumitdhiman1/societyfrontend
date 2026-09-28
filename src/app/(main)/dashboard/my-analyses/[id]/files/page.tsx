@@ -40,6 +40,66 @@ function getCategory(mimeType?: string, filename?: string) {
   return "other";
 }
 
+function getAnalysisDomain(analysisObj: any): string {
+  if (!analysisObj) return "";
+
+  const arrayTarget =
+    (Array.isArray(analysisObj.targetWebsiteUrls) && analysisObj.targetWebsiteUrls[0]) ||
+    (Array.isArray(analysisObj.targetUrls) && analysisObj.targetUrls[0]) ||
+    (Array.isArray(analysisObj.websites) && analysisObj.websites[0]);
+
+  const raw = String(
+    arrayTarget ||
+    analysisObj.targetWebsiteUrl ||
+    analysisObj.websiteUrl ||
+    analysisObj.domain ||
+    analysisObj.targetUrl ||
+    analysisObj.website ||
+    ""
+  ).trim();
+
+  if (raw) {
+    const firstItem = raw.split(/[\r\n,;|]+/)[0]?.trim() || raw;
+    const cleanDomain = firstItem
+      .replace(/^https?:\/\//i, "")
+      .replace(/^www\./i, "")
+      .split("/")[0]
+      .split("?")[0]
+      .split("#")[0]
+      .trim();
+
+    if (cleanDomain) return cleanDomain;
+  }
+
+  if (analysisObj.description) {
+    const descMatch = String(analysisObj.description).match(/(?:Analysis for|for)\s+([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+    if (descMatch && descMatch[1]) {
+      return descMatch[1].trim();
+    }
+  }
+
+  if (analysisObj.slug && typeof analysisObj.slug === "string") {
+    const cleanSlug = analysisObj.slug.replace(/-\d+$/, "").replace(/-/g, ".");
+    if (cleanSlug.includes(".")) {
+      return cleanSlug;
+    }
+  }
+
+  return "";
+}
+
+function formatAnalysisDownloadFileName(baseFileName: string, analysisObj: any): string {
+  const domain = getAnalysisDomain(analysisObj);
+  const cleanName = (baseFileName || "file").trim();
+  if (!domain) return cleanName;
+
+  if (cleanName.toLowerCase().startsWith(domain.toLowerCase())) {
+    return cleanName;
+  }
+
+  return `${domain} - ${cleanName}`;
+}
+
 const filterCategories = [
   { label: "All Files", value: "all" },
   { label: "Documents", value: "document" },
@@ -243,12 +303,15 @@ export default function AnalysisFilesPage() {
         msg.content?.type === "delivery";
 
       const rawAttached =
-        msg.attachments ||
-        msg.content?.attachedFiles ||
-        msg.attachedFiles ||
-        msg.content?.attachedFilesUrl ||
-        msg.attachedFilesUrl ||
-        [];
+        (Array.isArray(msg.content?.attachedFiles) && msg.content.attachedFiles.length > 0)
+          ? msg.content.attachedFiles
+          : (Array.isArray(msg.attachedFiles) && msg.attachedFiles.length > 0)
+            ? msg.attachedFiles
+            : (Array.isArray(msg.content?.attachedFilesUrl) && msg.content.attachedFilesUrl.length > 0)
+              ? msg.content.attachedFilesUrl
+              : (Array.isArray(msg.attachedFilesUrl) && msg.attachedFilesUrl.length > 0)
+                ? msg.attachedFilesUrl
+                : msg.attachments || [];
 
       (Array.isArray(rawAttached) ? rawAttached : []).forEach((file: any) => {
         const fileUrl = typeof file === "string" ? file : file?.url;
@@ -734,75 +797,79 @@ export default function AnalysisFilesPage() {
               </div>
             ) : viewMode === "grid" ? (
               <div className="p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {filteredFiles.map((file) => (
-                  <div
-                    key={file._id}
-                    className="group relative rounded-xl overflow-hidden bg-gray-100 border border-gray-200 aspect-square cursor-pointer hover:border-[#3232b7] transition-all"
-                    onClick={() => isImage(file.mimeType, file.url, file.name) && setPreviewFile(file)}
-                  >
-                    {isImage(file.mimeType, file.url, file.name) ? (
-                      <img
-                        src={ensureHttps(file.url)}
-                        alt={file.name}
-                        className={`w-full h-full ${file.url?.toLowerCase().includes(".svg") ? "object-contain p-2" : "object-cover"
-                          }`}
-                        onError={(e) => {
-                          const target = e.currentTarget;
-                          if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
-                            target.src = target.src.replace("http:", "https:");
-                          }
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-white">
-                        <FileIcon mimeType={file.mimeType} url={file.url} filename={file.name} />
-                        <p className="text-xs text-gray-700 font-medium mt-2 truncate w-full" title={file.name}>
-                          {file.name}
-                        </p>
-                        <span className="text-[10px] text-gray-400 mt-0.5">{formatSize(file.size)}</span>
-                      </div>
-                    )}
+                {filteredFiles.map((file) => {
+                  const displayName = formatAnalysisDownloadFileName(file.name, analysis);
+                  return (
+                    <div
+                      key={file._id}
+                      className="group relative rounded-xl overflow-hidden bg-gray-100 border border-gray-200 aspect-square cursor-pointer hover:border-[#3232b7] transition-all"
+                      onClick={() => isImage(file.mimeType, file.url, displayName) && setPreviewFile(file)}
+                    >
+                      {isImage(file.mimeType, file.url, displayName) ? (
+                        <img
+                          src={ensureHttps(file.url)}
+                          alt={displayName}
+                          className={`w-full h-full ${file.url?.toLowerCase().includes(".svg") ? "object-contain p-2" : "object-cover"
+                            }`}
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            if (target.src.startsWith("http:") && !target.src.includes("localhost") && !target.src.includes("127.0.0.1")) {
+                              target.src = target.src.replace("http:", "https:");
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-white">
+                          <FileIcon mimeType={file.mimeType} url={file.url} filename={displayName} />
+                          <p className="text-xs text-gray-700 font-medium mt-2 truncate w-full" title={displayName}>
+                            {displayName}
+                          </p>
+                          <span className="text-[10px] text-gray-400 mt-0.5">{formatSize(file.size)}</span>
+                        </div>
+                      )}
 
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-10">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          downloadFile(e as any, file.url, file.name);
-                        }}
-                        className="bg-white p-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors shadow-sm cursor-pointer"
-                        title="Download file"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                      </button>
-                      {file.canDelete && (
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-10">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteFile(file._id);
+                            downloadFile(e as any, file.url, displayName);
                           }}
-                          className="bg-red-500 hover:bg-red-600 p-2 rounded-lg text-white transition-colors shadow-sm cursor-pointer"
-                          title="Delete file"
+                          className="bg-white p-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors shadow-sm cursor-pointer"
+                          title="Download file"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                           </svg>
                         </button>
-                      )}
-                    </div>
+                        {file.canDelete && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteFile(file._id);
+                            }}
+                            className="bg-red-500 hover:bg-red-600 p-2 rounded-lg text-white transition-colors shadow-sm cursor-pointer"
+                            title="Delete file"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
 
-                    <div className="absolute top-2 right-2 z-10">
-                      <SourceBadge source={file.source} />
+                      <div className="absolute top-2 right-2 z-10">
+                        <SourceBadge source={file.source} />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
                 {filteredFiles.map((file) => {
+                  const displayName = formatAnalysisDownloadFileName(file.name, analysis);
                   const dateFormatted = formatFileDate(file.uploadedAt);
                   return (
                     <div
@@ -810,19 +877,19 @@ export default function AnalysisFilesPage() {
                       className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 hover:bg-gray-50 transition-colors group"
                     >
                       <div
-                        onClick={() => isImage(file.mimeType, file.url, file.name) && setPreviewFile(file)}
-                        className={isImage(file.mimeType, file.url, file.name) ? "cursor-pointer" : ""}
+                        onClick={() => isImage(file.mimeType, file.url, displayName) && setPreviewFile(file)}
+                        className={isImage(file.mimeType, file.url, displayName) ? "cursor-pointer" : ""}
                       >
-                        <FileIcon mimeType={file.mimeType} url={file.url} filename={file.name} />
+                        <FileIcon mimeType={file.mimeType} url={file.url} filename={displayName} />
                       </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span
                             className="text-xs sm:text-sm font-medium text-[#363636] truncate max-w-[200px] sm:max-w-[280px]"
-                            title={file.name}
+                            title={displayName}
                           >
-                            {file.name}
+                            {displayName}
                           </span>
                           <SourceBadge source={file.source} />
                         </div>
@@ -836,7 +903,9 @@ export default function AnalysisFilesPage() {
                         <button
                           type="button"
                           title="Download"
-                          onClick={(e) => downloadFile(e as any, file.url, file.name)}
+                          onClick={(e) => {
+                            downloadFile(e as any, file.url, displayName);
+                          }}
                           className="border border-gray-200 rounded-lg px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs text-[#363636] font-medium hover:bg-white hover:border-gray-300 transition-colors cursor-pointer"
                         >
                           Download
