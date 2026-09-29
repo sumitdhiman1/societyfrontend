@@ -252,11 +252,36 @@ export default function AnalysisPaymentsPage() {
     }
   }, [analysisId]);
 
+  const searchCurrency = searchParams?.get("currency");
+
   useEffect(() => {
     if (analysisId) {
       fetchPayments(false);
     }
   }, [analysisId, fetchPayments]);
+
+  useEffect(() => {
+    if (searchCurrency && (searchCurrency.toLowerCase() === "eur" || searchCurrency.toLowerCase() === "usd")) {
+      setCurrency(searchCurrency.toLowerCase());
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("user_manually_switched_currency", "true");
+      }
+    } else if (activeAnalysis && !authService.isAuthenticated()) {
+      const targetCurr = (
+        activeAnalysis.currency ||
+        activeAnalysis.preferredCurrency ||
+        activeAnalysis.client?.preferredCurrency ||
+        activeAnalysis.client?.currency ||
+        activeAnalysis.addons?.[0]?.currency ||
+        activeAnalysis.messages?.find((m: any) => (m.type === 'payment_request' || m.content?.type === 'payment_request') && (m.content?.currency || m.currency))?.content?.currency ||
+        activeAnalysis.messages?.find((m: any) => (m.type === 'payment_request' || m.content?.type === 'payment_request') && (m.content?.currency || m.currency))?.currency ||
+        ""
+      ).toLowerCase();
+      if ((targetCurr === "eur" || targetCurr === "usd") && !sessionStorage.getItem("user_manually_switched_currency")) {
+        setCurrency(targetCurr);
+      }
+    }
+  }, [searchCurrency, activeAnalysis?.currency, activeAnalysis?.preferredCurrency, setCurrency]);
 
   useEffect(() => {
     const isSuccess =
@@ -479,9 +504,17 @@ export default function AnalysisPaymentsPage() {
   );
 
   const effectiveAnalysisSourceCurrency = (
-    isBaseFree && activeAddonCurrency
-      ? activeAddonCurrency
-      : (activeAnalysis.currency || activeAddonCurrency || payments[0]?.currency || "USD")
+    activeAnalysis.currency ||
+    activeAnalysis.preferredCurrency ||
+    activeAnalysis.client?.preferredCurrency ||
+    activeAnalysis.client?.currency ||
+    activeAnalysis.addons?.[0]?.currency ||
+    activeAnalysis.messages?.find((m: any) => (m.type === 'payment_request' || m.content?.type === 'payment_request') && (m.content?.currency || m.currency))?.content?.currency ||
+    activeAnalysis.messages?.find((m: any) => (m.type === 'payment_request' || m.content?.type === 'payment_request') && (m.content?.currency || m.currency))?.currency ||
+    (isBaseFree && activeAddonCurrency ? activeAddonCurrency : "") ||
+    activeAddonCurrency ||
+    payments[0]?.currency ||
+    "USD"
   ).toUpperCase();
 
   const analysisNativeCurrency = effectiveAnalysisSourceCurrency.toLowerCase();
@@ -748,8 +781,11 @@ export default function AnalysisPaymentsPage() {
                       <div className="flex bg-gray-100 rounded-lg p-1">
                         <button
                           type="button"
-                          onClick={() => setCurrency("usd")}
-                          className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "usd"
+                          onClick={() => {
+                            if (typeof window !== "undefined") sessionStorage.setItem("user_manually_switched_currency", "true");
+                            setCurrency("usd");
+                          }}
+                          className={`px-3 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${currency === "usd"
                               ? "bg-white shadow text-gray-800"
                               : "text-gray-500 hover:text-gray-700"
                             }`}
@@ -758,8 +794,11 @@ export default function AnalysisPaymentsPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setCurrency("eur")}
-                          className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${currency === "eur"
+                          onClick={() => {
+                            if (typeof window !== "undefined") sessionStorage.setItem("user_manually_switched_currency", "true");
+                            setCurrency("eur");
+                          }}
+                          className={`px-3 py-1 text-xs font-bold rounded-md transition-colors cursor-pointer ${currency === "eur"
                               ? "bg-white shadow text-gray-800"
                               : "text-gray-500 hover:text-gray-700"
                             }`}

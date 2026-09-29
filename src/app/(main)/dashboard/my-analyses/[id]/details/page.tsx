@@ -418,7 +418,7 @@ export default function AnalysisDetailsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { analysis, refreshAnalysis } = useAnalysis();
-  const { currency: contextCurrency, conversionRate } = useCurrency();
+  const { currency: contextCurrency, setCurrency, conversionRate } = useCurrency();
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -430,6 +430,33 @@ export default function AnalysisDetailsPage() {
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const actionLoadingRef = useRef(false);
+
+  const resolvedAnalysisCurrency = (
+    analysis?.currency ||
+    analysis?.preferredCurrency ||
+    analysis?.client?.preferredCurrency ||
+    analysis?.client?.currency ||
+    analysis?.addons?.[0]?.currency ||
+    analysis?.messages?.find((m: any) => (m.type === 'payment_request' || m.content?.type === 'payment_request') && (m.content?.currency || m.currency))?.content?.currency ||
+    analysis?.messages?.find((m: any) => (m.type === 'payment_request' || m.content?.type === 'payment_request') && (m.content?.currency || m.currency))?.currency ||
+    analysis?.messages?.find((m: any) => (m.type === 'quote_proposal' || m.content?.type === 'quote_proposal') && (m.content?.currency || m.currency))?.content?.currency ||
+    analysis?.messages?.find((m: any) => (m.type === 'quote_proposal' || m.content?.type === 'quote_proposal') && (m.content?.currency || m.currency))?.currency ||
+    ""
+  ).toUpperCase();
+
+  // Synchronize currency for guest users if the analysis has a specific currency set (e.g. EUR)
+  useEffect(() => {
+    if (!analysis) return;
+    const targetCurr = (resolvedAnalysisCurrency || "").toLowerCase();
+    if (targetCurr === "eur" || targetCurr === "usd") {
+      if (!authService.isAuthenticated()) {
+        const manualPref = typeof window !== "undefined" ? sessionStorage.getItem("user_manually_switched_currency") : null;
+        if (!manualPref) {
+          setCurrency(targetCurr);
+        }
+      }
+    }
+  }, [analysis?._id, resolvedAnalysisCurrency, setCurrency]);
 
   const syncFinancialsAndAnalysis = React.useCallback(async () => {
     try {
@@ -733,12 +760,15 @@ export default function AnalysisDetailsPage() {
       (typeof window !== "undefined" ? localStorage.getItem("app-currency") : "") ||
       currentUser?.currency ||
       currentUser?.preferredCurrency ||
+      resolvedAnalysisCurrency ||
       "USD"
     ).toUpperCase();
     let resolvedSrc = customSourceCurrency;
     if (!resolvedSrc) {
       const addonCurrency = (
         analysis?.addons?.[0]?.currency ||
+        analysis?.messages?.find((m: any) => (m.type === 'payment_request' || m.content?.type === 'payment_request') && (m.content?.currency || m.currency))?.content?.currency ||
+        analysis?.messages?.find((m: any) => (m.type === 'payment_request' || m.content?.type === 'payment_request') && (m.content?.currency || m.currency))?.currency ||
         analysis?.messages?.find((m: any) => (m.type === 'quote_proposal' || m.content?.type === 'quote_proposal') && (m.content?.currency || m.currency))?.content?.currency ||
         analysis?.messages?.find((m: any) => (m.type === 'quote_proposal' || m.content?.type === 'quote_proposal') && (m.content?.currency || m.currency))?.currency ||
         ""
@@ -746,7 +776,7 @@ export default function AnalysisDetailsPage() {
       if (addonCurrency) {
         resolvedSrc = addonCurrency;
       } else {
-        resolvedSrc = analysis?.currency || targetCurrency;
+        resolvedSrc = resolvedAnalysisCurrency || analysis?.currency || targetCurrency;
       }
     }
     const srcCurrency = (resolvedSrc || targetCurrency).toUpperCase();
@@ -1171,9 +1201,10 @@ export default function AnalysisDetailsPage() {
   );
 
   const analysisNativeCurrency = (
-    (isBaseFree || initialAnalysisPrice <= 0) && activeAddonCurrency
+    resolvedAnalysisCurrency ||
+    ((isBaseFree || initialAnalysisPrice <= 0) && activeAddonCurrency
       ? activeAddonCurrency
-      : (analysis?.currency || activeAddonCurrency || analysisPayments[0]?.currency || "USD")
+      : (analysis?.currency || activeAddonCurrency || analysisPayments[0]?.currency || "USD"))
   ).toLowerCase();
 
   const rawPayments = Array.isArray(analysisPayments) && analysisPayments.length > 0
@@ -1391,9 +1422,10 @@ export default function AnalysisDetailsPage() {
     ).toUpperCase();
 
     const effectiveSrcCurrency = (
-      (isFreeAnalysis || initialAnalysisPrice <= 0) && activeAddonCurrency
+      resolvedAnalysisCurrency ||
+      ((isFreeAnalysis || initialAnalysisPrice <= 0) && activeAddonCurrency
         ? activeAddonCurrency
-        : (analysis.currency || activeAddonCurrency || "USD")
+        : (analysis.currency || activeAddonCurrency || "USD"))
     ).toUpperCase();
 
     const activeCurrency = (
@@ -2158,7 +2190,7 @@ export default function AnalysisDetailsPage() {
                         <span className="text-xl sm:text-2xl font-black text-[#1E3A8A]">
                           {formatCurrency(amount, currency)}
                         </span>
-                        {currency.toUpperCase() !== (contextCurrency || "USD").toUpperCase() && (
+                        {currency.toUpperCase() !== (contextCurrency || resolvedAnalysisCurrency || "USD").toUpperCase() && (
                           <span className="text-xs text-[#3B82F6] font-semibold">
                             ({currency === "EUR" ? "€" : "$"}{amount.toFixed(2)} {currency})
                           </span>
