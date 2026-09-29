@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/lib/authService";
-import { requestAnalysisService, claimPendingAnalyses } from "@/lib/requestAnalysisService";
+import { requestAnalysisService } from "@/lib/requestAnalysisService";
 import { useTimezone } from "@/context/TimezoneContext";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 
@@ -42,8 +42,6 @@ export default function MyAnalysesPage() {
     const fetchAnalyses = async () => {
       try {
         setLoading(true);
-        // Ensure any guest analysis from cookie is claimed and attached to this user
-        await claimPendingAnalyses();
         const res = await requestAnalysisService.getProjects();
         if (res && res.data) {
           const rawList = Array.isArray(res.data) ? res.data : res.data.data || [];

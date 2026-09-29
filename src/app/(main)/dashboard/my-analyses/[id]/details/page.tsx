@@ -1353,10 +1353,10 @@ export default function AnalysisDetailsPage() {
     if (!date) return "";
     const d = new Date(date);
     if (isNaN(d.getTime())) return String(date);
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
+    const month = d.toLocaleString("en-US", { month: "short" });
+    const day = d.getDate();
     const yyyy = d.getFullYear();
-    return `${mm}/${dd}/${yyyy}`;
+    return `${month} ${day}, ${yyyy}`;
   };
 
   const analysisEstimatedDeadline =

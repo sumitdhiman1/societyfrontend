@@ -26,8 +26,9 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Society - Create What You Want",
-  description: "A platform for managing and creating projects.",
+  title: "Society Web Solutions | Digital Design, Development & Branding",
+  description:
+    "Society Web Solutions builds high-performance custom websites, mobile apps, web design, branding, and digital marketing tailored to elevate your business.",
   icons: {
     icon: "/favicon.ico",
   },

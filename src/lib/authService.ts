@@ -27,7 +27,6 @@ export class AuthService {
     if (response.isSuccessful && response.data) {
       this.setSession(response.data);
       window.dispatchEvent(new Event("auth:login"));
-      claimPendingAnalyses();
     }
     return response;
   }
@@ -366,7 +365,6 @@ export class AuthService {
       }
     }
     window.dispatchEvent(new Event("auth:login"));
-    claimPendingAnalyses();
   }
 
   /**

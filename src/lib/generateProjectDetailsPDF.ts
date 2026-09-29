@@ -154,10 +154,10 @@ function formatSubmittedDate(dateInput: any): string {
   if (!dateInput) return "";
   const d = new Date(dateInput);
   if (isNaN(d.getTime())) return String(dateInput);
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
+  const month = d.toLocaleString("en-US", { month: "short" });
+  const day = d.getDate();
   const yyyy = d.getFullYear();
-  return `${mm}/${dd}/${yyyy}`;
+  return `${month} ${day}, ${yyyy}`;
 }
 
 function formatPdfDateMMDDYYYY(dateInput: any): string {
@@ -165,13 +165,7 @@ function formatPdfDateMMDDYYYY(dateInput: any): string {
 }
 
 function formatPdfDateSingle(dateInput: any): string {
-  if (!dateInput) return "";
-  const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return String(dateInput);
-  const m = d.getMonth() + 1;
-  const day = d.getDate();
-  const yyyy = d.getFullYear();
-  return `${m}/${day}/${yyyy}`;
+  return formatSubmittedDate(dateInput);
 }
 
 function parseDurationDays(durationInput: any): number {
