@@ -998,8 +998,8 @@ export default function AnalysisDetailsPage() {
     analysis.status === "active"
       ? "IN PROGRESS"
       : analysis.status === "paused"
-      ? (getPauseReasonConfig(analysis.pauseReason, analysis.pauseNote).badge || "PAUSED")
-      : analysis.status || "IN PROGRESS"
+        ? (getPauseReasonConfig(analysis.pauseReason, analysis.pauseNote).badge || "PAUSED")
+        : analysis.status || "IN PROGRESS"
   ).toUpperCase();
 
   const submittedDateStr = formatDateTime(analysis.createdAt || analysis.startDate);
@@ -1883,34 +1883,34 @@ export default function AnalysisDetailsPage() {
               const isManagerAssigned =
                 !isDeadlineAdjusted &&
                 (lowerTitle.includes("manager assigned") ||
-                lowerRaw.includes("manager assigned") ||
-                lowerText.includes("assigned as project manager") ||
-                lowerText.includes("assigned as analysis manager") ||
-                lowerText.includes("assigned to your project") ||
-                lowerText.includes("assigned to your analysis"));
+                  lowerRaw.includes("manager assigned") ||
+                  lowerText.includes("assigned as project manager") ||
+                  lowerText.includes("assigned as analysis manager") ||
+                  lowerText.includes("assigned to your project") ||
+                  lowerText.includes("assigned to your analysis"));
 
               const isReactivated =
                 !isDeadlineAdjusted &&
                 !isManagerAssigned &&
                 (lowerTitle.includes("reactivate") ||
-                lowerRaw.includes("reactivate") ||
-                lowerText.includes("reactivate") ||
-                lowerTitle.includes("reactivated") ||
-                lowerRaw.includes("reactivated") ||
-                lowerText.includes("reactivated"));
+                  lowerRaw.includes("reactivate") ||
+                  lowerText.includes("reactivate") ||
+                  lowerTitle.includes("reactivated") ||
+                  lowerRaw.includes("reactivated") ||
+                  lowerText.includes("reactivated"));
 
               const isResumed =
                 !isDeadlineAdjusted &&
                 !isManagerAssigned &&
                 !isReactivated &&
                 (lowerTitle.includes("resumed") ||
-                lowerRaw.includes("resumed") ||
-                lowerText.includes("resumed") ||
-                lowerTitle.startsWith("analysis status updated to active") ||
-                lowerTitle.startsWith("project status updated to active") ||
-                lowerTitle.startsWith("analysis status: active") ||
-                lowerTitle.startsWith("project status: active") ||
-                lowerTitle === "active");
+                  lowerRaw.includes("resumed") ||
+                  lowerText.includes("resumed") ||
+                  lowerTitle.startsWith("analysis status updated to active") ||
+                  lowerTitle.startsWith("project status updated to active") ||
+                  lowerTitle.startsWith("analysis status: active") ||
+                  lowerTitle.startsWith("project status: active") ||
+                  lowerTitle === "active");
 
               const isCompleted =
                 lowerTitle.includes("completed") ||
@@ -1925,12 +1925,12 @@ export default function AnalysisDetailsPage() {
                 !isResumed &&
                 !isCompleted &&
                 (lowerTitle.includes("offer received") ||
-                lowerRaw.includes("offer received") ||
-                lowerTitle.includes("you received an offer") ||
-                lowerRaw.includes("you received an offer") ||
-                lowerText.includes("you received an offer") ||
-                lowerText.includes("created a new offer") ||
-                lowerText.includes("sent you a new offer"));
+                  lowerRaw.includes("offer received") ||
+                  lowerTitle.includes("you received an offer") ||
+                  lowerRaw.includes("you received an offer") ||
+                  lowerText.includes("you received an offer") ||
+                  lowerText.includes("created a new offer") ||
+                  lowerText.includes("sent you a new offer"));
 
               const isProposalAccepted =
                 !isDeadlineAdjusted &&
@@ -1939,11 +1939,11 @@ export default function AnalysisDetailsPage() {
                 !isResumed &&
                 !isCompleted &&
                 (lowerTitle.includes("proposal accepted") ||
-                lowerRaw.includes("proposal accepted") ||
-                lowerTitle.includes("add-on proposal accepted") ||
-                lowerRaw.includes("add-on proposal accepted") ||
-                lowerText.includes("proposal accepted") ||
-                lowerText.includes("accepted the offered quote"));
+                  lowerRaw.includes("proposal accepted") ||
+                  lowerTitle.includes("add-on proposal accepted") ||
+                  lowerRaw.includes("add-on proposal accepted") ||
+                  lowerText.includes("proposal accepted") ||
+                  lowerText.includes("accepted the offered quote"));
 
               const isProposalDeclined =
                 !isDeadlineAdjusted &&
@@ -1952,12 +1952,12 @@ export default function AnalysisDetailsPage() {
                 !isResumed &&
                 !isCompleted &&
                 (lowerTitle.includes("proposal declined") ||
-                lowerRaw.includes("proposal declined") ||
-                lowerTitle.includes("offer declined") ||
-                lowerRaw.includes("offer declined") ||
-                lowerText.includes("proposal declined") ||
-                lowerText.includes("the offer was declined") ||
-                lowerText.includes("offer was declined"));
+                  lowerRaw.includes("proposal declined") ||
+                  lowerTitle.includes("offer declined") ||
+                  lowerRaw.includes("offer declined") ||
+                  lowerText.includes("proposal declined") ||
+                  lowerText.includes("the offer was declined") ||
+                  lowerText.includes("offer was declined"));
 
               const isModificationsRequested =
                 !isDeadlineAdjusted &&
@@ -1966,11 +1966,11 @@ export default function AnalysisDetailsPage() {
                 !isResumed &&
                 !isCompleted &&
                 (lowerTitle.includes("modification requested") ||
-                lowerTitle.includes("modifications requested") ||
-                lowerRaw.includes("modification requested") ||
-                lowerRaw.includes("modifications requested") ||
-                lowerText.includes("modifications requested") ||
-                lowerText.includes("requested modifications"));
+                  lowerTitle.includes("modifications requested") ||
+                  lowerRaw.includes("modification requested") ||
+                  lowerRaw.includes("modifications requested") ||
+                  lowerText.includes("modifications requested") ||
+                  lowerText.includes("requested modifications"));
 
               let pauseConfig = null;
               let cleanTitle = title;
@@ -2078,7 +2078,7 @@ export default function AnalysisDetailsPage() {
               }
 
               return (
-                <div key={msgId} className="text-center pt-0 px-4 my-0 recieved-offer-heading pb-0 md:pb-4">
+                <div key={msgId} className="text-center pt-0 px-4 my-0 recieved-offer-heading pb-0">
                   <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
                     {finalTitle}
                   </h3>
