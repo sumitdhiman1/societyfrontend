@@ -206,6 +206,11 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
   const { currency, setCurrency, conversionRate } = useCurrency();
   const quoteSourceCurrency = (quoteDetails?.currency || "USD").toLowerCase();
   const formatCurrency = (amt: number) => formatPriceWithCurrency(amt, currency || "USD", quoteSourceCurrency, conversionRate);
+  const isMonthly = Boolean(
+    quoteDetails?.billingType === "monthly" ||
+    quoteDetails?.isMonthly === true ||
+    quoteDetails?.requirements?.billingType === "monthly"
+  );
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentStep, setPaymentStep] = useState<PaymentProcessStep>("idle");
@@ -385,7 +390,10 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
                 </button>
               </div>
             </div>
-            <div className="text-2xl font-bold text-gray-600">{formatCurrency(totalCost)}</div>
+            <div className="text-2xl font-bold text-gray-600">
+              {formatCurrency(totalCost)}
+              {isMonthly && <span className="text-sm font-normal text-gray-400 ml-1">/ month</span>}
+            </div>
           </div>
           
           {((quoteDetails.lineItems && quoteDetails.lineItems.length > 0) || (quoteDetails.deliverableItems && quoteDetails.deliverableItems.length > 0)) && (
@@ -406,7 +414,9 @@ function QuotePaymentForm({ quoteDetails, totalCost, depositAmount }: any) {
                         <div className="text-gray-400 text-xs">{item.details}</div>
                       </td>
                       <td className="py-4 px-6 text-sm text-gray-500">{item.duration}</td>
-                      <td className="py-4 px-6 text-sm text-gray-600 font-medium text-right">{formatCurrency(item.amount || item.cost)}</td>
+                      <td className="py-4 px-6 text-sm text-gray-600 font-medium text-right">
+                        {formatCurrency(item.amount || item.cost)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

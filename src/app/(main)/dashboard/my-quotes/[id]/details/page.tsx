@@ -490,14 +490,14 @@ export default function QuoteDetailsPage() {
 
   const latestProposalFromQuote = Array.isArray(quote?.messages)
     ? [...quote.messages].reverse().find((m: any) =>
-        m?.type === "quote_proposal" ||
-        m?.type === "proposal" ||
-        m?.type === "offer" ||
-        m?.content?.type === "quote_proposal" ||
-        m?.content?.type === "proposal" ||
-        m?.content?.type === "offer" ||
-        Boolean(m?.content?.lineItems?.length || m?.content?.deliverableItems?.length)
-      )
+      m?.type === "quote_proposal" ||
+      m?.type === "proposal" ||
+      m?.type === "offer" ||
+      m?.content?.type === "quote_proposal" ||
+      m?.content?.type === "proposal" ||
+      m?.content?.type === "offer" ||
+      Boolean(m?.content?.lineItems?.length || m?.content?.deliverableItems?.length)
+    )
     : null;
 
   const effectiveQuoteSourceCurrency = (
@@ -982,15 +982,15 @@ export default function QuoteDetailsPage() {
             ? quote.deliverableItems
             : (quote.requirements?.breakdown && quote.requirements.breakdown.length > 0)
               ? quote.requirements.breakdown.map((it: any) => ({
-                  description: it.item || it.description || "Deliverable",
-                  duration: it.duration || "-",
-                  amount: Number(it.amount ?? it.cost ?? 0) || 0,
-                }))
+                description: it.item || it.description || "Deliverable",
+                duration: it.duration || "-",
+                amount: Number(it.amount ?? it.cost ?? 0) || 0,
+              }))
               : [{
-                  description: quote.projectTitle || "Custom Project Deliverable",
-                  duration: quote.totalDuration || "30 Days",
-                  amount: Number(quote.subtotal || quote.totalCost || 0),
-                }],
+                description: quote.projectTitle || "Custom Project Deliverable",
+                duration: quote.totalDuration || "30 Days",
+                amount: Number(quote.subtotal || quote.totalCost || 0),
+              }],
         totalCost: quote.totalCost,
         subtotal: quote.subtotal,
         subtotalCost: quote.subtotal,
@@ -1074,11 +1074,11 @@ export default function QuoteDetailsPage() {
       ? itemsFromMessage
       : (quote.totalCost || quote.subtotal)
         ? [{
-            description: quote.projectTitle || "Custom Project Deliverable",
-            details: quote.projectDescription || quote.requirements?.projectDescription || "",
-            duration: quote.totalDuration || "30 Days",
-            amount: Number(quote.subtotal || quote.totalCost || 0),
-          }]
+          description: quote.projectTitle || "Custom Project Deliverable",
+          details: quote.projectDescription || quote.requirements?.projectDescription || "",
+          duration: quote.totalDuration || "30 Days",
+          amount: Number(quote.subtotal || quote.totalCost || 0),
+        }]
         : [];
 
   const countryStr = String(
@@ -1131,6 +1131,17 @@ export default function QuoteDetailsPage() {
     ? (rawQuoteTotalCost >= quoteSubtotal + quoteVatAmount - 0.05 ? rawQuoteTotalCost : Math.round((quoteSubtotal + quoteVatAmount) * 100) / 100)
     : (rawQuoteTotalCost > 0 ? rawQuoteTotalCost : quoteSubtotal);
 
+  const isMonthlyQuote = Boolean(
+    quote?.billingType === "monthly" ||
+    quote?.isMonthly === true ||
+    quote?.requirements?.billingType === "monthly" ||
+    proposalFromMessages?.content?.billingType === "monthly" ||
+    proposalFromMessages?.content?.isMonthly === true ||
+    String(proposalFromMessages?.content?.paymentType || "").toLowerCase().includes("month") ||
+    (proposalFromMessages as any)?.billingType === "monthly" ||
+    (proposalFromMessages as any)?.isMonthly === true
+  );
+
   const formatDisplayDate = (dateString?: string | Date) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
@@ -1173,13 +1184,13 @@ export default function QuoteDetailsPage() {
     proposalFromMessages?.content?.totalDuration ||
     (quoteDeliverableItems.length > 0
       ? `${quoteDeliverableItems.reduce((sum: number, it: any) => {
-          const dur = String(it.duration || "").toLowerCase();
-          const match = dur.match(/(\d+(\.\d+)?)/);
-          const val = match ? parseFloat(match[0]) : 0;
-          if (dur.includes("week")) return sum + val * 7;
-          if (dur.includes("month")) return sum + val * 30;
-          return sum + val;
-        }, 0) || 30} Days`
+        const dur = String(it.duration || "").toLowerCase();
+        const match = dur.match(/(\d+(\.\d+)?)/);
+        const val = match ? parseFloat(match[0]) : 0;
+        if (dur.includes("week")) return sum + val * 7;
+        if (dur.includes("month")) return sum + val * 30;
+        return sum + val;
+      }, 0) || 30} Days`
       : "30 Days");
 
   const getQuotePayloadForPdf = () => {
@@ -1351,6 +1362,7 @@ export default function QuoteDetailsPage() {
                           <span className="text-gray-500 font-medium">Total: </span>
                           <span className="font-bold text-[#4343F0] text-sm sm:text-base">
                             {formatCurrency(quoteResolvedTotalCost)}
+                            {isMonthlyQuote && <span className="text-xs font-normal text-gray-500 ml-1">/ month</span>}
                           </span>
                         </div>
                       )}
@@ -1450,7 +1462,9 @@ export default function QuoteDetailsPage() {
                               <tr>
                                 <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-700 font-semibold">{quote.projectTitle || "Project Deliverable"}</td>
                                 <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 text-center">{formatDuration(quoteTotalDuration)}</td>
-                                <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold">{formatCurrency(quoteSubtotal)}</td>
+                                <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold">
+                                  {formatCurrency(quoteSubtotal)}
+                                </td>
                               </tr>
                             )}
                           </tbody>
@@ -1468,22 +1482,32 @@ export default function QuoteDetailsPage() {
                             <>
                               <div className="flex justify-between w-full gap-6">
                                 <span className="text-gray-500 font-medium">Subtotal:</span>
-                                <span className="font-bold text-gray-700">{formatCurrency(quoteSubtotal)}</span>
+                                <span className="font-bold text-gray-700">
+                                  {formatCurrency(quoteSubtotal)}
+                                </span>
                               </div>
                               <div className="flex justify-between w-full gap-6">
                                 <span className="text-gray-500 font-medium">VAT ({quoteVatRate}%):</span>
-                                <span className="font-bold text-gray-700">{formatCurrency(quoteVatAmount)}</span>
+                                <span className="font-bold text-gray-700">
+                                  {formatCurrency(quoteVatAmount)}
+                                </span>
                               </div>
                               <div className="border-t border-gray-200 w-full my-1" />
                               <div className="flex justify-between w-full gap-6">
                                 <span className="text-gray-800 font-bold">Total (incl. VAT):</span>
-                                <span className="font-extrabold text-gray-900 text-sm sm:text-base">{formatCurrency(quoteResolvedTotalCost)}</span>
+                                <span className="font-extrabold text-gray-900 text-sm sm:text-base">
+                                  {formatCurrency(quoteResolvedTotalCost)}
+                                  {isMonthlyQuote && <span className="text-xs font-semibold text-gray-500 ml-1">/ month</span>}
+                                </span>
                               </div>
                             </>
                           ) : (
                             <div className="flex justify-between w-full gap-6">
                               <span className="text-gray-800 font-bold">Total Cost:</span>
-                              <span className="font-extrabold text-gray-900 text-sm sm:text-base">{formatCurrency(quoteResolvedTotalCost)}</span>
+                              <span className="font-extrabold text-gray-900 text-sm sm:text-base">
+                                {formatCurrency(quoteResolvedTotalCost)}
+                                {isMonthlyQuote && <span className="text-xs font-semibold text-gray-500 ml-1">/ month</span>}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -1660,10 +1684,10 @@ export default function QuoteDetailsPage() {
                                 ? quote.deliverableItems
                                 : quote.requirements?.breakdown && quote.requirements.breakdown.length > 0
                                   ? quote.requirements.breakdown.map((item: any) => ({
-                                      description: item.item || item.description || "Deliverable",
-                                      duration: item.duration || "-",
-                                      amount: Number(item.amount ?? item.cost ?? 0) || 0,
-                                    }))
+                                    description: item.item || item.description || "Deliverable",
+                                    duration: item.duration || "-",
+                                    amount: Number(item.amount ?? item.cost ?? 0) || 0,
+                                  }))
                                   : [];
                   const senderName = msg.username || msg.senderName || managerName;
                   const proposalDesc = content.projectDescription || content.text || msg.message || quote.projectDescription || "";
@@ -1722,6 +1746,16 @@ export default function QuoteDetailsPage() {
                   const totalCost = vatRate > 0 && vatAmount > 0
                     ? (rawTotalCost >= subtotal + vatAmount - 0.05 ? rawTotalCost : Math.round((subtotal + vatAmount) * 100) / 100)
                     : (rawTotalCost > 0 ? rawTotalCost : subtotal);
+
+                  const isProposalMonthly = Boolean(
+                    content.billingType === "monthly" ||
+                    content.isMonthly === true ||
+                    String(content.paymentType || "").toLowerCase().includes("month") ||
+                    (msg as any).billingType === "monthly" ||
+                    (msg as any).isMonthly === true ||
+                    quote.billingType === "monthly" ||
+                    quote.requirements?.billingType === "monthly"
+                  );
 
                   const proposalFiles = (content.attachedFiles && content.attachedFiles.length > 0)
                     ? content.attachedFiles
@@ -1986,22 +2020,32 @@ export default function QuoteDetailsPage() {
                                   <>
                                     <div className="flex justify-between w-full gap-8">
                                       <span className="text-gray-500 font-medium">Subtotal:</span>
-                                      <span className="font-bold text-gray-700">{formatCurrency(subtotal, proposalCurrency)}</span>
+                                      <span className="font-bold text-gray-700">
+                                        {formatCurrency(subtotal, proposalCurrency)}
+                                      </span>
                                     </div>
                                     <div className="flex justify-between w-full gap-8">
                                       <span className="text-gray-500 font-medium">VAT ({vatRate}%):</span>
-                                      <span className="font-bold text-gray-700">{formatCurrency(vatAmount, proposalCurrency)}</span>
+                                      <span className="font-bold text-gray-700">
+                                        {formatCurrency(vatAmount, proposalCurrency)}
+                                      </span>
                                     </div>
                                     <div className="border-t border-gray-200 w-full my-1" />
                                     <div className="flex justify-between w-full gap-8">
                                       <span className="text-gray-800 font-bold text-sm">Total (incl. VAT):</span>
-                                      <span className="font-extrabold text-gray-900 text-sm sm:text-base">{formatCurrency(totalCost, proposalCurrency)}</span>
+                                      <span className="font-extrabold text-gray-900 text-sm sm:text-base">
+                                        {formatCurrency(totalCost, proposalCurrency)}
+                                        {isProposalMonthly && <span className="text-xs font-semibold text-gray-500 ml-1">/ month</span>}
+                                      </span>
                                     </div>
                                   </>
                                 ) : (
                                   <div className="flex justify-between w-full gap-8">
                                     <span className="text-gray-800 font-bold text-sm">Total Cost:</span>
-                                    <span className="font-extrabold text-gray-900 text-sm sm:text-base">{formatCurrency(totalCost, proposalCurrency)}</span>
+                                    <span className="font-extrabold text-gray-900 text-sm sm:text-base">
+                                      {formatCurrency(totalCost, proposalCurrency)}
+                                      {isProposalMonthly && <span className="text-xs font-semibold text-gray-500 ml-1">/ month</span>}
+                                    </span>
                                   </div>
                                 )}
                               </div>
@@ -2105,13 +2149,12 @@ export default function QuoteDetailsPage() {
                                             type="button"
                                             onClick={handleActionSubmit}
                                             disabled={isActionLoading || (actionModal.required && !actionComment.trim())}
-                                            className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-md text-sm font-bold transition-all shadow-sm cursor-pointer ${
-                                              isActionLoading
-                                                ? "bg-gray-400 cursor-not-allowed"
-                                                : actionModal.action === "decline"
-                                                  ? "bg-[#C62828] hover:bg-[#B71C1C]"
-                                                  : "bg-[#3B4BEF] hover:bg-[#2F3EC4]"
-                                            }`}
+                                            className={`flex-1 sm:flex-none px-6 py-2.5 text-white rounded-md text-sm font-bold transition-all shadow-sm cursor-pointer ${isActionLoading
+                                              ? "bg-gray-400 cursor-not-allowed"
+                                              : actionModal.action === "decline"
+                                                ? "bg-[#C62828] hover:bg-[#B71C1C]"
+                                                : "bg-[#3B4BEF] hover:bg-[#2F3EC4]"
+                                              }`}
                                           >
                                             {isActionLoading ? "Processing..." : actionModal.action === "decline" ? "Decline Offer" : "Send Request"}
                                           </button>
@@ -2134,15 +2177,15 @@ export default function QuoteDetailsPage() {
                           (text.includes("quote declined") || text.includes("declined") || text.includes("denied"))
                         );
                       }) && (
-                        <div className="text-center pt-8 pb-2 px-4 my-0 w-full">
-                          <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
-                            Quote Declined
-                          </h2>
-                          <p className="text-xs sm:text-sm font-normal text-gray-500 max-w-lg mx-auto leading-relaxed">
-                            The offered quote has been declined.
-                          </p>
-                        </div>
-                      )}
+                          <div className="text-center pt-8 pb-2 px-4 my-0 w-full">
+                            <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
+                              Quote Declined
+                            </h2>
+                            <p className="text-xs sm:text-sm font-normal text-gray-500 max-w-lg mx-auto leading-relaxed">
+                              The offered quote has been declined.
+                            </p>
+                          </div>
+                        )}
 
                       {/* Fallback Project Created section only if no accept message exists in the feed */}
                       {isAccepted && !allMessages.some((m: any) => {
@@ -2152,32 +2195,32 @@ export default function QuoteDetailsPage() {
                           (text.includes("project created") || text.includes("accepted") || text.includes("active project"))
                         );
                       }) && (
-                        <div className="text-center pt-8 pb-2 px-4 my-0 w-full">
-                          <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
-                            Project Created
-                          </h2>
-                          <p className="text-xs sm:text-sm font-normal text-gray-500 mb-5 max-w-lg mx-auto leading-relaxed">
-                            Great news! Your quote has been converted into an active project.
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => goToCreatedProject(msg, content)}
-                            disabled={isOpeningProject}
-                            className="inline-flex items-center justify-center gap-1.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold py-2.5 px-6 rounded-[6px] shadow-sm transition-all active:scale-95 cursor-pointer mx-auto disabled:opacity-60 disabled:cursor-not-allowed"
-                          >
-                            {isOpeningProject ? (
-                              <LoadingDots text="Opening" />
-                            ) : (
-                              <>
-                                View Project
-                                <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
-                                </svg>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      )}
+                          <div className="text-center pt-8 pb-2 px-4 my-0 w-full">
+                            <h2 className="text-2xl sm:text-[28px] md:text-3xl font-extrabold text-[#111827] mb-2 tracking-tight">
+                              Project Created
+                            </h2>
+                            <p className="text-xs sm:text-sm font-normal text-gray-500 mb-5 max-w-lg mx-auto leading-relaxed">
+                              Great news! Your quote has been converted into an active project.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => goToCreatedProject(msg, content)}
+                              disabled={isOpeningProject}
+                              className="inline-flex items-center justify-center gap-1.5 bg-[#4343F0] hover:bg-[#3232b7] text-white text-xs sm:text-sm font-bold py-2.5 px-6 rounded-[6px] shadow-sm transition-all active:scale-95 cursor-pointer mx-auto disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                              {isOpeningProject ? (
+                                <LoadingDots text="Opening" />
+                              ) : (
+                                <>
+                                  View Project
+                                  <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                                  </svg>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
                     </div>
                   );
                 }
@@ -2479,14 +2522,13 @@ export default function QuoteDetailsPage() {
                       (!messageText.trim() && attachments.length === 0) ||
                       attachments.some((a) => a.status === "uploading"))
                   }
-                  className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg text-xs font-bold transition-all shadow-sm whitespace-nowrap ${
-                    isLoggedIn &&
+                  className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg text-xs font-bold transition-all shadow-sm whitespace-nowrap ${isLoggedIn &&
                     (isSending ||
                       (!messageText.trim() && attachments.length === 0) ||
                       attachments.some((a) => a.status === "uploading"))
-                      ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
-                      : "bg-[#4343F0] hover:bg-[#3232b7] text-white cursor-pointer active:scale-95"
-                  }`}
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
+                    : "bg-[#4343F0] hover:bg-[#3232b7] text-white cursor-pointer active:scale-95"
+                    }`}
                 >
                   {isSending ? <LoadingDots text="Sending" /> : "Send Message"}
                 </button>
