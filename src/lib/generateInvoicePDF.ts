@@ -92,6 +92,7 @@ export interface InvoicePDFData {
   currency: string;
   paymentMethod?: string;
   isMarketing?: boolean;
+  isMonthly?: boolean;
 }
 
 function formatCurrency(amount: number, currency: string = "USD"): string {
@@ -213,6 +214,38 @@ export function extractInvoicePDFData(data: any): InvoicePDFData {
     /market|campaign/i.test(project.categoryName || "") ||
     /market|campaign/i.test(specs.categoryName || "");
 
+  const linkedQuote =
+    typeof project.quoteId === "object"
+      ? project.quoteId
+      : typeof project.quote === "object"
+      ? project.quote
+      : typeof quote === "object"
+      ? quote
+      : null;
+
+  const isMonthlyQuote = Boolean(
+    (
+      data.billingType === "monthly" ||
+      data.isMonthly === true ||
+      project.billingType === "monthly" ||
+      project.isMonthly === true ||
+      linkedQuote?.billingType === "monthly" ||
+      linkedQuote?.isMonthly === true ||
+      data.requirements?.billingType === "monthly" ||
+      project.requirements?.billingType === "monthly" ||
+      linkedQuote?.requirements?.billingType === "monthly" ||
+      specs.billingType === "monthly" ||
+      String(data.paymentType || project.paymentType || "").toLowerCase().includes("month") ||
+      String(linkedQuote?.paymentType || "").toLowerCase().includes("month") ||
+      String(linkedQuote?.totalDuration || project.totalDuration || data.totalDuration || "").toLowerCase().includes("monthly") ||
+      String(linkedQuote?.timeline || project.timeline || data.timeline || "").toLowerCase().includes("monthly") ||
+      String(data.duration || project.duration || "").toLowerCase().includes("monthly")
+    ) &&
+      data.billingType !== "onetime" &&
+      project.billingType !== "onetime" &&
+      linkedQuote?.billingType !== "onetime"
+  );
+
   // Title
   const title =
     data.title ||
@@ -226,12 +259,14 @@ export function extractInvoicePDFData(data: any): InvoicePDFData {
     "Custom web solutions and development deliverables based on calculator selections.";
 
   const duration =
-    data.duration ||
-    data.timeline ||
-    specs.estimatedTimeline ||
-    (project.timelineInDays ? `${project.timelineInDays} Days` : "") ||
-    project.timeline ||
-    "30 Days";
+    isMonthlyQuote
+      ? "Monthly Service"
+      : data.duration ||
+        data.timeline ||
+        specs.estimatedTimeline ||
+        (project.timelineInDays ? `${project.timelineInDays} Days` : "") ||
+        project.timeline ||
+        "30 Days";
 
   // Currency
   const currency = (data.currency || project.currency || quote.currency || "USD").toUpperCase();
@@ -242,14 +277,14 @@ export function extractInvoicePDFData(data: any): InvoicePDFData {
     deliverableItems = data.deliverableItems.map((item: any) => ({
       description: item.description || item.title || item.name || "Deliverable",
       details: item.details || "",
-      duration: item.duration ? String(item.duration) : undefined,
+      duration: isMonthlyQuote ? "Monthly Service" : (item.duration ? String(item.duration) : undefined),
       amount: Number(item.amount ?? 0),
     }));
   } else if (Array.isArray(project.deliverableItems) && project.deliverableItems.length > 0) {
     deliverableItems = project.deliverableItems.map((item: any) => ({
       description: item.description || item.title || item.name || "Deliverable",
       details: item.details || "",
-      duration: item.duration ? String(item.duration) : undefined,
+      duration: isMonthlyQuote ? "Monthly Service" : (item.duration ? String(item.duration) : undefined),
       amount: Number(item.amount ?? 0),
     }));
   } else {
@@ -350,6 +385,7 @@ export function extractInvoicePDFData(data: any): InvoicePDFData {
     currency,
     paymentMethod: data.paymentMethod || "Credit / Debit Card",
     isMarketing,
+    isMonthly: isMarketing || isMonthlyQuote,
   };
 }
 
@@ -423,7 +459,7 @@ export function getInvoiceHTML(d: InvoicePDFData): string {
               ${d.projectNumber}
             </div>
             <div style="font-size: 12px; color: #64748B; line-height: 1.4; margin-bottom: 3px;">
-              Timeline: <span style="font-weight: 600; color: #334155;">${d.duration || "As specified"}</span>
+              Timeline: <span style="font-weight: ${d.isMonthly ? '700' : '600'}; color: ${d.isMonthly ? '#0F172A' : '#334155'};">${d.duration || "As specified"}</span>
             </div>
             ${d.paymentMethod ? `<div style="font-size: 12px; color: #64748B; line-height: 1.4;">Method: <span style="font-weight: 600; color: #334155;">${d.paymentMethod}</span></div>` : ""}
           </div>
@@ -448,11 +484,11 @@ export function getInvoiceHTML(d: InvoicePDFData): string {
                     <div style="font-weight: 700; color: #0F172A; font-size: 12.5px;">${item.description}</div>
                     ${item.details ? `<div style="color: #64748B; font-size: 10.5px; margin-top: 2px;">${item.details}</div>` : ""}
                   </td>
-                  <td style="padding: 12px 16px; text-align: center; color: #475569; font-weight: 500; font-size: 11.5px; vertical-align: top;">
+                  <td style="padding: 12px 16px; text-align: center; color: ${d.isMonthly ? '#0F172A' : '#475569'}; font-weight: ${d.isMonthly ? '700' : '500'}; font-size: 11.5px; vertical-align: top; white-space: nowrap;">
                     ${item.duration || d.duration || "—"}
                   </td>
-                  <td style="padding: 12px 16px; text-align: right; font-weight: 700; color: #0F172A; font-size: 12.5px; vertical-align: top;">
-                    ${formatCurrency(item.amount, d.currency)}
+                  <td style="padding: 12px 16px; text-align: right; font-weight: 700; color: #0F172A; font-size: 12.5px; vertical-align: top; white-space: nowrap;">
+                    ${formatCurrency(item.amount, d.currency)}${d.isMonthly ? " / month" : ""}
                   </td>
                 </tr>
               `
@@ -467,14 +503,14 @@ export function getInvoiceHTML(d: InvoicePDFData): string {
           <div style="width: 320px; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 16px 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 8px;">
               <span style="color: #64748B; font-weight: 600;">Subtotal:</span>
-              <span style="color: #0F172A; font-weight: 700;">${formatCurrency(d.subtotal, d.currency)}</span>
+              <span style="color: #0F172A; font-weight: 700;">${formatCurrency(d.subtotal, d.currency)}${d.isMonthly ? " / month" : ""}</span>
             </div>
             ${
               d.vatRate > 0 && d.vatAmount > 0
                 ? `
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 10px;">
               <span style="color: #64748B; font-weight: 600;">VAT / Tax (${vatPercentageLabel}):</span>
-              <span style="color: #0F172A; font-weight: 700;">${formatCurrency(d.vatAmount, d.currency)}</span>
+              <span style="color: #0F172A; font-weight: 700;">${formatCurrency(d.vatAmount, d.currency)}${d.isMonthly ? " / month" : ""}</span>
             </div>
             `
                 : ""
@@ -483,7 +519,7 @@ export function getInvoiceHTML(d: InvoicePDFData): string {
             
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 800; color: #0F172A;">
               <span>Total Cost:</span>
-              <span style="font-size: 16px; color: #202794;">${formatCurrency(d.totalAmount, d.currency)}${d.isMarketing ? " /month" : ""}</span>
+              <span style="font-size: 16px; color: #202794;">${formatCurrency(d.totalAmount, d.currency)}${d.isMonthly ? " / month" : ""}</span>
             </div>
           </div>
         </div>

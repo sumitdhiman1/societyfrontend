@@ -544,8 +544,9 @@ export default function CustomQuotePage() {
               Project description <span className="text-red-500">*</span>
             </label>
             <textarea
+              placeholder="Describe your project, goals, features, target audience, and any special requirements..."
               className={`w-full border ${projectDescriptionError ? "border-red-500" : "border-gray-400"
-                } rounded-[4px] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 h-32 resize-none`}
+                } rounded-[4px] px-3.5 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-gray-400 min-h-[220px] md:min-h-[260px] resize-y`}
               value={projectDescription}
               onChange={(e) => {
                 setProjectDescription(e.target.value);

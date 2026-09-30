@@ -582,6 +582,7 @@ export default function QuoteDetailsPage() {
     if (!val) return "-";
     const str = String(val).trim();
     if (
+      str.toLowerCase().includes("service") ||
       str.toLowerCase().includes("day") ||
       str.toLowerCase().includes("week") ||
       str.toLowerCase().includes("month") ||
@@ -1450,20 +1451,24 @@ export default function QuoteDetailsPage() {
                                     <div className="font-semibold text-gray-800">{item.description || item.name || item.title || "Deliverable"}</div>
                                     {item.details && <div className="text-[11px] text-gray-400 mt-0.5">{item.details}</div>}
                                   </td>
-                                  <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 text-center align-top whitespace-nowrap">
-                                    {formatDuration(item.duration)}
+                                  <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-900 text-center font-bold align-top whitespace-nowrap">
+                                    {isMonthlyQuote ? "Monthly Service" : formatDuration(item.duration)}
                                   </td>
-                                  <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold align-top">
-                                    {formatCurrency(item.amount ?? item.cost ?? 0)}
+                                  <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold align-top whitespace-nowrap">
+                                    <span>{formatCurrency(item.amount ?? item.cost ?? 0)}</span>
+                                    {isMonthlyQuote && <span className="text-xs font-normal text-gray-500 ml-1">/ month</span>}
                                   </td>
                                 </tr>
                               ))
                             ) : (
                               <tr>
                                 <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-700 font-semibold">{quote.projectTitle || "Project Deliverable"}</td>
-                                <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-600 text-center">{formatDuration(quoteTotalDuration)}</td>
-                                <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold">
-                                  {formatCurrency(quoteSubtotal)}
+                                <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-900 font-bold text-center">
+                                  {isMonthlyQuote ? "Monthly Service" : formatDuration(quoteTotalDuration)}
+                                </td>
+                                <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-800 text-right font-bold whitespace-nowrap">
+                                  <span>{formatCurrency(quoteSubtotal)}</span>
+                                  {isMonthlyQuote && <span className="text-xs font-normal text-gray-500 ml-1">/ month</span>}
                                 </td>
                               </tr>
                             )}
@@ -1474,8 +1479,12 @@ export default function QuoteDetailsPage() {
                       {/* Totals & Duration Breakdown */}
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 text-xs sm:text-sm mb-6 pt-2">
                         <div>
-                          <span className="text-gray-500 font-bold block mb-1">Total Duration</span>
-                          <span className="font-semibold text-gray-800">{formatDuration(quoteTotalDuration)}</span>
+                          <span className="text-gray-500 font-bold block mb-1">
+                            Duration
+                          </span>
+                          <span className="font-bold text-gray-900">
+                            {isMonthlyQuote ? "Monthly Service" : formatDuration(quoteTotalDuration)}
+                          </span>
                         </div>
                         <div className="flex flex-col items-end gap-1.5 w-full sm:w-auto min-w-[220px]">
                           {quoteVatRate > 0 && quoteVatAmount > 0 ? (
@@ -1692,18 +1701,30 @@ export default function QuoteDetailsPage() {
                   const senderName = msg.username || msg.senderName || managerName;
                   const proposalDesc = content.projectDescription || content.text || msg.message || quote.projectDescription || "";
                   const proposalCurrency = (content.currency || effectiveQuoteSourceCurrency || currency || "USD").toUpperCase();
-                  const calculatedDurationDays = propItems.reduce((sum: number, it: any) => {
+                  const isProposalMonthly = Boolean(
+                    content.billingType === "monthly" ||
+                    (content.billingType !== "onetime" && (
+                      content.isMonthly === true ||
+                      String(content.paymentType || "").toLowerCase().includes("month") ||
+                      (msg as any).billingType === "monthly" ||
+                      (msg as any).isMonthly === true ||
+                      String(content.totalDuration || "").toLowerCase().includes("monthly") ||
+                      (content.isSynthetic && (quote.billingType === "monthly" || quote.requirements?.billingType === "monthly"))
+                    ))
+                  );
+                  const calculatedDurationDays = !isProposalMonthly ? propItems.reduce((sum: number, it: any) => {
                     const dur = String(it.duration || "").toLowerCase();
                     const match = dur.match(/(\d+(\.\d+)?)/);
                     const val = match ? parseFloat(match[0]) : 0;
                     if (dur.includes("week")) return sum + val * 7;
                     if (dur.includes("month")) return sum + val * 30;
                     return sum + val;
-                  }, 0);
-                  const totalDuration =
-                    calculatedDurationDays > 0
+                  }, 0) : 0;
+                  const totalDuration = isProposalMonthly
+                    ? "Monthly Service"
+                    : (calculatedDurationDays > 0
                       ? `${calculatedDurationDays} Day${calculatedDurationDays > 1 ? "s" : ""}`
-                      : content.totalDuration || quote.totalDuration || "-";
+                      : content.totalDuration || "-");
                   const calculatedItemsSum = propItems.reduce((sum: number, it: any) => sum + (Number(it.amount ?? it.cost) || 0), 0);
                   const rawTotalCost = Number(
                     content.totalCost ??
@@ -1746,16 +1767,6 @@ export default function QuoteDetailsPage() {
                   const totalCost = vatRate > 0 && vatAmount > 0
                     ? (rawTotalCost >= subtotal + vatAmount - 0.05 ? rawTotalCost : Math.round((subtotal + vatAmount) * 100) / 100)
                     : (rawTotalCost > 0 ? rawTotalCost : subtotal);
-
-                  const isProposalMonthly = Boolean(
-                    content.billingType === "monthly" ||
-                    content.isMonthly === true ||
-                    String(content.paymentType || "").toLowerCase().includes("month") ||
-                    (msg as any).billingType === "monthly" ||
-                    (msg as any).isMonthly === true ||
-                    quote.billingType === "monthly" ||
-                    quote.requirements?.billingType === "monthly"
-                  );
 
                   const proposalFiles = (content.attachedFiles && content.attachedFiles.length > 0)
                     ? content.attachedFiles
@@ -1948,11 +1959,12 @@ export default function QuoteDetailsPage() {
                                             </div>
                                           )}
                                         </td>
-                                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
-                                          {formatDuration(item.duration)}
+                                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-900 font-bold text-center align-top whitespace-nowrap">
+                                          {isProposalMonthly ? "Monthly Service" : formatDuration(item.duration)}
                                         </td>
-                                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top">
-                                          {formatCurrency(item.amount ?? item.cost ?? 0, proposalCurrency)}
+                                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top whitespace-nowrap">
+                                          <span>{formatCurrency(item.amount ?? item.cost ?? 0, proposalCurrency)}</span>
+                                          {isProposalMonthly && <span className="text-xs font-normal text-gray-500 ml-1">/ month</span>}
                                         </td>
                                       </tr>
                                     ))}
@@ -2006,7 +2018,14 @@ export default function QuoteDetailsPage() {
 
                             {/* Total Duration, Cost & VAT Breakdown */}
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 text-xs sm:text-sm mb-6 pt-2">
-                              {totalDuration && totalDuration !== "-" ? (
+                              {isProposalMonthly ? (
+                                <div className="text-left">
+                                  <div className="text-gray-500 font-bold mb-1 sm:mb-2 flex items-center gap-1">
+                                    Duration
+                                  </div>
+                                  <div className="font-bold text-gray-900">Monthly Service</div>
+                                </div>
+                              ) : totalDuration && totalDuration !== "-" ? (
                                 <div className="text-left">
                                   <div className="text-gray-500 font-bold mb-1 sm:mb-2 flex items-center gap-1">
                                     Total Duration

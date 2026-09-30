@@ -781,6 +781,31 @@ export default function ProjectDetailsPage() {
   );
 
   const linkedQuote = fetchedQuote || (typeof project?.quoteId === "object" && project?.quoteId ? project.quoteId : null) || project?.quote || {};
+
+  const isProjectFromQuote = Boolean(
+    project?.quoteId ||
+    project?.quote ||
+    project?.quoteNumber ||
+    (typeof project?.quoteId === "object" && project?.quoteId?._id) ||
+    fetchedQuote?._id ||
+    project?.type === "quote" ||
+    project?.source === "quote"
+  );
+
+  const isMonthlyQuoteProject = Boolean(
+    isProjectFromQuote &&
+    (
+      project?.billingType === "monthly" ||
+      project?.isMonthly === true ||
+      linkedQuote?.billingType === "monthly" ||
+      linkedQuote?.isMonthly === true ||
+      String(project?.paymentType || "").toLowerCase().includes("month") ||
+      String(linkedQuote?.paymentType || "").toLowerCase().includes("month") ||
+      String(linkedQuote?.totalDuration || project?.totalDuration || "").toLowerCase().includes("monthly")
+    ) &&
+    project?.billingType !== "onetime" &&
+    linkedQuote?.billingType !== "onetime"
+  );
   const isEstoniaClient = (c?: string) => {
     if (!c) return false;
     const upper = c.trim().toUpperCase();
@@ -909,7 +934,11 @@ export default function ProjectDetailsPage() {
         return {
           description: item.description || item.title || item.name || "Deliverable",
           details: item.details || "",
-          duration: item.duration ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") || String(item.duration).toLowerCase().includes("week") || String(item.duration).toLowerCase().includes("month") ? "" : "Days")}`.trim() : "30 Days",
+          duration: isMonthlyQuoteProject
+            ? "Monthly Service"
+            : item.duration
+              ? `${item.duration} ${item.unit || (String(item.duration).toLowerCase().includes("day") || String(item.duration).toLowerCase().includes("week") || String(item.duration).toLowerCase().includes("month") ? "" : "Days")}`.trim()
+              : (project.totalDuration || linkedQuote?.totalDuration || (project.timelineInDays ? `${project.timelineInDays} Days` : "30 Days")),
           amount: itemAmount,
           isAddOn: false,
         };
@@ -918,11 +947,49 @@ export default function ProjectDetailsPage() {
       ? [{
         description: project.title,
         details: (project.description && project.description.trim().toLowerCase() !== project.title.trim().toLowerCase()) ? project.description : "",
-        duration: project.timelineInDays ? `${project.timelineInDays} Days` : (project.totalDuration || project.duration || project.timeline || "30 Days"),
+        duration: isMonthlyQuoteProject
+          ? "Monthly Service"
+          : (project.timelineInDays ? `${project.timelineInDays} Days` : (project.totalDuration || project.duration || linkedQuote?.totalDuration || project.timeline || "30 Days")),
         amount: rawQuoteSubtotal,
         isAddOn: false,
       }]
       : [];
+
+  const formatProjectDuration = (val: any) => {
+    if (!val) return "-";
+    const str = String(val).trim();
+    if (
+      str.toLowerCase().includes("service") ||
+      str.toLowerCase().includes("day") ||
+      str.toLowerCase().includes("week") ||
+      str.toLowerCase().includes("month") ||
+      str.toLowerCase().includes("hr") ||
+      str.toLowerCase().includes("hour")
+    ) {
+      return str;
+    }
+    return `${str} Days`;
+  };
+
+  const projectTotalDuration = isMonthlyQuoteProject
+    ? "Monthly Service"
+    : formatProjectDuration(
+        project?.totalDuration ||
+        linkedQuote?.totalDuration ||
+        project?.duration ||
+        linkedQuote?.duration ||
+        (project?.timelineInDays ? `${project.timelineInDays} Days` : "") ||
+        (regularItems.length > 0
+          ? `${regularItems.reduce((sum: number, it: any) => {
+              const dur = String(it.duration || "").toLowerCase();
+              const match = dur.match(/(\d+(\.\d+)?)/);
+              const val = match ? parseFloat(match[0]) : 0;
+              if (dur.includes("week")) return sum + val * 7;
+              if (dur.includes("month")) return sum + val * 30;
+              return sum + val;
+            }, 0) || 30} Days`
+          : "30 Days")
+      );
 
   const regularItemsSum = regularItems.reduce((sum: number, it: any) => sum + (Number(it.amount) || 0), 0);
   const addonsTotal = allAddonItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
@@ -1230,20 +1297,24 @@ export default function ProjectDetailsPage() {
                             <div className="font-medium text-gray-700 mb-1">{item.description || item.title || item.name}</div>
                             {item.details && <div className="text-[10px] sm:text-xs text-gray-400">{item.details}</div>}
                           </td>
-                          <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-medium text-center align-top whitespace-nowrap">
-                            {item.duration}
+                          <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-900 font-bold text-center align-top whitespace-nowrap">
+                            {isMonthlyQuoteProject ? "Monthly Service" : item.duration}
                           </td>
-                          <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-right font-bold align-top">
-                            {formatCurrency(item.amount ?? 0)}
+                          <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-800 text-right font-bold align-top whitespace-nowrap">
+                            <span>{formatCurrency(item.amount ?? 0)}</span>
+                            {isMonthlyQuoteProject && <span className="text-xs font-normal text-gray-500 ml-1">/ month</span>}
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr className={allAddonItems.length > 0 ? "border-b border-gray-400" : ""}>
                         <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 font-semibold">{project.title || "Deliverable"}</td>
-                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-600 text-center">-</td>
-                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-800 text-right font-bold">
-                          {formatCurrency(baseSubtotal)}
+                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-900 font-bold text-center">
+                          {isMonthlyQuoteProject ? "Monthly Service" : "-"}
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-xs sm:text-sm text-gray-800 text-right font-bold whitespace-nowrap">
+                          <span>{formatCurrency(baseSubtotal)}</span>
+                          {isMonthlyQuoteProject && <span className="text-xs font-normal text-gray-500 ml-1">/ month</span>}
                         </td>
                       </tr>
                     )}
@@ -1330,25 +1401,38 @@ export default function ProjectDetailsPage() {
               </div>
             )}
 
-            {/* Totals Summary */}
-            <div className={`flex flex-row justify-end gap-6 sm:gap-12 text-xs sm:text-sm ${project.calculatorSpecs ? "mb-4" : "mb-8"}`}>
-              {vatRate > 0 && effectiveVatAmount > 0 && (
-                <div className="text-center">
-                  <div className="text-gray-500 font-bold mb-1 sm:mb-2">Base Amount</div>
-                  <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(totalSubtotal)}</div>
+            {/* Totals & Duration Summary */}
+            <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 text-xs sm:text-sm ${project.calculatorSpecs ? "mb-4" : "mb-8"}`}>
+              <div>
+                <span className="text-gray-500 font-bold block mb-1">
+                  Duration
+                </span>
+                <span className="font-bold text-gray-900">
+                  {isMonthlyQuoteProject ? "Monthly Service" : projectTotalDuration}
+                </span>
+              </div>
+              <div className="flex flex-row justify-end gap-6 sm:gap-12 w-full sm:w-auto">
+                {vatRate > 0 && effectiveVatAmount > 0 && (
+                  <div className="text-right sm:text-center">
+                    <div className="text-gray-500 font-bold mb-1 sm:mb-2">Base Amount</div>
+                    <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(totalSubtotal)}</div>
+                  </div>
+                )}
+                {vatRate > 0 && effectiveVatAmount > 0 && (
+                  <div className="text-right sm:text-center">
+                    <div className="text-gray-500 font-bold mb-1 sm:mb-2">VAT ({vatRate}%)</div>
+                    <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(effectiveVatAmount)}</div>
+                  </div>
+                )}
+                <div className="text-right sm:text-center">
+                  <div className="font-bold mb-1 sm:mb-2 text-gray-800">
+                    Total Amount
+                  </div>
+                  <div className="font-bold text-gray-900">
+                    <span>{formatCurrency(totalCost)}</span>
+                    {isMonthlyQuoteProject && <span className="text-xs font-normal text-gray-500 ml-1">/ month</span>}
+                  </div>
                 </div>
-              )}
-              {vatRate > 0 && effectiveVatAmount > 0 && (
-                <div className="text-center">
-                  <div className="text-gray-500 font-bold mb-1 sm:mb-2">VAT ({vatRate}%)</div>
-                  <div className={project.calculatorSpecs ? "font-medium text-gray-600" : "font-semibold text-gray-800"}>{formatCurrency(effectiveVatAmount)}</div>
-                </div>
-              )}
-              <div className="text-center">
-                <div className="font-bold mb-1 sm:mb-2 text-gray-800">
-                  Total Amount
-                </div>
-                <div className="font-bold text-gray-900">{formatCurrency(totalCost)}</div>
               </div>
             </div>
 

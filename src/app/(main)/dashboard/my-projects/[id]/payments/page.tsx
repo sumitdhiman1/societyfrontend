@@ -219,6 +219,31 @@ export default function ProjectPaymentsPage() {
     (typeof activeProject.quoteId === "object" ? activeProject.quoteId : activeProject.quote) ||
     {};
 
+  const isProjectFromQuote = Boolean(
+    activeProject?.quoteId ||
+    activeProject?.quote ||
+    activeProject?.quoteNumber ||
+    (typeof activeProject?.quoteId === "object" && activeProject?.quoteId?._id) ||
+    fetchedQuote?._id ||
+    activeProject?.type === "quote" ||
+    activeProject?.source === "quote"
+  );
+
+  const isMonthlyQuoteProject = Boolean(
+    isProjectFromQuote &&
+    (
+      activeProject?.billingType === "monthly" ||
+      activeProject?.isMonthly === true ||
+      linkedQuote?.billingType === "monthly" ||
+      linkedQuote?.isMonthly === true ||
+      String(activeProject?.paymentType || "").toLowerCase().includes("month") ||
+      String(linkedQuote?.paymentType || "").toLowerCase().includes("month") ||
+      String(linkedQuote?.totalDuration || activeProject?.totalDuration || "").toLowerCase().includes("monthly")
+    ) &&
+    activeProject?.billingType !== "onetime" &&
+    linkedQuote?.billingType !== "onetime"
+  );
+
   const isBundle =
     String(activeProject.type || "").toLowerCase() === "bundle" ||
     Boolean(activeProject.isBundle) ||
@@ -381,7 +406,7 @@ export default function ProjectPaymentsPage() {
         return {
           description: item.description || item.title || item.name || "Deliverable",
           details: item.details || "",
-          duration: formatDurationStr(item.duration, item.unit, "30 Days"),
+          duration: isMonthlyQuoteProject ? "Monthly Service" : formatDurationStr(item.duration, item.unit, "30 Days"),
           amount: itemAmount,
           isAddOn: false,
         };
@@ -389,7 +414,7 @@ export default function ProjectPaymentsPage() {
     : activeProject.title
       ? [{
         description: activeProject.title,
-        duration: activeProject.timelineInDays ? `${activeProject.timelineInDays} Days` : "30 Days",
+        duration: isMonthlyQuoteProject ? "Monthly Service" : (activeProject.timelineInDays ? `${activeProject.timelineInDays} Days` : "30 Days"),
         amount: rawQuoteSubtotal,
         isAddOn: false,
       }]
@@ -908,19 +933,22 @@ export default function ProjectPaymentsPage() {
                 <div className="flex justify-between items-center font-semibold">
                   <span className="text-gray-900">Total Cost</span>
                   <span className="text-gray-900 font-bold">
-                    {formatCurrency(totalProjectCost)}
+                    <span>{formatCurrency(totalProjectCost)}</span>
+                    {isMonthlyQuoteProject && <span className="text-xs font-normal text-gray-500 ml-1">/ month</span>}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-green-600">
                   <span className="font-medium">Paid to Date</span>
                   <span className="font-semibold">
-                    {formatCurrency(amountPaid)}
+                    <span>{formatCurrency(amountPaid)}</span>
+                    {isMonthlyQuoteProject && <span className="text-xs font-normal text-gray-500 ml-1">/ month</span>}
                   </span>
                 </div>
                 <div className={`flex justify-between items-center pt-1 border-t border-gray-100 font-semibold ${pendingBalance > 0.009 ? "text-red-600" : "text-gray-600"}`}>
                   <span>Pending Balance</span>
                   <span className="font-bold">
-                    {formatCurrency(pendingBalance)}
+                    <span>{formatCurrency(pendingBalance)}</span>
+                    {isMonthlyQuoteProject && pendingBalance > 0.009 && <span className="text-xs font-normal text-gray-500 ml-1">/ month</span>}
                   </span>
                 </div>
               </div>
@@ -948,11 +976,12 @@ export default function ProjectPaymentsPage() {
                         <div className="font-semibold text-[#0d1939]">{item.description}</div>
                         {item.details && <div className="text-xs text-gray-400 mt-0.5">{item.details}</div>}
                       </td>
-                      <td className="py-4 px-6 text-sm text-gray-500 text-center whitespace-nowrap">
-                        {item.duration}
+                      <td className="py-4 px-6 text-sm text-gray-900 font-bold text-center whitespace-nowrap">
+                        {isMonthlyQuoteProject ? "Monthly Service" : item.duration}
                       </td>
                       <td className="py-4 px-6 text-sm font-bold text-gray-800 text-right whitespace-nowrap">
-                        {formatCurrency(item.amount)}
+                        <span>{formatCurrency(item.amount)}</span>
+                        {isMonthlyQuoteProject && <span className="text-xs font-normal text-gray-500 ml-1">/ month</span>}
                       </td>
                     </tr>
                   ))}
@@ -996,7 +1025,8 @@ export default function ProjectPaymentsPage() {
                         </td>
                         <td className="py-3 px-6 text-right">
                           <div className="text-sm font-black text-gray-900">
-                            {formatCurrency(totalPaidAmount)}
+                            <span>{formatCurrency(totalPaidAmount)}</span>
+                            {isMonthlyQuoteProject && <span className="text-xs font-normal text-gray-500 ml-1">/ month</span>}
                           </div>
                         </td>
                       </tr>
@@ -1009,7 +1039,8 @@ export default function ProjectPaymentsPage() {
                           Total Paid
                         </div>
                         <div className="text-sm font-bold text-gray-800 mt-0.5">
-                          {formatCurrency(totalPaidAmount)}
+                          <span>{formatCurrency(totalPaidAmount)}</span>
+                          {isMonthlyQuoteProject && <span className="text-xs font-normal text-gray-500 ml-1">/ month</span>}
                         </div>
                       </td>
                     </tr>

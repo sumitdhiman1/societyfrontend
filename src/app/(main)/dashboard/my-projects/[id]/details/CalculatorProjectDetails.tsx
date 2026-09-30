@@ -152,7 +152,7 @@ export default function CalculatorProjectDetails({
 
   useEffect(() => {
     setCurrentUser(authService.getUser());
-    countryService.getAllCountries().catch(() => {});
+    countryService.getAllCountries().catch(() => { });
   }, []);
 
   const activeProject = project || {};
@@ -214,10 +214,10 @@ export default function CalculatorProjectDetails({
   const vatRate = isEstoniaClient(clientCountryStr)
     ? 24
     : dbVatRate > 0
-    ? dbVatRate
-    : explicitVatRate > 0
-    ? explicitVatRate
-    : 0;
+      ? dbVatRate
+      : explicitVatRate > 0
+        ? explicitVatRate
+        : 0;
 
   const { currency: contextCurrency, conversionRate } = useCurrency();
 
@@ -245,14 +245,14 @@ export default function CalculatorProjectDetails({
   const projectPrice = Number(activeProject.price || 0) || Number(activeProject.totalPrice || 0);
   const rawTotalCost = projectPrice > 0
     ? Math.max(
-        projectPrice,
-        Number(activeProject.amountPaid || 0) + Number(activeProject.amountDue || 0)
-      )
+      projectPrice,
+      Number(activeProject.amountPaid || 0) + Number(activeProject.amountDue || 0)
+    )
     : Math.max(
-        Number(linkedQuote.totalCost || 0),
-        Number(activeProject.totalCost || 0),
-        Number(activeProject.amountPaid || 0) + Number(activeProject.amountDue || 0)
-      );
+      Number(linkedQuote.totalCost || 0),
+      Number(activeProject.totalCost || 0),
+      Number(activeProject.amountPaid || 0) + Number(activeProject.amountDue || 0)
+    );
 
   const regularItemsSum = (activeProject.deliverableItems && activeProject.deliverableItems.length > 0)
     ? activeProject.deliverableItems.reduce((sum: number, it: any) => sum + (Number(it.amount ?? it.cost) || 0), 0)
@@ -281,16 +281,16 @@ export default function CalculatorProjectDetails({
     storedSubtotal > 0 && !(isPartialProject && quoteExpectedSubtotal > storedSubtotal + 10)
       ? storedSubtotal
       : (quoteExpectedSubtotal > 0
-          ? quoteExpectedSubtotal
-          : (storedSubtotal > 0 ? storedSubtotal : regularItemsSum));
+        ? quoteExpectedSubtotal
+        : (storedSubtotal > 0 ? storedSubtotal : regularItemsSum));
 
   const baseSubtotal = effectiveStoredSubtotal > 0
     ? effectiveStoredSubtotal
     : (regularItemsSum > 0
-        ? regularItemsSum
-        : (vatRate > 0 && rawTotalCost > 0
-            ? Math.round((rawTotalCost / (1 + vatRate / 100)) * 100) / 100
-            : rawTotalCost));
+      ? regularItemsSum
+      : (vatRate > 0 && rawTotalCost > 0
+        ? Math.round((rawTotalCost / (1 + vatRate / 100)) * 100) / 100
+        : rawTotalCost));
 
   const primaryItemTitle =
     itemTitle ||
@@ -433,8 +433,8 @@ export default function CalculatorProjectDetails({
   const pendingBalance = isActuallyPaidInFull
     ? 0
     : amountPaid === 0
-    ? totalCost
-    : calculatedPending;
+      ? totalCost
+      : calculatedPending;
 
   const isMonthlyProject = Boolean(
     activeProject.billingType === "monthly" ||
@@ -874,8 +874,8 @@ export default function CalculatorProjectDetails({
                     {getProjectEstimatedDeadline(activeProject)
                       ? formatSubmittedDate(getProjectEstimatedDeadline(activeProject))
                       : activeProject.deadline
-                      ? formatSubmittedDate(activeProject.deadline)
-                      : "Ongoing"}
+                        ? formatSubmittedDate(activeProject.deadline)
+                        : "Ongoing"}
                   </span>
                   <DeadlineTooltip position="center" />
                 </div>
@@ -932,8 +932,8 @@ export default function CalculatorProjectDetails({
                 Array.isArray(activeProject.assignedManagers) && activeProject.assignedManagers.length > 0
                   ? activeProject.assignedManagers
                   : activeProject.projectManager
-                  ? [activeProject.projectManager]
-                  : [];
+                    ? [activeProject.projectManager]
+                    : [];
               const managers = rawManagers.filter((m: any) => m && (typeof m === 'object' ? (m._id || m.fullName || m.email) : Boolean(m)));
 
               if (managers.length > 1) {
@@ -1181,32 +1181,32 @@ export default function CalculatorProjectDetails({
                 const isManagerAssigned =
                   !isDeadlineAdjusted &&
                   (lowerTitle.includes("manager assigned") ||
-                  lowerRaw.includes("manager assigned") ||
-                  lowerText.includes("assigned as project manager") ||
-                  lowerText.includes("assigned as analysis manager") ||
-                  lowerText.includes("assigned to your project") ||
-                  lowerText.includes("assigned to your analysis"));
+                    lowerRaw.includes("manager assigned") ||
+                    lowerText.includes("assigned as project manager") ||
+                    lowerText.includes("assigned as analysis manager") ||
+                    lowerText.includes("assigned to your project") ||
+                    lowerText.includes("assigned to your analysis"));
 
                 const isReactivated =
                   !isDeadlineAdjusted &&
                   !isManagerAssigned &&
                   (lowerTitle.includes("reactivate") ||
-                  lowerRaw.includes("reactivate") ||
-                  lowerText.includes("reactivate") ||
-                  lowerTitle.includes("reactivated") ||
-                  lowerRaw.includes("reactivated") ||
-                  lowerText.includes("reactivated"));
+                    lowerRaw.includes("reactivate") ||
+                    lowerText.includes("reactivate") ||
+                    lowerTitle.includes("reactivated") ||
+                    lowerRaw.includes("reactivated") ||
+                    lowerText.includes("reactivated"));
 
                 const isResumed =
                   !isDeadlineAdjusted &&
                   !isManagerAssigned &&
                   !isReactivated &&
                   (lowerTitle.includes("resumed") ||
-                  lowerRaw.includes("resumed") ||
-                  lowerText.includes("resumed") ||
-                  lowerTitle.startsWith("project status updated to active") ||
-                  lowerTitle.startsWith("project status: active") ||
-                  lowerTitle === "active");
+                    lowerRaw.includes("resumed") ||
+                    lowerText.includes("resumed") ||
+                    lowerTitle.startsWith("project status updated to active") ||
+                    lowerTitle.startsWith("project status: active") ||
+                    lowerTitle === "active");
 
                 const isCompleted =
                   lowerTitle.includes("completed") ||
@@ -1221,12 +1221,12 @@ export default function CalculatorProjectDetails({
                   !isResumed &&
                   !isCompleted &&
                   (lowerTitle.includes("offer received") ||
-                  lowerRaw.includes("offer received") ||
-                  lowerTitle.includes("you received an offer") ||
-                  lowerRaw.includes("you received an offer") ||
-                  lowerText.includes("you received an offer") ||
-                  lowerText.includes("created a new offer") ||
-                  lowerText.includes("sent you a new offer"));
+                    lowerRaw.includes("offer received") ||
+                    lowerTitle.includes("you received an offer") ||
+                    lowerRaw.includes("you received an offer") ||
+                    lowerText.includes("you received an offer") ||
+                    lowerText.includes("created a new offer") ||
+                    lowerText.includes("sent you a new offer"));
 
                 const isProposalAccepted =
                   !isDeadlineAdjusted &&
@@ -1235,11 +1235,11 @@ export default function CalculatorProjectDetails({
                   !isResumed &&
                   !isCompleted &&
                   (lowerTitle.includes("proposal accepted") ||
-                  lowerRaw.includes("proposal accepted") ||
-                  lowerTitle.includes("add-on proposal accepted") ||
-                  lowerRaw.includes("add-on proposal accepted") ||
-                  lowerText.includes("proposal accepted") ||
-                  lowerText.includes("accepted the offered quote"));
+                    lowerRaw.includes("proposal accepted") ||
+                    lowerTitle.includes("add-on proposal accepted") ||
+                    lowerRaw.includes("add-on proposal accepted") ||
+                    lowerText.includes("proposal accepted") ||
+                    lowerText.includes("accepted the offered quote"));
 
                 const isProposalDeclined =
                   !isDeadlineAdjusted &&
@@ -1248,12 +1248,12 @@ export default function CalculatorProjectDetails({
                   !isResumed &&
                   !isCompleted &&
                   (lowerTitle.includes("proposal declined") ||
-                  lowerRaw.includes("proposal declined") ||
-                  lowerTitle.includes("offer declined") ||
-                  lowerRaw.includes("offer declined") ||
-                  lowerText.includes("proposal declined") ||
-                  lowerText.includes("the offer was declined") ||
-                  lowerText.includes("offer was declined"));
+                    lowerRaw.includes("proposal declined") ||
+                    lowerTitle.includes("offer declined") ||
+                    lowerRaw.includes("offer declined") ||
+                    lowerText.includes("proposal declined") ||
+                    lowerText.includes("the offer was declined") ||
+                    lowerText.includes("offer was declined"));
 
                 const isModificationsRequested =
                   !isDeadlineAdjusted &&
@@ -1262,11 +1262,11 @@ export default function CalculatorProjectDetails({
                   !isResumed &&
                   !isCompleted &&
                   (lowerTitle.includes("modification requested") ||
-                  lowerTitle.includes("modifications requested") ||
-                  lowerRaw.includes("modification requested") ||
-                  lowerRaw.includes("modifications requested") ||
-                  lowerText.includes("modifications requested") ||
-                  lowerText.includes("requested modifications"));
+                    lowerTitle.includes("modifications requested") ||
+                    lowerRaw.includes("modification requested") ||
+                    lowerRaw.includes("modifications requested") ||
+                    lowerText.includes("modifications requested") ||
+                    lowerText.includes("requested modifications"));
 
                 let pauseConfig = null;
 
@@ -1454,12 +1454,11 @@ export default function CalculatorProjectDetails({
                           <span className="text-xs sm:text-sm text-gray-500 font-medium">
                             Submitted - {formatSubmittedDate(msg.createdAt)}
                           </span>
-                          <span className={`px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold border ${
-                            isAccepted ? "border-green-400 text-green-600 bg-green-50" :
-                            isDeclined ? "border-red-400 text-red-600 bg-red-50" :
-                            isModRequested ? "border-orange-400 text-orange-600 bg-orange-50" :
-                            "border-blue-400 text-blue-600 bg-blue-50/60"
-                          }`}>
+                          <span className={`px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold border ${isAccepted ? "border-green-400 text-green-600 bg-green-50" :
+                              isDeclined ? "border-red-400 text-red-600 bg-red-50" :
+                                isModRequested ? "border-orange-400 text-orange-600 bg-orange-50" :
+                                  "border-blue-400 text-blue-600 bg-blue-50/60"
+                            }`}>
                             {isAccepted ? "Accepted" : isDeclined ? "Declined" : isModRequested ? "Modification Requested" : "Add-On Offer"}
                           </span>
                         </div>
@@ -1589,11 +1588,10 @@ export default function CalculatorProjectDetails({
                     </div>
 
                     <div
-                      className={`p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-2xs ${
-                        isClient
+                      className={`p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-2xs ${isClient
                           ? "bg-[#4343F0] text-white rounded-tr-xs"
                           : "bg-white border border-gray-200 text-gray-800 rounded-tl-xs"
-                      }`}
+                        }`}
                     >
                       <p className="whitespace-pre-wrap">{capitalizeCurrencyInText(msg.message || msg.text || "")}</p>
 
@@ -1611,11 +1609,10 @@ export default function CalculatorProjectDetails({
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => downloadFile(e, safeUrl, filename)}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${
-                                  isClient
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${isClient
                                     ? "bg-white/15 hover:bg-white/25 text-white"
                                     : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                                }`}
+                                  }`}
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

@@ -204,6 +204,7 @@ export interface ProjectPDFData {
   rawProjectNumber: string;
   isProject?: boolean;
   isInvoice?: boolean;
+  isMonthly?: boolean;
   invoiceNumber?: string;
   invoiceId?: string;
   companyName?: string;
@@ -557,8 +558,45 @@ export function extractProjectDetails(data: any): ProjectPDFData {
       0
   );
 
+  // Check if project was created from a monthly quote or is a monthly quote
+  const linkedQuote =
+    typeof data.quoteId === "object"
+      ? data.quoteId
+      : typeof data.quote === "object"
+      ? data.quote
+      : null;
+
+  const isProjectFromQuote = Boolean(
+    data.quoteId ||
+      data.quote ||
+      data.quoteNumber ||
+      data.isQuote ||
+      data.type === "quote" ||
+      data.source === "quote" ||
+      linkedQuote?._id
+  );
+
+  const isMonthlyQuote = Boolean(
+    (
+      data.billingType === "monthly" ||
+      data.isMonthly === true ||
+      linkedQuote?.billingType === "monthly" ||
+      linkedQuote?.isMonthly === true ||
+      data.requirements?.billingType === "monthly" ||
+      linkedQuote?.requirements?.billingType === "monthly" ||
+      data.calculatorSpecs?.billingType === "monthly" ||
+      String(data.paymentType || "").toLowerCase().includes("month") ||
+      String(linkedQuote?.paymentType || "").toLowerCase().includes("month") ||
+      String(linkedQuote?.totalDuration || data.totalDuration || "").toLowerCase().includes("monthly") ||
+      String(linkedQuote?.timeline || data.timeline || "").toLowerCase().includes("monthly") ||
+      String(data.duration || "").toLowerCase().includes("monthly")
+    ) &&
+      data.billingType !== "onetime" &&
+      linkedQuote?.billingType !== "onetime"
+  );
+
   // Deliverables extraction
-  let deliverables: Array<{ name: string; details?: string; duration: string; amount: number }> = [];
+  let deliverables: Array<{ name: string; details?: string; duration: string; amount: number; formattedAmount?: string }> = [];
   const rawDeliverableItems: any[] = [];
   if (Array.isArray(data.deliverableItems) && data.deliverableItems.length > 0) {
     rawDeliverableItems.push(...data.deliverableItems);
@@ -570,13 +608,17 @@ export function extractProjectDetails(data: any): ProjectPDFData {
     deliverables = rawDeliverableItems.map((d: any) => ({
       name: d.description || d.item || d.name || d.title || title,
       details: d.details || "",
-      duration:
-        d.duration !== undefined && d.duration !== null && String(d.duration).trim() !== ""
+      duration: isMonthlyQuote
+        ? "Monthly Service"
+        : d.duration !== undefined && d.duration !== null && String(d.duration).trim() !== ""
           ? String(d.duration).trim().toLowerCase().includes("day") || String(d.duration).trim().toLowerCase().includes("week") || String(d.duration).trim().toLowerCase().includes("month")
             ? String(d.duration).trim()
             : `${String(d.duration).trim()} ${d.unit || "Days"}`
           : "-",
       amount: Number(d.amount ?? d.cost ?? (d.price ?? 0)),
+      formattedAmount: isMonthlyQuote
+        ? `${new Intl.NumberFormat("en-US", { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(d.amount ?? d.cost ?? (d.price ?? 0)))} / month`
+        : undefined,
     }));
   } else if (data.calculatorSpecs) {
     const categoryName =
@@ -592,8 +634,11 @@ export function extractProjectDetails(data: any): ProjectPDFData {
       {
         name: categoryName,
         details: "Based on calculator selections",
-        duration: resolvedTimeline || data.calculatorSpecs.estimatedTimeline || data.timeline || "14 Days",
+        duration: isMonthlyQuote ? "Monthly Service" : (resolvedTimeline || data.calculatorSpecs.estimatedTimeline || data.timeline || "14 Days"),
         amount: rawTotalPrice > 0 ? rawTotalPrice : Number(data.amountPaid || 0),
+        formattedAmount: isMonthlyQuote
+          ? `${new Intl.NumberFormat("en-US", { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(rawTotalPrice > 0 ? rawTotalPrice : Number(data.amountPaid || 0))} / month`
+          : undefined,
       },
     ];
   } else {
@@ -601,8 +646,11 @@ export function extractProjectDetails(data: any): ProjectPDFData {
       {
         name: title.toLowerCase().startsWith("free website analysis") ? "Free Website Analysis" : title,
         details: "",
-        duration: data.duration || (data.timelineInDays ? `${data.timelineInDays} Days` : "-"),
+        duration: isMonthlyQuote ? "Monthly Service" : (data.duration || (data.timelineInDays ? `${data.timelineInDays} Days` : "-")),
         amount: rawTotalPrice,
+        formattedAmount: isMonthlyQuote
+          ? `${new Intl.NumberFormat("en-US", { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(rawTotalPrice)} / month`
+          : undefined,
       },
     ];
   }
@@ -692,7 +740,9 @@ export function extractProjectDetails(data: any): ProjectPDFData {
   }
 
   let duration = "";
-  if (totalDays > 0) {
+  if (isMonthlyQuote) {
+    duration = "Monthly Service";
+  } else if (totalDays > 0) {
     duration = `${totalDays} days`;
   } else if (data.timelineInDays) {
     duration = `${data.timelineInDays} days`;
@@ -808,8 +858,8 @@ export function extractProjectDetails(data: any): ProjectPDFData {
     /market|campaign/i.test(data.categoryName || "") ||
     /market|campaign/i.test(data.calculatorSpecs?.categoryName || "");
 
-  if (isMarketing && !formattedPrice.endsWith("/month")) {
-    formattedPrice = `${formattedPrice} /month`;
+  if ((isMarketing || isMonthlyQuote) && !formattedPrice.includes("/ month") && !formattedPrice.includes("/month")) {
+    formattedPrice = `${formattedPrice} / month`;
   }
 
   let description =
@@ -951,6 +1001,7 @@ export function extractProjectDetails(data: any): ProjectPDFData {
     referenceNumber,
     isProject,
     isInvoice,
+    isMonthly: isMonthlyQuote,
     invoiceNumber,
     invoiceId,
     companyName,
@@ -1141,11 +1192,11 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
                     <div style="font-family: Inter, sans-serif; font-size: 12.5px; font-weight: 600; color: #0F172A; line-height: 1.35;">${item.name}</div>
                     ${item.details ? `<div style="font-family: Inter, sans-serif; font-size: 10.5px; color: #64748B; line-height: 1.35; margin-top: 2px;">${item.details}</div>` : ""}
                   </td>
-                  <td style="padding: 11px 16px; vertical-align: top; font-family: Inter, sans-serif; font-size: 12px; font-weight: 500; color: #475569; text-align: center; white-space: nowrap;">
+                  <td style="padding: 11px 16px; vertical-align: top; font-family: Inter, sans-serif; font-size: 12px; ${d.isMonthly ? "font-weight: 700; color: #0F172A;" : "font-weight: 500; color: #475569;"} text-align: center; white-space: nowrap;">
                     ${item.duration}
                   </td>
                   <td style="padding: 11px 16px; vertical-align: top; font-family: Inter, sans-serif; font-size: 12.5px; font-weight: 700; color: #0F172A; text-align: right; white-space: nowrap;">
-                    ${item.formattedAmount || new Intl.NumberFormat("en-US", { style: "currency", currency: (d.currency || "USD").toUpperCase(), minimumFractionDigits: 2 }).format(item.amount)}
+                    ${item.formattedAmount || (new Intl.NumberFormat("en-US", { style: "currency", currency: (d.currency || "USD").toUpperCase(), minimumFractionDigits: 2 }).format(item.amount) + (d.isMonthly ? " / month" : ""))}
                   </td>
                 </tr>
               `
@@ -1228,13 +1279,13 @@ export function getProjectDetailsHTML(d: ProjectPDFData): string {
             <!-- Subtotal Row -->
             <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; height: 38px; box-sizing: border-box;">
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 10.5px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">SUBTOTAL</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 13.5px; color: #FFFFFF; white-space: nowrap; position: relative; top: -1px; line-height: 1;">${d.formattedSubtotal}</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 13.5px; color: #FFFFFF; white-space: nowrap; position: relative; top: -1px; line-height: 1;">${d.formattedSubtotal}${d.isMonthly ? " / month" : ""}</span>
             </div>
 
             <!-- VAT Row -->
             <div style="background-color: #0B1220; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; height: 38px; box-sizing: border-box;">
               <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 10.5px; letter-spacing: 0.08em; color: #8E9AA8; text-transform: uppercase;">VAT (${d.vatRate}%)</span>
-              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 13.5px; color: #FFFFFF; white-space: nowrap; position: relative; top: -1px; line-height: 1;">${d.formattedVatAmount}</span>
+              <span style="font-family: Inter, sans-serif; font-weight: 700; font-size: 13.5px; color: #FFFFFF; white-space: nowrap; position: relative; top: -1px; line-height: 1;">${d.formattedVatAmount}${d.isMonthly ? " / month" : ""}</span>
             </div>
             `
                 : ""
