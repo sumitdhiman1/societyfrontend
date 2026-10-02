@@ -80,9 +80,10 @@ const sanitizeAnalysisText = (text: string): string => {
     .replace(/This project is currently paused/gi, "This analysis is currently paused")
     .replace(/activate your project/gi, "activate your analysis")
     .replace(/Your project has been resumed/gi, "Your analysis has been resumed")
-    .replace(/Your order has been completed! Click here if you need further assistance\./gi, "Your analysis has been completed! Feel free to leave any questions or comments below.")
-    .replace(/This order has been completed\./gi, "Your analysis has been completed! Feel free to leave any questions or comments below.")
-    .replace(/This analysis has been completed\./gi, "Your analysis has been completed! Feel free to leave any questions or comments below.")
+    .replace(/Your order has been completed! Click here if you need further assistance\./gi, "Your analysis has been completed! You can leave questions or comments below.")
+    .replace(/This order has been completed\./gi, "Your analysis has been completed! You can leave questions or comments below.")
+    .replace(/This analysis has been completed\./gi, "Your analysis has been completed! You can leave questions or comments below.")
+    .replace(/Your analysis has been completed! Feel free to leave any questions or comments below\./gi, "Your analysis has been completed! You can leave questions or comments below.")
     .replace(/this order/gi, "this analysis")
     .replace(/the order/gi, "the analysis")
     .replace(/this project/gi, "this analysis")
@@ -2085,7 +2086,7 @@ export default function AnalysisDetailsPage() {
                 displayText = "Your project has been resumed.";
               } else if (isCompleted || finalTitle.toLowerCase().includes("completed") || cleanTitle.toLowerCase().includes("completed")) {
                 finalTitle = "Order Completed";
-                displayText = "Your analysis has been completed! Feel free to leave any questions or comments below.";
+                displayText = "Your analysis has been completed! You can leave questions or comments below.";
               } else if (isDuplicate) {
                 displayText = pauseConfig ? pauseConfig.defaultMessage : "";
               } else if (!displayText && pauseConfig) {
@@ -3147,7 +3148,7 @@ export default function AnalysisDetailsPage() {
                       Order Completed
                     </h3>
                     <div className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
-                      Your analysis has been completed! Feel free to leave any questions or comments below.
+                      Your analysis has been completed! You can leave questions or comments below.
                     </div>
                   </div>
                 )}
@@ -3174,7 +3175,7 @@ export default function AnalysisDetailsPage() {
               Order Completed
             </h3>
             <div className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
-              Your analysis has been completed! Feel free to leave any questions or comments below.
+              Your analysis has been completed! You can leave questions or comments below.
             </div>
           </div>
         )}
