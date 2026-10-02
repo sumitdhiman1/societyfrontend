@@ -1846,7 +1846,7 @@ export default function AnalysisDetailsPage() {
 
       {/* Messages & Delivery History if any */}
       {analysis.messages && analysis.messages.length > 0 && (
-        <div className="flex flex-col gap-6 w-full recieved-offer-heading-wrap mb-0 relative">
+        <div className="flex flex-col gap-6 md:gap-8 w-full recieved-offer-heading-wrap mb-0 relative">
           {analysis.messages.map((msg: any, idx: number) => {
             const msgId = msg.id ? `${msg.id}-${idx}` : (msg._id ? `${msg._id}-${idx}` : `msg-${idx}`);
             const textContent = `${msg.message || ""} ${msg.content?.text || ""} ${msg.text || ""}`.toLowerCase();
@@ -1980,11 +1980,11 @@ export default function AnalysisDetailsPage() {
                 !isResumed &&
                 !isCompleted &&
                 (lowerTitle.includes("canceled") ||
-                lowerTitle.includes("cancelled") ||
-                lowerRaw.includes("canceled") ||
-                lowerRaw.includes("cancelled") ||
-                lowerText.includes("canceled") ||
-                lowerText.includes("cancelled"));
+                  lowerTitle.includes("cancelled") ||
+                  lowerRaw.includes("canceled") ||
+                  lowerRaw.includes("cancelled") ||
+                  lowerText.includes("canceled") ||
+                  lowerText.includes("cancelled"));
 
               let pauseConfig = null;
               let cleanTitle = title;
