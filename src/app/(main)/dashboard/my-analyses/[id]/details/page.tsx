@@ -42,10 +42,10 @@ const formatStatusTitle = (rawTitle: string): string => {
     return "Analysis resumed";
   }
   if (lower === "project completed" || lower === "analysis completed" || lower === "order completed!" || lower === "order completed" || lower.includes("completed")) {
-    return "Analysis completed!";
+    return "Order Completed";
   }
   if (lower === "project manager assigned" || lower === "analysis manager assigned" || lower === "manager assigned" || lower.includes("manager assigned")) {
-    return "Analysis manager assigned";
+    return "Project Manager Assigned";
   }
   if (lower.startsWith("add-on proposal accepted") || lower.includes("proposal accepted") || lower.includes("offer was accepted")) {
     return "Add-on proposal accepted";
@@ -74,22 +74,22 @@ const sanitizeAnalysisText = (text: string): string => {
     .replace(/added to your project/gi, "added to your analysis")
     .replace(/your project timeline/gi, "your analysis timeline")
     .replace(/for this project moving forward/gi, "for this analysis moving forward")
-    .replace(/as project manager/gi, "as analysis manager")
-    .replace(/project manager/gi, "analysis manager")
     .replace(/We've received your payment of ([\d.]+)\s+([A-Z]{3})\.?\s+for\s+"[^"]*"\.?/gi, "We've received your payment of $1 $2.")
     .replace(/Your project financials have been updated/gi, "Your analysis financials have been updated")
     .replace(/This project has been temporarily paused/gi, "This analysis has been temporarily paused")
     .replace(/This project is currently paused/gi, "This analysis is currently paused")
     .replace(/activate your project/gi, "activate your analysis")
     .replace(/Your project has been resumed/gi, "Your analysis has been resumed")
-    .replace(/This order has been completed/gi, "This analysis has been completed")
+    .replace(/Your order has been completed! Click here if you need further assistance\./gi, "Your analysis has been completed! Feel free to leave any questions or comments below.")
+    .replace(/This order has been completed\./gi, "Your analysis has been completed! Feel free to leave any questions or comments below.")
+    .replace(/This analysis has been completed\./gi, "Your analysis has been completed! Feel free to leave any questions or comments below.")
     .replace(/this order/gi, "this analysis")
     .replace(/the order/gi, "the analysis")
     .replace(/this project/gi, "this analysis")
     .replace(/your project/gi, "your analysis")
-    .replace(/the project/gi, "the analysis")
+    .replace(/the project(?!\s+manager)/gi, "the analysis")
     .replace(/projects/gi, "analyses")
-    .replace(/project/gi, "analysis");
+    .replace(/\bproject(?!\s+manager)/gi, "analysis");
 };
 
 export const getAnalysisDomain = (analysisObj: any): string => {
@@ -1845,7 +1845,7 @@ export default function AnalysisDetailsPage() {
 
       {/* Messages & Delivery History if any */}
       {analysis.messages && analysis.messages.length > 0 && (
-        <div className="flex flex-col gap-6 w-full recieved-offer-heading-wrap mb-0">
+        <div className="flex flex-col gap-6 w-full recieved-offer-heading-wrap mb-0 relative">
           {analysis.messages.map((msg: any, idx: number) => {
             const msgId = msg.id ? `${msg.id}-${idx}` : (msg._id ? `${msg._id}-${idx}` : `msg-${idx}`);
             const textContent = `${msg.message || ""} ${msg.content?.text || ""} ${msg.text || ""}`.toLowerCase();
@@ -1972,6 +1972,19 @@ export default function AnalysisDetailsPage() {
                   lowerText.includes("modifications requested") ||
                   lowerText.includes("requested modifications"));
 
+              const isCanceledMsg =
+                !isDeadlineAdjusted &&
+                !isManagerAssigned &&
+                !isReactivated &&
+                !isResumed &&
+                !isCompleted &&
+                (lowerTitle.includes("canceled") ||
+                lowerTitle.includes("cancelled") ||
+                lowerRaw.includes("canceled") ||
+                lowerRaw.includes("cancelled") ||
+                lowerText.includes("canceled") ||
+                lowerText.includes("cancelled"));
+
               let pauseConfig = null;
               let cleanTitle = title;
 
@@ -1985,6 +1998,8 @@ export default function AnalysisDetailsPage() {
                 cleanTitle = "Project Resumed";
               } else if (isCompleted) {
                 cleanTitle = "Order Completed";
+              } else if (isCanceledMsg) {
+                cleanTitle = "Analysis Canceled";
               } else if (isOfferReceived) {
                 cleanTitle = "You Received an Offer";
               } else if (isProposalAccepted) {
@@ -2070,7 +2085,7 @@ export default function AnalysisDetailsPage() {
                 displayText = "Your project has been resumed.";
               } else if (isCompleted || finalTitle.toLowerCase().includes("completed") || cleanTitle.toLowerCase().includes("completed")) {
                 finalTitle = "Order Completed";
-                displayText = "Your order has been completed! Click here if you need further assistance.";
+                displayText = "Your analysis has been completed! Feel free to leave any questions or comments below.";
               } else if (isDuplicate) {
                 displayText = pauseConfig ? pauseConfig.defaultMessage : "";
               } else if (!displayText && pauseConfig) {
@@ -2078,7 +2093,7 @@ export default function AnalysisDetailsPage() {
               }
 
               return (
-                <div key={msgId} className="text-center pt-0 px-4 my-0 recieved-offer-heading pb-0">
+                <div key={msgId} className="text-center py-0 px-4 my-0 recieved-offer-heading">
                   <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
                     {finalTitle}
                   </h3>
@@ -2171,7 +2186,7 @@ export default function AnalysisDetailsPage() {
               return (
                 <div
                   key={msgId}
-                  className="w-full bg-[#F4F8FF] border border-[#DCE8FE] rounded-2xl p-5 sm:p-6 my-3 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  className="w-full bg-[#F4F8FF] border border-[#DCE8FE] rounded-2xl p-5 sm:p-6 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                 >
                   <div className="flex items-start sm:items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-[#DBEAFE] text-[#2563EB] flex items-center justify-center shrink-0">
@@ -2390,7 +2405,7 @@ export default function AnalysisDetailsPage() {
 
               if (isDeliverablesProposal) {
                 return (
-                  <div key={msgId} ref={isLast ? messagesEndRef : null} className="w-full my-4">
+                  <div key={msgId} ref={isLast ? messagesEndRef : null} className="w-full">
                     <div className="bg-white border border-gray-200 rounded-2xl shadow-xs p-6 sm:p-8 md:p-10">
                       {/* Top Meta: Submitted date & Add-On Offer badge on left; Expires / resolution date on right */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
@@ -3127,18 +3142,19 @@ export default function AnalysisDetailsPage() {
                 </div>
 
                 {isDeliveryMsg && !hasSubsequentCompletionMsg && (
-                  <div className="text-center py-2 px-4 my-0">
+                  <div className="text-center py-0 px-4 my-0 recieved-offer-heading">
                     <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
-                      Analysis completed!
+                      Order Completed
                     </h3>
                     <div className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
-                      This analysis has been completed.
+                      Your analysis has been completed! Feel free to leave any questions or comments below.
                     </div>
                   </div>
                 )}
               </React.Fragment>
             );
           })}
+          <div ref={messagesEndRef} className="absolute bottom-0 w-0 h-0 pointer-events-none" />
         </div>
       )}
 
@@ -3153,19 +3169,15 @@ export default function AnalysisDetailsPage() {
             m.content?.systemText?.toLowerCase().includes("completed") ||
             m.content?.text?.toLowerCase().includes("completed")))
       ) && (
-          <div className="text-center py-2 px-4 my-0">
+          <div className="text-center py-0 px-4 my-0 recieved-offer-heading">
             <h3 className="text-xl sm:text-2xl font-bold text-[#0D1939] tracking-tight mb-1">
-              Analysis completed!
+              Order Completed
             </h3>
             <div className="text-sm font-medium text-gray-500 leading-relaxed max-w-xl mx-auto">
-              This analysis has been completed.
+              Your analysis has been completed! Feel free to leave any questions or comments below.
             </div>
           </div>
         )}
-
-      {analysis.messages && analysis.messages.length > 0 && (
-        <div ref={messagesEndRef} className="h-4 w-full shrink-0 hidden md:block" />
-      )}
 
       {/* New Message Box Form */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden w-full detail-message-box-main">
