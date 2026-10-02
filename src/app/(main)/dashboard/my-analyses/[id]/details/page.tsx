@@ -466,16 +466,14 @@ export default function AnalysisDetailsPage() {
     ""
   ).toUpperCase();
 
-  // Synchronize currency for guest users if the analysis has a specific currency set (e.g. EUR)
+  // Synchronize currency if the analysis has a specific currency set (e.g. EUR)
   useEffect(() => {
     if (!analysis) return;
     const targetCurr = (resolvedAnalysisCurrency || "").toLowerCase();
     if (targetCurr === "eur" || targetCurr === "usd") {
-      if (!authService.isAuthenticated()) {
-        const manualPref = typeof window !== "undefined" ? sessionStorage.getItem("user_manually_switched_currency") : null;
-        if (!manualPref) {
-          setCurrency(targetCurr);
-        }
+      const manualPref = typeof window !== "undefined" ? sessionStorage.getItem("user_manually_switched_currency") : null;
+      if (!manualPref) {
+        setCurrency(targetCurr);
       }
     }
   }, [analysis?._id, resolvedAnalysisCurrency, setCurrency]);

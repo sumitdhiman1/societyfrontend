@@ -76,10 +76,12 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     const syncProfileCurrency = () => {
       if (authService.isAuthenticated()) {
         profileService.getMyProfile().then(res => {
-          if (res?.data?.currency && (res.data.currency === "usd" || res.data.currency === "eur")) {
-            setCurrencyState(res.data.currency);
-            localStorage.setItem("app-currency", res.data.currency);
-            authService.updateInternalUser({ currency: res.data.currency });
+          const raw = res?.data?.preferredCurrency || res?.data?.currency;
+          const norm = raw ? String(raw).toLowerCase() : null;
+          if (norm && (norm === "usd" || norm === "eur")) {
+            setCurrencyState(norm);
+            localStorage.setItem("app-currency", norm);
+            authService.updateInternalUser({ currency: norm, preferredCurrency: norm.toUpperCase() });
           }
         }).catch(err => console.error("Failed to sync currency from profile", err));
       }
