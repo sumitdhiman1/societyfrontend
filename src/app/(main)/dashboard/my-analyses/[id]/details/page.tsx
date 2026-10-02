@@ -10,6 +10,7 @@ import { mediaService } from "@/lib/mediaService";
 import { authService } from "@/lib/authService";
 import { packagesService } from "@/lib/packagesService";
 import { downloadFile, isImageUrl, getSafeUrl } from "@/lib/utils";
+import DocumentPreviewModal, { PreviewableFile } from "@/components/common/DocumentPreviewModal";
 import LoadingDots from "@/components/common/LoadingDots";
 import SupportNewsletter from "@/components/dashboard/SupportNewsletter";
 import AuthPromptModal from "@/components/common/AuthPromptModal";
@@ -153,7 +154,7 @@ export const formatAnalysisDownloadFileName = (baseFileName: string, analysisObj
   return `${domain} - ${cleanName}`;
 };
 
-const renderStatusMessageText = (rawText: string, attachments?: any[]) => {
+const renderStatusMessageText = (rawText: string, attachments?: any[], onPreview?: (e: React.MouseEvent, url: string, name: string) => void) => {
   if (!rawText) return null;
   const text = sanitizeAnalysisText(rawText);
 
@@ -167,14 +168,23 @@ const renderStatusMessageText = (rawText: string, attachments?: any[]) => {
     if (!pdfUrl) return null;
     return (
       <span className="block mt-3">
-        <a
-          href={pdfUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#5356ff]/10 hover:bg-[#5356ff]/20 text-[#5356ff] text-xs font-bold rounded-lg border border-[#5356ff]/30 transition-colors"
+        <button
+          type="button"
+          onClick={(e) => {
+            if (onPreview) {
+              onPreview(e, pdfUrl, "Analysis_Report.pdf");
+            } else {
+              window.open(pdfUrl, "_blank");
+            }
+          }}
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#5356ff]/10 hover:bg-[#5356ff]/20 text-[#5356ff] text-xs font-bold rounded-lg border border-[#5356ff]/30 transition-colors cursor-pointer"
         >
-          📄 View / Download Analysis Report (PDF)
-        </a>
+          <svg className="w-4 h-4 text-[#5356ff]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          <span>Preview Analysis Report (PDF)</span>
+        </button>
       </span>
     );
   };
@@ -429,8 +439,19 @@ export default function AnalysisDetailsPage() {
   const [availableCategories, setAvailableCategories] = useState<any[]>([]);
   const [analysisPayments, setAnalysisPayments] = useState<any[]>([]);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [previewFile, setPreviewFile] = useState<PreviewableFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const actionLoadingRef = useRef(false);
+
+  const handleOpenFilePreview = (e: React.MouseEvent, url: string, name: string, mimeType?: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPreviewFile({
+      url,
+      name,
+      mimeType,
+    });
+  };
 
   const resolvedAnalysisCurrency = (
     analysis?.currency ||
@@ -1321,19 +1342,79 @@ export default function AnalysisDetailsPage() {
   const submittedLoginsDetails = (analysis.loginsDetails || analysis.metadata?.loginsDetails || "").trim();
 
   const knownMetaKeys = new Set([
-    "additionalComments",
-    "scopeOfWork",
-    "whoCompletedWork",
-    "agreementDetails",
-    "loginsDetails",
-    "targetWebsiteUrl",
-    "websiteUrl",
+    "additionalcomments",
+    "scopeofwork",
+    "whocompletedwork",
+    "agreementdetails",
+    "loginsdetails",
+    "targetwebsiteurl",
+    "websiteurl",
+    "targetwebsiteurls",
+    "targeturls",
+    "websites",
+    "submittedurls",
+    "iscreatedbystaff",
+    "createdbystaff",
+    "isoutbound",
+    "outbound",
+    "skipemail",
+    "isstaff",
+    "staff",
+    "origin",
+    "clientid",
+    "userid",
+    "projectid",
+    "analysisid",
+    "invoiceid",
+    "invoicenumber",
+    "messageid",
+    "recurringamount",
+    "recurringlineitems",
+    "isprecreated",
+    "precreated",
+    "precreatedproject",
+    "customprice",
+    "customcost",
+    "currency",
+    "preferredcurrency",
+    "clientcurrency",
+    "usercurrency",
+    "basecurrency",
+    "selectedcurrency",
+    "price",
+    "amount",
+    "cost",
+    "total",
+    "totalcost",
+    "totalprice",
+    "amountdue",
+    "initialprice",
+    "initialcost",
+    "vatenabled",
+    "vatrate",
+    "vatamount",
+    "country",
+    "isestonia",
   ]);
   const extraMetadata =
     analysis.metadata && typeof analysis.metadata === "object"
-      ? Object.entries(analysis.metadata).filter(
-        ([k, v]) => !knownMetaKeys.has(k) && v && typeof v !== "object"
-      )
+      ? Object.entries(analysis.metadata).filter(([k, v]) => {
+        const lowerKey = k.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (knownMetaKeys.has(lowerKey)) return false;
+        if (
+          lowerKey.includes("staff") ||
+          lowerKey.includes("outbound") ||
+          lowerKey.includes("skipemail") ||
+          lowerKey.includes("currency") ||
+          lowerKey.includes("price") ||
+          lowerKey.includes("cost") ||
+          lowerKey.includes("vat")
+        ) return false;
+        if (v === undefined || v === null || v === "") return false;
+        if (typeof v === "object") return false;
+        if (typeof v === "boolean") return false;
+        return true;
+      })
       : [];
 
   const productShareAccessEnabled = (() => {
@@ -2109,7 +2190,9 @@ export default function AnalysisDetailsPage() {
                           {displayText.split("Click here")[1]}
                         </>
                       ) : (
-                        renderStatusMessageText(displayText, attachments)
+                        renderStatusMessageText(displayText, attachments, (e, u, n) => {
+                          handleOpenFilePreview(e, u, formatAnalysisDownloadFileName(n, analysis));
+                        })
                       )}
                     </div>
                   ) : null}
@@ -2471,11 +2554,9 @@ export default function AnalysisDetailsPage() {
                                 <a
                                   key={aIdx}
                                   href={safeUrl}
-                                  onClick={(e) => downloadFile(e, safeUrl, downloadName)}
-                                  download={downloadName}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
+                                  onClick={(e) => handleOpenFilePreview(e, safeUrl, downloadName)}
+                                  title={`Preview ${downloadName}`}
+                                  className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col cursor-pointer"
                                 >
                                   <div className="flex-grow flex items-center justify-center bg-white relative overflow-hidden">
                                     {isImg ? (
@@ -2507,8 +2588,26 @@ export default function AnalysisDetailsPage() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                       </svg>
                                     )}
-                                    <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
-                                      <div className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center">
+                                    <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2.5 z-10">
+                                      <div
+                                        onClick={(e) => handleOpenFilePreview(e, safeUrl, downloadName)}
+                                        className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center hover:bg-white hover:scale-110 transition-all cursor-pointer"
+                                        title="Preview file"
+                                      >
+                                        <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                      </div>
+                                      <div
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          downloadFile(e, safeUrl, downloadName);
+                                        }}
+                                        className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center hover:bg-white hover:scale-110 transition-all cursor-pointer"
+                                        title="Download file"
+                                      >
                                         <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                         </svg>
@@ -2828,11 +2927,9 @@ export default function AnalysisDetailsPage() {
                                 <a
                                   key={aIdx}
                                   href={safeUrl}
-                                  onClick={(e) => downloadFile(e, safeUrl, downloadName)}
-                                  download={downloadName}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
+                                  onClick={(e) => handleOpenFilePreview(e, safeUrl, downloadName)}
+                                  title={`Preview ${downloadName}`}
+                                  className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col cursor-pointer"
                                 >
                                   <div className="flex-grow flex items-center justify-center bg-white relative overflow-hidden">
                                     {isImg ? (
@@ -2864,8 +2961,26 @@ export default function AnalysisDetailsPage() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                       </svg>
                                     )}
-                                    <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
-                                      <div className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center">
+                                    <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2.5 z-10">
+                                      <div
+                                        onClick={(e) => handleOpenFilePreview(e, safeUrl, downloadName)}
+                                        className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center hover:bg-white hover:scale-110 transition-all cursor-pointer"
+                                        title="Preview file"
+                                      >
+                                        <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                      </div>
+                                      <div
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          downloadFile(e, safeUrl, downloadName);
+                                        }}
+                                        className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center hover:bg-white hover:scale-110 transition-all cursor-pointer"
+                                        title="Download file"
+                                      >
                                         <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                         </svg>
@@ -3072,11 +3187,9 @@ export default function AnalysisDetailsPage() {
                             <a
                               key={url + attIdx}
                               href={safeUrl}
-                              onClick={(e) => downloadFile(e, safeUrl, downloadName)}
-                              download={downloadName}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col"
+                              onClick={(e) => handleOpenFilePreview(e, safeUrl, downloadName)}
+                              title={`Preview ${downloadName}`}
+                              className="group block border border-gray-300 rounded-lg w-full h-44 bg-white hover:shadow-md transition-all text-center no-underline overflow-hidden flex flex-col cursor-pointer"
                             >
                               <div className="flex-grow flex items-center justify-center bg-white relative overflow-hidden">
                                 {isImg ? (
@@ -3108,8 +3221,26 @@ export default function AnalysisDetailsPage() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                   </svg>
                                 )}
-                                <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none z-10">
-                                  <div className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center">
+                                <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2.5 z-10">
+                                  <div
+                                    onClick={(e) => handleOpenFilePreview(e, safeUrl, downloadName)}
+                                    className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center hover:bg-white hover:scale-110 transition-all cursor-pointer"
+                                    title="Preview file"
+                                  >
+                                    <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                  </div>
+                                  <div
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      downloadFile(e, safeUrl, downloadName);
+                                    }}
+                                    className="bg-white/95 p-2.5 rounded-full shadow-md flex items-center justify-center hover:bg-white hover:scale-110 transition-all cursor-pointer"
+                                    title="Download file"
+                                  >
                                     <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                     </svg>
@@ -3359,6 +3490,13 @@ export default function AnalysisDetailsPage() {
         title="Join the Conversation"
         description="Please log in or register to message our team and upload files for this analysis."
         redirectUrl={analysis?._id ? `/dashboard/my-analyses/${analysis._id}/details` : undefined}
+      />
+
+      {/* Document Preview Modal */}
+      <DocumentPreviewModal
+        isOpen={Boolean(previewFile)}
+        onClose={() => setPreviewFile(null)}
+        file={previewFile}
       />
 
       {/* Support & Newsletter Section */}
