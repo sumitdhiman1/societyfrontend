@@ -999,7 +999,7 @@ export default function QuoteDetailsPage() {
         vatAmount: quote.vatAmount,
         totalDuration: quote.totalDuration,
         currency: quote.currency,
-        attachedFiles: quoteAttachedFiles,
+        attachedFiles: [],
         isSynthetic: true,
       },
     };
@@ -1770,7 +1770,7 @@ export default function QuoteDetailsPage() {
 
                   const proposalFiles = (content.attachedFiles && content.attachedFiles.length > 0)
                     ? content.attachedFiles
-                    : (msg as any).attachments || (msg as any).attachedFiles || quoteAttachedFiles || [];
+                    : (msg as any).attachments || (msg as any).attachedFiles || [];
                   const hasPropFiles = Boolean(proposalFiles && proposalFiles.length > 0);
 
                   // Check subsequent messages to track actions on this proposal
