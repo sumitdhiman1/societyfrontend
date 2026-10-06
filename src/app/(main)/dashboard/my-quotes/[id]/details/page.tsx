@@ -1354,8 +1354,8 @@ export default function QuoteDetailsPage() {
                         <span className={`w-fit px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold border uppercase ${getStatusBadgeClass(quoteStatus)}`}>
                           {quoteStatus}
                         </span>
-                        <span className="text-[10px] sm:text-sm text-gray-500 font-bold uppercase tracking-wide whitespace-nowrap">
-                          {submittedTimestamp}
+                        <span className="text-xs sm:text-sm text-gray-500 font-medium whitespace-nowrap">
+                          Submitted - {submittedTimestamp}
                         </span>
                       </div>
                       {isApprovedOrActiveQuote && quoteResolvedTotalCost > 0 && (
@@ -1479,12 +1479,12 @@ export default function QuoteDetailsPage() {
                       {/* Totals & Duration Breakdown */}
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 text-xs sm:text-sm mb-6 pt-2">
                         <div>
-                          <span className="text-gray-500 font-bold block mb-1">
-                            Duration
-                          </span>
-                          <span className="font-bold text-gray-900">
-                            {isMonthlyQuote ? "Monthly Service" : formatDuration(quoteTotalDuration)}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-800 font-bold text-sm">Total Duration:</span>
+                            <span className="font-extrabold text-gray-900 text-sm sm:text-base">
+                              {isMonthlyQuote ? "Monthly Service" : formatDuration(quoteTotalDuration)}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex flex-col items-end gap-1.5 w-full sm:w-auto min-w-[220px]">
                           {quoteVatRate > 0 && quoteVatAmount > 0 ? (
@@ -1876,7 +1876,7 @@ export default function QuoteDetailsPage() {
                             {/* Card Header: SUBMITTED - Date & Status Badge on Left; Expires / Resolution on Right */}
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                               <div className="flex flex-wrap items-center gap-3">
-                                <span className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-tight">
+                                <span className="text-xs sm:text-sm text-gray-500 font-medium">
                                   Submitted - {formatQuoteDate(msgDate)}
                                 </span>
                                 {isSuperseded ? (
@@ -2019,18 +2019,14 @@ export default function QuoteDetailsPage() {
                             {/* Total Duration, Cost & VAT Breakdown */}
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 text-xs sm:text-sm mb-6 pt-2">
                               {isProposalMonthly ? (
-                                <div className="text-left">
-                                  <div className="text-gray-500 font-bold mb-1 sm:mb-2 flex items-center gap-1">
-                                    Duration
-                                  </div>
-                                  <div className="font-bold text-gray-900">Monthly Service</div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-800 font-bold text-sm">Duration:</span>
+                                  <span className="font-extrabold text-gray-900 text-sm sm:text-base">Monthly Service</span>
                                 </div>
                               ) : totalDuration && totalDuration !== "-" ? (
-                                <div className="text-left">
-                                  <div className="text-gray-500 font-bold mb-1 sm:mb-2 flex items-center gap-1">
-                                    Total Duration
-                                  </div>
-                                  <div className="font-medium text-gray-700">{formatDuration(totalDuration)}</div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-800 font-bold text-sm">Total Duration:</span>
+                                  <span className="font-extrabold text-gray-900 text-sm sm:text-base">{formatDuration(totalDuration)}</span>
                                 </div>
                               ) : <div />}
 

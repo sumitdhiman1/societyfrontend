@@ -85,13 +85,22 @@ const sanitizeAnalysisText = (text: string): string => {
     .replace(/This order has been completed\./gi, "Your analysis has been completed! You can leave questions or comments below.")
     .replace(/This analysis has been completed\./gi, "Your analysis has been completed! You can leave questions or comments below.")
     .replace(/Your analysis has been completed! Feel free to leave any questions or comments below\./gi, "Your analysis has been completed! You can leave questions or comments below.")
-    .replace(/this order/gi, "this analysis")
-    .replace(/the order/gi, "the analysis")
-    .replace(/this project/gi, "this analysis")
-    .replace(/your project/gi, "your analysis")
-    .replace(/the project(?!\s+manager)/gi, "the analysis")
-    .replace(/projects/gi, "analyses")
-    .replace(/\bproject(?!\s+manager)/gi, "analysis");
+    .replace(/The project manager has canceled this analysis(?!\.)/g, "The project manager has canceled this analysis.")
+    .replace(/This order/g, "This analysis")
+    .replace(/this order/g, "this analysis")
+    .replace(/The order/g, "The analysis")
+    .replace(/the order/g, "the analysis")
+    .replace(/This project/g, "This analysis")
+    .replace(/this project/g, "this analysis")
+    .replace(/Your project/g, "Your analysis")
+    .replace(/your project/g, "your analysis")
+    .replace(/The project(?!\s+manager)/g, "The analysis")
+    .replace(/the project(?!\s+manager)/g, "the analysis")
+    .replace(/Projects/g, "Analyses")
+    .replace(/projects/g, "analyses")
+    .replace(/\bProject(?!\s+manager)/g, "Analysis")
+    .replace(/\bproject(?!\s+manager)/g, "analysis")
+    .replace(/([.!?]\s+)this analysis/g, "$1This analysis");
 };
 
 export const getAnalysisDomain = (analysisObj: any): string => {
@@ -2158,14 +2167,17 @@ export default function AnalysisDetailsPage() {
                   displayText = "Project manager has been assigned to your project.";
                 }
               } else if (isReactivated || finalTitle.toLowerCase().includes("reactivated") || cleanTitle.toLowerCase().includes("reactivated")) {
-                finalTitle = "Project Reactivated";
-                displayText = "Your project has been reactivated by the project manager.";
+                finalTitle = "Analysis Reactivated";
+                displayText = "Your analysis has been reactivated by the project manager.";
               } else if (isResumed || finalTitle.toLowerCase().includes("resumed") || cleanTitle.toLowerCase().includes("resumed")) {
                 finalTitle = "Project Resumed";
                 displayText = "Your project has been resumed.";
               } else if (isCompleted || finalTitle.toLowerCase().includes("completed") || cleanTitle.toLowerCase().includes("completed")) {
                 finalTitle = "Order Completed";
                 displayText = "Your analysis has been completed! You can leave questions or comments below.";
+              } else if (isCanceledMsg || finalTitle.toLowerCase().includes("canceled") || finalTitle.toLowerCase().includes("cancelled") || cleanTitle.toLowerCase().includes("canceled") || cleanTitle.toLowerCase().includes("cancelled")) {
+                finalTitle = "Analysis Canceled";
+                displayText = text ? (text.trim().endsWith('.') ? text.trim() : `${text.trim()}.`) : "The project manager has canceled this analysis.";
               } else if (isDuplicate) {
                 displayText = pauseConfig ? pauseConfig.defaultMessage : "";
               } else if (!displayText && pauseConfig) {
