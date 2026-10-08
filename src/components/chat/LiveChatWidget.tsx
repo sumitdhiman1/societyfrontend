@@ -373,83 +373,147 @@ export default function LiveChatWidget() {
                   typeof msg.sender === "object"
                     ? msg.sender?._id || msg.sender?.id
                     : msg.sender;
-                const isMe =
-                  (currentUserId && senderId && currentUserId.toString() === senderId.toString()) ||
-                  (!senderId && msg.senderName === "You") ||
-                  msg._id?.toString().startsWith("temp-");
+
+                const agentId =
+                  typeof activeChat?.assignedAgent === "object"
+                    ? activeChat?.assignedAgent?._id || activeChat?.assignedAgent?.id
+                    : activeChat?.assignedAgent;
+
+                const clientId =
+                  typeof activeChat?.client === "object"
+                    ? activeChat?.client?._id || activeChat?.client?.id
+                    : activeChat?.client;
+
+                let isMe = false;
+                if (msg._id?.toString().startsWith("temp-")) {
+                  isMe = true;
+                } else if (currentUserId && senderId && String(currentUserId) === String(senderId)) {
+                  isMe = true;
+                } else if (clientId && senderId && String(clientId) === String(senderId)) {
+                  isMe = true;
+                } else if (agentId && senderId && String(agentId) === String(senderId)) {
+                  isMe = false;
+                } else if (!senderId) {
+                  // Guest / visitor message on the frontend widget
+                  isMe = true;
+                } else if (
+                  msg.senderName === "You" ||
+                  msg.senderName === "Guest User" ||
+                  (currentUser?.fullName && msg.senderName === currentUser.fullName) ||
+                  msg.senderRole === "client" ||
+                  msg.role === "client"
+                ) {
+                  isMe = true;
+                } else {
+                  isMe = false;
+                }
+
+                const currentMsgDate = msg.createdAt ? new Date(msg.createdAt).toDateString() : null;
+                const prevMsgDate = idx > 0 && messages[idx - 1]?.createdAt ? new Date(messages[idx - 1].createdAt).toDateString() : null;
+                const showDateDivider = currentMsgDate && currentMsgDate !== prevMsgDate;
+
+                const getDateDivider = (dateVal: any) => {
+                  if (!dateVal) return '';
+                  const d = new Date(dateVal);
+                  if (isNaN(d.getTime())) return '';
+                  const now = new Date();
+                  if (d.toDateString() === now.toDateString()) return 'Today';
+                  const yest = new Date(now);
+                  yest.setDate(now.getDate() - 1);
+                  if (d.toDateString() === yest.toDateString()) return 'Yesterday';
+                  return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
+                };
+
+                const getFormattedTime = (dateVal: any) => {
+                  if (!dateVal) return '';
+                  const d = new Date(dateVal);
+                  if (isNaN(d.getTime())) return '';
+                  const now = new Date();
+                  const timeStr = formatDateTime ? formatDateTime(dateVal, { hour: '2-digit', minute: '2-digit' }) : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                  if (d.toDateString() === now.toDateString()) return timeStr;
+                  const yest = new Date(now);
+                  yest.setDate(now.getDate() - 1);
+                  if (d.toDateString() === yest.toDateString()) return `Yesterday, ${timeStr}`;
+                  const dateStr = d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                  return `${dateStr}, ${timeStr}`;
+                };
 
                 return (
-                  <div
-                    key={msg._id || idx}
-                    className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
-                  >
-                    {!isMe && (
-                      <span className="text-[11px] font-semibold text-gray-500 mb-0.5 ml-1">
-                        {msg.senderName || "Support"}
-                      </span>
+                  <React.Fragment key={msg._id || idx}>
+                    {showDateDivider && (
+                      <div className="flex items-center justify-center my-2">
+                        <span className="bg-gray-200/80 text-gray-600 text-[10px] font-semibold px-2.5 py-0.5 rounded-full">
+                          {getDateDivider(msg.createdAt)}
+                        </span>
+                      </div>
                     )}
                     <div
-                      className={`max-w-[82%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${isMe
-                          ? "bg-[#5356ff] text-white rounded-br-none"
-                          : "bg-white text-gray-800 rounded-bl-none border border-gray-200"
-                        }`}
+                      className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
                     >
-                      {msg.text && <p className="whitespace-pre-wrap break-words">{msg.text}</p>}
-
-                      {msg.attachments && msg.attachments.length > 0 && (
-                        <div className="mt-2 space-y-1.5">
-                          {msg.attachments.map((file: any, fIdx: number) => {
-                            const isImage =
-                              file.fileType?.startsWith("image/") ||
-                              /\.(png|jpe?g|gif|webp)$/i.test(file.url || "");
-                            return isImage ? (
-                              <a
-                                key={fIdx}
-                                href={file.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="block rounded-lg overflow-hidden border border-black/10 max-h-48 hover:opacity-95"
-                              >
-                                <img
-                                  src={file.url}
-                                  alt={file.filename || "Attachment"}
-                                  className="w-full h-auto object-cover max-h-48"
-                                />
-                              </a>
-                            ) : (
-                              <a
-                                key={fIdx}
-                                href={file.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className={`flex items-center gap-2 p-2 rounded-lg text-xs font-medium border ${isMe
-                                    ? "bg-white/20 border-white/30 text-white"
-                                    : "bg-gray-50 border-gray-200 text-gray-700"
-                                  }`}
-                              >
-                                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                <span className="truncate">{file.filename || "Download File"}</span>
-                              </a>
-                            );
-                          })}
-                        </div>
+                      {!isMe && (
+                        <span className="text-[11px] font-semibold text-gray-500 mb-0.5 ml-1">
+                          {msg.senderName || "Support"}
+                        </span>
                       )}
-
                       <div
-                        className={`text-[9px] mt-1 ${isMe ? "text-indigo-100 text-right" : "text-gray-400"
+                        className={`max-w-[82%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${isMe
+                            ? "bg-[#5356ff] text-white rounded-br-none"
+                            : "bg-white text-gray-800 rounded-bl-none border border-gray-200"
                           }`}
                       >
-                        {msg.createdAt
-                          ? formatDateTime(msg.createdAt, {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                          : ""}
+                        {msg.text && <p className="whitespace-pre-wrap break-words">{msg.text}</p>}
+
+                        {msg.attachments && msg.attachments.length > 0 && (
+                          <div className="mt-2 space-y-1.5">
+                            {msg.attachments.map((file: any, fIdx: number) => {
+                              const isImage =
+                                file.fileType?.startsWith("image/") ||
+                                /\.(png|jpe?g|gif|webp)$/i.test(file.url || "");
+                              return isImage ? (
+                                <a
+                                  key={fIdx}
+                                  href={file.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="block rounded-lg overflow-hidden border border-black/10 max-h-48 hover:opacity-95"
+                                >
+                                  <img
+                                    src={file.url}
+                                    alt={file.filename || "Attachment"}
+                                    className="w-full h-auto object-cover max-h-48"
+                                  />
+                                </a>
+                              ) : (
+                                <a
+                                  key={fIdx}
+                                  href={file.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className={`flex items-center gap-2 p-2 rounded-lg text-xs font-medium border ${isMe
+                                      ? "bg-white/20 border-white/30 text-white"
+                                      : "bg-gray-50 border-gray-200 text-gray-700"
+                                    }`}
+                                >
+                                  <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                  <span className="truncate">{file.filename || "Download File"}</span>
+                                </a>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        <div
+                          className={`text-[9px] mt-1 ${isMe ? "text-indigo-100 text-right" : "text-gray-400"
+                            }`}
+                          title={msg.createdAt ? new Date(msg.createdAt).toLocaleString() : ''}
+                        >
+                          {getFormattedTime(msg.createdAt)}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </React.Fragment>
                 );
               })
             )}
