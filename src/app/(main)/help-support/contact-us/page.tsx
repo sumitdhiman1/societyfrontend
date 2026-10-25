@@ -55,17 +55,21 @@ export default function ContactUsPage() {
   });
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const turnstileRef = useRef<TurnstileRef>(null);
+  const tokenRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleTurnstileVerify = useCallback((token: string) => {
+    tokenRef.current = token;
     setTurnstileToken(token);
   }, []);
 
   const handleTurnstileExpire = useCallback(() => {
+    tokenRef.current = null;
     setTurnstileToken(null);
   }, []);
 
   const handleTurnstileError = useCallback(() => {
+    tokenRef.current = null;
     setTurnstileToken(null);
   }, []);
   const [popup, setPopup] = useState({
@@ -122,32 +126,30 @@ export default function ContactUsPage() {
     e.preventDefault();
     if (loading) return;
 
-    let activeToken = turnstileToken || turnstileRef.current?.getResponse();
-
-    if (!activeToken) {
-      turnstileRef.current?.execute();
-      for (let i = 0; i < 15; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        activeToken = turnstileRef.current?.getResponse();
-        if (activeToken) {
-          setTurnstileToken(activeToken);
-          break;
-        }
-      }
-    }
-
-    if (!activeToken) {
-      setPopup({
-        isOpen: true,
-        type: "error",
-        title: "Security Verification Required",
-        message: "Please complete the security check before submitting the form.",
-      });
-      return;
-    }
-
     try {
       setLoading(true);
+
+      let activeToken = tokenRef.current || turnstileRef.current?.getResponse();
+
+      if (!activeToken) {
+        try { turnstileRef.current?.execute(); } catch { /* ignore if already executing */ }
+        for (let i = 0; i < 80; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          activeToken = tokenRef.current || turnstileRef.current?.getResponse();
+          if (activeToken) break;
+        }
+      }
+
+      if (!activeToken) {
+        setPopup({
+          isOpen: true,
+          type: "error",
+          title: "Security Verification Required",
+          message: "Please complete the security check before submitting the form.",
+        });
+        return;
+      }
+
       const payload = {
         fullName: formData.fullName.trim(),
         email: formData.email.trim(),
@@ -174,6 +176,7 @@ export default function ContactUsPage() {
           subject: "",
           message: "",
         });
+        tokenRef.current = null;
         setTurnstileToken(null);
         turnstileRef.current?.reset();
       } else {
@@ -188,6 +191,7 @@ export default function ContactUsPage() {
         title: "Submission Failed",
         message: Array.isArray(errMsg) ? errMsg.join(", ") : errMsg,
       });
+      tokenRef.current = null;
       setTurnstileToken(null);
       turnstileRef.current?.reset();
     } finally {
