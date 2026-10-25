@@ -191,9 +191,7 @@ export const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(
           // For invisible mode: use "compact" with appearance="execute" so the widget
           // renders dormant and only challenges when execute() is explicitly called.
           size: isInvisibleMode ? "compact" : size,
-          appearance: appearance ?? (isInvisibleMode ? "execute" : "always"),
-          // execution="execute" means the challenge only runs when execute() is called
-          ...(isInvisibleMode ? { execution: "execute" } : {}),
+          appearance: appearance ?? (isInvisibleMode ? "interaction-only" : "always"),
           callback: (token: string) => {
             latestTokenRef.current = token;
             if (onVerifyRef.current) onVerifyRef.current(token);
@@ -231,14 +229,9 @@ export const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(
         style={
           isInvisibleMode
             ? {
-                // Render in normal flow but invisible.
-                // Real dimensions are required for Cloudflare's iframe to load and
-                // complete the challenge. visibility:hidden preserves layout space.
-                visibility: "hidden",
-                width: "130px",
-                height: "30px",
-                overflow: "hidden",
-                pointerEvents: "none",
+                // interaction-only natively hides the widget during background evaluation.
+                // Keeping minimal layout ensures Cloudflare's challenge can execute cleanly.
+                position: "relative",
               }
             : undefined
         }
