@@ -39,7 +39,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="w-full">
-          <SupportNewsletter gridClassName="!mt-0" />
+          <SupportNewsletter gridClassName="mt-0 md:mt-12" />
         </div>
       </div>
 

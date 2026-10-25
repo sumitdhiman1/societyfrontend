@@ -15,7 +15,7 @@ function DashboardContent() {
   const message = searchParams.get("message");
 
   return (
-    <div className="w-full flex-grow md:space-y-16 pb-8 md:pb-12">
+    <div className="w-full flex-grow pb-8 md:pb-12">
       <div className="max-w-[1536px] w-full mx-auto px-4 md:px-8 lg:pl-[54px] lg:pr-[62px]">
         {/* Hero / Top Section */}
         <div className="flex flex-col lg:flex-row gap-6 md:gap-8 pt-6 md:pt-6 lg:pt-[32px]">
