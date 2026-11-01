@@ -443,19 +443,77 @@ export default function ProjectPaymentsPage() {
     "USD"
   ).toLowerCase();
 
-  const totalPaidFromTransactions = (combinedPayments || [])
-    .filter((p: any) => ["succeeded", "paid", "completed"].includes(p.status?.toLowerCase()))
-    .reduce((sum: number, p: any) => {
-      const pCurr = (p?.currency || projectNativeCurrency || "USD").toLowerCase();
-      const pAmt = Number(p?.amountPaid || p?.amount || 0);
-      const pRate = Number(p?.exchangeRate || p?.metadata?.exchangeRate || p?.metadata?.conversionRate || conversionRate || 1.14776);
-      return sum + convertCurrencyAmount(pAmt, projectNativeCurrency, pCurr, pRate);
-    }, 0);
-
-  const amountPaid = Math.max(
-    totalPaidFromTransactions,
-    Number(activeProject.amountPaid || 0)
+  const isMonthlyProject = Boolean(
+    isMonthlyQuoteProject ||
+    activeProject?.billingType === "monthly" ||
+    activeProject?.isMonthly === true ||
+    activeProject?.billingCycle === "month" ||
+    activeProject?.autoRenewal ||
+    Boolean(activeProject?.nextRenewalDate) ||
+    linkedQuote?.billingType === "monthly" ||
+    linkedQuote?.isMonthly === true
   );
+
+  const succeededPayments = (combinedPayments || [])
+    .filter((p: any) => ["succeeded", "paid", "completed"].includes(p.status?.toLowerCase()))
+    .sort((a: any, b: any) => {
+      const dateA = new Date(a?.createdAt || a?.date || 0).getTime();
+      const dateB = new Date(b?.createdAt || b?.date || 0).getTime();
+      return dateB - dateA; // Most recent first
+    });
+
+  const hasAutoRenewalOrRenewal = succeededPayments.some(
+    (p: any) =>
+      p?.metadata?.autoRenewal === true ||
+      p?.metadata?.autoRenewal === "true" ||
+      p?.metadata?.isRenewal === true ||
+      p?.metadata?.isRenewal === "true" ||
+      p?.autoRenewal === true ||
+      p?.isRenewal === true
+  );
+
+  // For monthly projects where auto-renewal or multiple monthly charges occur, show only the latest transaction amount
+  const shouldShowLatestOnly = isMonthlyProject && (hasAutoRenewalOrRenewal || succeededPayments.length > 1);
+
+  const latestPayment = succeededPayments[0];
+  const latestPaymentAmount = latestPayment
+    ? (() => {
+        const pCurr = (latestPayment?.currency || projectNativeCurrency || "USD").toLowerCase();
+        const pAmt = Number(latestPayment?.amountPaid || latestPayment?.amount || 0);
+        const pRate = Number(
+          latestPayment?.exchangeRate ||
+          latestPayment?.metadata?.exchangeRate ||
+          latestPayment?.metadata?.conversionRate ||
+          conversionRate ||
+          1.14776
+        );
+        return convertCurrencyAmount(pAmt, projectNativeCurrency, pCurr, pRate);
+      })()
+    : 0;
+
+  const allTransactionsSum = succeededPayments.reduce((sum: number, p: any) => {
+    const pCurr = (p?.currency || projectNativeCurrency || "USD").toLowerCase();
+    const pAmt = Number(p?.amountPaid || p?.amount || 0);
+    const pRate = Number(
+      p?.exchangeRate ||
+      p?.metadata?.exchangeRate ||
+      p?.metadata?.conversionRate ||
+      conversionRate ||
+      1.14776
+    );
+    return sum + convertCurrencyAmount(pAmt, projectNativeCurrency, pCurr, pRate);
+  }, 0);
+
+  const totalPaidFromTransactions = shouldShowLatestOnly
+    ? latestPaymentAmount
+    : allTransactionsSum;
+
+  const amountPaid = shouldShowLatestOnly
+    ? totalPaidFromTransactions
+    : Math.max(
+        totalPaidFromTransactions,
+        Number(activeProject.amountPaid || 0)
+      );
   const totalSubtotal = baseSubtotal + addonsTotal;
   const effectiveVatAmount = vatRate > 0 && totalSubtotal > 0
     ? Math.round((totalSubtotal * (vatRate / 100)) * 100) / 100

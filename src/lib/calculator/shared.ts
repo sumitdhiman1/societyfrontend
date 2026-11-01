@@ -698,7 +698,27 @@ export function parseDurationToDays(durationStr: string): number {
 export function getProjectEstimatedDeadline(project: any): Date | null {
   if (!project) return null;
 
-  // 1. Explicit deadline takes priority
+  // 1. For monthly / recurring projects with nextRenewalDate, the renewal date reflects the active cycle deadline
+  const isMonthlyOrRenewal =
+    project.isRenewal === true ||
+    project.billingType === "monthly" ||
+    project.autoRenewal === true ||
+    Boolean(project.nextRenewalDate);
+
+  if (isMonthlyOrRenewal && project.nextRenewalDate) {
+    const renewalDate = new Date(project.nextRenewalDate);
+    if (!isNaN(renewalDate.getTime())) {
+      if (project.deadline) {
+        const explicitDeadline = new Date(project.deadline);
+        if (!isNaN(explicitDeadline.getTime())) {
+          return explicitDeadline > renewalDate ? explicitDeadline : renewalDate;
+        }
+      }
+      return renewalDate;
+    }
+  }
+
+  // 2. Explicit deadline takes priority
   if (project.deadline) {
     const d = new Date(project.deadline);
     if (!isNaN(d.getTime())) return d;
